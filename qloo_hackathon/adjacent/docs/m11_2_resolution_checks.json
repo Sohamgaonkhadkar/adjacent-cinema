@@ -1,0 +1,75 @@
+[
+  {
+    "name": "title_only",
+    "params": {
+      "title": "Parasite"
+    },
+    "expected": "VERIFIED",
+    "actual": "AMBIGUOUS",
+    "passed": false,
+    "entity_id": "A499EC25-7FF6-46DE-9DA5-3E78E99B9E26",
+    "entity_name": "Parasite"
+  },
+  {
+    "name": "title_and_year",
+    "params": {
+      "title": "Parasite",
+      "year": 2019
+    },
+    "expected": "VERIFIED",
+    "actual": "VERIFIED",
+    "passed": true,
+    "entity_id": "A499EC25-7FF6-46DE-9DA5-3E78E99B9E26",
+    "entity_name": "Parasite"
+  },
+  {
+    "name": "correct_imdb",
+    "params": {
+      "title": "Parasite",
+      "year": 2019,
+      "external_id": "tt6751668",
+      "external_family": "imdb"
+    },
+    "expected": "VERIFIED",
+    "actual": "VERIFIED",
+    "passed": true,
+    "entity_id": "A499EC25-7FF6-46DE-9DA5-3E78E99B9E26",
+    "entity_name": "Parasite"
+  },
+  {
+    "name": "wrong_imdb",
+    "params": {
+      "title": "Parasite",
+      "year": 2019,
+      "external_id": "tt9999999",
+      "external_family": "imdb"
+    },
+    "expected": "MISMATCH",
+    "actual": "MISMATCH",
+    "passed": true,
+    "entity_id": "A499EC25-7FF6-46DE-9DA5-3E78E99B9E26",
+    "entity_name": "Parasite"
+  },
+  {
+    "name": "ambiguous_title",
+    "params": {
+      "title": "Dune"
+    },
+    "expected": "AMBIGUOUS",
+    "actual": "AMBIGUOUS",
+    "passed": true,
+    "entity_id": "3037F0E8-C912-4DC0-BDE3-1F94631F9DA6",
+    "entity_name": "Dune"
+  },
+  {
+    "name": "unresolved_title",
+    "params": {
+      "title": "xyznonexistentmovie123"
+    },
+    "expected": "UNRESOLVED",
+    "actual": "UNRESOLVED",
+    "passed": true,
+    "entity_id": null,
+    "entity_name": null
+  }
+]

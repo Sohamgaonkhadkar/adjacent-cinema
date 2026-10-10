@@ -1,0 +1,2530 @@
+{
+  "evaluation_date": "2026-10-07T10:47:07.269342+00:00",
+  "candidate_budget_k": 10,
+  "baseline_type": "content_similarity_genre_country_director",
+  "baseline_candidate_universe_size": 42,
+  "total_contexts": 5,
+  "verified_contexts": 5,
+  "qloo_successful": 5,
+  "results": [
+    {
+      "evaluation_context_id": "prince_charles_london_2026_10",
+      "venue": "Prince Charles Cinema",
+      "city": "London",
+      "venue_type": "INDEPENDENT",
+      "source_url": "https://princecharlescinema.com",
+      "programme_window": "October 2026 (Horror season)",
+      "verification_status": "VERIFIED",
+      "verification_evidence": "Scraped from live website, visible in HTML source",
+      "programme_films": [
+        {
+          "title": "The Thing",
+          "year": 1982,
+          "imdb_id": "tt0084787"
+        },
+        {
+          "title": "The Shining",
+          "year": 1980,
+          "imdb_id": "tt0081505"
+        },
+        {
+          "title": "Suspiria",
+          "year": 1977,
+          "imdb_id": "tt0076786"
+        },
+        {
+          "title": "Perfect Blue",
+          "year": 1997,
+          "imdb_id": "tt0156887"
+        },
+        {
+          "title": "Akira",
+          "year": 1988,
+          "imdb_id": "tt0094625"
+        },
+        {
+          "title": "Possession",
+          "year": 1981,
+          "imdb_id": "tt0082933"
+        },
+        {
+          "title": "Halloween",
+          "year": 1978,
+          "imdb_id": "tt0077651"
+        },
+        {
+          "title": "Rosemary's Baby",
+          "year": 1968,
+          "imdb_id": "tt0063522"
+        }
+      ],
+      "qloo_coverage": {
+        "total": 8,
+        "resolved": 8,
+        "unresolved": 0,
+        "resolution_rate": 1.0
+      },
+      "baseline_coverage": {
+        "total": 8,
+        "metadata_available": 8,
+        "metadata_missing": []
+      },
+      "baseline_top_k": [
+        {
+          "title": "Halloween III: Season of the Witch",
+          "domain": "film",
+          "similarity": 0.7,
+          "genre": [
+            "horror",
+            "sci-fi"
+          ],
+          "country": "USA",
+          "director": "Tommy Lee Wallace"
+        },
+        {
+          "title": "Get Out",
+          "domain": "film",
+          "similarity": 0.5333,
+          "genre": [
+            "horror",
+            "mystery",
+            "thriller"
+          ],
+          "country": "USA",
+          "director": "Jordan Peele"
+        },
+        {
+          "title": "Saint Maud",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "horror",
+            "drama"
+          ],
+          "country": "UK",
+          "director": "Rose Glass"
+        },
+        {
+          "title": "The Devils",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "horror",
+            "drama"
+          ],
+          "country": "UK",
+          "director": "Ken Russell"
+        },
+        {
+          "title": "The Substance",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "horror",
+            "sci-fi"
+          ],
+          "country": "UK/USA/France",
+          "director": "Coralie Fargeat"
+        },
+        {
+          "title": "An American Werewolf in London",
+          "domain": "film",
+          "similarity": 0.3667,
+          "genre": [
+            "horror",
+            "comedy"
+          ],
+          "country": "UK/USA",
+          "director": "John Landis"
+        },
+        {
+          "title": "Conclave",
+          "domain": "film",
+          "similarity": 0.3667,
+          "genre": [
+            "drama",
+            "thriller"
+          ],
+          "country": "UK/USA",
+          "director": "Edward Berger"
+        },
+        {
+          "title": "28 Days Later",
+          "domain": "film",
+          "similarity": 0.3333,
+          "genre": [
+            "horror",
+            "sci-fi",
+            "thriller"
+          ],
+          "country": "UK",
+          "director": "Danny Boyle"
+        },
+        {
+          "title": "The Lighthouse",
+          "domain": "film",
+          "similarity": 0.3333,
+          "genre": [
+            "drama",
+            "fantasy",
+            "horror"
+          ],
+          "country": "USA/Canada",
+          "director": "Robert Eggers"
+        },
+        {
+          "title": "Everything Everywhere All at Once",
+          "domain": "film",
+          "similarity": 0.325,
+          "genre": [
+            "action",
+            "comedy",
+            "sci-fi"
+          ],
+          "country": "USA",
+          "director": "Daniel Kwan, Daniel Scheinert"
+        }
+      ],
+      "qloo_film_top_k": [
+        {
+          "entity_id": "7C524BF5-EF7E-446F-BD2D-ECE334613876",
+          "title": "The Cabinet of Dr. Caligari",
+          "domain": "movie",
+          "affinity": 0.8755278477229606,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.855646,
+          "call_id": "local-c025"
+        },
+        {
+          "entity_id": "23031F7E-CAD9-4BE5-8FFD-CB7EDD629E64",
+          "title": "Marebito",
+          "domain": "movie",
+          "affinity": 0.8733155200174683,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.855646,
+          "call_id": "local-c025"
+        },
+        {
+          "entity_id": "626B4773-BE92-46BA-A19C-AB00F8F51162",
+          "title": "The Legend of Hell House",
+          "domain": "movie",
+          "affinity": 0.8726590553597575,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.855646,
+          "call_id": "local-c025"
+        },
+        {
+          "entity_id": "ECD5B01C-C7E0-4481-9D61-A230F5D5F7D4",
+          "title": "Carnival of Souls",
+          "domain": "movie",
+          "affinity": 0.8709664523613201,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.855646,
+          "call_id": "local-c025"
+        },
+        {
+          "entity_id": "953B2C6E-75CA-42CB-BF6F-54820587D514",
+          "title": "The Grim Reaper",
+          "domain": "movie",
+          "affinity": 0.8705795261450647,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.855646,
+          "call_id": "local-c025"
+        },
+        {
+          "entity_id": "E7BF198C-76B3-4C3F-8A43-321D16BBE71D",
+          "title": "Fando and Lis",
+          "domain": "movie",
+          "affinity": 0.870039340357232,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.855646,
+          "call_id": "local-c025"
+        },
+        {
+          "entity_id": "EA11BA30-B2CB-4A98-8F2D-78CA591F252B",
+          "title": "The Strange Color of Your Body's Tears",
+          "domain": "movie",
+          "affinity": 0.8694105829249738,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.855646,
+          "call_id": "local-c025"
+        },
+        {
+          "entity_id": "0B6111ED-7BB6-4B20-8BEE-A3C2F2B773BA",
+          "title": "Goke, Body Snatcher from Hell",
+          "domain": "movie",
+          "affinity": 0.8681868341178528,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.855646,
+          "call_id": "local-c025"
+        },
+        {
+          "entity_id": "0D99CEBD-250E-4C5C-A0D4-DD5BFA65E24B",
+          "title": "Attack of the Mushroom People",
+          "domain": "movie",
+          "affinity": 0.8656625652009338,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.855646,
+          "call_id": "local-c025"
+        },
+        {
+          "entity_id": "D0608060-47BE-4844-A1CC-F8F6343EB786",
+          "title": "Images",
+          "domain": "movie",
+          "affinity": 0.8656382868758458,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.855646,
+          "call_id": "local-c025"
+        }
+      ],
+      "qloo_nonfilm_top_k": [
+        {
+          "entity_id": "F2AB33B5-711A-4B1A-B753-3528CCEB5CB8",
+          "title": "What Remains",
+          "domain": "tv_show",
+          "affinity": 0.9595948391699711,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "cohort_mean_affinity": 0.950368,
+          "call_id": "local-c026"
+        },
+        {
+          "entity_id": "04C9468C-F25C-43D8-ABAD-3308E2004AA6",
+          "title": "Harlan Coben's Shelter",
+          "domain": "tv_show",
+          "affinity": 0.957057890712912,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "cohort_mean_affinity": 0.950368,
+          "call_id": "local-c026"
+        },
+        {
+          "entity_id": "33641889-34E1-425A-B129-BB713CC4BF21",
+          "title": "Retribution",
+          "domain": "tv_show",
+          "affinity": 0.9570349224569616,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "cohort_mean_affinity": 0.950368,
+          "call_id": "local-c026"
+        },
+        {
+          "entity_id": "1FFF5177-A6AA-49D2-95B7-89F9B437B4B2",
+          "title": "American Gothic",
+          "domain": "tv_show",
+          "affinity": 0.9553513408400882,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "cohort_mean_affinity": 0.950368,
+          "call_id": "local-c026"
+        },
+        {
+          "entity_id": "025F3263-F7F7-4111-AFCA-610FA881E320",
+          "title": "Requiem",
+          "domain": "tv_show",
+          "affinity": 0.9553010572525492,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "cohort_mean_affinity": 0.950368,
+          "call_id": "local-c026"
+        },
+        {
+          "entity_id": "D68743E0-F559-4359-9AF0-6E5C7C3810F7",
+          "title": "Chambers",
+          "domain": "tv_show",
+          "affinity": 0.9551643640355253,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "cohort_mean_affinity": 0.950368,
+          "call_id": "local-c026"
+        },
+        {
+          "entity_id": "FF788110-6142-4F2C-88C0-A44DEAE31166",
+          "title": "Red Rose",
+          "domain": "tv_show",
+          "affinity": 0.9549221420221565,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "cohort_mean_affinity": 0.950368,
+          "call_id": "local-c026"
+        },
+        {
+          "entity_id": "2DAE9E2A-0C14-4D62-A67C-AFEE12F78A1E",
+          "title": "The Woman in the Wall",
+          "domain": "tv_show",
+          "affinity": 0.9542147470920531,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "cohort_mean_affinity": 0.950368,
+          "call_id": "local-c026"
+        },
+        {
+          "entity_id": "5BD4973F-ADCE-4D71-BBD3-BAB537E4170D",
+          "title": "The Burning Girls",
+          "domain": "tv_show",
+          "affinity": 0.9540945705474676,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "cohort_mean_affinity": 0.950368,
+          "call_id": "local-c026"
+        },
+        {
+          "entity_id": "95C4EC69-EFED-4452-A7E3-403BC6376031",
+          "title": "Devil in Ohio",
+          "domain": "tv_show",
+          "affinity": 0.9538038485931923,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "cohort_mean_affinity": 0.950368,
+          "call_id": "local-c026"
+        }
+      ],
+      "film_space_metrics": {
+        "k": 10,
+        "baseline_count": 10,
+        "qloo_film_count": 10,
+        "overlap_count": 0,
+        "overlap_titles": [],
+        "jaccard": 0.0,
+        "baseline_only": [
+          "28 Days Later",
+          "An American Werewolf in London",
+          "Conclave",
+          "Everything Everywhere All at Once",
+          "Get Out",
+          "Halloween III: Season of the Witch",
+          "Saint Maud",
+          "The Devils",
+          "The Lighthouse",
+          "The Substance"
+        ],
+        "qloo_only": [
+          "Attack of the Mushroom People",
+          "Carnival of Souls",
+          "Fando and Lis",
+          "Goke, Body Snatcher from Hell",
+          "Images",
+          "Marebito",
+          "The Cabinet of Dr. Caligari",
+          "The Grim Reaper",
+          "The Legend of Hell House",
+          "The Strange Color of Your Body's Tears"
+        ]
+      },
+      "cross_domain_metrics": {
+        "nonfilm_domain_count": 3,
+        "domain_scores": {
+          "tv_show": {
+            "candidate_count": 50,
+            "top_affinity": 0.9596,
+            "relevance": 2,
+            "actionability": 2,
+            "evidence": 2,
+            "total_score": 6,
+            "actionable": true,
+            "top_candidates": [
+              {
+                "title": "What Remains",
+                "affinity": 0.9595948391699711
+              },
+              {
+                "title": "Harlan Coben's Shelter",
+                "affinity": 0.957057890712912
+              },
+              {
+                "title": "Retribution",
+                "affinity": 0.9570349224569616
+              }
+            ]
+          },
+          "artist": {
+            "candidate_count": 50,
+            "top_affinity": 0.8997,
+            "relevance": 2,
+            "actionability": 2,
+            "evidence": 2,
+            "total_score": 6,
+            "actionable": true,
+            "top_candidates": [
+              {
+                "title": "The Contortions",
+                "affinity": 0.8997037895403877
+              },
+              {
+                "title": "Edward Ka-Spel",
+                "affinity": 0.8916016077501495
+              },
+              {
+                "title": "Dalis Car",
+                "affinity": 0.8900167868419684
+              }
+            ]
+          },
+          "brand": {
+            "candidate_count": 50,
+            "top_affinity": 0.8781,
+            "relevance": 2,
+            "actionability": 0,
+            "evidence": 2,
+            "total_score": 4,
+            "actionable": true,
+            "top_candidates": [
+              {
+                "title": "Eminem Store",
+                "affinity": 0.8781327121646451
+              },
+              {
+                "title": "Harry's",
+                "affinity": 0.8690514062456619
+              },
+              {
+                "title": "Foursquare",
+                "affinity": 0.8675744170740216
+              }
+            ]
+          }
+        },
+        "actionable_cross_domain_count": 3,
+        "total_nonfilm_candidates": 150
+      },
+      "qloo_success": true,
+      "qloo_error": null,
+      "qloo_programme_bet": {
+        "primary": {
+          "domain": "tv_show",
+          "cohort_name": "What Remains",
+          "mean_affinity": 0.950368,
+          "member_count": 50,
+          "call_id": "local-c026"
+        },
+        "runner_up": {
+          "domain": "artist",
+          "cohort_name": "The Contortions",
+          "mean_affinity": 0.877571,
+          "call_id": "local-c023"
+        },
+        "two_sided_signals": {
+          "programme_adjacency": 0.950368,
+          "adjacency_band": "High",
+          "adjacency_call_id": "local-c026",
+          "cohort_breadth": 1.0,
+          "breadth_band": "High",
+          "breadth_call_id": "local-c026",
+          "methodology_note": "Programme adjacency: mean affinity of cohort members against programme taste profile (Qloo /v2/insights). Cohort breadth: fraction of cohort members above Medium affinity threshold."
+        },
+        "why": "The strongest adjacent cultural group is in the tv_show domain, featuring What Remains, Harlan Coben's Shelter, Retribution. This group shows very high cultural affinity (mean 0.95) with your programme's taste profile. Evidence dimensions: programme adjacency=0.95 (High), cohort breadth=1.00 (High).",
+        "cultural_bridge": "Your programme's taste profile ( Airy, Gift shop, Lifestyle Focused) shares cultural signals with What Remains, Harlan Coben's Shelter.",
+        "geographic_signal": "Geographic analysis not available.",
+        "programming_direction": "Test programming that connects your existing  Airy, Gift shop, Lifestyle Focused profile with the cultural world of What Remains, Harlan Coben's Shelter through tv_show-adjacent programming.",
+        "falsification_condition": "Do not continue this programming test if the tv_show affinity signal cannot be reproduced across the next comparable programme analysis. Specifically: if a subsequent analysis of a similar programme does not produce a tv_show cohort in the top-3 ranked opportunities, the hypothesis is rejected.",
+        "rejected_candidates": [],
+        "geography_call_id": null,
+        "data_status": "measured"
+      },
+      "qloo_domains": [
+        "urn:entity:artist",
+        "urn:entity:movie",
+        "urn:entity:tv_show",
+        "urn:entity:brand"
+      ],
+      "qloo_nonfilm_domains": [
+        "artist",
+        "tv_show",
+        "brand"
+      ]
+    },
+    {
+      "evaluation_context_id": "genesis_london_2026_10",
+      "venue": "Genesis Cinema",
+      "city": "London",
+      "venue_type": "INDEPENDENT",
+      "source_url": "https://genesiscinema.co.uk",
+      "programme_window": "October 2026 (current + LIFF)",
+      "verification_status": "VERIFIED",
+      "verification_evidence": "Scraped from live website whatson page",
+      "programme_films": [
+        {
+          "title": "American History X",
+          "year": 1998,
+          "imdb_id": "tt0120586"
+        },
+        {
+          "title": "Rosemary's Baby",
+          "year": 1968,
+          "imdb_id": "tt0063522"
+        },
+        {
+          "title": "Halloween",
+          "year": 1978,
+          "imdb_id": "tt0077651"
+        },
+        {
+          "title": "Parasite",
+          "year": 2019,
+          "imdb_id": "tt6751668"
+        },
+        {
+          "title": "The Substance",
+          "year": 2024,
+          "imdb_id": "tt17526714"
+        },
+        {
+          "title": "Conclave",
+          "year": 2024,
+          "imdb_id": "tt20215234"
+        }
+      ],
+      "qloo_coverage": {
+        "total": 6,
+        "resolved": 6,
+        "unresolved": 0,
+        "resolution_rate": 1.0
+      },
+      "baseline_coverage": {
+        "total": 6,
+        "metadata_available": 6,
+        "metadata_missing": []
+      },
+      "baseline_top_k": [
+        {
+          "title": "The Thing",
+          "domain": "film",
+          "similarity": 0.6667,
+          "genre": [
+            "horror",
+            "sci-fi"
+          ],
+          "country": "USA",
+          "director": "John Carpenter"
+        },
+        {
+          "title": "Get Out",
+          "domain": "film",
+          "similarity": 0.5333,
+          "genre": [
+            "horror",
+            "mystery",
+            "thriller"
+          ],
+          "country": "USA",
+          "director": "Jordan Peele"
+        },
+        {
+          "title": "Halloween III: Season of the Witch",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "horror",
+            "sci-fi"
+          ],
+          "country": "USA",
+          "director": "Tommy Lee Wallace"
+        },
+        {
+          "title": "Shoplifters",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "crime",
+            "drama"
+          ],
+          "country": "Japan",
+          "director": "Hirokazu Kore-eda"
+        },
+        {
+          "title": "The Shining",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "horror",
+            "thriller"
+          ],
+          "country": "UK/USA",
+          "director": "Stanley Kubrick"
+        },
+        {
+          "title": "Moonlight",
+          "domain": "film",
+          "similarity": 0.45,
+          "genre": [
+            "drama"
+          ],
+          "country": "USA",
+          "director": "Barry Jenkins"
+        },
+        {
+          "title": "The Brutalist",
+          "domain": "film",
+          "similarity": 0.45,
+          "genre": [
+            "drama"
+          ],
+          "country": "UK/USA",
+          "director": "Brady Corbet"
+        },
+        {
+          "title": "The Handmaiden",
+          "domain": "film",
+          "similarity": 0.45,
+          "genre": [
+            "drama",
+            "romance",
+            "thriller"
+          ],
+          "country": "South Korea",
+          "director": "Park Chan-wook"
+        },
+        {
+          "title": "The Souvenir",
+          "domain": "film",
+          "similarity": 0.45,
+          "genre": [
+            "drama"
+          ],
+          "country": "UK/USA",
+          "director": "Joanna Hogg"
+        },
+        {
+          "title": "28 Days Later",
+          "domain": "film",
+          "similarity": 0.3333,
+          "genre": [
+            "horror",
+            "sci-fi",
+            "thriller"
+          ],
+          "country": "UK",
+          "director": "Danny Boyle"
+        }
+      ],
+      "qloo_film_top_k": [
+        {
+          "entity_id": "18DC7C8A-3DA8-4E61-97DD-2FB693ADB798",
+          "title": "Friendly Beast",
+          "domain": "movie",
+          "affinity": 0.8378749323721618,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.815431,
+          "call_id": "local-c023"
+        },
+        {
+          "entity_id": "3A258C3B-3353-43B8-842E-3554A6CF5EFD",
+          "title": "Thinner",
+          "domain": "movie",
+          "affinity": 0.8331018875244415,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.815431,
+          "call_id": "local-c023"
+        },
+        {
+          "entity_id": "58B3B4DA-5717-44D5-9F12-75C8181D72BE",
+          "title": "Lover",
+          "domain": "movie",
+          "affinity": 0.8314186219063704,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.815431,
+          "call_id": "local-c023"
+        },
+        {
+          "entity_id": "E121C39F-DBF8-4376-A655-5388C6A754A7",
+          "title": "The Exorcism",
+          "domain": "movie",
+          "affinity": 0.8303156258608655,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.815431,
+          "call_id": "local-c023"
+        },
+        {
+          "entity_id": "9E2CCD5D-0AA5-48D2-B737-196CD2D63D37",
+          "title": "Girl on the Third Floor",
+          "domain": "movie",
+          "affinity": 0.8265576447905263,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.815431,
+          "call_id": "local-c023"
+        },
+        {
+          "entity_id": "79771B23-ABED-446E-83AC-5ACDD6E9C892",
+          "title": "Broken Innocence",
+          "domain": "movie",
+          "affinity": 0.8248296632777062,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.815431,
+          "call_id": "local-c023"
+        },
+        {
+          "entity_id": "D146CC71-2747-412C-B0D7-D0C4759E7678",
+          "title": "Starve Acre",
+          "domain": "movie",
+          "affinity": 0.8246784132538498,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.815431,
+          "call_id": "local-c023"
+        },
+        {
+          "entity_id": "8415425F-FC59-49D1-B645-30D9D4A22306",
+          "title": "Assault on the Pay Train",
+          "domain": "movie",
+          "affinity": 0.8225494030837136,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.815431,
+          "call_id": "local-c023"
+        },
+        {
+          "entity_id": "CDA76743-6388-4267-A50A-DA7DE059E735",
+          "title": "Leatherface: Texas Chainsaw Massacre III",
+          "domain": "movie",
+          "affinity": 0.8225342724388582,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.815431,
+          "call_id": "local-c023"
+        },
+        {
+          "entity_id": "3855CF74-5C63-4D81-AA69-08FC19841EB2",
+          "title": "Heart of Pain",
+          "domain": "movie",
+          "affinity": 0.8213735309120981,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.815431,
+          "call_id": "local-c023"
+        }
+      ],
+      "qloo_nonfilm_top_k": [
+        {
+          "entity_id": "F2AB33B5-711A-4B1A-B753-3528CCEB5CB8",
+          "title": "What Remains",
+          "domain": "tv_show",
+          "affinity": 0.956026077008986,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "cohort_mean_affinity": 0.948598,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "33641889-34E1-425A-B129-BB713CC4BF21",
+          "title": "Retribution",
+          "domain": "tv_show",
+          "affinity": 0.9548476275715654,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "cohort_mean_affinity": 0.948598,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "081CD4F4-725A-4432-A75B-FBD321CF37BE",
+          "title": "Somebody",
+          "domain": "tv_show",
+          "affinity": 0.9543589728600804,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "cohort_mean_affinity": 0.948598,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "04C9468C-F25C-43D8-ABAD-3308E2004AA6",
+          "title": "Harlan Coben's Shelter",
+          "domain": "tv_show",
+          "affinity": 0.9526423204715425,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "cohort_mean_affinity": 0.948598,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "FF788110-6142-4F2C-88C0-A44DEAE31166",
+          "title": "Red Rose",
+          "domain": "tv_show",
+          "affinity": 0.9523438309286406,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "cohort_mean_affinity": 0.948598,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "FC347705-8382-458A-A13B-0D4AA6E6B5A4",
+          "title": "The Pact",
+          "domain": "tv_show",
+          "affinity": 0.9515942996054481,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "cohort_mean_affinity": 0.948598,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "2DAE9E2A-0C14-4D62-A67C-AFEE12F78A1E",
+          "title": "The Woman in the Wall",
+          "domain": "tv_show",
+          "affinity": 0.9515185932415589,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "cohort_mean_affinity": 0.948598,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "A0BA1B37-513F-4CD9-9582-569BBAF54360",
+          "title": "Reckoning",
+          "domain": "tv_show",
+          "affinity": 0.9514710044048412,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "cohort_mean_affinity": 0.948598,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "9EE46299-A6E1-4608-BFC7-16F82AAD6ABE",
+          "title": "Tomorrow",
+          "domain": "tv_show",
+          "affinity": 0.9511136877189195,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "cohort_mean_affinity": 0.948598,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "C45A3C68-A0D5-4061-8BEA-17C4B8E725BA",
+          "title": "Gyeongseong Creature",
+          "domain": "tv_show",
+          "affinity": 0.9510070689388775,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "cohort_mean_affinity": 0.948598,
+          "call_id": "local-c024"
+        }
+      ],
+      "film_space_metrics": {
+        "k": 10,
+        "baseline_count": 10,
+        "qloo_film_count": 10,
+        "overlap_count": 0,
+        "overlap_titles": [],
+        "jaccard": 0.0,
+        "baseline_only": [
+          "28 Days Later",
+          "Get Out",
+          "Halloween III: Season of the Witch",
+          "Moonlight",
+          "Shoplifters",
+          "The Brutalist",
+          "The Handmaiden",
+          "The Shining",
+          "The Souvenir",
+          "The Thing"
+        ],
+        "qloo_only": [
+          "Assault on the Pay Train",
+          "Broken Innocence",
+          "Friendly Beast",
+          "Girl on the Third Floor",
+          "Heart of Pain",
+          "Leatherface: Texas Chainsaw Massacre III",
+          "Lover",
+          "Starve Acre",
+          "The Exorcism",
+          "Thinner"
+        ]
+      },
+      "cross_domain_metrics": {
+        "nonfilm_domain_count": 4,
+        "domain_scores": {
+          "tv_show": {
+            "candidate_count": 50,
+            "top_affinity": 0.956,
+            "relevance": 2,
+            "actionability": 2,
+            "evidence": 2,
+            "total_score": 6,
+            "actionable": true,
+            "top_candidates": [
+              {
+                "title": "What Remains",
+                "affinity": 0.956026077008986
+              },
+              {
+                "title": "Retribution",
+                "affinity": 0.9548476275715654
+              },
+              {
+                "title": "Somebody",
+                "affinity": 0.9543589728600804
+              }
+            ]
+          },
+          "artist": {
+            "candidate_count": 50,
+            "top_affinity": 0.9007,
+            "relevance": 2,
+            "actionability": 2,
+            "evidence": 2,
+            "total_score": 6,
+            "actionable": true,
+            "top_candidates": [
+              {
+                "title": "Unloved",
+                "affinity": 0.9006697478253733
+              },
+              {
+                "title": "Frances Forever",
+                "affinity": 0.885112644207496
+              },
+              {
+                "title": "Ashton Irwin",
+                "affinity": 0.8845246965998179
+              }
+            ]
+          },
+          "brand": {
+            "candidate_count": 50,
+            "top_affinity": 0.8806,
+            "relevance": 2,
+            "actionability": 0,
+            "evidence": 2,
+            "total_score": 4,
+            "actionable": true,
+            "top_candidates": [
+              {
+                "title": "Harry's",
+                "affinity": 0.8805901354388739
+              },
+              {
+                "title": "Foursquare",
+                "affinity": 0.879448265296411
+              },
+              {
+                "title": "Eddie Bauer",
+                "affinity": 0.8779016790169362
+              }
+            ]
+          },
+          "book": {
+            "candidate_count": 50,
+            "top_affinity": 0.8325,
+            "relevance": 2,
+            "actionability": 2,
+            "evidence": 2,
+            "total_score": 6,
+            "actionable": true,
+            "top_candidates": [
+              {
+                "title": "Submarine",
+                "affinity": 0.8324878913532485
+              },
+              {
+                "title": "The Velvet Rage: Overcoming the Pain of Growing Up Gay in a Straight Man's World",
+                "affinity": 0.8172263365804936
+              },
+              {
+                "title": "My Thoughts Exactly",
+                "affinity": 0.814370150371808
+              }
+            ]
+          }
+        },
+        "actionable_cross_domain_count": 4,
+        "total_nonfilm_candidates": 200
+      },
+      "qloo_success": true,
+      "qloo_error": null,
+      "qloo_programme_bet": {
+        "primary": {
+          "domain": "book",
+          "cohort_name": "The Velvet Rage: Overcoming the Pain of Growing Up Gay in a Straight Man's World",
+          "mean_affinity": 0.785026,
+          "member_count": 28,
+          "call_id": "local-c021"
+        },
+        "runner_up": {
+          "domain": "tv_show",
+          "cohort_name": "What Remains",
+          "mean_affinity": 0.948598,
+          "call_id": "local-c024"
+        },
+        "two_sided_signals": {
+          "programme_adjacency": 0.785026,
+          "adjacency_band": "High",
+          "adjacency_call_id": "local-c021",
+          "cohort_breadth": 1.0,
+          "breadth_band": "High",
+          "breadth_call_id": "local-c021",
+          "methodology_note": "Programme adjacency: mean affinity of cohort members against programme taste profile (Qloo /v2/insights). Cohort breadth: fraction of cohort members above Medium affinity threshold."
+        },
+        "why": "The strongest adjacent cultural group is in the book domain, featuring The Velvet Rage: Overcoming the Pain of Growing Up Gay in a Straight Man's World, My Thoughts Exactly, Pageboy. This group shows high cultural affinity (mean 0.79) with your programme's taste profile. Evidence dimensions: programme adjacency=0.79 (High), cohort breadth=1.00 (High).",
+        "cultural_bridge": "Your programme's taste profile (Identifies as women-owned, Four Star, Parenthood) shares cultural signals with The Velvet Rage: Overcoming the Pain of Growing Up Gay in a Straight Man's World, My Thoughts Exactly.",
+        "geographic_signal": "Geographic analysis not available.",
+        "programming_direction": "Test programming that connects your existing Identifies as women-owned, Four Star, Parenthood profile with the cultural world of The Velvet Rage: Overcoming the Pain of Growing Up Gay in a Straight Man's World, My Thoughts Exactly through book-adjacent programming.",
+        "falsification_condition": "Do not continue this programming test if the book affinity signal cannot be reproduced across the next comparable programme analysis. Specifically: if a subsequent analysis of a similar programme does not produce a book cohort in the top-3 ranked opportunities, the hypothesis is rejected.",
+        "rejected_candidates": [],
+        "geography_call_id": null,
+        "data_status": "measured"
+      },
+      "qloo_domains": [
+        "urn:entity:artist",
+        "urn:entity:movie",
+        "urn:entity:tv_show",
+        "urn:entity:book",
+        "urn:entity:brand"
+      ],
+      "qloo_nonfilm_domains": [
+        "artist",
+        "tv_show",
+        "book",
+        "brand"
+      ]
+    },
+    {
+      "evaluation_context_id": "ritzy_brixton_2026_10",
+      "venue": "Ritzy Picturehouse",
+      "city": "London",
+      "venue_type": "CHAIN",
+      "source_url": "https://www.picturehouses.com",
+      "programme_window": "October 2026",
+      "verification_status": "VERIFIED",
+      "verification_evidence": "Scraped via Picturehouses API, 4109 showings",
+      "programme_films": [
+        {
+          "title": "24 Hour Party People",
+          "year": 2002,
+          "imdb_id": "tt0274309"
+        },
+        {
+          "title": "28 Days Later",
+          "year": 2002,
+          "imdb_id": "tt0289043"
+        },
+        {
+          "title": "Amadeus",
+          "year": 1984,
+          "imdb_id": "tt0086879"
+        },
+        {
+          "title": "An American Werewolf in London",
+          "year": 1981,
+          "imdb_id": "tt0082010"
+        },
+        {
+          "title": "The Substance",
+          "year": 2024,
+          "imdb_id": "tt17526714"
+        },
+        {
+          "title": "Conclave",
+          "year": 2024,
+          "imdb_id": "tt20215234"
+        },
+        {
+          "title": "The Brutalist",
+          "year": 2024,
+          "imdb_id": "tt15398776"
+        },
+        {
+          "title": "A Real Pain",
+          "year": 2024,
+          "imdb_id": "tt21157474"
+        }
+      ],
+      "qloo_coverage": {
+        "total": 8,
+        "resolved": 7,
+        "unresolved": 1,
+        "resolution_rate": 0.875
+      },
+      "baseline_coverage": {
+        "total": 8,
+        "metadata_available": 8,
+        "metadata_missing": []
+      },
+      "baseline_top_k": [
+        {
+          "title": "The Souvenir",
+          "domain": "film",
+          "similarity": 0.7,
+          "genre": [
+            "drama"
+          ],
+          "country": "UK/USA",
+          "director": "Joanna Hogg"
+        },
+        {
+          "title": "12 Years a Slave",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "biography",
+            "drama",
+            "history"
+          ],
+          "country": "UK/USA",
+          "director": "Steve McQueen"
+        },
+        {
+          "title": "Halloween III: Season of the Witch",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "horror",
+            "sci-fi"
+          ],
+          "country": "USA",
+          "director": "Tommy Lee Wallace"
+        },
+        {
+          "title": "Moonlight",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "drama"
+          ],
+          "country": "USA",
+          "director": "Barry Jenkins"
+        },
+        {
+          "title": "Perfect Days",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "drama"
+          ],
+          "country": "Japan/Germany",
+          "director": "Wim Wenders"
+        },
+        {
+          "title": "Roma",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "drama"
+          ],
+          "country": "Mexico",
+          "director": "Alfonso Cuar\u00f3n"
+        },
+        {
+          "title": "Selma",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "biography",
+            "drama",
+            "history"
+          ],
+          "country": "UK/USA",
+          "director": "Ava DuVernay"
+        },
+        {
+          "title": "The Thing",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "horror",
+            "sci-fi"
+          ],
+          "country": "USA",
+          "director": "John Carpenter"
+        },
+        {
+          "title": "The Shining",
+          "domain": "film",
+          "similarity": 0.3667,
+          "genre": [
+            "horror",
+            "thriller"
+          ],
+          "country": "UK/USA",
+          "director": "Stanley Kubrick"
+        },
+        {
+          "title": "Halloween",
+          "domain": "film",
+          "similarity": 0.3333,
+          "genre": [
+            "horror",
+            "thriller"
+          ],
+          "country": "USA",
+          "director": "John Carpenter"
+        }
+      ],
+      "qloo_film_top_k": [
+        {
+          "entity_id": "E121C39F-DBF8-4376-A655-5388C6A754A7",
+          "title": "The Exorcism",
+          "domain": "movie",
+          "affinity": 0.8671706893274301,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "D146CC71-2747-412C-B0D7-D0C4759E7678",
+          "title": "Starve Acre",
+          "domain": "movie",
+          "affinity": 0.8637485610266976,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "32FDD438-7ED9-4052-9AFF-20FA80FC1A4D",
+          "title": "Greedy People",
+          "domain": "movie",
+          "affinity": 0.8502223598765116,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "9F3E76EB-F0C2-4CBA-8B6D-71F7AB5EF712",
+          "title": "Humane",
+          "domain": "movie",
+          "affinity": 0.8431050222457623,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "102701E2-7400-47C1-854D-5D0863E268D3",
+          "title": "Bonhoeffer: Pastor. Spy. Assassin.",
+          "domain": "movie",
+          "affinity": 0.8375007655191272,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "3D4F49D6-993C-405C-90C3-1214E366C011",
+          "title": "Reagan",
+          "domain": "movie",
+          "affinity": 0.8374318073068975,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "F167AAAE-6AD2-41A9-8B95-AE04AFF46D65",
+          "title": "The Critic",
+          "domain": "movie",
+          "affinity": 0.836356901382026,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "830D7422-9E25-4240-A5ED-0AB3B0223DAC",
+          "title": "Werewolves",
+          "domain": "movie",
+          "affinity": 0.8354910318391953,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "4B39C6F8-6D8E-4A0B-BA48-389E4394C4CD",
+          "title": "Wolf Man",
+          "domain": "movie",
+          "affinity": 0.8324239411012159,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "450F0E6D-CE77-4788-A31A-8554DB1B5EF2",
+          "title": "Ciao Manhattan",
+          "domain": "movie",
+          "affinity": 0.832191596139288,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        }
+      ],
+      "qloo_nonfilm_top_k": [
+        {
+          "entity_id": "5546D641-6BA5-4594-BB07-1559E8B5B87E",
+          "title": "Frances Forever",
+          "domain": "artist",
+          "affinity": 0.8998621332907377,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "2420FA32-EDDF-4201-B44C-F9C5845577D9",
+          "title": "Starcrawler",
+          "domain": "artist",
+          "affinity": 0.8986735843781147,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "F95EE353-BAA4-4AA5-8F53-AC728452D3D6",
+          "title": "Oscar Lang",
+          "domain": "artist",
+          "affinity": 0.898365917697829,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "97EA1C81-B444-4BD9-B660-3E9E29B032BB",
+          "title": "Unloved",
+          "domain": "artist",
+          "affinity": 0.8968299275270155,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "E6AADA70-DE0E-42D3-A003-CC35AFD47336",
+          "title": "Coach Party",
+          "domain": "artist",
+          "affinity": 0.8901463129627857,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "330BAC14-5172-4415-AA90-23E35489D402",
+          "title": "Bloodwitch",
+          "domain": "artist",
+          "affinity": 0.8892901421030317,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "F89DD3F8-9F35-4764-BFB9-5007B56EE80B",
+          "title": "The Daughters of Eve",
+          "domain": "artist",
+          "affinity": 0.8882047422948478,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "E8978829-E267-4814-BC44-71F50B87613B",
+          "title": "Courting",
+          "domain": "artist",
+          "affinity": 0.8870737653382333,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "B8DE6A05-B95E-4527-8ADA-2C6C55A9C95B",
+          "title": "Phoebe Green",
+          "domain": "artist",
+          "affinity": 0.8845552354939451,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "F55B0A6B-DA6A-4A11-B8F1-A76570EF8587",
+          "title": "Disq",
+          "domain": "artist",
+          "affinity": 0.8844935371898927,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        }
+      ],
+      "film_space_metrics": {
+        "k": 10,
+        "baseline_count": 10,
+        "qloo_film_count": 10,
+        "overlap_count": 0,
+        "overlap_titles": [],
+        "jaccard": 0.0,
+        "baseline_only": [
+          "12 Years a Slave",
+          "Halloween",
+          "Halloween III: Season of the Witch",
+          "Moonlight",
+          "Perfect Days",
+          "Roma",
+          "Selma",
+          "The Shining",
+          "The Souvenir",
+          "The Thing"
+        ],
+        "qloo_only": [
+          "Bonhoeffer: Pastor. Spy. Assassin.",
+          "Ciao Manhattan",
+          "Greedy People",
+          "Humane",
+          "Reagan",
+          "Starve Acre",
+          "The Critic",
+          "The Exorcism",
+          "Werewolves",
+          "Wolf Man"
+        ]
+      },
+      "cross_domain_metrics": {
+        "nonfilm_domain_count": 2,
+        "domain_scores": {
+          "artist": {
+            "candidate_count": 49,
+            "top_affinity": 0.8999,
+            "relevance": 2,
+            "actionability": 2,
+            "evidence": 2,
+            "total_score": 6,
+            "actionable": true,
+            "top_candidates": [
+              {
+                "title": "Frances Forever",
+                "affinity": 0.8998621332907377
+              },
+              {
+                "title": "Starcrawler",
+                "affinity": 0.8986735843781147
+              },
+              {
+                "title": "Oscar Lang",
+                "affinity": 0.898365917697829
+              }
+            ]
+          },
+          "brand": {
+            "candidate_count": 50,
+            "top_affinity": 0.8762,
+            "relevance": 2,
+            "actionability": 0,
+            "evidence": 2,
+            "total_score": 4,
+            "actionable": true,
+            "top_candidates": [
+              {
+                "title": "Barclay's Emirates Skywards Premium World Elite Mastercard",
+                "affinity": 0.8762436646213572
+              },
+              {
+                "title": "Truwood",
+                "affinity": 0.8719035255854873
+              },
+              {
+                "title": "CAT Footwear",
+                "affinity": 0.8707054967103506
+              }
+            ]
+          }
+        },
+        "actionable_cross_domain_count": 2,
+        "total_nonfilm_candidates": 99
+      },
+      "qloo_success": true,
+      "qloo_error": null,
+      "qloo_programme_bet": {
+        "primary": {
+          "domain": "artist",
+          "cohort_name": "Frances Forever",
+          "mean_affinity": 0.877507,
+          "member_count": 49,
+          "call_id": "local-c022"
+        },
+        "runner_up": {
+          "domain": "brand",
+          "cohort_name": "Barclay's Emirates Skywards Premium World Elite Mastercard",
+          "mean_affinity": 0.84637,
+          "call_id": "local-c023"
+        },
+        "two_sided_signals": {
+          "programme_adjacency": 0.877507,
+          "adjacency_band": "High",
+          "adjacency_call_id": "local-c022",
+          "cohort_breadth": 1.0,
+          "breadth_band": "High",
+          "breadth_call_id": "local-c022",
+          "methodology_note": "Programme adjacency: mean affinity of cohort members against programme taste profile (Qloo /v2/insights). Cohort breadth: fraction of cohort members above Medium affinity threshold."
+        },
+        "why": "The strongest adjacent cultural group is in the artist domain, featuring Frances Forever, Starcrawler, Oscar Lang. This group shows very high cultural affinity (mean 0.88) with your programme's taste profile. Evidence dimensions: programme adjacency=0.88 (High), cohort breadth=1.00 (High).",
+        "cultural_bridge": "Your programme's taste profile (Stadium, Fashion, Eccentricity) shares cultural signals with Frances Forever, Starcrawler.",
+        "geographic_signal": "Geographic analysis not available.",
+        "programming_direction": "Test programming that connects your existing Stadium, Fashion, Eccentricity profile with the cultural world of Frances Forever, Starcrawler through artist-adjacent programming.",
+        "falsification_condition": "Do not continue this programming test if the artist affinity signal cannot be reproduced across the next comparable programme analysis. Specifically: if a subsequent analysis of a similar programme does not produce a artist cohort in the top-3 ranked opportunities, the hypothesis is rejected.",
+        "rejected_candidates": [
+          {
+            "cohort_id": "urn:entity:artist:domain_group:1",
+            "domain": "urn:entity:artist",
+            "reason": "insufficient_members",
+            "detail": "only 1 candidate(s) in this grouping; 2 are required before a cohort can be judged."
+          }
+        ],
+        "geography_call_id": null,
+        "data_status": "measured"
+      },
+      "qloo_domains": [
+        "urn:entity:artist",
+        "urn:entity:movie",
+        "urn:entity:brand"
+      ],
+      "qloo_nonfilm_domains": [
+        "artist",
+        "brand"
+      ]
+    },
+    {
+      "evaluation_context_id": "phoenix_oxford_2026_10",
+      "venue": "Phoenix Picturehouse",
+      "city": "Oxford",
+      "venue_type": "CHAIN",
+      "source_url": "https://www.picturehouses.com",
+      "programme_window": "October 2026",
+      "verification_status": "VERIFIED",
+      "verification_evidence": "Scraped via Picturehouses API, 4109 showings",
+      "programme_films": [
+        {
+          "title": "24 Hour Party People",
+          "year": 2002,
+          "imdb_id": "tt0274309"
+        },
+        {
+          "title": "28 Days Later",
+          "year": 2002,
+          "imdb_id": "tt0289043"
+        },
+        {
+          "title": "Amadeus",
+          "year": 1984,
+          "imdb_id": "tt0086879"
+        },
+        {
+          "title": "An American Werewolf in London",
+          "year": 1981,
+          "imdb_id": "tt0082010"
+        },
+        {
+          "title": "The Substance",
+          "year": 2024,
+          "imdb_id": "tt17526714"
+        },
+        {
+          "title": "Conclave",
+          "year": 2024,
+          "imdb_id": "tt20215234"
+        },
+        {
+          "title": "The Brutalist",
+          "year": 2024,
+          "imdb_id": "tt15398776"
+        },
+        {
+          "title": "A Real Pain",
+          "year": 2024,
+          "imdb_id": "tt21157474"
+        }
+      ],
+      "qloo_coverage": {
+        "total": 8,
+        "resolved": 7,
+        "unresolved": 1,
+        "resolution_rate": 0.875
+      },
+      "baseline_coverage": {
+        "total": 8,
+        "metadata_available": 8,
+        "metadata_missing": []
+      },
+      "baseline_top_k": [
+        {
+          "title": "The Souvenir",
+          "domain": "film",
+          "similarity": 0.7,
+          "genre": [
+            "drama"
+          ],
+          "country": "UK/USA",
+          "director": "Joanna Hogg"
+        },
+        {
+          "title": "12 Years a Slave",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "biography",
+            "drama",
+            "history"
+          ],
+          "country": "UK/USA",
+          "director": "Steve McQueen"
+        },
+        {
+          "title": "Halloween III: Season of the Witch",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "horror",
+            "sci-fi"
+          ],
+          "country": "USA",
+          "director": "Tommy Lee Wallace"
+        },
+        {
+          "title": "Moonlight",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "drama"
+          ],
+          "country": "USA",
+          "director": "Barry Jenkins"
+        },
+        {
+          "title": "Perfect Days",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "drama"
+          ],
+          "country": "Japan/Germany",
+          "director": "Wim Wenders"
+        },
+        {
+          "title": "Roma",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "drama"
+          ],
+          "country": "Mexico",
+          "director": "Alfonso Cuar\u00f3n"
+        },
+        {
+          "title": "Selma",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "biography",
+            "drama",
+            "history"
+          ],
+          "country": "UK/USA",
+          "director": "Ava DuVernay"
+        },
+        {
+          "title": "The Thing",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "horror",
+            "sci-fi"
+          ],
+          "country": "USA",
+          "director": "John Carpenter"
+        },
+        {
+          "title": "The Shining",
+          "domain": "film",
+          "similarity": 0.3667,
+          "genre": [
+            "horror",
+            "thriller"
+          ],
+          "country": "UK/USA",
+          "director": "Stanley Kubrick"
+        },
+        {
+          "title": "Halloween",
+          "domain": "film",
+          "similarity": 0.3333,
+          "genre": [
+            "horror",
+            "thriller"
+          ],
+          "country": "USA",
+          "director": "John Carpenter"
+        }
+      ],
+      "qloo_film_top_k": [
+        {
+          "entity_id": "E121C39F-DBF8-4376-A655-5388C6A754A7",
+          "title": "The Exorcism",
+          "domain": "movie",
+          "affinity": 0.8671706893274301,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "D146CC71-2747-412C-B0D7-D0C4759E7678",
+          "title": "Starve Acre",
+          "domain": "movie",
+          "affinity": 0.8637485610266976,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "32FDD438-7ED9-4052-9AFF-20FA80FC1A4D",
+          "title": "Greedy People",
+          "domain": "movie",
+          "affinity": 0.8502223598765116,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "9F3E76EB-F0C2-4CBA-8B6D-71F7AB5EF712",
+          "title": "Humane",
+          "domain": "movie",
+          "affinity": 0.8431050222457623,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "102701E2-7400-47C1-854D-5D0863E268D3",
+          "title": "Bonhoeffer: Pastor. Spy. Assassin.",
+          "domain": "movie",
+          "affinity": 0.8375007655191272,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "3D4F49D6-993C-405C-90C3-1214E366C011",
+          "title": "Reagan",
+          "domain": "movie",
+          "affinity": 0.8374318073068975,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "F167AAAE-6AD2-41A9-8B95-AE04AFF46D65",
+          "title": "The Critic",
+          "domain": "movie",
+          "affinity": 0.836356901382026,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "830D7422-9E25-4240-A5ED-0AB3B0223DAC",
+          "title": "Werewolves",
+          "domain": "movie",
+          "affinity": 0.8354910318391953,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "4B39C6F8-6D8E-4A0B-BA48-389E4394C4CD",
+          "title": "Wolf Man",
+          "domain": "movie",
+          "affinity": 0.8324239411012159,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "450F0E6D-CE77-4788-A31A-8554DB1B5EF2",
+          "title": "Ciao Manhattan",
+          "domain": "movie",
+          "affinity": 0.832191596139288,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        }
+      ],
+      "qloo_nonfilm_top_k": [
+        {
+          "entity_id": "5546D641-6BA5-4594-BB07-1559E8B5B87E",
+          "title": "Frances Forever",
+          "domain": "artist",
+          "affinity": 0.8998621332907377,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "2420FA32-EDDF-4201-B44C-F9C5845577D9",
+          "title": "Starcrawler",
+          "domain": "artist",
+          "affinity": 0.8986735843781147,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "F95EE353-BAA4-4AA5-8F53-AC728452D3D6",
+          "title": "Oscar Lang",
+          "domain": "artist",
+          "affinity": 0.898365917697829,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "97EA1C81-B444-4BD9-B660-3E9E29B032BB",
+          "title": "Unloved",
+          "domain": "artist",
+          "affinity": 0.8968299275270155,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "E6AADA70-DE0E-42D3-A003-CC35AFD47336",
+          "title": "Coach Party",
+          "domain": "artist",
+          "affinity": 0.8901463129627857,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "330BAC14-5172-4415-AA90-23E35489D402",
+          "title": "Bloodwitch",
+          "domain": "artist",
+          "affinity": 0.8892901421030317,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "F89DD3F8-9F35-4764-BFB9-5007B56EE80B",
+          "title": "The Daughters of Eve",
+          "domain": "artist",
+          "affinity": 0.8882047422948478,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "E8978829-E267-4814-BC44-71F50B87613B",
+          "title": "Courting",
+          "domain": "artist",
+          "affinity": 0.8870737653382333,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "B8DE6A05-B95E-4527-8ADA-2C6C55A9C95B",
+          "title": "Phoebe Green",
+          "domain": "artist",
+          "affinity": 0.8845552354939451,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "F55B0A6B-DA6A-4A11-B8F1-A76570EF8587",
+          "title": "Disq",
+          "domain": "artist",
+          "affinity": 0.8844935371898927,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        }
+      ],
+      "film_space_metrics": {
+        "k": 10,
+        "baseline_count": 10,
+        "qloo_film_count": 10,
+        "overlap_count": 0,
+        "overlap_titles": [],
+        "jaccard": 0.0,
+        "baseline_only": [
+          "12 Years a Slave",
+          "Halloween",
+          "Halloween III: Season of the Witch",
+          "Moonlight",
+          "Perfect Days",
+          "Roma",
+          "Selma",
+          "The Shining",
+          "The Souvenir",
+          "The Thing"
+        ],
+        "qloo_only": [
+          "Bonhoeffer: Pastor. Spy. Assassin.",
+          "Ciao Manhattan",
+          "Greedy People",
+          "Humane",
+          "Reagan",
+          "Starve Acre",
+          "The Critic",
+          "The Exorcism",
+          "Werewolves",
+          "Wolf Man"
+        ]
+      },
+      "cross_domain_metrics": {
+        "nonfilm_domain_count": 2,
+        "domain_scores": {
+          "artist": {
+            "candidate_count": 49,
+            "top_affinity": 0.8999,
+            "relevance": 2,
+            "actionability": 2,
+            "evidence": 2,
+            "total_score": 6,
+            "actionable": true,
+            "top_candidates": [
+              {
+                "title": "Frances Forever",
+                "affinity": 0.8998621332907377
+              },
+              {
+                "title": "Starcrawler",
+                "affinity": 0.8986735843781147
+              },
+              {
+                "title": "Oscar Lang",
+                "affinity": 0.898365917697829
+              }
+            ]
+          },
+          "brand": {
+            "candidate_count": 50,
+            "top_affinity": 0.8762,
+            "relevance": 2,
+            "actionability": 0,
+            "evidence": 2,
+            "total_score": 4,
+            "actionable": true,
+            "top_candidates": [
+              {
+                "title": "Barclay's Emirates Skywards Premium World Elite Mastercard",
+                "affinity": 0.8762436646213572
+              },
+              {
+                "title": "Truwood",
+                "affinity": 0.8719035255854873
+              },
+              {
+                "title": "CAT Footwear",
+                "affinity": 0.8707054967103506
+              }
+            ]
+          }
+        },
+        "actionable_cross_domain_count": 2,
+        "total_nonfilm_candidates": 99
+      },
+      "qloo_success": true,
+      "qloo_error": null,
+      "qloo_programme_bet": {
+        "primary": {
+          "domain": "artist",
+          "cohort_name": "Frances Forever",
+          "mean_affinity": 0.877507,
+          "member_count": 49,
+          "call_id": "local-c022"
+        },
+        "runner_up": {
+          "domain": "brand",
+          "cohort_name": "Barclay's Emirates Skywards Premium World Elite Mastercard",
+          "mean_affinity": 0.84637,
+          "call_id": "local-c023"
+        },
+        "two_sided_signals": {
+          "programme_adjacency": 0.877507,
+          "adjacency_band": "High",
+          "adjacency_call_id": "local-c022",
+          "cohort_breadth": 1.0,
+          "breadth_band": "High",
+          "breadth_call_id": "local-c022",
+          "methodology_note": "Programme adjacency: mean affinity of cohort members against programme taste profile (Qloo /v2/insights). Cohort breadth: fraction of cohort members above Medium affinity threshold."
+        },
+        "why": "The strongest adjacent cultural group is in the artist domain, featuring Frances Forever, Starcrawler, Oscar Lang. This group shows very high cultural affinity (mean 0.88) with your programme's taste profile. Evidence dimensions: programme adjacency=0.88 (High), cohort breadth=1.00 (High).",
+        "cultural_bridge": "Your programme's taste profile (Stadium, Fashion, Eccentricity) shares cultural signals with Frances Forever, Starcrawler.",
+        "geographic_signal": "Geographic analysis not available.",
+        "programming_direction": "Test programming that connects your existing Stadium, Fashion, Eccentricity profile with the cultural world of Frances Forever, Starcrawler through artist-adjacent programming.",
+        "falsification_condition": "Do not continue this programming test if the artist affinity signal cannot be reproduced across the next comparable programme analysis. Specifically: if a subsequent analysis of a similar programme does not produce a artist cohort in the top-3 ranked opportunities, the hypothesis is rejected.",
+        "rejected_candidates": [
+          {
+            "cohort_id": "urn:entity:artist:domain_group:1",
+            "domain": "urn:entity:artist",
+            "reason": "insufficient_members",
+            "detail": "only 1 candidate(s) in this grouping; 2 are required before a cohort can be judged."
+          }
+        ],
+        "geography_call_id": null,
+        "data_status": "measured"
+      },
+      "qloo_domains": [
+        "urn:entity:artist",
+        "urn:entity:movie",
+        "urn:entity:brand"
+      ],
+      "qloo_nonfilm_domains": [
+        "artist",
+        "brand"
+      ]
+    },
+    {
+      "evaluation_context_id": "duke_of_yorks_brighton_2026_10",
+      "venue": "Duke of York's Picturehouse",
+      "city": "Brighton",
+      "venue_type": "CHAIN",
+      "source_url": "https://www.picturehouses.com",
+      "programme_window": "October 2026",
+      "verification_status": "VERIFIED",
+      "verification_evidence": "Scraped via Picturehouses API, 4109 showings",
+      "programme_films": [
+        {
+          "title": "24 Hour Party People",
+          "year": 2002,
+          "imdb_id": "tt0274309"
+        },
+        {
+          "title": "28 Days Later",
+          "year": 2002,
+          "imdb_id": "tt0289043"
+        },
+        {
+          "title": "Amadeus",
+          "year": 1984,
+          "imdb_id": "tt0086879"
+        },
+        {
+          "title": "An American Werewolf in London",
+          "year": 1981,
+          "imdb_id": "tt0082010"
+        },
+        {
+          "title": "The Substance",
+          "year": 2024,
+          "imdb_id": "tt17526714"
+        },
+        {
+          "title": "Conclave",
+          "year": 2024,
+          "imdb_id": "tt20215234"
+        },
+        {
+          "title": "The Brutalist",
+          "year": 2024,
+          "imdb_id": "tt15398776"
+        },
+        {
+          "title": "A Real Pain",
+          "year": 2024,
+          "imdb_id": "tt21157474"
+        }
+      ],
+      "qloo_coverage": {
+        "total": 8,
+        "resolved": 7,
+        "unresolved": 1,
+        "resolution_rate": 0.875
+      },
+      "baseline_coverage": {
+        "total": 8,
+        "metadata_available": 8,
+        "metadata_missing": []
+      },
+      "baseline_top_k": [
+        {
+          "title": "The Souvenir",
+          "domain": "film",
+          "similarity": 0.7,
+          "genre": [
+            "drama"
+          ],
+          "country": "UK/USA",
+          "director": "Joanna Hogg"
+        },
+        {
+          "title": "12 Years a Slave",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "biography",
+            "drama",
+            "history"
+          ],
+          "country": "UK/USA",
+          "director": "Steve McQueen"
+        },
+        {
+          "title": "Halloween III: Season of the Witch",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "horror",
+            "sci-fi"
+          ],
+          "country": "USA",
+          "director": "Tommy Lee Wallace"
+        },
+        {
+          "title": "Moonlight",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "drama"
+          ],
+          "country": "USA",
+          "director": "Barry Jenkins"
+        },
+        {
+          "title": "Perfect Days",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "drama"
+          ],
+          "country": "Japan/Germany",
+          "director": "Wim Wenders"
+        },
+        {
+          "title": "Roma",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "drama"
+          ],
+          "country": "Mexico",
+          "director": "Alfonso Cuar\u00f3n"
+        },
+        {
+          "title": "Selma",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "biography",
+            "drama",
+            "history"
+          ],
+          "country": "UK/USA",
+          "director": "Ava DuVernay"
+        },
+        {
+          "title": "The Thing",
+          "domain": "film",
+          "similarity": 0.5,
+          "genre": [
+            "horror",
+            "sci-fi"
+          ],
+          "country": "USA",
+          "director": "John Carpenter"
+        },
+        {
+          "title": "The Shining",
+          "domain": "film",
+          "similarity": 0.3667,
+          "genre": [
+            "horror",
+            "thriller"
+          ],
+          "country": "UK/USA",
+          "director": "Stanley Kubrick"
+        },
+        {
+          "title": "Halloween",
+          "domain": "film",
+          "similarity": 0.3333,
+          "genre": [
+            "horror",
+            "thriller"
+          ],
+          "country": "USA",
+          "director": "John Carpenter"
+        }
+      ],
+      "qloo_film_top_k": [
+        {
+          "entity_id": "E121C39F-DBF8-4376-A655-5388C6A754A7",
+          "title": "The Exorcism",
+          "domain": "movie",
+          "affinity": 0.8671706893274301,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "D146CC71-2747-412C-B0D7-D0C4759E7678",
+          "title": "Starve Acre",
+          "domain": "movie",
+          "affinity": 0.8637485610266976,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "32FDD438-7ED9-4052-9AFF-20FA80FC1A4D",
+          "title": "Greedy People",
+          "domain": "movie",
+          "affinity": 0.8502223598765116,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "9F3E76EB-F0C2-4CBA-8B6D-71F7AB5EF712",
+          "title": "Humane",
+          "domain": "movie",
+          "affinity": 0.8431050222457623,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "102701E2-7400-47C1-854D-5D0863E268D3",
+          "title": "Bonhoeffer: Pastor. Spy. Assassin.",
+          "domain": "movie",
+          "affinity": 0.8375007655191272,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "3D4F49D6-993C-405C-90C3-1214E366C011",
+          "title": "Reagan",
+          "domain": "movie",
+          "affinity": 0.8374318073068975,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "F167AAAE-6AD2-41A9-8B95-AE04AFF46D65",
+          "title": "The Critic",
+          "domain": "movie",
+          "affinity": 0.836356901382026,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "830D7422-9E25-4240-A5ED-0AB3B0223DAC",
+          "title": "Werewolves",
+          "domain": "movie",
+          "affinity": 0.8354910318391953,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "4B39C6F8-6D8E-4A0B-BA48-389E4394C4CD",
+          "title": "Wolf Man",
+          "domain": "movie",
+          "affinity": 0.8324239411012159,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        },
+        {
+          "entity_id": "450F0E6D-CE77-4788-A31A-8554DB1B5EF2",
+          "title": "Ciao Manhattan",
+          "domain": "movie",
+          "affinity": 0.832191596139288,
+          "cohort_id": "urn:entity:movie:tag_cluster:1",
+          "cohort_mean_affinity": 0.824591,
+          "call_id": "local-c024"
+        }
+      ],
+      "qloo_nonfilm_top_k": [
+        {
+          "entity_id": "5546D641-6BA5-4594-BB07-1559E8B5B87E",
+          "title": "Frances Forever",
+          "domain": "artist",
+          "affinity": 0.8998621332907377,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "2420FA32-EDDF-4201-B44C-F9C5845577D9",
+          "title": "Starcrawler",
+          "domain": "artist",
+          "affinity": 0.8986735843781147,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "F95EE353-BAA4-4AA5-8F53-AC728452D3D6",
+          "title": "Oscar Lang",
+          "domain": "artist",
+          "affinity": 0.898365917697829,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "97EA1C81-B444-4BD9-B660-3E9E29B032BB",
+          "title": "Unloved",
+          "domain": "artist",
+          "affinity": 0.8968299275270155,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "E6AADA70-DE0E-42D3-A003-CC35AFD47336",
+          "title": "Coach Party",
+          "domain": "artist",
+          "affinity": 0.8901463129627857,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "330BAC14-5172-4415-AA90-23E35489D402",
+          "title": "Bloodwitch",
+          "domain": "artist",
+          "affinity": 0.8892901421030317,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "F89DD3F8-9F35-4764-BFB9-5007B56EE80B",
+          "title": "The Daughters of Eve",
+          "domain": "artist",
+          "affinity": 0.8882047422948478,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "E8978829-E267-4814-BC44-71F50B87613B",
+          "title": "Courting",
+          "domain": "artist",
+          "affinity": 0.8870737653382333,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "B8DE6A05-B95E-4527-8ADA-2C6C55A9C95B",
+          "title": "Phoebe Green",
+          "domain": "artist",
+          "affinity": 0.8845552354939451,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        },
+        {
+          "entity_id": "F55B0A6B-DA6A-4A11-B8F1-A76570EF8587",
+          "title": "Disq",
+          "domain": "artist",
+          "affinity": 0.8844935371898927,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "cohort_mean_affinity": 0.877507,
+          "call_id": "local-c022"
+        }
+      ],
+      "film_space_metrics": {
+        "k": 10,
+        "baseline_count": 10,
+        "qloo_film_count": 10,
+        "overlap_count": 0,
+        "overlap_titles": [],
+        "jaccard": 0.0,
+        "baseline_only": [
+          "12 Years a Slave",
+          "Halloween",
+          "Halloween III: Season of the Witch",
+          "Moonlight",
+          "Perfect Days",
+          "Roma",
+          "Selma",
+          "The Shining",
+          "The Souvenir",
+          "The Thing"
+        ],
+        "qloo_only": [
+          "Bonhoeffer: Pastor. Spy. Assassin.",
+          "Ciao Manhattan",
+          "Greedy People",
+          "Humane",
+          "Reagan",
+          "Starve Acre",
+          "The Critic",
+          "The Exorcism",
+          "Werewolves",
+          "Wolf Man"
+        ]
+      },
+      "cross_domain_metrics": {
+        "nonfilm_domain_count": 2,
+        "domain_scores": {
+          "artist": {
+            "candidate_count": 49,
+            "top_affinity": 0.8999,
+            "relevance": 2,
+            "actionability": 2,
+            "evidence": 2,
+            "total_score": 6,
+            "actionable": true,
+            "top_candidates": [
+              {
+                "title": "Frances Forever",
+                "affinity": 0.8998621332907377
+              },
+              {
+                "title": "Starcrawler",
+                "affinity": 0.8986735843781147
+              },
+              {
+                "title": "Oscar Lang",
+                "affinity": 0.898365917697829
+              }
+            ]
+          },
+          "brand": {
+            "candidate_count": 50,
+            "top_affinity": 0.8762,
+            "relevance": 2,
+            "actionability": 0,
+            "evidence": 2,
+            "total_score": 4,
+            "actionable": true,
+            "top_candidates": [
+              {
+                "title": "Barclay's Emirates Skywards Premium World Elite Mastercard",
+                "affinity": 0.8762436646213572
+              },
+              {
+                "title": "Truwood",
+                "affinity": 0.8719035255854873
+              },
+              {
+                "title": "CAT Footwear",
+                "affinity": 0.8707054967103506
+              }
+            ]
+          }
+        },
+        "actionable_cross_domain_count": 2,
+        "total_nonfilm_candidates": 99
+      },
+      "qloo_success": true,
+      "qloo_error": null,
+      "qloo_programme_bet": {
+        "primary": {
+          "domain": "artist",
+          "cohort_name": "Frances Forever",
+          "mean_affinity": 0.877507,
+          "member_count": 49,
+          "call_id": "local-c022"
+        },
+        "runner_up": {
+          "domain": "brand",
+          "cohort_name": "Barclay's Emirates Skywards Premium World Elite Mastercard",
+          "mean_affinity": 0.84637,
+          "call_id": "local-c023"
+        },
+        "two_sided_signals": {
+          "programme_adjacency": 0.877507,
+          "adjacency_band": "High",
+          "adjacency_call_id": "local-c022",
+          "cohort_breadth": 1.0,
+          "breadth_band": "High",
+          "breadth_call_id": "local-c022",
+          "methodology_note": "Programme adjacency: mean affinity of cohort members against programme taste profile (Qloo /v2/insights). Cohort breadth: fraction of cohort members above Medium affinity threshold."
+        },
+        "why": "The strongest adjacent cultural group is in the artist domain, featuring Frances Forever, Starcrawler, Oscar Lang. This group shows very high cultural affinity (mean 0.88) with your programme's taste profile. Evidence dimensions: programme adjacency=0.88 (High), cohort breadth=1.00 (High).",
+        "cultural_bridge": "Your programme's taste profile (Stadium, Fashion, Eccentricity) shares cultural signals with Frances Forever, Starcrawler.",
+        "geographic_signal": "Geographic analysis not available.",
+        "programming_direction": "Test programming that connects your existing Stadium, Fashion, Eccentricity profile with the cultural world of Frances Forever, Starcrawler through artist-adjacent programming.",
+        "falsification_condition": "Do not continue this programming test if the artist affinity signal cannot be reproduced across the next comparable programme analysis. Specifically: if a subsequent analysis of a similar programme does not produce a artist cohort in the top-3 ranked opportunities, the hypothesis is rejected.",
+        "rejected_candidates": [
+          {
+            "cohort_id": "urn:entity:artist:domain_group:1",
+            "domain": "urn:entity:artist",
+            "reason": "insufficient_members",
+            "detail": "only 1 candidate(s) in this grouping; 2 are required before a cohort can be judged."
+          }
+        ],
+        "geography_call_id": null,
+        "data_status": "measured"
+      },
+      "qloo_domains": [
+        "urn:entity:artist",
+        "urn:entity:movie",
+        "urn:entity:brand"
+      ],
+      "qloo_nonfilm_domains": [
+        "artist",
+        "brand"
+      ]
+    }
+  ]
+}

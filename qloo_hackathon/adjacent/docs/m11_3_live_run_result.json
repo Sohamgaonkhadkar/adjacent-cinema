@@ -1,0 +1,212 @@
+{
+  "pipeline": "M11.3 Live Validation",
+  "city": "London",
+  "programme": [
+    {
+      "title": "Parasite",
+      "year": 2019,
+      "imdb_id": "tt6751668"
+    },
+    {
+      "title": "Everything Everywhere All at Once",
+      "year": 2022,
+      "imdb_id": "tt6710474"
+    },
+    {
+      "title": "Dune",
+      "year": 2021,
+      "imdb_id": "tt1160419"
+    },
+    {
+      "title": "The Banshees of Inisherin",
+      "year": 2022,
+      "imdb_id": "tt11813216"
+    },
+    {
+      "title": "Oppenheimer",
+      "year": 2023,
+      "imdb_id": "tt15398776"
+    },
+    {
+      "title": "Past Lives",
+      "year": 2023,
+      "imdb_id": "tt13238346"
+    }
+  ],
+  "stop_reason": "complete",
+  "data_status": "measured",
+  "resolved_items": 6,
+  "resolution_status": [
+    {
+      "title": "Parasite",
+      "year": 2019,
+      "imdb_id": "tt6751668",
+      "status": "VERIFIED",
+      "entity_id": "A499EC25-7FF6-46DE-9DA5-3E78E99B9E26",
+      "resolved_name": "Parasite"
+    },
+    {
+      "title": "Everything Everywhere All at Once",
+      "year": 2022,
+      "imdb_id": "tt6710474",
+      "status": "VERIFIED",
+      "entity_id": "F0D354AA-BA7E-49D2-8ABA-9A8250F5C852",
+      "resolved_name": "Everything Everywhere All at Once"
+    },
+    {
+      "title": "Dune",
+      "year": 2021,
+      "imdb_id": "tt1160419",
+      "status": "VERIFIED",
+      "entity_id": "3037F0E8-C912-4DC0-BDE3-1F94631F9DA6",
+      "resolved_name": "Dune"
+    },
+    {
+      "title": "The Banshees of Inisherin",
+      "year": 2022,
+      "imdb_id": "tt11813216",
+      "status": "VERIFIED",
+      "entity_id": "90422160-276B-43B1-AF6F-B1C3EE72083A",
+      "resolved_name": "The Banshees of Inisherin"
+    },
+    {
+      "title": "Oppenheimer",
+      "year": 2023,
+      "imdb_id": "tt15398776",
+      "status": "VERIFIED",
+      "entity_id": "470553FA-42AD-435D-94BE-1078AFD6A2FD",
+      "resolved_name": "Oppenheimer"
+    },
+    {
+      "title": "Past Lives",
+      "year": 2023,
+      "imdb_id": "tt13238346",
+      "status": "VERIFIED",
+      "entity_id": "9A62B37E-9A6D-47DA-A6FD-9414FA7F7710",
+      "resolved_name": "Past Lives"
+    }
+  ],
+  "domain_selection": {
+    "selected_domains": [
+      "urn:entity:artist",
+      "urn:entity:movie",
+      "urn:entity:brand"
+    ],
+    "skipped_domains": [
+      "urn:entity:tv_show",
+      "urn:entity:book",
+      "urn:entity:destination",
+      "urn:entity:podcast"
+    ],
+    "selections": [
+      {
+        "domain": "urn:entity:artist",
+        "noun": "artist",
+        "selected": true,
+        "reason": "Selected: 1 signal(s) found (music) \u2014 Music artists \u2014 relevant when programme has music-related tags",
+        "signal_count": 1,
+        "matching_tags": [
+          "music"
+        ]
+      },
+      {
+        "domain": "urn:entity:movie",
+        "noun": "movie",
+        "selected": true,
+        "reason": "Always included: Movies \u2014 relevant when programme has film-related tags (always include for cinema beachhead)",
+        "signal_count": 0,
+        "matching_tags": []
+      },
+      {
+        "domain": "urn:entity:tv_show",
+        "noun": "tv_show",
+        "selected": false,
+        "reason": "Skipped: 0 signal(s) found (need 1) \u2014 TV shows \u2014 relevant when programme has television-related tags",
+        "signal_count": 0,
+        "matching_tags": []
+      },
+      {
+        "domain": "urn:entity:book",
+        "noun": "book",
+        "selected": false,
+        "reason": "Skipped: 0 signal(s) found (need 1) \u2014 Books \u2014 relevant when programme has literature-related tags",
+        "signal_count": 0,
+        "matching_tags": []
+      },
+      {
+        "domain": "urn:entity:brand",
+        "noun": "brand",
+        "selected": true,
+        "reason": "Selected: 5 signal(s) found (brand, fashion, luxury, design, lifestyle) \u2014 Brands \u2014 relevant when programme has lifestyle/fashion-related tags",
+        "signal_count": 5,
+        "matching_tags": [
+          "brand",
+          "fashion",
+          "luxury",
+          "design",
+          "lifestyle"
+        ]
+      },
+      {
+        "domain": "urn:entity:destination",
+        "noun": "destination",
+        "selected": false,
+        "reason": "Skipped: 0 signal(s) found (need 1) \u2014 Destinations \u2014 relevant when programme has travel/geography-related tags",
+        "signal_count": 0,
+        "matching_tags": []
+      },
+      {
+        "domain": "urn:entity:podcast",
+        "noun": "podcast",
+        "selected": false,
+        "reason": "Skipped: 0 signal(s) found (need 1) \u2014 Podcasts \u2014 relevant when programme has audio/media-related tags",
+        "signal_count": 0,
+        "matching_tags": []
+      }
+    ],
+    "qloo_calls_saved": 4,
+    "total_tags_analyzed": 50
+  },
+  "ranked_cohorts": 3,
+  "rejected_cohorts": 1,
+  "programme_bet": {
+    "primary": {
+      "domain": "artist",
+      "cohort_name": "Bryce Dessner",
+      "mean_affinity": 0.87734,
+      "member_count": 49,
+      "call_id": "local-c018"
+    },
+    "runner_up": {
+      "domain": "brand",
+      "cohort_name": "Foursquare",
+      "mean_affinity": 0.847502,
+      "call_id": "local-c019"
+    },
+    "two_sided_signals": {
+      "programme_adjacency": 0.87734,
+      "adjacency_band": "High",
+      "adjacency_call_id": "local-c018",
+      "cohort_breadth": 1.0,
+      "breadth_band": "High",
+      "breadth_call_id": "local-c018",
+      "methodology_note": "Programme adjacency: mean affinity of cohort members against programme taste profile (Qloo /v2/insights). Cohort breadth: fraction of cohort members above Medium affinity threshold."
+    },
+    "why": "The strongest adjacent cultural group is in the artist domain, featuring Bryce Dessner, Stephen Rennicks, Ola Fl\u00f8ttum. This group shows very high cultural affinity (mean 0.88) with your programme's taste profile. Evidence dimensions: programme adjacency=0.88 (High), cohort breadth=1.00 (High).",
+    "cultural_bridge": "Your programme's taste profile (Healing, War museum, Four Star) shares cultural signals with Bryce Dessner, Stephen Rennicks.",
+    "geographic_signal": "Geographic analysis not available.",
+    "programming_direction": "Test programming that connects your existing Healing, War museum, Four Star profile with the cultural world of Bryce Dessner, Stephen Rennicks through artist-adjacent programming.",
+    "falsification_condition": "Do not continue this programming test if the artist affinity signal cannot be reproduced across the next comparable programme analysis. Specifically: if a subsequent analysis of a similar programme does not produce a artist cohort in the top-3 ranked opportunities, the hypothesis is rejected.",
+    "rejected_candidates": [
+      {
+        "cohort_id": "urn:entity:artist:domain_group:1",
+        "domain": "urn:entity:artist",
+        "reason": "insufficient_members",
+        "detail": "only 1 candidate(s) in this grouping; 2 are required before a cohort can be judged."
+      }
+    ],
+    "geography_call_id": null,
+    "data_status": "measured"
+  },
+  "errors": []
+}

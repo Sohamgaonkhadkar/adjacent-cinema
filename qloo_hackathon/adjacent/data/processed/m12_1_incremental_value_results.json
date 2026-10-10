@@ -1,0 +1,2341 @@
+{
+  "evaluation_date": "2026-10-07T10:13:13.671862+00:00",
+  "candidate_budget_k": 10,
+  "baseline_type": "content_similarity_metadata_only",
+  "baseline_fields": [
+    "genre",
+    "country",
+    "decade",
+    "style"
+  ],
+  "total_contexts": 10,
+  "verified_contexts": 3,
+  "partial_contexts": 2,
+  "unverified_contexts": 5,
+  "results": [
+    {
+      "evaluation_context_id": "prince_charles_london_2026_10",
+      "venue": "Prince Charles Cinema",
+      "city": "London",
+      "venue_type": "independent_repertory",
+      "source_url": "https://princecharlescinema.com",
+      "verification_status": "VERIFIED_PROGRAMME",
+      "verification_notes": "Films scraped from live website on 2026-10-07",
+      "programme_films": [
+        {
+          "title": "The Thing",
+          "year": 1982,
+          "imdb_id": "tt0084787"
+        },
+        {
+          "title": "The Shining",
+          "year": 1980,
+          "imdb_id": "tt0081505"
+        },
+        {
+          "title": "Halloween III: Season of the Witch",
+          "year": 1982,
+          "imdb_id": "tt0085636"
+        },
+        {
+          "title": "Suspiria",
+          "year": 1977,
+          "imdb_id": "tt0076786"
+        },
+        {
+          "title": "Perfect Blue",
+          "year": 1997,
+          "imdb_id": "tt0156887"
+        },
+        {
+          "title": "Akira",
+          "year": 1988,
+          "imdb_id": "tt0094625"
+        },
+        {
+          "title": "Possession",
+          "year": 1981,
+          "imdb_id": "tt0082933"
+        },
+        {
+          "title": "The Devils",
+          "year": 1971,
+          "imdb_id": "tt0066993"
+        }
+      ],
+      "baseline_top_k": [
+        {
+          "title": "Deep Red",
+          "domain": "film",
+          "similarity": 1.0,
+          "genre": [
+            "horror"
+          ],
+          "country": "Italy",
+          "style": "giallo"
+        },
+        {
+          "title": "Tenebre",
+          "domain": "film",
+          "similarity": 0.85,
+          "genre": [
+            "horror"
+          ],
+          "country": "Italy",
+          "style": "giallo"
+        },
+        {
+          "title": "Phenomena",
+          "domain": "film",
+          "similarity": 0.85,
+          "genre": [
+            "horror"
+          ],
+          "country": "Italy",
+          "style": "giallo"
+        },
+        {
+          "title": "Ghost in the Shell",
+          "domain": "film",
+          "similarity": 0.85,
+          "genre": [
+            "animation",
+            "sci-fi"
+          ],
+          "country": "Japan",
+          "style": "anime_classic"
+        },
+        {
+          "title": "Tetsuo: The Iron Man",
+          "domain": "film",
+          "similarity": 0.8,
+          "genre": [
+            "horror",
+            "sci-fi"
+          ],
+          "country": "Japan",
+          "style": "cult_horror"
+        },
+        {
+          "title": "Videodrome",
+          "domain": "film",
+          "similarity": 0.8,
+          "genre": [
+            "horror",
+            "sci-fi"
+          ],
+          "country": "Canada",
+          "style": "cult_horror"
+        },
+        {
+          "title": "Hereditary",
+          "domain": "film",
+          "similarity": 0.6,
+          "genre": [
+            "horror"
+          ],
+          "country": "USA",
+          "style": "art_horror"
+        },
+        {
+          "title": "The Witch",
+          "domain": "film",
+          "similarity": 0.6,
+          "genre": [
+            "horror"
+          ],
+          "country": "USA",
+          "style": "art_horror"
+        },
+        {
+          "title": "It Follows",
+          "domain": "film",
+          "similarity": 0.6,
+          "genre": [
+            "horror"
+          ],
+          "country": "USA",
+          "style": "indie_horror"
+        },
+        {
+          "title": "Eraserhead",
+          "domain": "film",
+          "similarity": 0.6,
+          "genre": [
+            "horror"
+          ],
+          "country": "USA",
+          "style": "surrealist_horror"
+        }
+      ],
+      "qloo_top_k": [
+        {
+          "title": "Edward Ka-Spel",
+          "domain": "artist",
+          "mean_affinity": 0.882741,
+          "cohort_id": "urn:entity:artist:tag_cluster:1"
+        },
+        {
+          "title": "The Contortions",
+          "domain": "artist",
+          "mean_affinity": 0.882741,
+          "cohort_id": "urn:entity:artist:tag_cluster:1"
+        },
+        {
+          "title": "Snakefinger",
+          "domain": "artist",
+          "mean_affinity": 0.882741,
+          "cohort_id": "urn:entity:artist:tag_cluster:1"
+        },
+        {
+          "title": "Fando and Lis",
+          "domain": "movie",
+          "mean_affinity": 0.865729,
+          "cohort_id": "urn:entity:movie:tag_cluster:1"
+        },
+        {
+          "title": "The Strange Color of Your Body's Tears",
+          "domain": "movie",
+          "mean_affinity": 0.865729,
+          "cohort_id": "urn:entity:movie:tag_cluster:1"
+        },
+        {
+          "title": "Attack of the Mushroom People",
+          "domain": "movie",
+          "mean_affinity": 0.865729,
+          "cohort_id": "urn:entity:movie:tag_cluster:1"
+        },
+        {
+          "title": "Eminem Store",
+          "domain": "brand",
+          "mean_affinity": 0.848204,
+          "cohort_id": "urn:entity:brand:tag_cluster:1"
+        },
+        {
+          "title": "Truwood",
+          "domain": "brand",
+          "mean_affinity": 0.848204,
+          "cohort_id": "urn:entity:brand:tag_cluster:1"
+        },
+        {
+          "title": "Academy of Art University",
+          "domain": "brand",
+          "mean_affinity": 0.848204,
+          "cohort_id": "urn:entity:brand:tag_cluster:1"
+        }
+      ],
+      "qloo_domains": [
+        "urn:entity:artist",
+        "urn:entity:movie",
+        "urn:entity:brand"
+      ],
+      "qloo_programme_bet": {
+        "primary": {
+          "domain": "artist",
+          "cohort_name": "Edward Ka-Spel",
+          "mean_affinity": 0.882741,
+          "member_count": 50,
+          "call_id": "local-c022"
+        },
+        "runner_up": {
+          "domain": "movie",
+          "cohort_name": "Fando and Lis",
+          "mean_affinity": 0.865729,
+          "call_id": "local-c024"
+        },
+        "two_sided_signals": {
+          "programme_adjacency": 0.882741,
+          "adjacency_band": "High",
+          "adjacency_call_id": "local-c022",
+          "cohort_breadth": 1.0,
+          "breadth_band": "High",
+          "breadth_call_id": "local-c022",
+          "methodology_note": "Programme adjacency: mean affinity of cohort members against programme taste profile (Qloo /v2/insights). Cohort breadth: fraction of cohort members above Medium affinity threshold."
+        },
+        "why": "The strongest adjacent cultural group is in the artist domain, featuring Edward Ka-Spel, The Contortions, Snakefinger. This group shows very high cultural affinity (mean 0.88) with your programme's taste profile. Evidence dimensions: programme adjacency=0.88 (High), cohort breadth=1.00 (High).",
+        "cultural_bridge": "Your programme's taste profile (Surrealism, Intense, Shopping mall) shares cultural signals with Edward Ka-Spel, The Contortions.",
+        "geographic_signal": "Geographic analysis not available.",
+        "programming_direction": "Test programming that connects your existing Surrealism, Intense, Shopping mall profile with the cultural world of Edward Ka-Spel, The Contortions through artist-adjacent programming.",
+        "falsification_condition": "Do not continue this programming test if the artist affinity signal cannot be reproduced across the next comparable programme analysis. Specifically: if a subsequent analysis of a similar programme does not produce a artist cohort in the top-3 ranked opportunities, the hypothesis is rejected.",
+        "rejected_candidates": [],
+        "geography_call_id": null,
+        "data_status": "measured"
+      },
+      "qloo_taste_tags": [
+        "Surrealism",
+        "Intense",
+        "Shopping mall",
+        "rock opera",
+        "Artists",
+        "Cute",
+        "artsy",
+        "Education",
+        "Innovative",
+        "Family Oriented"
+      ],
+      "metrics": {
+        "jaccard_at_k": 0.0,
+        "overlap_count": 0,
+        "overlap_titles": [],
+        "qloo_only_count": 9,
+        "qloo_only_titles": [
+          "Fando and Lis",
+          "Edward Ka-Spel",
+          "Academy of Art University",
+          "The Strange Color of Your Body's Tears",
+          "Snakefinger",
+          "Eminem Store",
+          "Attack of the Mushroom People",
+          "The Contortions",
+          "Truwood"
+        ],
+        "baseline_only_count": 10,
+        "baseline_only_titles": [
+          "It Follows",
+          "Hereditary",
+          "Tenebre",
+          "Phenomena",
+          "Tetsuo: The Iron Man",
+          "Eraserhead",
+          "Ghost in the Shell",
+          "Deep Red",
+          "The Witch",
+          "Videodrome"
+        ],
+        "cross_domain_domains": [
+          "urn:entity:movie",
+          "urn:entity:brand",
+          "urn:entity:artist"
+        ],
+        "cross_domain_count": 3,
+        "domain_expansion": 4,
+        "qloo_insufficient": false,
+        "baseline_candidate_count": 10,
+        "qloo_candidate_count": 9
+      },
+      "qloo_success": true,
+      "qloo_error": null
+    },
+    {
+      "evaluation_context_id": "ica_london_2026_10",
+      "venue": "ICA (Institute of Contemporary Arts)",
+      "city": "London",
+      "venue_type": "institutional_arts",
+      "source_url": "https://www.ica.art/films",
+      "verification_status": "VERIFIED_PROGRAMME",
+      "verification_notes": "Films from ICA website film listings, October 2026",
+      "programme_films": [
+        {
+          "title": "Her Private Hell",
+          "year": 2026
+        },
+        {
+          "title": "Barrio Triste",
+          "year": 2026
+        },
+        {
+          "title": "Everybody Digs Bill Evans",
+          "year": 2026
+        },
+        {
+          "title": "Queen at Sea",
+          "year": 2026
+        },
+        {
+          "title": "Manhunter",
+          "year": 1986,
+          "imdb_id": "tt0091474"
+        },
+        {
+          "title": "Remake",
+          "year": 2026
+        }
+      ],
+      "baseline_top_k": [],
+      "qloo_top_k": [
+        {
+          "title": "We3",
+          "domain": "book",
+          "mean_affinity": 0.876213,
+          "cohort_id": "urn:entity:book:subtype:urn:entity:book:1"
+        },
+        {
+          "title": "From Hell",
+          "domain": "book",
+          "mean_affinity": 0.876213,
+          "cohort_id": "urn:entity:book:subtype:urn:entity:book:1"
+        },
+        {
+          "title": "Kick-Ass",
+          "domain": "book",
+          "mean_affinity": 0.876213,
+          "cohort_id": "urn:entity:book:subtype:urn:entity:book:1"
+        },
+        {
+          "title": "The Closer",
+          "domain": "tv_show",
+          "mean_affinity": 0.934419,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1"
+        },
+        {
+          "title": "Wire in the Blood",
+          "domain": "tv_show",
+          "mean_affinity": 0.934419,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1"
+        },
+        {
+          "title": "I Am the Night",
+          "domain": "tv_show",
+          "mean_affinity": 0.934419,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1"
+        },
+        {
+          "title": "The Invisibles",
+          "domain": "book",
+          "mean_affinity": 0.897772,
+          "cohort_id": "urn:entity:book:tag_cluster:1"
+        },
+        {
+          "title": "Black Hole",
+          "domain": "book",
+          "mean_affinity": 0.897772,
+          "cohort_id": "urn:entity:book:tag_cluster:1"
+        },
+        {
+          "title": "Kingdom Come",
+          "domain": "book",
+          "mean_affinity": 0.897772,
+          "cohort_id": "urn:entity:book:tag_cluster:1"
+        },
+        {
+          "title": "Random Hold",
+          "domain": "artist",
+          "mean_affinity": 0.88131,
+          "cohort_id": "urn:entity:artist:tag_cluster:1"
+        }
+      ],
+      "qloo_domains": [
+        "urn:entity:artist",
+        "urn:entity:movie",
+        "urn:entity:tv_show",
+        "urn:entity:book",
+        "urn:entity:brand"
+      ],
+      "qloo_programme_bet": {
+        "primary": {
+          "domain": "book",
+          "cohort_name": "We3",
+          "mean_affinity": 0.876213,
+          "member_count": 41,
+          "call_id": "local-c016"
+        },
+        "runner_up": {
+          "domain": "tv_show",
+          "cohort_name": "The Closer",
+          "mean_affinity": 0.934419,
+          "call_id": "local-c019"
+        },
+        "two_sided_signals": {
+          "programme_adjacency": 0.876213,
+          "adjacency_band": "High",
+          "adjacency_call_id": "local-c016",
+          "cohort_breadth": 1.0,
+          "breadth_band": "High",
+          "breadth_call_id": "local-c016",
+          "methodology_note": "Programme adjacency: mean affinity of cohort members against programme taste profile (Qloo /v2/insights). Cohort breadth: fraction of cohort members above Medium affinity threshold."
+        },
+        "why": "The strongest adjacent cultural group is in the book domain, featuring We3, From Hell, Kick-Ass. This group shows very high cultural affinity (mean 0.88) with your programme's taste profile. Evidence dimensions: programme adjacency=0.88 (High), cohort breadth=1.00 (High).",
+        "cultural_bridge": "Your programme's taste profile (Sports Organization, Psychological Manipulation, Serial Killers) shares cultural signals with We3, From Hell.",
+        "geographic_signal": "Geographic analysis not available.",
+        "programming_direction": "Test programming that connects your existing Sports Organization, Psychological Manipulation, Serial Killers profile with the cultural world of We3, From Hell through book-adjacent programming.",
+        "falsification_condition": "Do not continue this programming test if the book affinity signal cannot be reproduced across the next comparable programme analysis. Specifically: if a subsequent analysis of a similar programme does not produce a book cohort in the top-3 ranked opportunities, the hypothesis is rejected.",
+        "rejected_candidates": [],
+        "geography_call_id": null,
+        "data_status": "measured"
+      },
+      "qloo_taste_tags": [
+        "Sports Organization",
+        "Psychological Manipulation",
+        "Serial Killers",
+        "Psychological Manipulation",
+        "British Literature",
+        "Psychological Trauma",
+        "british",
+        "Humor",
+        "Power And Control",
+        "Crime Investigation"
+      ],
+      "metrics": {
+        "jaccard_at_k": 0.0,
+        "overlap_count": 0,
+        "overlap_titles": [],
+        "qloo_only_count": 10,
+        "qloo_only_titles": [
+          "The Invisibles",
+          "Wire in the Blood",
+          "The Closer",
+          "Kingdom Come",
+          "I Am the Night",
+          "We3",
+          "Black Hole",
+          "From Hell",
+          "Kick-Ass",
+          "Random Hold"
+        ],
+        "baseline_only_count": 0,
+        "baseline_only_titles": [],
+        "cross_domain_domains": [
+          "urn:entity:brand",
+          "urn:entity:artist",
+          "urn:entity:tv_show",
+          "urn:entity:book",
+          "urn:entity:movie"
+        ],
+        "cross_domain_count": 5,
+        "domain_expansion": 6,
+        "qloo_insufficient": false,
+        "baseline_candidate_count": 0,
+        "qloo_candidate_count": 10
+      },
+      "qloo_success": true,
+      "qloo_error": null
+    },
+    {
+      "evaluation_context_id": "art_house_crouch_end_london_2026_10",
+      "venue": "ArtHouse Crouch End",
+      "city": "London",
+      "venue_type": "community_arts",
+      "source_url": "https://www.arthousecrouchend.co.uk/",
+      "verification_status": "VERIFIED_PROGRAMME",
+      "verification_notes": "Films from ArtHouse website, October 2026",
+      "programme_films": [
+        {
+          "title": "The Incomer",
+          "year": 2026
+        },
+        {
+          "title": "Sense and Sensibility",
+          "year": 2026
+        },
+        {
+          "title": "Extra Geography",
+          "year": 2026
+        },
+        {
+          "title": "Madness: Take It Or Leave It",
+          "year": 2026
+        },
+        {
+          "title": "Com\u00e9die Fran\u00e7aise",
+          "year": 2026
+        }
+      ],
+      "baseline_top_k": [],
+      "qloo_top_k": [],
+      "qloo_domains": [],
+      "qloo_programme_bet": null,
+      "qloo_taste_tags": [],
+      "metrics": {
+        "jaccard_at_k": 0.0,
+        "overlap_count": 0,
+        "overlap_titles": [],
+        "qloo_only_count": 0,
+        "qloo_only_titles": [],
+        "baseline_only_count": 0,
+        "baseline_only_titles": [],
+        "cross_domain_domains": [],
+        "cross_domain_count": 0,
+        "domain_expansion": 1,
+        "qloo_insufficient": true,
+        "baseline_candidate_count": 0,
+        "qloo_candidate_count": 0
+      },
+      "qloo_success": true,
+      "qloo_error": null
+    },
+    {
+      "evaluation_context_id": "garden_cinema_london_2026_10",
+      "venue": "The Garden Cinema",
+      "city": "London",
+      "venue_type": "members_cinema",
+      "source_url": "https://www.thegardencinema.co.uk/",
+      "verification_status": "PARTIAL_PROGRAMME_EVIDENCE",
+      "verification_notes": "Films from website but some are retrospective/season titles, not current programme",
+      "programme_films": [
+        {
+          "title": "Sense and Sensibility",
+          "year": 2026
+        },
+        {
+          "title": "Naza",
+          "year": 2026
+        },
+        {
+          "title": "Whisper of the Heart",
+          "year": 1995,
+          "imdb_id": "tt0113824"
+        }
+      ],
+      "baseline_top_k": [],
+      "qloo_top_k": [
+        {
+          "title": "A Letter to Momo",
+          "domain": "movie",
+          "mean_affinity": 0.887212,
+          "cohort_id": "urn:entity:movie:tag_cluster:1"
+        },
+        {
+          "title": "Mai Mai Miracle",
+          "domain": "movie",
+          "mean_affinity": 0.887212,
+          "cohort_id": "urn:entity:movie:tag_cluster:1"
+        },
+        {
+          "title": "Modest Heroes",
+          "domain": "movie",
+          "mean_affinity": 0.887212,
+          "cohort_id": "urn:entity:movie:tag_cluster:1"
+        }
+      ],
+      "qloo_domains": [
+        "urn:entity:movie"
+      ],
+      "qloo_programme_bet": {
+        "primary": {
+          "domain": "movie",
+          "cohort_name": "A Letter to Momo",
+          "mean_affinity": 0.887212,
+          "member_count": 50,
+          "call_id": "local-c008"
+        },
+        "runner_up": null,
+        "two_sided_signals": {
+          "programme_adjacency": 0.887212,
+          "adjacency_band": "High",
+          "adjacency_call_id": "local-c008",
+          "cohort_breadth": 1.0,
+          "breadth_band": "High",
+          "breadth_call_id": "local-c008",
+          "methodology_note": "Programme adjacency: mean affinity of cohort members against programme taste profile (Qloo /v2/insights). Cohort breadth: fraction of cohort members above Medium affinity threshold."
+        },
+        "why": "The strongest adjacent cultural group is in the movie domain, featuring A Letter to Momo, Mai Mai Miracle, Modest Heroes. This group shows very high cultural affinity (mean 0.89) with your programme's taste profile. Evidence dimensions: programme adjacency=0.89 (High), cohort breadth=1.00 (High).",
+        "cultural_bridge": "Your programme's taste profile (Animation, anime animation, anime) shares cultural signals with A Letter to Momo, Mai Mai Miracle.",
+        "geographic_signal": "Geographic analysis not available.",
+        "programming_direction": "Test programming that connects your existing Animation, anime animation, anime profile with the cultural world of A Letter to Momo, Mai Mai Miracle through movie-adjacent programming.",
+        "falsification_condition": "Do not continue this programming test if the movie affinity signal cannot be reproduced across the next comparable programme analysis. Specifically: if a subsequent analysis of a similar programme does not produce a movie cohort in the top-3 ranked opportunities, the hypothesis is rejected.",
+        "rejected_candidates": [],
+        "geography_call_id": null,
+        "data_status": "measured"
+      },
+      "qloo_taste_tags": [
+        "Animation",
+        "anime animation",
+        "anime",
+        "Violin",
+        "based on manga",
+        "Library",
+        "Whimsically Enchanting",
+        "Detailed",
+        "Artistically Rich",
+        "2d animation"
+      ],
+      "metrics": {
+        "jaccard_at_k": 0.0,
+        "overlap_count": 0,
+        "overlap_titles": [],
+        "qloo_only_count": 3,
+        "qloo_only_titles": [
+          "A Letter to Momo",
+          "Mai Mai Miracle",
+          "Modest Heroes"
+        ],
+        "baseline_only_count": 0,
+        "baseline_only_titles": [],
+        "cross_domain_domains": [
+          "urn:entity:movie"
+        ],
+        "cross_domain_count": 1,
+        "domain_expansion": 2,
+        "qloo_insufficient": false,
+        "baseline_candidate_count": 0,
+        "qloo_candidate_count": 3
+      },
+      "qloo_success": true,
+      "qloo_error": null
+    },
+    {
+      "evaluation_context_id": "genesis_london_2026_10",
+      "venue": "Genesis Cinema",
+      "city": "London",
+      "venue_type": "independent_community",
+      "source_url": "https://genesiscinema.co.uk/",
+      "verification_status": "PARTIAL_PROGRAMME_EVIDENCE",
+      "verification_notes": "Films mentioned in search results, not confirmed as current programme",
+      "programme_films": [
+        {
+          "title": "Parasite",
+          "year": 2019,
+          "imdb_id": "tt6751668"
+        },
+        {
+          "title": "The Zone of Interest",
+          "year": 2023,
+          "imdb_id": "tt7160372"
+        },
+        {
+          "title": "Perfect Days",
+          "year": 2023,
+          "imdb_id": "tt27503384"
+        },
+        {
+          "title": "Past Lives",
+          "year": 2023,
+          "imdb_id": "tt13238346"
+        }
+      ],
+      "baseline_top_k": [
+        {
+          "title": "Capernaum",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama"
+          ],
+          "country": "Lebanon",
+          "style": "arthouse"
+        },
+        {
+          "title": "Cold War",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama",
+            "romance"
+          ],
+          "country": "Poland",
+          "style": "arthouse"
+        },
+        {
+          "title": "Happy as Lazzaro",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama"
+          ],
+          "country": "Italy",
+          "style": "arthouse"
+        },
+        {
+          "title": "Transit",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama"
+          ],
+          "country": "Germany",
+          "style": "arthouse"
+        },
+        {
+          "title": "Still Walking",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama"
+          ],
+          "country": "Japan",
+          "style": "arthouse"
+        },
+        {
+          "title": "Nobody Knows",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama"
+          ],
+          "country": "Japan",
+          "style": "arthouse"
+        },
+        {
+          "title": "After Life",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama"
+          ],
+          "country": "Japan",
+          "style": "arthouse"
+        },
+        {
+          "title": "Amour",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama"
+          ],
+          "country": "France/Germany",
+          "style": "arthouse"
+        },
+        {
+          "title": "Blue Is the Warmest Colour",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama",
+            "romance"
+          ],
+          "country": "France",
+          "style": "arthouse"
+        },
+        {
+          "title": "The Piano Teacher",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama"
+          ],
+          "country": "France/Austria",
+          "style": "arthouse"
+        }
+      ],
+      "qloo_top_k": [
+        {
+          "title": "Foursquare",
+          "domain": "brand",
+          "mean_affinity": 0.844932,
+          "cohort_id": "urn:entity:brand:tag_cluster:1"
+        },
+        {
+          "title": "Barclay's Emirates Skywards Premium World Elite Mastercard",
+          "domain": "brand",
+          "mean_affinity": 0.844932,
+          "cohort_id": "urn:entity:brand:tag_cluster:1"
+        },
+        {
+          "title": "Uber Eats",
+          "domain": "brand",
+          "mean_affinity": 0.844932,
+          "cohort_id": "urn:entity:brand:tag_cluster:1"
+        },
+        {
+          "title": "Mei Ehara",
+          "domain": "artist",
+          "mean_affinity": 0.875316,
+          "cohort_id": "urn:entity:artist:tag_cluster:1"
+        },
+        {
+          "title": "\u541b\u5cf6\u5927\u7a7a",
+          "domain": "artist",
+          "mean_affinity": 0.875316,
+          "cohort_id": "urn:entity:artist:tag_cluster:1"
+        },
+        {
+          "title": "Oliver Sim",
+          "domain": "artist",
+          "mean_affinity": 0.875316,
+          "cohort_id": "urn:entity:artist:tag_cluster:1"
+        },
+        {
+          "title": "The Great Beauty",
+          "domain": "movie",
+          "mean_affinity": 0.874481,
+          "cohort_id": "urn:entity:movie:tag_cluster:1"
+        },
+        {
+          "title": "R.M.N.",
+          "domain": "movie",
+          "mean_affinity": 0.874481,
+          "cohort_id": "urn:entity:movie:tag_cluster:1"
+        },
+        {
+          "title": "Playground",
+          "domain": "movie",
+          "mean_affinity": 0.874481,
+          "cohort_id": "urn:entity:movie:tag_cluster:1"
+        }
+      ],
+      "qloo_domains": [
+        "urn:entity:artist",
+        "urn:entity:movie",
+        "urn:entity:brand"
+      ],
+      "qloo_programme_bet": {
+        "primary": {
+          "domain": "brand",
+          "cohort_name": "Foursquare",
+          "mean_affinity": 0.844932,
+          "member_count": 50,
+          "call_id": "local-c015"
+        },
+        "runner_up": {
+          "domain": "artist",
+          "cohort_name": "Mei Ehara",
+          "mean_affinity": 0.875316,
+          "call_id": "local-c014"
+        },
+        "two_sided_signals": {
+          "programme_adjacency": 0.844932,
+          "adjacency_band": "High",
+          "adjacency_call_id": "local-c015",
+          "cohort_breadth": 1.0,
+          "breadth_band": "High",
+          "breadth_call_id": "local-c015",
+          "methodology_note": "Programme adjacency: mean affinity of cohort members against programme taste profile (Qloo /v2/insights). Cohort breadth: fraction of cohort members above Medium affinity threshold."
+        },
+        "why": "The strongest adjacent cultural group is in the brand domain, featuring Foursquare, Barclay's Emirates Skywards Premium World Elite Mastercard, Uber Eats. This group shows very high cultural affinity (mean 0.84) with your programme's taste profile. Evidence dimensions: programme adjacency=0.84 (High), cohort breadth=1.00 (High).",
+        "cultural_bridge": "Your programme's taste profile (Four Star, Scallop Risotto, Cafe) shares cultural signals with Foursquare, Barclay's Emirates Skywards Premium World Elite Mastercard.",
+        "geographic_signal": "Geographic analysis not available.",
+        "programming_direction": "Test programming that connects your existing Four Star, Scallop Risotto, Cafe profile with the cultural world of Foursquare, Barclay's Emirates Skywards Premium World Elite Mastercard through brand-adjacent programming.",
+        "falsification_condition": "Do not continue this programming test if the brand affinity signal cannot be reproduced across the next comparable programme analysis. Specifically: if a subsequent analysis of a similar programme does not produce a brand cohort in the top-3 ranked opportunities, the hypothesis is rejected.",
+        "rejected_candidates": [
+          {
+            "cohort_id": "urn:entity:artist:domain_group:1",
+            "domain": "urn:entity:artist",
+            "reason": "insufficient_members",
+            "detail": "only 1 candidate(s) in this grouping; 2 are required before a cohort can be judged."
+          }
+        ],
+        "geography_call_id": null,
+        "data_status": "measured"
+      },
+      "qloo_taste_tags": [
+        "Four Star",
+        "Scallop Risotto",
+        "Cafe",
+        "Identifies as women-owned",
+        "Religion",
+        "Sustainability",
+        "Practical",
+        "Self Improvement",
+        "Sustainability",
+        "affordable"
+      ],
+      "metrics": {
+        "jaccard_at_k": 0.0,
+        "overlap_count": 0,
+        "overlap_titles": [],
+        "qloo_only_count": 9,
+        "qloo_only_titles": [
+          "Playground",
+          "Foursquare",
+          "Uber Eats",
+          "The Great Beauty",
+          "\u541b\u5cf6\u5927\u7a7a",
+          "Mei Ehara",
+          "Oliver Sim",
+          "R.M.N.",
+          "Barclay's Emirates Skywards Premium World Elite Mastercard"
+        ],
+        "baseline_only_count": 10,
+        "baseline_only_titles": [
+          "Transit",
+          "Still Walking",
+          "Cold War",
+          "Blue Is the Warmest Colour",
+          "Happy as Lazzaro",
+          "After Life",
+          "The Piano Teacher",
+          "Amour",
+          "Nobody Knows",
+          "Capernaum"
+        ],
+        "cross_domain_domains": [
+          "urn:entity:movie",
+          "urn:entity:brand",
+          "urn:entity:artist"
+        ],
+        "cross_domain_count": 3,
+        "domain_expansion": 4,
+        "qloo_insufficient": false,
+        "baseline_candidate_count": 10,
+        "qloo_candidate_count": 9
+      },
+      "qloo_success": true,
+      "qloo_error": null
+    },
+    {
+      "evaluation_context_id": "curzon_soho_london_2026_10",
+      "venue": "Curzon Soho",
+      "city": "London",
+      "venue_type": "chain_artthouse",
+      "source_url": "https://www.curzon.com/soho",
+      "verification_status": "UNVERIFIED",
+      "verification_notes": "Films are plausible for venue but not scraped from live site",
+      "programme_films": [
+        {
+          "title": "Everything Everywhere All at Once",
+          "year": 2022,
+          "imdb_id": "tt6710474"
+        },
+        {
+          "title": "Dune",
+          "year": 2021,
+          "imdb_id": "tt1160419"
+        },
+        {
+          "title": "Oppenheimer",
+          "year": 2023,
+          "imdb_id": "tt15398776"
+        },
+        {
+          "title": "The Grand Budapest Hotel",
+          "year": 2014,
+          "imdb_id": "tt2278388"
+        },
+        {
+          "title": "Moonlight",
+          "year": 2016,
+          "imdb_id": "tt4975722"
+        }
+      ],
+      "baseline_top_k": [
+        {
+          "title": "Capernaum",
+          "domain": "film",
+          "similarity": 0.8,
+          "genre": [
+            "drama"
+          ],
+          "country": "Lebanon",
+          "style": "arthouse"
+        },
+        {
+          "title": "Happy as Lazzaro",
+          "domain": "film",
+          "similarity": 0.8,
+          "genre": [
+            "drama"
+          ],
+          "country": "Italy",
+          "style": "arthouse"
+        },
+        {
+          "title": "Transit",
+          "domain": "film",
+          "similarity": 0.8,
+          "genre": [
+            "drama"
+          ],
+          "country": "Germany",
+          "style": "arthouse"
+        },
+        {
+          "title": "Amour",
+          "domain": "film",
+          "similarity": 0.8,
+          "genre": [
+            "drama"
+          ],
+          "country": "France/Germany",
+          "style": "arthouse"
+        },
+        {
+          "title": "Still Walking",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama"
+          ],
+          "country": "Japan",
+          "style": "arthouse"
+        },
+        {
+          "title": "Nobody Knows",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama"
+          ],
+          "country": "Japan",
+          "style": "arthouse"
+        },
+        {
+          "title": "After Life",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama"
+          ],
+          "country": "Japan",
+          "style": "arthouse"
+        },
+        {
+          "title": "The Piano Teacher",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama"
+          ],
+          "country": "France/Austria",
+          "style": "arthouse"
+        },
+        {
+          "title": "Burning",
+          "domain": "film",
+          "similarity": 0.6,
+          "genre": [
+            "drama",
+            "mystery"
+          ],
+          "country": "South Korea",
+          "style": "arthouse"
+        },
+        {
+          "title": "The Handmaiden",
+          "domain": "film",
+          "similarity": 0.6,
+          "genre": [
+            "drama",
+            "thriller"
+          ],
+          "country": "South Korea",
+          "style": "arthouse"
+        }
+      ],
+      "qloo_top_k": [
+        {
+          "title": "How to Be Perfect: The Correct Answer to Every Moral Question",
+          "domain": "book",
+          "mean_affinity": 0.80216,
+          "cohort_id": "urn:entity:book:subtype:urn:entity:book:1"
+        },
+        {
+          "title": "Paved Paradise: How Parking Explains the World",
+          "domain": "book",
+          "mean_affinity": 0.80216,
+          "cohort_id": "urn:entity:book:subtype:urn:entity:book:1"
+        },
+        {
+          "title": "A Dominant Character: The Radical Science and Restless Politics of J.B.S. Haldane",
+          "domain": "book",
+          "mean_affinity": 0.80216,
+          "cohort_id": "urn:entity:book:subtype:urn:entity:book:1"
+        },
+        {
+          "title": "On Immunity: An Inoculation",
+          "domain": "book",
+          "mean_affinity": 0.806744,
+          "cohort_id": "urn:entity:book:tag_cluster:1"
+        },
+        {
+          "title": "The Once and Future Sex: Going Medieval on Women's Roles in Society",
+          "domain": "book",
+          "mean_affinity": 0.806744,
+          "cohort_id": "urn:entity:book:tag_cluster:1"
+        },
+        {
+          "title": "The Disordered Cosmos: A Journey into Dark Matter, Spacetime, and Dreams Deferred",
+          "domain": "book",
+          "mean_affinity": 0.806744,
+          "cohort_id": "urn:entity:book:tag_cluster:1"
+        },
+        {
+          "title": "Life After Life",
+          "domain": "tv_show",
+          "mean_affinity": 0.94648,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1"
+        },
+        {
+          "title": "Now and Again",
+          "domain": "tv_show",
+          "mean_affinity": 0.94648,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1"
+        },
+        {
+          "title": "Black Narcissus",
+          "domain": "tv_show",
+          "mean_affinity": 0.94648,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1"
+        },
+        {
+          "title": "Bryce Dessner",
+          "domain": "artist",
+          "mean_affinity": 0.880968,
+          "cohort_id": "urn:entity:artist:tag_cluster:1"
+        }
+      ],
+      "qloo_domains": [
+        "urn:entity:artist",
+        "urn:entity:movie",
+        "urn:entity:tv_show",
+        "urn:entity:book",
+        "urn:entity:brand"
+      ],
+      "qloo_programme_bet": {
+        "primary": {
+          "domain": "book",
+          "cohort_name": "How to Be Perfect: The Correct Answer to Every Moral Question",
+          "mean_affinity": 0.80216,
+          "member_count": 16,
+          "call_id": "local-c019"
+        },
+        "runner_up": {
+          "domain": "book",
+          "cohort_name": "On Immunity: An Inoculation",
+          "mean_affinity": 0.806744,
+          "call_id": "local-c019"
+        },
+        "two_sided_signals": {
+          "programme_adjacency": 0.80216,
+          "adjacency_band": "High",
+          "adjacency_call_id": "local-c019",
+          "cohort_breadth": 1.0,
+          "breadth_band": "High",
+          "breadth_call_id": "local-c019",
+          "methodology_note": "Programme adjacency: mean affinity of cohort members against programme taste profile (Qloo /v2/insights). Cohort breadth: fraction of cohort members above Medium affinity threshold."
+        },
+        "why": "The strongest adjacent cultural group is in the book domain, featuring How to Be Perfect: The Correct Answer to Every Moral Question, Paved Paradise: How Parking Explains the World, A Dominant Character: The Radical Science and Restless Politics of J.B.S. Haldane. This group shows very high cultural affinity (mean 0.80) with your programme's taste profile. Evidence dimensions: programme adjacency=0.80 (High), cohort breadth=1.00 (High).",
+        "cultural_bridge": "Your programme's taste profile (War museum, Four Star, Identifies as Black-owned) shares cultural signals with How to Be Perfect: The Correct Answer to Every Moral Question, Paved Paradise: How Parking Explains the World.",
+        "geographic_signal": "Geographic analysis not available.",
+        "programming_direction": "Test programming that connects your existing War museum, Four Star, Identifies as Black-owned profile with the cultural world of How to Be Perfect: The Correct Answer to Every Moral Question, Paved Paradise: How Parking Explains the World through book-adjacent programming.",
+        "falsification_condition": "Do not continue this programming test if the book affinity signal cannot be reproduced across the next comparable programme analysis. Specifically: if a subsequent analysis of a similar programme does not produce a book cohort in the top-3 ranked opportunities, the hypothesis is rejected.",
+        "rejected_candidates": [],
+        "geography_call_id": null,
+        "data_status": "measured"
+      },
+      "qloo_taste_tags": [
+        "War museum",
+        "Four Star",
+        "Identifies as Black-owned",
+        "TV Networks",
+        "Bar",
+        "Street Life",
+        "Salmon Burger",
+        "Bavarian Pretzel",
+        "Moderately expensive",
+        "Healing"
+      ],
+      "metrics": {
+        "jaccard_at_k": 0.0,
+        "overlap_count": 0,
+        "overlap_titles": [],
+        "qloo_only_count": 10,
+        "qloo_only_titles": [
+          "Life After Life",
+          "The Once and Future Sex: Going Medieval on Women's Roles in Society",
+          "A Dominant Character: The Radical Science and Restless Politics of J.B.S. Haldane",
+          "On Immunity: An Inoculation",
+          "The Disordered Cosmos: A Journey into Dark Matter, Spacetime, and Dreams Deferred",
+          "Now and Again",
+          "Black Narcissus",
+          "Bryce Dessner",
+          "Paved Paradise: How Parking Explains the World",
+          "How to Be Perfect: The Correct Answer to Every Moral Question"
+        ],
+        "baseline_only_count": 10,
+        "baseline_only_titles": [
+          "Transit",
+          "Still Walking",
+          "Burning",
+          "The Handmaiden",
+          "Happy as Lazzaro",
+          "After Life",
+          "The Piano Teacher",
+          "Amour",
+          "Nobody Knows",
+          "Capernaum"
+        ],
+        "cross_domain_domains": [
+          "urn:entity:brand",
+          "urn:entity:artist",
+          "urn:entity:tv_show",
+          "urn:entity:book",
+          "urn:entity:movie"
+        ],
+        "cross_domain_count": 5,
+        "domain_expansion": 6,
+        "qloo_insufficient": false,
+        "baseline_candidate_count": 10,
+        "qloo_candidate_count": 10
+      },
+      "qloo_success": true,
+      "qloo_error": null
+    },
+    {
+      "evaluation_context_id": "picturehouse_central_london_2026_10",
+      "venue": "Picturehouse Central",
+      "city": "London",
+      "venue_type": "chain_artthouse",
+      "source_url": "https://www.picturehouses.com",
+      "verification_status": "UNVERIFIED",
+      "verification_notes": "Films are plausible for venue but not scraped from live site. Picturehouses is a chain.",
+      "programme_films": [
+        {
+          "title": "La La Land",
+          "year": 2016,
+          "imdb_id": "tt3783958"
+        },
+        {
+          "title": "The Shape of Water",
+          "year": 2017,
+          "imdb_id": "tt5580390"
+        },
+        {
+          "title": "Three Billboards Outside Ebbing, Missouri",
+          "year": 2017,
+          "imdb_id": "tt5027774"
+        },
+        {
+          "title": "Lady Macbeth",
+          "year": 2016,
+          "imdb_id": "tt4291600"
+        },
+        {
+          "title": "I, Daniel Blake",
+          "year": 2016,
+          "imdb_id": "tt5168192"
+        }
+      ],
+      "baseline_top_k": [
+        {
+          "title": "Capernaum",
+          "domain": "film",
+          "similarity": 0.8,
+          "genre": [
+            "drama"
+          ],
+          "country": "Lebanon",
+          "style": "arthouse"
+        },
+        {
+          "title": "Happy as Lazzaro",
+          "domain": "film",
+          "similarity": 0.8,
+          "genre": [
+            "drama"
+          ],
+          "country": "Italy",
+          "style": "arthouse"
+        },
+        {
+          "title": "Transit",
+          "domain": "film",
+          "similarity": 0.8,
+          "genre": [
+            "drama"
+          ],
+          "country": "Germany",
+          "style": "arthouse"
+        },
+        {
+          "title": "Amour",
+          "domain": "film",
+          "similarity": 0.8,
+          "genre": [
+            "drama"
+          ],
+          "country": "France/Germany",
+          "style": "arthouse"
+        },
+        {
+          "title": "Tyrannosaur",
+          "domain": "film",
+          "similarity": 0.8,
+          "genre": [
+            "drama"
+          ],
+          "country": "UK",
+          "style": "social_realism"
+        },
+        {
+          "title": "Still Walking",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama"
+          ],
+          "country": "Japan",
+          "style": "arthouse"
+        },
+        {
+          "title": "Nobody Knows",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama"
+          ],
+          "country": "Japan",
+          "style": "arthouse"
+        },
+        {
+          "title": "After Life",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama"
+          ],
+          "country": "Japan",
+          "style": "arthouse"
+        },
+        {
+          "title": "The Piano Teacher",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama"
+          ],
+          "country": "France/Austria",
+          "style": "arthouse"
+        },
+        {
+          "title": "Trainspotting",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama"
+          ],
+          "country": "UK",
+          "style": "social_realism"
+        }
+      ],
+      "qloo_top_k": [
+        {
+          "title": "Frankissstein: A Love Story",
+          "domain": "book",
+          "mean_affinity": 0.785459,
+          "cohort_id": "urn:entity:book:subtype:urn:entity:book:1"
+        },
+        {
+          "title": "The Velvet Rage: Overcoming the Pain of Growing Up Gay in a Straight Man's World",
+          "domain": "book",
+          "mean_affinity": 0.785459,
+          "cohort_id": "urn:entity:book:subtype:urn:entity:book:1"
+        },
+        {
+          "title": "The Course of Love",
+          "domain": "book",
+          "mean_affinity": 0.785459,
+          "cohort_id": "urn:entity:book:subtype:urn:entity:book:1"
+        },
+        {
+          "title": "Useless Magic: Lyrics and Poetry",
+          "domain": "book",
+          "mean_affinity": 0.781759,
+          "cohort_id": "urn:entity:book:tag_cluster:1"
+        },
+        {
+          "title": "Devotion",
+          "domain": "book",
+          "mean_affinity": 0.781759,
+          "cohort_id": "urn:entity:book:tag_cluster:1"
+        },
+        {
+          "title": "De Profundis and Other Prison Writings (Penguin Classics)",
+          "domain": "book",
+          "mean_affinity": 0.781759,
+          "cohort_id": "urn:entity:book:tag_cluster:1"
+        },
+        {
+          "title": "Mark Orton",
+          "domain": "artist",
+          "mean_affinity": 0.869217,
+          "cohort_id": "urn:entity:artist:tag_cluster:1"
+        },
+        {
+          "title": "Sarah Neufeld",
+          "domain": "artist",
+          "mean_affinity": 0.869217,
+          "cohort_id": "urn:entity:artist:tag_cluster:1"
+        },
+        {
+          "title": "Jasmine Star",
+          "domain": "artist",
+          "mean_affinity": 0.869217,
+          "cohort_id": "urn:entity:artist:tag_cluster:1"
+        },
+        {
+          "title": "Foursquare",
+          "domain": "brand",
+          "mean_affinity": 0.845182,
+          "cohort_id": "urn:entity:brand:tag_cluster:1"
+        }
+      ],
+      "qloo_domains": [
+        "urn:entity:artist",
+        "urn:entity:movie",
+        "urn:entity:book",
+        "urn:entity:brand"
+      ],
+      "qloo_programme_bet": {
+        "primary": {
+          "domain": "book",
+          "cohort_name": "Frankissstein: A Love Story",
+          "mean_affinity": 0.785459,
+          "member_count": 25,
+          "call_id": "local-c018"
+        },
+        "runner_up": {
+          "domain": "book",
+          "cohort_name": "Useless Magic: Lyrics and Poetry",
+          "mean_affinity": 0.781759,
+          "call_id": "local-c018"
+        },
+        "two_sided_signals": {
+          "programme_adjacency": 0.785459,
+          "adjacency_band": "High",
+          "adjacency_call_id": "local-c018",
+          "cohort_breadth": 1.0,
+          "breadth_band": "High",
+          "breadth_call_id": "local-c018",
+          "methodology_note": "Programme adjacency: mean affinity of cohort members against programme taste profile (Qloo /v2/insights). Cohort breadth: fraction of cohort members above Medium affinity threshold."
+        },
+        "why": "The strongest adjacent cultural group is in the book domain, featuring Frankissstein: A Love Story, The Velvet Rage: Overcoming the Pain of Growing Up Gay in a Straight Man's World, The Course of Love. This group shows high cultural affinity (mean 0.79) with your programme's taste profile. Evidence dimensions: programme adjacency=0.79 (High), cohort breadth=1.00 (High).",
+        "cultural_bridge": "Your programme's taste profile (Identifies as LGBTQ+ owned, Financial Services, Game store) shares cultural signals with Frankissstein: A Love Story, The Velvet Rage: Overcoming the Pain of Growing Up Gay in a Straight Man's World.",
+        "geographic_signal": "Geographic analysis not available.",
+        "programming_direction": "Test programming that connects your existing Identifies as LGBTQ+ owned, Financial Services, Game store profile with the cultural world of Frankissstein: A Love Story, The Velvet Rage: Overcoming the Pain of Growing Up Gay in a Straight Man's World through book-adjacent programming.",
+        "falsification_condition": "Do not continue this programming test if the book affinity signal cannot be reproduced across the next comparable programme analysis. Specifically: if a subsequent analysis of a similar programme does not produce a book cohort in the top-3 ranked opportunities, the hypothesis is rejected.",
+        "rejected_candidates": [],
+        "geography_call_id": null,
+        "data_status": "measured"
+      },
+      "qloo_taste_tags": [
+        "Identifies as LGBTQ+ owned",
+        "Financial Services",
+        "Game store",
+        "Discover",
+        "Moderately expensive",
+        "steampunk",
+        "Heritage",
+        "cabaret",
+        "dark cabaret",
+        " soundtrack"
+      ],
+      "metrics": {
+        "jaccard_at_k": 0.0,
+        "overlap_count": 0,
+        "overlap_titles": [],
+        "qloo_only_count": 10,
+        "qloo_only_titles": [
+          "The Velvet Rage: Overcoming the Pain of Growing Up Gay in a Straight Man's World",
+          "Foursquare",
+          "Sarah Neufeld",
+          "Jasmine Star",
+          "Frankissstein: A Love Story",
+          "Mark Orton",
+          "The Course of Love",
+          "Devotion",
+          "De Profundis and Other Prison Writings (Penguin Classics)",
+          "Useless Magic: Lyrics and Poetry"
+        ],
+        "baseline_only_count": 10,
+        "baseline_only_titles": [
+          "Transit",
+          "Still Walking",
+          "Trainspotting",
+          "After Life",
+          "Happy as Lazzaro",
+          "The Piano Teacher",
+          "Tyrannosaur",
+          "Amour",
+          "Nobody Knows",
+          "Capernaum"
+        ],
+        "cross_domain_domains": [
+          "urn:entity:book",
+          "urn:entity:movie",
+          "urn:entity:brand",
+          "urn:entity:artist"
+        ],
+        "cross_domain_count": 4,
+        "domain_expansion": 5,
+        "qloo_insufficient": false,
+        "baseline_candidate_count": 10,
+        "qloo_candidate_count": 10
+      },
+      "qloo_success": true,
+      "qloo_error": null
+    },
+    {
+      "evaluation_context_id": "bfi_southbank_london_2026_10",
+      "venue": "BFI Southbank",
+      "city": "London",
+      "venue_type": "national_institution",
+      "source_url": "https://www.bfi.org.uk",
+      "verification_status": "UNVERIFIED",
+      "verification_notes": "Films are plausible for BFI but not scraped. BFI is a national institution, not independent.",
+      "programme_films": [
+        {
+          "title": "2001: A Space Odyssey",
+          "year": 1968,
+          "imdb_id": "tt0062622"
+        },
+        {
+          "title": "Andrei Rublev",
+          "year": 1966,
+          "imdb_id": "tt0060107"
+        },
+        {
+          "title": "Persona",
+          "year": 1966,
+          "imdb_id": "tt0060827"
+        },
+        {
+          "title": "Tokyo Story",
+          "year": 1953,
+          "imdb_id": "tt0046438"
+        },
+        {
+          "title": "In the Mood for Love",
+          "year": 2000,
+          "imdb_id": "tt0118694"
+        }
+      ],
+      "baseline_top_k": [
+        {
+          "title": "Wild Strawberries",
+          "domain": "film",
+          "similarity": 0.85,
+          "genre": [
+            "drama"
+          ],
+          "country": "Sweden",
+          "style": "art_drama"
+        },
+        {
+          "title": "The Seventh Seal",
+          "domain": "film",
+          "similarity": 0.85,
+          "genre": [
+            "drama"
+          ],
+          "country": "Sweden",
+          "style": "art_drama"
+        },
+        {
+          "title": "La Dolce Vita",
+          "domain": "film",
+          "similarity": 0.8,
+          "genre": [
+            "drama"
+          ],
+          "country": "Italy",
+          "style": "art_drama"
+        },
+        {
+          "title": "Cold War",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama",
+            "romance"
+          ],
+          "country": "Poland",
+          "style": "arthouse"
+        },
+        {
+          "title": "Blue Is the Warmest Colour",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama",
+            "romance"
+          ],
+          "country": "France",
+          "style": "arthouse"
+        },
+        {
+          "title": "Still Walking",
+          "domain": "film",
+          "similarity": 0.6,
+          "genre": [
+            "drama"
+          ],
+          "country": "Japan",
+          "style": "arthouse"
+        },
+        {
+          "title": "Nobody Knows",
+          "domain": "film",
+          "similarity": 0.6,
+          "genre": [
+            "drama"
+          ],
+          "country": "Japan",
+          "style": "arthouse"
+        },
+        {
+          "title": "After Life",
+          "domain": "film",
+          "similarity": 0.6,
+          "genre": [
+            "drama"
+          ],
+          "country": "Japan",
+          "style": "arthouse"
+        },
+        {
+          "title": "The Piano Teacher",
+          "domain": "film",
+          "similarity": 0.6,
+          "genre": [
+            "drama"
+          ],
+          "country": "France/Austria",
+          "style": "arthouse"
+        },
+        {
+          "title": "8\u00bd",
+          "domain": "film",
+          "similarity": 0.6,
+          "genre": [
+            "drama",
+            "comedy"
+          ],
+          "country": "Italy",
+          "style": "art_drama"
+        }
+      ],
+      "qloo_top_k": [],
+      "qloo_domains": [
+        "urn:entity:movie",
+        "urn:entity:book",
+        "urn:entity:destination"
+      ],
+      "qloo_programme_bet": null,
+      "qloo_taste_tags": [
+        "Classics",
+        "Literature",
+        "Emotional Growth",
+        "Societal Norms",
+        "Investigative",
+        "Psychological",
+        "Unrequited Love",
+        "Cerebral",
+        "Social Alienation",
+        "Alternate Realities"
+      ],
+      "metrics": {
+        "jaccard_at_k": 0.0,
+        "overlap_count": 0,
+        "overlap_titles": [],
+        "qloo_only_count": 0,
+        "qloo_only_titles": [],
+        "baseline_only_count": 10,
+        "baseline_only_titles": [
+          "Still Walking",
+          "Cold War",
+          "Wild Strawberries",
+          "The Seventh Seal",
+          "8\u00bd",
+          "Blue Is the Warmest Colour",
+          "After Life",
+          "The Piano Teacher",
+          "La Dolce Vita",
+          "Nobody Knows"
+        ],
+        "cross_domain_domains": [
+          "urn:entity:book",
+          "urn:entity:destination",
+          "urn:entity:movie"
+        ],
+        "cross_domain_count": 3,
+        "domain_expansion": 4,
+        "qloo_insufficient": true,
+        "baseline_candidate_count": 10,
+        "qloo_candidate_count": 0
+      },
+      "qloo_success": true,
+      "qloo_error": null
+    },
+    {
+      "evaluation_context_id": "phoenix_leicester_2026_10",
+      "venue": "Phoenix Cinema Leicester",
+      "city": "Leicester",
+      "venue_type": "independent_community",
+      "source_url": "https://phoenix.org.uk",
+      "verification_status": "UNVERIFIED",
+      "verification_notes": "Films are plausible but not scraped from live site",
+      "programme_films": [
+        {
+          "title": "Shoplifters",
+          "year": 2018,
+          "imdb_id": "tt8075192"
+        },
+        {
+          "title": "Roma",
+          "year": 2018,
+          "imdb_id": "tt6155172"
+        },
+        {
+          "title": "Portrait of a Lady on Fire",
+          "year": 2019,
+          "imdb_id": "tt8613070"
+        },
+        {
+          "title": "The Lighthouse",
+          "year": 2019,
+          "imdb_id": "tt7984734"
+        },
+        {
+          "title": "Uncut Gems",
+          "year": 2019,
+          "imdb_id": "tt5727208"
+        }
+      ],
+      "baseline_top_k": [
+        {
+          "title": "Blue Is the Warmest Colour",
+          "domain": "film",
+          "similarity": 1.0,
+          "genre": [
+            "drama",
+            "romance"
+          ],
+          "country": "France",
+          "style": "arthouse"
+        },
+        {
+          "title": "Still Walking",
+          "domain": "film",
+          "similarity": 0.85,
+          "genre": [
+            "drama"
+          ],
+          "country": "Japan",
+          "style": "arthouse"
+        },
+        {
+          "title": "Nobody Knows",
+          "domain": "film",
+          "similarity": 0.85,
+          "genre": [
+            "drama"
+          ],
+          "country": "Japan",
+          "style": "arthouse"
+        },
+        {
+          "title": "After Life",
+          "domain": "film",
+          "similarity": 0.85,
+          "genre": [
+            "drama"
+          ],
+          "country": "Japan",
+          "style": "arthouse"
+        },
+        {
+          "title": "Capernaum",
+          "domain": "film",
+          "similarity": 0.8,
+          "genre": [
+            "drama"
+          ],
+          "country": "Lebanon",
+          "style": "arthouse"
+        },
+        {
+          "title": "Cold War",
+          "domain": "film",
+          "similarity": 0.8,
+          "genre": [
+            "drama",
+            "romance"
+          ],
+          "country": "Poland",
+          "style": "arthouse"
+        },
+        {
+          "title": "Happy as Lazzaro",
+          "domain": "film",
+          "similarity": 0.8,
+          "genre": [
+            "drama"
+          ],
+          "country": "Italy",
+          "style": "arthouse"
+        },
+        {
+          "title": "Transit",
+          "domain": "film",
+          "similarity": 0.8,
+          "genre": [
+            "drama"
+          ],
+          "country": "Germany",
+          "style": "arthouse"
+        },
+        {
+          "title": "Amour",
+          "domain": "film",
+          "similarity": 0.8,
+          "genre": [
+            "drama"
+          ],
+          "country": "France/Germany",
+          "style": "arthouse"
+        },
+        {
+          "title": "Hana-bi",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama",
+            "crime"
+          ],
+          "country": "Japan",
+          "style": "arthouse"
+        }
+      ],
+      "qloo_top_k": [
+        {
+          "title": "The Dark Interval: Letters on Loss, Grief, and Transformation (Modern Library Classics)",
+          "domain": "book",
+          "mean_affinity": 0.81319,
+          "cohort_id": "urn:entity:book:tag_cluster:1"
+        },
+        {
+          "title": "I'm Afraid of Men.",
+          "domain": "book",
+          "mean_affinity": 0.81319,
+          "cohort_id": "urn:entity:book:tag_cluster:1"
+        },
+        {
+          "title": "Some People Need Killing: A Memoir of Murder in My Country",
+          "domain": "book",
+          "mean_affinity": 0.81319,
+          "cohort_id": "urn:entity:book:tag_cluster:1"
+        },
+        {
+          "title": "Dear America: Notes of an Undocumented Citizen",
+          "domain": "book",
+          "mean_affinity": 0.818261,
+          "cohort_id": "urn:entity:book:subtype:urn:entity:book:1"
+        },
+        {
+          "title": "Frankissstein: A Love Story",
+          "domain": "book",
+          "mean_affinity": 0.818261,
+          "cohort_id": "urn:entity:book:subtype:urn:entity:book:1"
+        },
+        {
+          "title": "The Wisdom of Insecurity: A Message for an Age of Anxiety",
+          "domain": "book",
+          "mean_affinity": 0.818261,
+          "cohort_id": "urn:entity:book:subtype:urn:entity:book:1"
+        },
+        {
+          "title": "Circuit des Yeux",
+          "domain": "artist",
+          "mean_affinity": 0.89123,
+          "cohort_id": "urn:entity:artist:tag_cluster:1"
+        },
+        {
+          "title": "Mabe Fratti",
+          "domain": "artist",
+          "mean_affinity": 0.89123,
+          "cohort_id": "urn:entity:artist:tag_cluster:1"
+        },
+        {
+          "title": "CCFX",
+          "domain": "artist",
+          "mean_affinity": 0.89123,
+          "cohort_id": "urn:entity:artist:tag_cluster:1"
+        },
+        {
+          "title": "Fire Will Come",
+          "domain": "movie",
+          "mean_affinity": 0.875205,
+          "cohort_id": "urn:entity:movie:tag_cluster:1"
+        }
+      ],
+      "qloo_domains": [
+        "urn:entity:artist",
+        "urn:entity:movie",
+        "urn:entity:book",
+        "urn:entity:brand",
+        "urn:entity:podcast"
+      ],
+      "qloo_programme_bet": {
+        "primary": {
+          "domain": "book",
+          "cohort_name": "The Dark Interval: Letters on Loss, Grief, and Transformation (Modern Library Classics)",
+          "mean_affinity": 0.81319,
+          "member_count": 34,
+          "call_id": "local-c019"
+        },
+        "runner_up": {
+          "domain": "book",
+          "cohort_name": "Dear America: Notes of an Undocumented Citizen",
+          "mean_affinity": 0.818261,
+          "call_id": "local-c019"
+        },
+        "two_sided_signals": {
+          "programme_adjacency": 0.81319,
+          "adjacency_band": "High",
+          "adjacency_call_id": "local-c019",
+          "cohort_breadth": 1.0,
+          "breadth_band": "High",
+          "breadth_call_id": "local-c019",
+          "methodology_note": "Programme adjacency: mean affinity of cohort members against programme taste profile (Qloo /v2/insights). Cohort breadth: fraction of cohort members above Medium affinity threshold."
+        },
+        "why": "The strongest adjacent cultural group is in the book domain, featuring The Dark Interval: Letters on Loss, Grief, and Transformation (Modern Library Classics), I'm Afraid of Men., Some People Need Killing: A Memoir of Murder in My Country. This group shows very high cultural affinity (mean 0.81) with your programme's taste profile. Evidence dimensions: programme adjacency=0.81 (High), cohort breadth=1.00 (High).",
+        "cultural_bridge": "Your programme's taste profile (Buenos Aires, Traditional Mexican, Fine Dining) shares cultural signals with The Dark Interval: Letters on Loss, Grief, and Transformation (Modern Library Classics), I'm Afraid of Men..",
+        "geographic_signal": "Geographic analysis not available.",
+        "programming_direction": "Test programming that connects your existing Buenos Aires, Traditional Mexican, Fine Dining profile with the cultural world of The Dark Interval: Letters on Loss, Grief, and Transformation (Modern Library Classics), I'm Afraid of Men. through book-adjacent programming.",
+        "falsification_condition": "Do not continue this programming test if the book affinity signal cannot be reproduced across the next comparable programme analysis. Specifically: if a subsequent analysis of a similar programme does not produce a book cohort in the top-3 ranked opportunities, the hypothesis is rejected.",
+        "rejected_candidates": [
+          {
+            "cohort_id": "urn:entity:podcast:domain_group:7",
+            "domain": "urn:entity:podcast",
+            "reason": "insufficient_members",
+            "detail": "only 1 candidate(s) in this grouping; 2 are required before a cohort can be judged."
+          }
+        ],
+        "geography_call_id": null,
+        "data_status": "measured"
+      },
+      "qloo_taste_tags": [
+        "Buenos Aires",
+        "Traditional Mexican",
+        "Fine Dining",
+        "Brewpub",
+        "Chile En Nogada",
+        "Identifies as women-owned",
+        "Grill",
+        "Women's Studies",
+        "Expensive",
+        "Night Out"
+      ],
+      "metrics": {
+        "jaccard_at_k": 0.0,
+        "overlap_count": 0,
+        "overlap_titles": [],
+        "qloo_only_count": 10,
+        "qloo_only_titles": [
+          "I'm Afraid of Men.",
+          "Fire Will Come",
+          "The Dark Interval: Letters on Loss, Grief, and Transformation (Modern Library Classics)",
+          "Circuit des Yeux",
+          "Mabe Fratti",
+          "CCFX",
+          "Frankissstein: A Love Story",
+          "The Wisdom of Insecurity: A Message for an Age of Anxiety",
+          "Some People Need Killing: A Memoir of Murder in My Country",
+          "Dear America: Notes of an Undocumented Citizen"
+        ],
+        "baseline_only_count": 10,
+        "baseline_only_titles": [
+          "Still Walking",
+          "Transit",
+          "Cold War",
+          "Blue Is the Warmest Colour",
+          "Hana-bi",
+          "After Life",
+          "Happy as Lazzaro",
+          "Amour",
+          "Nobody Knows",
+          "Capernaum"
+        ],
+        "cross_domain_domains": [
+          "urn:entity:podcast",
+          "urn:entity:brand",
+          "urn:entity:artist",
+          "urn:entity:book",
+          "urn:entity:movie"
+        ],
+        "cross_domain_count": 5,
+        "domain_expansion": 6,
+        "qloo_insufficient": false,
+        "baseline_candidate_count": 10,
+        "qloo_candidate_count": 10
+      },
+      "qloo_success": true,
+      "qloo_error": null
+    },
+    {
+      "evaluation_context_id": "tyneside_newcastle_2026_10",
+      "venue": "Tyneside Cinema",
+      "city": "Newcastle",
+      "venue_type": "independent_community",
+      "source_url": "https://tynesidecinema.co.uk",
+      "verification_status": "UNVERIFIED",
+      "verification_notes": "Films are plausible but not scraped from live site",
+      "programme_films": [
+        {
+          "title": "Paddington 2",
+          "year": 2017,
+          "imdb_id": "tt4468740"
+        },
+        {
+          "title": "The Death of Stalin",
+          "year": 2017,
+          "imdb_id": "tt4686844"
+        },
+        {
+          "title": "The Souvenir",
+          "year": 2019,
+          "imdb_id": "tt6721508"
+        },
+        {
+          "title": "Ammonite",
+          "year": 2020,
+          "imdb_id": "tt7983894"
+        },
+        {
+          "title": "Saint Maud",
+          "year": 2019,
+          "imdb_id": "tt7545066"
+        }
+      ],
+      "baseline_top_k": [
+        {
+          "title": "Capernaum",
+          "domain": "film",
+          "similarity": 0.8,
+          "genre": [
+            "drama"
+          ],
+          "country": "Lebanon",
+          "style": "arthouse"
+        },
+        {
+          "title": "Happy as Lazzaro",
+          "domain": "film",
+          "similarity": 0.8,
+          "genre": [
+            "drama"
+          ],
+          "country": "Italy",
+          "style": "arthouse"
+        },
+        {
+          "title": "Transit",
+          "domain": "film",
+          "similarity": 0.8,
+          "genre": [
+            "drama"
+          ],
+          "country": "Germany",
+          "style": "arthouse"
+        },
+        {
+          "title": "Amour",
+          "domain": "film",
+          "similarity": 0.8,
+          "genre": [
+            "drama"
+          ],
+          "country": "France/Germany",
+          "style": "arthouse"
+        },
+        {
+          "title": "Paddington",
+          "domain": "film",
+          "similarity": 0.8,
+          "genre": [
+            "comedy",
+            "family"
+          ],
+          "country": "UK",
+          "style": "family"
+        },
+        {
+          "title": "Still Walking",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama"
+          ],
+          "country": "Japan",
+          "style": "arthouse"
+        },
+        {
+          "title": "Nobody Knows",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama"
+          ],
+          "country": "Japan",
+          "style": "arthouse"
+        },
+        {
+          "title": "After Life",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama"
+          ],
+          "country": "Japan",
+          "style": "arthouse"
+        },
+        {
+          "title": "The Piano Teacher",
+          "domain": "film",
+          "similarity": 0.65,
+          "genre": [
+            "drama"
+          ],
+          "country": "France/Austria",
+          "style": "arthouse"
+        },
+        {
+          "title": "Hereditary",
+          "domain": "film",
+          "similarity": 0.6,
+          "genre": [
+            "horror"
+          ],
+          "country": "USA",
+          "style": "art_horror"
+        }
+      ],
+      "qloo_top_k": [
+        {
+          "title": "My Thoughts Exactly",
+          "domain": "book",
+          "mean_affinity": 0.840801,
+          "cohort_id": "urn:entity:book:subtype:urn:entity:book:1"
+        },
+        {
+          "title": "Women Don't Owe You Pretty",
+          "domain": "book",
+          "mean_affinity": 0.840801,
+          "cohort_id": "urn:entity:book:subtype:urn:entity:book:1"
+        },
+        {
+          "title": "Show Me the Bodies: How We Let Grenfell Happen",
+          "domain": "book",
+          "mean_affinity": 0.840801,
+          "cohort_id": "urn:entity:book:subtype:urn:entity:book:1"
+        },
+        {
+          "title": "The Pink Line: Journeys Across the World's Queer Frontiers",
+          "domain": "book",
+          "mean_affinity": 0.845122,
+          "cohort_id": "urn:entity:book:tag_cluster:1"
+        },
+        {
+          "title": "Lost Cat",
+          "domain": "book",
+          "mean_affinity": 0.845122,
+          "cohort_id": "urn:entity:book:tag_cluster:1"
+        },
+        {
+          "title": "Losing It: Sex Education for the 21st Century",
+          "domain": "book",
+          "mean_affinity": 0.845122,
+          "cohort_id": "urn:entity:book:tag_cluster:1"
+        },
+        {
+          "title": "Matt Berninger",
+          "domain": "artist",
+          "mean_affinity": 0.889877,
+          "cohort_id": "urn:entity:artist:tag_cluster:1"
+        },
+        {
+          "title": "Christian Lee Hutson",
+          "domain": "artist",
+          "mean_affinity": 0.889877,
+          "cohort_id": "urn:entity:artist:tag_cluster:1"
+        },
+        {
+          "title": "Bryce Dessner",
+          "domain": "artist",
+          "mean_affinity": 0.889877,
+          "cohort_id": "urn:entity:artist:tag_cluster:1"
+        },
+        {
+          "title": "Film Stars Don't Die in Liverpool",
+          "domain": "movie",
+          "mean_affinity": 0.860884,
+          "cohort_id": "urn:entity:movie:tag_cluster:1"
+        }
+      ],
+      "qloo_domains": [
+        "urn:entity:artist",
+        "urn:entity:movie",
+        "urn:entity:book",
+        "urn:entity:brand"
+      ],
+      "qloo_programme_bet": {
+        "primary": {
+          "domain": "book",
+          "cohort_name": "My Thoughts Exactly",
+          "mean_affinity": 0.840801,
+          "member_count": 10,
+          "call_id": "local-c018"
+        },
+        "runner_up": {
+          "domain": "book",
+          "cohort_name": "The Pink Line: Journeys Across the World's Queer Frontiers",
+          "mean_affinity": 0.845122,
+          "call_id": "local-c018"
+        },
+        "two_sided_signals": {
+          "programme_adjacency": 0.840801,
+          "adjacency_band": "High",
+          "adjacency_call_id": "local-c018",
+          "cohort_breadth": 1.0,
+          "breadth_band": "High",
+          "breadth_call_id": "local-c018",
+          "methodology_note": "Programme adjacency: mean affinity of cohort members against programme taste profile (Qloo /v2/insights). Cohort breadth: fraction of cohort members above Medium affinity threshold."
+        },
+        "why": "The strongest adjacent cultural group is in the book domain, featuring My Thoughts Exactly, Women Don't Owe You Pretty, Show Me the Bodies: How We Let Grenfell Happen. This group shows very high cultural affinity (mean 0.84) with your programme's taste profile. Evidence dimensions: programme adjacency=0.84 (High), cohort breadth=1.00 (High).",
+        "cultural_bridge": "Your programme's taste profile (Academic, Comedian, Emotionally Intense) shares cultural signals with My Thoughts Exactly, Women Don't Owe You Pretty.",
+        "geographic_signal": "Geographic analysis not available.",
+        "programming_direction": "Test programming that connects your existing Academic, Comedian, Emotionally Intense profile with the cultural world of My Thoughts Exactly, Women Don't Owe You Pretty through book-adjacent programming.",
+        "falsification_condition": "Do not continue this programming test if the book affinity signal cannot be reproduced across the next comparable programme analysis. Specifically: if a subsequent analysis of a similar programme does not produce a book cohort in the top-3 ranked opportunities, the hypothesis is rejected.",
+        "rejected_candidates": [],
+        "geography_call_id": null,
+        "data_status": "measured"
+      },
+      "qloo_taste_tags": [
+        "Academic",
+        "Comedian",
+        "Emotionally Intense",
+        "british",
+        "Transformation",
+        "British Literature",
+        "Bucolic",
+        "Forbidden Love",
+        " folk",
+        "Politically Minded"
+      ],
+      "metrics": {
+        "jaccard_at_k": 0.0,
+        "overlap_count": 0,
+        "overlap_titles": [],
+        "qloo_only_count": 10,
+        "qloo_only_titles": [
+          "Matt Berninger",
+          "My Thoughts Exactly",
+          "Lost Cat",
+          "The Pink Line: Journeys Across the World's Queer Frontiers",
+          "Women Don't Owe You Pretty",
+          "Show Me the Bodies: How We Let Grenfell Happen",
+          "Bryce Dessner",
+          "Film Stars Don't Die in Liverpool",
+          "Christian Lee Hutson",
+          "Losing It: Sex Education for the 21st Century"
+        ],
+        "baseline_only_count": 10,
+        "baseline_only_titles": [
+          "Transit",
+          "Still Walking",
+          "Paddington",
+          "Hereditary",
+          "Happy as Lazzaro",
+          "After Life",
+          "The Piano Teacher",
+          "Amour",
+          "Nobody Knows",
+          "Capernaum"
+        ],
+        "cross_domain_domains": [
+          "urn:entity:book",
+          "urn:entity:movie",
+          "urn:entity:brand",
+          "urn:entity:artist"
+        ],
+        "cross_domain_count": 4,
+        "domain_expansion": 5,
+        "qloo_insufficient": false,
+        "baseline_candidate_count": 10,
+        "qloo_candidate_count": 10
+      },
+      "qloo_success": true,
+      "qloo_error": null
+    }
+  ]
+}

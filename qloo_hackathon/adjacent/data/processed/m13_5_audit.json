@@ -1,0 +1,293 @@
+{
+  "version": "M13.5",
+  "collection_date": "2026-10-08T07:07:17.605455+00:00",
+  "canonicalization_audit": {
+    "total_raw_entries": 337,
+    "unique_raw_titles": 337,
+    "unique_normalized_titles": 312,
+    "unique_canonical_films": 312,
+    "collapse_count": 25,
+    "reason_counts": {
+      "colon_normalize": 9,
+      "html_entity_decode": 25,
+      "edition_suffix_removed": 18,
+      "year_extracted": 13,
+      "director_prefix_removed": 6
+    },
+    "status_counts": {
+      "NEEDS_REVIEW": 1,
+      "VERIFIED": 21,
+      "YEAR_MISSING": 287,
+      "EVENT_OR_COMPOSITE": 28
+    },
+    "event_count": 28,
+    "event_examples": [
+      [
+        "Call Your Bluff [Shorts Programme]",
+        "event_pattern:Shorts\\s+Programme"
+      ],
+      [
+        "Christmas Pyjama Party",
+        "event_pattern:Pyjama\\s+Party"
+      ],
+      [
+        "Classic Horror Marathon",
+        "event_pattern:Marathon"
+      ],
+      [
+        "Dead Souls + Alex Cox Q&A",
+        "event_pattern:\\+"
+      ],
+      [
+        "Dead Souls + Alex Cox Q&amp;A",
+        "event_pattern:\\+"
+      ],
+      [
+        "Evangelion: Death (True)\u00b2 + The End of Evangelion : Double Feature",
+        "event_pattern:\\+"
+      ],
+      [
+        "Funeral Parade presents \"An Actor's Revenge\"",
+        "event_pattern:presents\\s+"
+      ],
+      [
+        "Funeral Parade presents \"The Long Day Closes\"",
+        "event_pattern:presents\\s+"
+      ],
+      [
+        "Funeral Parade presents &quot;An Actor&#039;s Revenge&quot;",
+        "event_pattern:presents\\s+"
+      ],
+      [
+        "Funeral Parade presents &quot;The Long Day Closes&quot;",
+        "event_pattern:presents\\s+"
+      ]
+    ],
+    "collapsed_groups_count": 25,
+    "collapsed_groups": {
+      "a very harold & kumar christmas|none": [
+        "A Very Harold & Kumar Christmas",
+        "A Very Harold &amp; Kumar Christmas"
+      ],
+      "angel's egg|none": [
+        "Angel&#039;s Egg",
+        "Angel's Egg"
+      ],
+      "bram stoker's dracula|none": [
+        "Bram Stoker&#039;s Dracula",
+        "Bram Stoker's Dracula"
+      ],
+      "dead souls|none": [
+        "Dead Souls + Alex Cox Q&A",
+        "Dead Souls + Alex Cox Q&amp;A"
+      ],
+      "don't look now|none": [
+        "Don&#039;t Look Now",
+        "Don't Look Now"
+      ],
+      "funeral parade presents \"an actor's revenge\"|none": [
+        "Funeral Parade presents \"An Actor's Revenge\"",
+        "Funeral Parade presents &quot;An Actor&#039;s Revenge&quot;"
+      ],
+      "funeral parade presents \"the long day closes\"|none": [
+        "Funeral Parade presents \"The Long Day Closes\"",
+        "Funeral Parade presents &quot;The Long Day Closes&quot;"
+      ],
+      "funeral parade presents a nightmare on elm street 2: freddy's revenge|none": [
+        "Funeral Parade presents A Nightmare on Elm Street 2: Freddy&#039;s Revenge",
+        "Funeral Parade presents A Nightmare on Elm Street 2: Freddy's Revenge"
+      ],
+      "have a gd trip presents welcome to hell & bag of suck double feature|none": [
+        "Have A Gd Trip presents Welcome To Hell & Bag of Suck Double Feature",
+        "Have A Gd Trip presents Welcome To Hell &amp; Bag of Suck Double Feature"
+      ],
+      "it's a wonderful life|none": [
+        "It&#039;s A Wonderful Life",
+        "It's A Wonderful Life"
+      ],
+      "it's such a beautiful day|none": [
+        "It&#039;s Such a Beautiful Day",
+        "It's Such a Beautiful Day"
+      ],
+      "jennifer's body|none": [
+        "Jennifer&#039;s Body",
+        "Jennifer's Body"
+      ],
+      "the devils|none": [
+        "Ken Russell&#039;s The Devils: The Director&#039;s Cut",
+        "Ken Russell's The Devils: The Director's Cut"
+      ],
+      "kingdom of heaven|none": [
+        "Kingdom of Heaven: Director&#039;s Cut",
+        "Kingdom of Heaven: Director's Cut"
+      ],
+      "national lampoon's christmas vacation|none": [
+        "National Lampoon&#039;s Christmas Vacation",
+        "National Lampoon's Christmas Vacation"
+      ],
+      "on her majesty's secret service|none": [
+        "On Her Majesty&#039;s Secret Service",
+        "On Her Majesty's Secret Service"
+      ],
+      "one flew over the cuckoo's nest|none": [
+        "One Flew Over The Cuckoo&#039;s Nest",
+        "One Flew Over The Cuckoo's Nest"
+      ],
+      "planes, trains & automobiles|none": [
+        "Planes, Trains & Automobiles",
+        "Planes, Trains &amp; Automobiles"
+      ],
+      "halloween (2007) \u2022 director's cut|2007": [
+        "Rob Zombie&#039;s Halloween (2007) \u2022 Director&#039;s Cut",
+        "Rob Zombie's Halloween (2007) \u2022 Director's Cut"
+      ],
+      "halloween ii (2009) \u2022 director's cut|2009": [
+        "Rob Zombie&#039;s Halloween II (2009) \u2022 Director&#039;s Cut",
+        "Rob Zombie's Halloween II (2009) \u2022 Director's Cut"
+      ]
+    },
+    "rule_examples": {
+      "colon_normalize": [
+        [
+          "2001 : A Space Odyssey",
+          "2001: A Space Odyssey"
+        ],
+        [
+          "Apocalypse Now : Final Cut",
+          "Apocalypse Now"
+        ],
+        [
+          "Blade Runner : The Final Cut",
+          "Blade Runner: The Final Cut"
+        ]
+      ],
+      "html_entity_decode": [
+        [
+          "A Very Harold &amp; Kumar Christmas",
+          "A Very Harold & Kumar Christmas"
+        ],
+        [
+          "Angel&#039;s Egg",
+          "Angel's Egg"
+        ],
+        [
+          "Bram Stoker&#039;s Dracula",
+          "Bram Stoker's Dracula"
+        ]
+      ],
+      "edition_suffix_removed": [
+        [
+          "Alien (Theatrical Cut)",
+          "Alien"
+        ],
+        [
+          "Amelie - 25th Anniversary",
+          "Amelie"
+        ],
+        [
+          "Apocalypse Now : Final Cut",
+          "Apocalypse Now"
+        ]
+      ],
+      "year_extracted": [
+        [
+          "Black Christmas (1974)",
+          "Black Christmas"
+        ],
+        [
+          "Crash (1996)",
+          "Crash"
+        ],
+        [
+          "Frankenstein (1931) and The Bride of Frankenstein (1935)",
+          "Frankenstein (1931) and The Bride of Frankenstein"
+        ]
+      ],
+      "director_prefix_removed": [
+        [
+          "Ken Russell&#039;s The Devils: The Director&#039;s Cut",
+          "The Devils"
+        ],
+        [
+          "Ken Russell's The Devils: The Director's Cut",
+          "The Devils"
+        ],
+        [
+          "Rob Zombie&#039;s Halloween (2007) \u2022 Director&#039;s Cut",
+          "Halloween (2007) \u2022 Director's Cut"
+        ]
+      ]
+    }
+  },
+  "year_scraping": {
+    "attempted": 269,
+    "found": 265,
+    "failed": 4,
+    "errors": []
+  },
+  "resolution": {
+    "resolved": 208,
+    "ambiguous": 11,
+    "mismatch": 37,
+    "unresolved": 0
+  },
+  "linking": {
+    "linked": 763,
+    "unlinked": 0
+  },
+  "benchmark_stats": {
+    "total_observations": 763,
+    "non_event_observations": 726,
+    "unique_canonical_films": 289,
+    "verified_films": 231,
+    "film_verification_rate": 0.7993,
+    "screenings_with_verified_entity": 610,
+    "screening_verification_rate": 0.8402,
+    "screenings_with_prediction_time_feature": 0,
+    "screenings_with_future_feature": 610,
+    "model_target_1": 19,
+    "model_target_null": 707,
+    "coverage_by_lead_time": {
+      "30d+": {
+        "total": 476,
+        "with_entity": 406
+      },
+      "8-14d": {
+        "total": 54,
+        "with_entity": 40
+      },
+      "15-30d": {
+        "total": 139,
+        "with_entity": 116
+      },
+      "1-3d": {
+        "total": 16,
+        "with_entity": 14
+      },
+      "4-7d": {
+        "total": 33,
+        "with_entity": 29
+      },
+      "0-24h": {
+        "total": 8,
+        "with_entity": 5
+      }
+    },
+    "high_frequency_films": 46,
+    "high_frequency_verified": 35
+  },
+  "film_stats": {
+    "total": 312,
+    "verified": 284,
+    "year_missing": 4,
+    "events": 23,
+    "needs_review": 1
+  },
+  "sold_out_stats": {
+    "total": 763,
+    "sold_out": 24,
+    "available": 739,
+    "unknown": 0,
+    "sold_out_rate": 0.0315
+  }
+}

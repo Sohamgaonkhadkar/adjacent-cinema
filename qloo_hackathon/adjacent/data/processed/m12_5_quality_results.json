@@ -1,0 +1,596 @@
+{
+  "evaluation_date": "2026-10-07T16:42:21.201583+00:00",
+  "evaluation_version": "M12.5",
+  "results": [
+    {
+      "context_id": "genesis_london_2026_10",
+      "venue": "Genesis Cinema",
+      "venue_type": "INDEPENDENT",
+      "programme_films": [
+        {
+          "title": "American History X",
+          "year": 1998,
+          "imdb_id": "tt0120586"
+        },
+        {
+          "title": "Rosemary's Baby",
+          "year": 1968,
+          "imdb_id": "tt0063522"
+        },
+        {
+          "title": "Halloween",
+          "year": 1978,
+          "imdb_id": "tt0077651"
+        },
+        {
+          "title": "Parasite",
+          "year": 2019,
+          "imdb_id": "tt6751668"
+        },
+        {
+          "title": "The Substance",
+          "year": 2024,
+          "imdb_id": "tt17526714"
+        },
+        {
+          "title": "Conclave",
+          "year": 2024,
+          "imdb_id": "tt20215234"
+        }
+      ],
+      "qloo_success": true,
+      "qloo_coverage": {
+        "total": 6,
+        "resolved": 6,
+        "resolution_rate": 1.0
+      },
+      "programme_names": [
+        "American History X",
+        "Rosemary's Baby",
+        "Halloween",
+        "Parasite",
+        "The Substance",
+        "Conclave"
+      ],
+      "raw_count": 200,
+      "evidence_qualified": 153,
+      "feasibility_qualified": 98,
+      "programme_fit_qualified": 98,
+      "classification_counts": {
+        "STRONG": 51,
+        "PLAUSIBLE": 47,
+        "REJECT": 102,
+        "WEAK": 0
+      },
+      "top_5": [
+        {
+          "entity_title": "Unloved",
+          "domain": "artist",
+          "affinity": 0.9007,
+          "qualifying_members": 48,
+          "total_members": 48,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "qloo_call_id": "local-c020",
+          "programme_films": [
+            "American History X",
+            "Rosemary's Baby",
+            "Halloween"
+          ],
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "entity_fit": 2,
+          "event_feasibility": 2,
+          "programme_fit": 2,
+          "testability": 2,
+          "differentiation": 2,
+          "total_score": 10,
+          "classification": "STRONG",
+          "feasibility": {
+            "feasible": true,
+            "format": "Film screening + live music performance/DJ set inspired by the programme's aesthetic",
+            "rationale": "The artist 'Unloved' has strong cultural affinity with the programme. A live music event would attract the same audience.",
+            "rejection_reason": null
+          },
+          "programme_fit_details": {
+            "programme_fit": 2,
+            "fit_signal": "Very high cultural affinity with programme",
+            "support_ratio": 1.0,
+            "qualifying_members": 48,
+            "total_members": 48
+          }
+        },
+        {
+          "entity_title": "What Remains",
+          "domain": "tv_show",
+          "affinity": 0.956,
+          "qualifying_members": 50,
+          "total_members": 50,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "qloo_call_id": "local-c024",
+          "programme_films": [
+            "American History X",
+            "Rosemary's Baby",
+            "Halloween"
+          ],
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "entity_fit": 2,
+          "event_feasibility": 2,
+          "programme_fit": 2,
+          "testability": 2,
+          "differentiation": 1,
+          "total_score": 9,
+          "classification": "STRONG",
+          "feasibility": {
+            "feasible": true,
+            "format": "Themed film screening season inspired by the show's audience and themes",
+            "rationale": "The TV show 'What Remains' attracts an audience with similar cultural tastes. A themed film season would reach them.",
+            "rejection_reason": null
+          },
+          "programme_fit_details": {
+            "programme_fit": 2,
+            "fit_signal": "Very high cultural affinity with programme",
+            "support_ratio": 1.0,
+            "qualifying_members": 50,
+            "total_members": 50
+          }
+        },
+        {
+          "entity_title": "Retribution",
+          "domain": "tv_show",
+          "affinity": 0.9548,
+          "qualifying_members": 50,
+          "total_members": 50,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "qloo_call_id": "local-c024",
+          "programme_films": [
+            "American History X",
+            "Rosemary's Baby",
+            "Halloween"
+          ],
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "entity_fit": 2,
+          "event_feasibility": 2,
+          "programme_fit": 2,
+          "testability": 2,
+          "differentiation": 1,
+          "total_score": 9,
+          "classification": "STRONG",
+          "feasibility": {
+            "feasible": true,
+            "format": "Themed film screening season inspired by the show's audience and themes",
+            "rationale": "The TV show 'Retribution' attracts an audience with similar cultural tastes. A themed film season would reach them.",
+            "rejection_reason": null
+          },
+          "programme_fit_details": {
+            "programme_fit": 2,
+            "fit_signal": "Very high cultural affinity with programme",
+            "support_ratio": 1.0,
+            "qualifying_members": 50,
+            "total_members": 50
+          }
+        },
+        {
+          "entity_title": "Somebody",
+          "domain": "tv_show",
+          "affinity": 0.9544,
+          "qualifying_members": 50,
+          "total_members": 50,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "qloo_call_id": "local-c024",
+          "programme_films": [
+            "American History X",
+            "Rosemary's Baby",
+            "Halloween"
+          ],
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "entity_fit": 2,
+          "event_feasibility": 2,
+          "programme_fit": 2,
+          "testability": 2,
+          "differentiation": 1,
+          "total_score": 9,
+          "classification": "STRONG",
+          "feasibility": {
+            "feasible": true,
+            "format": "Themed film screening season inspired by the show's audience and themes",
+            "rationale": "The TV show 'Somebody' attracts an audience with similar cultural tastes. A themed film season would reach them.",
+            "rejection_reason": null
+          },
+          "programme_fit_details": {
+            "programme_fit": 2,
+            "fit_signal": "Very high cultural affinity with programme",
+            "support_ratio": 1.0,
+            "qualifying_members": 50,
+            "total_members": 50
+          }
+        },
+        {
+          "entity_title": "Harlan Coben's Shelter",
+          "domain": "tv_show",
+          "affinity": 0.9526,
+          "qualifying_members": 50,
+          "total_members": 50,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "qloo_call_id": "local-c024",
+          "programme_films": [
+            "American History X",
+            "Rosemary's Baby",
+            "Halloween"
+          ],
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "entity_fit": 2,
+          "event_feasibility": 2,
+          "programme_fit": 2,
+          "testability": 2,
+          "differentiation": 1,
+          "total_score": 9,
+          "classification": "STRONG",
+          "feasibility": {
+            "feasible": true,
+            "format": "Themed film screening season inspired by the show's audience and themes",
+            "rationale": "The TV show 'Harlan Coben's Shelter' attracts an audience with similar cultural tastes. A themed film season would reach them.",
+            "rejection_reason": null
+          },
+          "programme_fit_details": {
+            "programme_fit": 2,
+            "fit_signal": "Very high cultural affinity with programme",
+            "support_ratio": 1.0,
+            "qualifying_members": 50,
+            "total_members": 50
+          }
+        }
+      ],
+      "programme_bet": {
+        "entity": "Unloved",
+        "domain": "artist",
+        "affinity": 0.9007,
+        "qualifying_members": 48,
+        "supporting_films": [
+          "American History X",
+          "Rosemary's Baby",
+          "Halloween"
+        ],
+        "why": "The artist 'Unloved' has strong cultural affinity (0.901) with 48 qualifying members. The artist 'Unloved' has strong cultural affinity with the programme. A live music event would attract the same audience.",
+        "experiment": "Film screening + live music performance/DJ set inspired by the programme's aesthetic",
+        "hypothesis": "A cinema with this programming profile should test a artist-adjacent event because 'Unloved' shares cultural DNA with the programme.",
+        "success_criterion": "Event attracts \u226520 attendees with \u226550% new-to-venue visitors, or generates \u22653 positive audience responses indicating cultural resonance.",
+        "falsification": "This hypothesis is rejected if: (1) a similar artist event attracts <10 attendees, or (2) audience feedback indicates no cultural connection to the programme, or (3) a subsequent programme analysis fails to surface a similar artist opportunity."
+      },
+      "alternatives": [
+        {
+          "entity": "What Remains",
+          "domain": "tv_show",
+          "score": 9,
+          "affinity": 0.956,
+          "reason_not_selected": "Lower total score (9 vs 10)"
+        },
+        {
+          "entity": "Retribution",
+          "domain": "tv_show",
+          "score": 9,
+          "affinity": 0.9548,
+          "reason_not_selected": "Lower total score (9 vs 10)"
+        },
+        {
+          "entity": "Somebody",
+          "domain": "tv_show",
+          "score": 9,
+          "affinity": 0.9544,
+          "reason_not_selected": "Lower total score (9 vs 10)"
+        },
+        {
+          "entity": "Harlan Coben's Shelter",
+          "domain": "tv_show",
+          "score": 9,
+          "affinity": 0.9526,
+          "reason_not_selected": "Lower total score (9 vs 10)"
+        }
+      ]
+    },
+    {
+      "context_id": "prince_charles_london_2026_10",
+      "venue": "Prince Charles Cinema",
+      "venue_type": "INDEPENDENT",
+      "programme_films": [
+        {
+          "title": "The Thing",
+          "year": 1982,
+          "imdb_id": "tt0084787"
+        },
+        {
+          "title": "The Shining",
+          "year": 1980,
+          "imdb_id": "tt0081505"
+        },
+        {
+          "title": "Suspiria",
+          "year": 1977,
+          "imdb_id": "tt0076786"
+        },
+        {
+          "title": "Perfect Blue",
+          "year": 1997,
+          "imdb_id": "tt0156887"
+        },
+        {
+          "title": "Akira",
+          "year": 1988,
+          "imdb_id": "tt0094625"
+        },
+        {
+          "title": "Possession",
+          "year": 1981,
+          "imdb_id": "tt0082933"
+        },
+        {
+          "title": "Halloween",
+          "year": 1978,
+          "imdb_id": "tt0077651"
+        },
+        {
+          "title": "Rosemary's Baby",
+          "year": 1968,
+          "imdb_id": "tt0063522"
+        }
+      ],
+      "qloo_success": true,
+      "qloo_coverage": {
+        "total": 8,
+        "resolved": 8,
+        "resolution_rate": 1.0
+      },
+      "programme_names": [
+        "The Thing",
+        "The Shining",
+        "Suspiria",
+        "Perfect Blue",
+        "Akira",
+        "Possession",
+        "Halloween",
+        "Rosemary's Baby"
+      ],
+      "raw_count": 150,
+      "evidence_qualified": 150,
+      "feasibility_qualified": 100,
+      "programme_fit_qualified": 100,
+      "classification_counts": {
+        "STRONG": 50,
+        "PLAUSIBLE": 50,
+        "REJECT": 50,
+        "WEAK": 0
+      },
+      "top_5": [
+        {
+          "entity_title": "What Remains",
+          "domain": "tv_show",
+          "affinity": 0.9596,
+          "qualifying_members": 50,
+          "total_members": 50,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "qloo_call_id": "local-c026",
+          "programme_films": [
+            "The Thing",
+            "The Shining",
+            "Suspiria"
+          ],
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "entity_fit": 2,
+          "event_feasibility": 2,
+          "programme_fit": 2,
+          "testability": 2,
+          "differentiation": 1,
+          "total_score": 9,
+          "classification": "STRONG",
+          "feasibility": {
+            "feasible": true,
+            "format": "Themed film screening season inspired by the show's audience and themes",
+            "rationale": "The TV show 'What Remains' attracts an audience with similar cultural tastes. A themed film season would reach them.",
+            "rejection_reason": null
+          },
+          "programme_fit_details": {
+            "programme_fit": 2,
+            "fit_signal": "Very high cultural affinity with programme",
+            "support_ratio": 1.0,
+            "qualifying_members": 50,
+            "total_members": 50
+          }
+        },
+        {
+          "entity_title": "Harlan Coben's Shelter",
+          "domain": "tv_show",
+          "affinity": 0.9571,
+          "qualifying_members": 50,
+          "total_members": 50,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "qloo_call_id": "local-c026",
+          "programme_films": [
+            "The Thing",
+            "The Shining",
+            "Suspiria"
+          ],
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "entity_fit": 2,
+          "event_feasibility": 2,
+          "programme_fit": 2,
+          "testability": 2,
+          "differentiation": 1,
+          "total_score": 9,
+          "classification": "STRONG",
+          "feasibility": {
+            "feasible": true,
+            "format": "Themed film screening season inspired by the show's audience and themes",
+            "rationale": "The TV show 'Harlan Coben's Shelter' attracts an audience with similar cultural tastes. A themed film season would reach them.",
+            "rejection_reason": null
+          },
+          "programme_fit_details": {
+            "programme_fit": 2,
+            "fit_signal": "Very high cultural affinity with programme",
+            "support_ratio": 1.0,
+            "qualifying_members": 50,
+            "total_members": 50
+          }
+        },
+        {
+          "entity_title": "Retribution",
+          "domain": "tv_show",
+          "affinity": 0.957,
+          "qualifying_members": 50,
+          "total_members": 50,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "qloo_call_id": "local-c026",
+          "programme_films": [
+            "The Thing",
+            "The Shining",
+            "Suspiria"
+          ],
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "entity_fit": 2,
+          "event_feasibility": 2,
+          "programme_fit": 2,
+          "testability": 2,
+          "differentiation": 1,
+          "total_score": 9,
+          "classification": "STRONG",
+          "feasibility": {
+            "feasible": true,
+            "format": "Themed film screening season inspired by the show's audience and themes",
+            "rationale": "The TV show 'Retribution' attracts an audience with similar cultural tastes. A themed film season would reach them.",
+            "rejection_reason": null
+          },
+          "programme_fit_details": {
+            "programme_fit": 2,
+            "fit_signal": "Very high cultural affinity with programme",
+            "support_ratio": 1.0,
+            "qualifying_members": 50,
+            "total_members": 50
+          }
+        },
+        {
+          "entity_title": "American Gothic",
+          "domain": "tv_show",
+          "affinity": 0.9554,
+          "qualifying_members": 50,
+          "total_members": 50,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "qloo_call_id": "local-c026",
+          "programme_films": [
+            "The Thing",
+            "The Shining",
+            "Suspiria"
+          ],
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "entity_fit": 2,
+          "event_feasibility": 2,
+          "programme_fit": 2,
+          "testability": 2,
+          "differentiation": 1,
+          "total_score": 9,
+          "classification": "STRONG",
+          "feasibility": {
+            "feasible": true,
+            "format": "Themed film screening season inspired by the show's audience and themes",
+            "rationale": "The TV show 'American Gothic' attracts an audience with similar cultural tastes. A themed film season would reach them.",
+            "rejection_reason": null
+          },
+          "programme_fit_details": {
+            "programme_fit": 2,
+            "fit_signal": "Very high cultural affinity with programme",
+            "support_ratio": 1.0,
+            "qualifying_members": 50,
+            "total_members": 50
+          }
+        },
+        {
+          "entity_title": "Requiem",
+          "domain": "tv_show",
+          "affinity": 0.9553,
+          "qualifying_members": 50,
+          "total_members": 50,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "qloo_call_id": "local-c026",
+          "programme_films": [
+            "The Thing",
+            "The Shining",
+            "Suspiria"
+          ],
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "entity_fit": 2,
+          "event_feasibility": 2,
+          "programme_fit": 2,
+          "testability": 2,
+          "differentiation": 1,
+          "total_score": 9,
+          "classification": "STRONG",
+          "feasibility": {
+            "feasible": true,
+            "format": "Themed film screening season inspired by the show's audience and themes",
+            "rationale": "The TV show 'Requiem' attracts an audience with similar cultural tastes. A themed film season would reach them.",
+            "rejection_reason": null
+          },
+          "programme_fit_details": {
+            "programme_fit": 2,
+            "fit_signal": "Very high cultural affinity with programme",
+            "support_ratio": 1.0,
+            "qualifying_members": 50,
+            "total_members": 50
+          }
+        }
+      ],
+      "programme_bet": {
+        "entity": "What Remains",
+        "domain": "tv_show",
+        "affinity": 0.9596,
+        "qualifying_members": 50,
+        "supporting_films": [
+          "The Thing",
+          "The Shining",
+          "Suspiria"
+        ],
+        "why": "The tv_show 'What Remains' has strong cultural affinity (0.960) with 50 qualifying members. The TV show 'What Remains' attracts an audience with similar cultural tastes. A themed film season would reach them.",
+        "experiment": "Themed film screening season inspired by the show's audience and themes",
+        "hypothesis": "A cinema with this programming profile should test a tv_show-adjacent event because 'What Remains' shares cultural DNA with the programme.",
+        "success_criterion": "Event attracts \u226520 attendees with \u226550% new-to-venue visitors, or generates \u22653 positive audience responses indicating cultural resonance.",
+        "falsification": "This hypothesis is rejected if: (1) a similar tv_show event attracts <10 attendees, or (2) audience feedback indicates no cultural connection to the programme, or (3) a subsequent programme analysis fails to surface a similar tv_show opportunity."
+      },
+      "alternatives": [
+        {
+          "entity": "Harlan Coben's Shelter",
+          "domain": "tv_show",
+          "score": 9,
+          "affinity": 0.9571,
+          "reason_not_selected": "Lower total score (9 vs 9)"
+        },
+        {
+          "entity": "Retribution",
+          "domain": "tv_show",
+          "score": 9,
+          "affinity": 0.957,
+          "reason_not_selected": "Lower total score (9 vs 9)"
+        },
+        {
+          "entity": "American Gothic",
+          "domain": "tv_show",
+          "score": 9,
+          "affinity": 0.9554,
+          "reason_not_selected": "Lower total score (9 vs 9)"
+        },
+        {
+          "entity": "Requiem",
+          "domain": "tv_show",
+          "score": 9,
+          "affinity": 0.9553,
+          "reason_not_selected": "Lower total score (9 vs 9)"
+        }
+      ]
+    }
+  ]
+}

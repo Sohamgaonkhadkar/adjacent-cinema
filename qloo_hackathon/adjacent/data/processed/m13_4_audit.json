@@ -1,0 +1,176 @@
+{
+  "version": "M13.4",
+  "collection_date": "2026-10-07T21:46:22.474615+00:00",
+  "resolution_audit": {
+    "film_level": {
+      "total_unique_films": 337,
+      "total_resolutions": 337,
+      "verified": 3,
+      "ambiguous": 221,
+      "mismatch": 112,
+      "unresolved": 1,
+      "resolution_rate": 0.0089
+    },
+    "screening_level": {
+      "total_screenings": 763,
+      "screenings_with_verified_entity": 9,
+      "screenings_unresolved": 754,
+      "screenings_with_prediction_time_feature": 0,
+      "screenings_with_future_feature": 9,
+      "screening_resolution_rate": 0.0118,
+      "prediction_time_feature_rate": 0.0
+    }
+  },
+  "snapshot_analysis": {
+    "single_snapshot_available": 0,
+    "single_snapshot_sold_out": 0,
+    "single_snapshot_unknown": 0,
+    "available_to_sold_out_transitions": 1,
+    "multi_snapshot_no_change": 762,
+    "total_multi_snapshot": 763,
+    "total_state_transitions": 1,
+    "transitions": [
+      {
+        "observation_id": "4a8406788da52cdb",
+        "film_title": "Halloween (1978)",
+        "snapshots": 6
+      }
+    ]
+  },
+  "bias_audit": {
+    "total_observations": 763,
+    "sold_out_total": 24,
+    "available_total": 739,
+    "unknown_total": 0,
+    "by_lead_time_bucket": {
+      "30d+": {
+        "total": 492,
+        "sold_out": 2,
+        "available": 490
+      },
+      "8-14d": {
+        "total": 55,
+        "sold_out": 3,
+        "available": 52
+      },
+      "15-30d": {
+        "total": 155,
+        "sold_out": 13,
+        "available": 142
+      },
+      "1-3d": {
+        "total": 17,
+        "sold_out": 3,
+        "available": 14
+      },
+      "4-7d": {
+        "total": 35,
+        "sold_out": 3,
+        "available": 32
+      },
+      "0-24h": {
+        "total": 9,
+        "sold_out": 0,
+        "available": 9
+      }
+    },
+    "by_day_of_week": {
+      "Friday": {
+        "total": 102,
+        "sold_out": 5
+      },
+      "Monday": {
+        "total": 106,
+        "sold_out": 5
+      },
+      "Saturday": {
+        "total": 115,
+        "sold_out": 8
+      },
+      "Sunday": {
+        "total": 109,
+        "sold_out": 2
+      },
+      "Thursday": {
+        "total": 115,
+        "sold_out": 2
+      },
+      "Tuesday": {
+        "total": 111,
+        "sold_out": 2
+      },
+      "Wednesday": {
+        "total": 105,
+        "sold_out": 0
+      }
+    },
+    "by_format": {
+      "none": {
+        "total": 350,
+        "sold_out": 11
+      },
+      "35mm": {
+        "total": 187,
+        "sold_out": 7
+      },
+      "4K": {
+        "total": 105,
+        "sold_out": 2
+      },
+      "SUB": {
+        "total": 20,
+        "sold_out": 0
+      },
+      "HOH": {
+        "total": 12,
+        "sold_out": 0
+      },
+      "70mm": {
+        "total": 12,
+        "sold_out": 0
+      },
+      "SING-ALONG": {
+        "total": 44,
+        "sold_out": 0
+      },
+      "LIVE-SCORE": {
+        "total": 7,
+        "sold_out": 0
+      },
+      "1-MEM": {
+        "total": 11,
+        "sold_out": 3
+      },
+      "Q-A": {
+        "total": 2,
+        "sold_out": 0
+      },
+      "INTRO": {
+        "total": 13,
+        "sold_out": 1
+      }
+    },
+    "by_month": {
+      "2026-12": {
+        "total": 270,
+        "sold_out": 1
+      },
+      "2026-11": {
+        "total": 282,
+        "sold_out": 3
+      },
+      "2026-10": {
+        "total": 211,
+        "sold_out": 20
+      }
+    },
+    "note": "3.0% sold_out rate is NOT evidence that demand is 3%. It is the fraction of currently observed screenings reported sold out at collection time."
+  },
+  "sold_out_stats": {
+    "total": 763,
+    "sold_out": 24,
+    "available": 739,
+    "unknown": 0,
+    "sold_out_rate": 0.0315
+  }
+}

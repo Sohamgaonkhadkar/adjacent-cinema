@@ -1,0 +1,95 @@
+{
+  "M9_QLOO_VALIDATION_STATUS": "INVALID",
+  "INVALIDATION_REASON": "M9 validation only checked if Qloo returned a result, NOT whether the result was the correct historical film. Evidence shows systematic mismatches: historical titles mapped to unrelated modern films with similar names.",
+  "INVALIDATION_DATE": "2026-10-06",
+  "INVALIDATED_BY": "M10 Data Integrity Review",
+  "ORIGINAL_TIMESTAMP": "2026-10-06T17:16:18.277298",
+  "ORIGINAL_CLAIM": {
+    "total_films_tested": 27,
+    "total_films_found": 27,
+    "qloo_hit_rate_claimed": 1.0,
+    "INVALID": true
+  },
+  "EVIDENCE_OF_MISMATCHES": [
+    {
+      "historical_film": "Work (1915)",
+      "qloo_returned": "Dirty Work",
+      "status": "MISMATCH",
+      "evidence": "Different film entirely"
+    },
+    {
+      "historical_film": "Careers (1929)",
+      "qloo_returned": "Blackmail",
+      "status": "MISMATCH",
+      "evidence": "Different film entirely"
+    },
+    {
+      "historical_film": "Golem, Le (1936)",
+      "qloo_returned": "The Limehouse Golem",
+      "status": "MISMATCH",
+      "evidence": "The Limehouse Golem is a 2016 film, not the 1936 French film"
+    },
+    {
+      "historical_film": "Dikkie wordt verdacht (XX)",
+      "qloo_returned": "20th Century Women",
+      "status": "MISMATCH",
+      "evidence": "Completely unrelated films"
+    },
+    {
+      "historical_film": "Toller Einfall, Ein (1932)",
+      "qloo_returned": "Herbie: Fully Loaded",
+      "status": "MISMATCH",
+      "evidence": "Completely unrelated films"
+    },
+    {
+      "historical_film": "Liefdesstrijd (1915)",
+      "qloo_returned": "1915: Legend of the Gurkhas",
+      "status": "MISMATCH",
+      "evidence": "Different film, year coincidence in title"
+    },
+    {
+      "historical_film": "Lady in ermine, The (1927)",
+      "qloo_returned": "Portrait of a Lady on Fire",
+      "status": "MISMATCH",
+      "evidence": "Different film entirely (2019 vs 1927)"
+    },
+    {
+      "historical_film": "Calino et le petit restaurant très bien (1913)",
+      "qloo_returned": "The Good, the Bad and the Ugly",
+      "status": "MISMATCH",
+      "evidence": "Completely unrelated films"
+    },
+    {
+      "historical_film": "Satan Opium (1915)",
+      "qloo_returned": "The Omen",
+      "status": "MISMATCH",
+      "evidence": "Different film entirely"
+    },
+    {
+      "historical_film": "Lille Lise let-paa-taa (1924)",
+      "qloo_returned": "Venom: Let There Be Carnage",
+      "status": "MISMATCH",
+      "evidence": "Completely unrelated films"
+    },
+    {
+      "historical_film": "Man who played square, The (1924)",
+      "qloo_returned": "The Girl Who Played with Fire",
+      "status": "MISMATCH",
+      "evidence": "Different film entirely"
+    },
+    {
+      "historical_film": "Eddie Polo im Wespennest (1928)",
+      "qloo_returned": "Salmon Fishing in the Yemen",
+      "status": "MISMATCH",
+      "evidence": "Completely unrelated films"
+    }
+  ],
+  "CORRECTED_ASSESSMENT": {
+    "actual_verified_matches": 0,
+    "actual_mismatches": 12,
+    "actual_ambiguous": 0,
+    "actual_hit_rate": 0.0,
+    "conclusion": "Qloo search returns fuzzy matches to unrelated modern films. The 100% hit rate claim was false. M9 Qloo validation is INVALID and must not be used as evidence."
+  },
+  "SECURITY_NOTE": "API key was hardcoded in source code. Key has been removed. Treat key as compromised."
+}

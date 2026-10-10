@@ -1,0 +1,156 @@
+cd backend && python3 -m app.cli run --fixture fixtures/insufficient_evidence.json --mock
+========================================================================================
+ADJACENT — MILESTONE 1 (FIXTURE SPINE)
+========================================================================================
+SCENARIO      insufficient_evidence
+FIXTURE       /home/user/qloo_hackathon/adjacent/backend/tests/fixtures/insufficient_evidence.json
+DESCRIPTION   Deliberately sparse evidence: one resolved title, no tag above Medium, no cohort clearing the evidence threshold, and too few heatmap cells. Used to prove that no recommendation is fabricated when Qloo has nothing.
+
+!! DATA STATUS: FIXTURE — SYNTHETIC, HAND-AUTHORED, NOT MEASURED QLOO OUTPUT !!
+!! SYNTHETIC FIXTURE DATA — hand-authored to match documented Qloo response shapes. NOT measured Qloo output and must never be presented as such.
+!! This run made no live Qloo call. Every affinity below is a fixture value. !!
+
+----------------------------------------------------------------------------------------
+PROGRAMME
+----------------------------------------------------------------------------------------
+items: 3   (source of the item list: the fixture file)
+   1. Obscure Local Shorts Reel 1 (—)  [resolved]   imdb=—   → 99999999-9999-4999-8999-000000000001
+   2. Obscure Local Shorts Reel 2 (—)  [not in Qloo]   imdb=—   → excluded from every signal below
+   3. Untitled Work In Progress (—)  [not in Qloo]   imdb=—   → excluded from every signal below
+
+----------------------------------------------------------------------------------------
+RESOLUTION
+----------------------------------------------------------------------------------------
+endpoint /entities · calls: m1-insufficient_evidence-c001
+  resolved 1 / 3 · unresolved 2
+  unresolved titles (shown, never guessed): Obscure Local Shorts Reel 2, Untitled Work In Progress
+  evidence: insufficient_resolved_titles · sufficient=False · Only 1 of your titles could be identified in Qloo. With fewer than 3, the taste profile is too thin to be meaningful. Please check the unresolved titles or add more to your programme.
+
+----------------------------------------------------------------------------------------
+TASTE PROFILE
+----------------------------------------------------------------------------------------
+endpoint /v2/insights · filter.type=urn:tag · signal.interests.entities=<1 resolved id(s)>
+  call: m1-insufficient_evidence-c002
+  scored tags: 3 · at/above High (0.6): 0
+  0.42  low        Experimental                   pop=0.02  urn:tag:keyword:media:experimental
+  0.38  low        Local History                  pop=0.01  urn:tag:keyword:media:local_history
+  0.31  low        Amateur                        pop=0.01  urn:tag:keyword:media:amateur
+  evidence: no_tags_above_medium · sufficient=False
+
+----------------------------------------------------------------------------------------
+CANDIDATE COHORTS (construction — scores are not shown at this stage)
+----------------------------------------------------------------------------------------
+All scoring happens once, in the RANKED COHORTS operation below. Showing scores here
+as well would invite comparing numbers produced by different calls.
+  expanded urn:entity:artist: 3 candidate(s)  [call m1-insufficient_evidence-c003]
+  expanded urn:entity:book: 0 candidate(s)  [call m1-insufficient_evidence-c006]
+  expanded urn:entity:brand: 0 candidate(s)  [call m1-insufficient_evidence-c007]
+  expanded urn:entity:movie: 0 candidate(s)  [call m1-insufficient_evidence-c004]
+  expanded urn:entity:tv_show: 0 candidate(s)  [call m1-insufficient_evidence-c005]
+
+cohorts constructed: 2 across 1 domain(s): urn:entity:artist
+
+   1. urn:entity:artist:subtype:musician:2   kind=subtype_group   members=2
+      why grouped: 2 artist entities returned for this programme share the Qloo subtype 'musician' — grouped because the subtype is a property Qloo returned for every member, not a classification we applied.
+      members: Example Tiny Label Artist, Example Open Mic Regular
+      evidence rule: shared_subtype_group · call m1-insufficient_evidence-c003
+
+   2. urn:entity:artist:domain_group:1   kind=singleton_group   members=1
+      why grouped: a single artist entity was returned that shares no Qloo tag and no Qloo subtype with another candidate — kept as a candidate cohort so it can be explicitly rejected as insufficient_members rather than silently dropped.
+      members: Example Local Ensemble
+      evidence rule: domain_grouping_fallback · call m1-insufficient_evidence-c003
+
+----------------------------------------------------------------------------------------
+RANKED COHORTS (one logical operation)
+----------------------------------------------------------------------------------------
+operation: m1-insufficient_evidence-c008   logical operations of this kind recorded: 1  (PASS — exactly 1 expected)
+scoring contexts: 1 · scoring calls: 1 · cohorts scored: 2 · entities scored: 3
+rule: one scoring call per CONTEXT (entity type), never one per cohort. Numbers are
+      comparable only inside their own context; cross-context order uses strength,
+      novelty and member counts — never raw affinity.
+
+----------------------------------------------------------------------------------------
+REJECTED
+----------------------------------------------------------------------------------------
+  urn:entity:artist:subtype:musician:2   reason=weak_evidence   (evidence gate verdict: weak_evidence)
+      1 of 2 members clear the Medium band (needs 2).
+      members=2 · clearing Medium (>=0.5)=1   [call m1-insufficient_evidence-c009]
+      0.51  low        Example Open Mic Regular       pop=0.01  subtype=musician     marginal (<0.6) counts toward the gate (>=0.5)
+      0.44  low        Example Tiny Label Artist      pop=0.01  subtype=musician     marginal (<0.6) below the gate (<0.5)
+      flagged (still shown, never hidden): Example Tiny Label Artist = below_medium
+  urn:entity:artist:domain_group:1   reason=insufficient_members   (evidence gate verdict: weak_evidence)
+      only 1 candidate(s) in this grouping; 2 are required before a cohort can be judged.
+      members=1 · clearing Medium (>=0.5)=0   [call m1-insufficient_evidence-c009]
+      0.47  low        Example Local Ensemble         pop=0.02  subtype=ensemble     marginal (<0.6) below the gate (<0.5)
+      flagged (still shown, never hidden): Example Local Ensemble = below_medium
+
+----------------------------------------------------------------------------------------
+ORCHESTRATION (agent trace — separate from the Qloo trace below)
+----------------------------------------------------------------------------------------
+run m1-insufficient_evidence · runtime=fixture:insufficient_evidence · phase=STOP · status=finished
+budget  steps 9/14 · qloo calls 8/24 · elapsed 0.002s/90.00s · transitions 14
+  #    from     → to       action               reason
+    1  INIT     → PLAN     plan                 input accepted: 3 programme item(s); runtime=MockQlooClient:insufficient_evidence (fixture); budget=14 steps / 24 calls
+    2  PLAN     → RESOLVE  resolve_programme    no programme entity has been resolved yet (3 item(s) supplied)
+    3  RESOLVE  → EVALUATE resolve_programme    resolved 1/3 programme item(s) in 1 call(s); gate=insufficient_resolved_titles
+    4  EVALUATE → PLAN     assess_evidence      gate(s) not satisfied: resolution, taste_profile, candidate_cohorts (candidate_cohorts=FAIL resolution=FAIL taste_profile=FAIL)
+    5  PLAN     → ANALYSE  get_taste_profile    characterise the programme's taste from 1 resolved id(s)
+    6  ANALYSE  → EVALUATE get_taste_profile    3 tag(s) scored from 1 signal id(s); gate=no_tags_above_medium
+    7  EVALUATE → PLAN     assess_evidence      gate(s) not satisfied: resolution, taste_profile, candidate_cohorts (candidate_cohorts=FAIL resolution=FAIL taste_profile=FAIL)
+    8  PLAN     → EXPAND   expand_candidates    ask Qloo for adjacent entities from 1 signal id(s)
+    9  EXPAND   → EVALUATE expand_candidates    3 candidate(s) across 5/5 domain(s); 0 domain(s) failed
+   10  EVALUATE → PLAN     assess_evidence      gate(s) not satisfied: resolution, taste_profile, candidate_cohorts (candidate_cohorts=FAIL resolution=FAIL taste_profile=FAIL)
+   11  PLAN     → RANK     rank_cohorts         construct candidate cohorts and rank them in one operation
+   12  RANK     → EVALUATE rank_cohorts         ONE logical operation over 2 candidate cohort(s) in 1 scoring context(s); 0 cleared the gate, 2 rejected
+   13  EVALUATE → PLAN     assess_evidence      gate(s) not satisfied: resolution, taste_profile, candidate_cohorts (candidate_cohorts=FAIL resolution=FAIL taste_profile=FAIL)
+   14  PLAN     → STOP     stop                 insufficiency: insufficient_cohorts
+
+cycle: PLAN → SELECT → ACT → EVALUATE → STOP. Every line above was written by
+deterministic code, not by a model; no state followed STOP, and no tool ran twice.
+
+evidence report: gate(s) not satisfied: resolution, taste_profile, candidate_cohorts (candidate_cohorts=FAIL resolution=FAIL taste_profile=FAIL)
+  ready=False · progress_possible=True · surviving cohorts=0 · rejected cohorts=2
+
+----------------------------------------------------------------------------------------
+EVIDENCE (Qloo trace)
+----------------------------------------------------------------------------------------
+client calls made: 8 (budget 24) · trace rows: 9 (incl. 1 logical-operation row) · rows with an error: 0
+   m1-insufficient_evidence-c001  resolve_entities:by_id             /entities      status=200 n=1 src=mock data=fixture
+   m1-insufficient_evidence-c002  taste_profile                      /v2/insights   status=200 n=3 src=mock data=fixture
+   m1-insufficient_evidence-c003  expand_adjacency:urn:entity:artist /v2/insights   status=200 n=3 src=mock data=fixture
+   m1-insufficient_evidence-c004  expand_adjacency:urn:entity:movie  /v2/insights   status=200 n=0 src=mock data=fixture
+   m1-insufficient_evidence-c005  expand_adjacency:urn:entity:tv_show /v2/insights   status=200 n=0 src=mock data=fixture
+   m1-insufficient_evidence-c006  expand_adjacency:urn:entity:book   /v2/insights   status=200 n=0 src=mock data=fixture
+   m1-insufficient_evidence-c007  expand_adjacency:urn:entity:brand  /v2/insights   status=200 n=0 src=mock data=fixture
+   m1-insufficient_evidence-c008  build_and_rank_cohorts             /v2/insights   status=200 n=3 src=mock data=fixture
+       note: LOGICAL OPERATION 'build_and_rank_cohorts': one scoring call per scoring context (entity type), never one per cohort.
+       note: Cohort scores are comparable ONLY within their context_id. Cross-context ordering uses band strength, novelty proxy and qualifying-member count.
+       note: scoring contexts: 1 · scoring calls: 1 · cohorts scored: 2 · entities scored: 3
+       note: sub-call ids: m1-insufficient_evidence-c009
+   m1-insufficient_evidence-c009  score_context:urn:entity:artist    /v2/insights   status=200 n=3 src=mock data=fixture
+
+findings (machine-readable codes produced by deterministic code, never by a model):
+  [insufficient_resolved_titles] Only 1 of your titles could be identified in Qloo. With fewer than 3, the taste profile is too thin to be meaningful. Please check the unresolved titles or add more to your programme.
+  [no_tags_above_medium] Qloo found no tags with meaningful affinity for this programme. Nothing has been substituted. This programme may be too heterogeneous, or too obscure, for the taste graph to characterise.
+  [insufficient_cohorts] I do not have enough Qloo evidence to name an adjacent audience for this programme.
+
+fixture simulation limits — what this replay does NOT prove:
+  · the fixture replays a fixed candidate set; request filters such as filter.popularity.min/max are passed to the mock but NOT applied by it
+  · filter.results.entities returns every id present in the fixture branch; the live behaviour of that filter is probe D and is still unverified
+  · no backfill results exist in these fixtures, so backfill detection is not exercised by this run
+
+----------------------------------------------------------------------------------------
+STOP
+----------------------------------------------------------------------------------------
+stop_reason = insufficiency
+message     = I do not have enough Qloo evidence to name an adjacent audience for this programme.
+
+PROVENANCE  numbers displayed: 47 · backed by a Qloo-call trace row: 26 · fixture-file/input-derived: 21 · unverified: 0
+
+  Adjacent is reporting NO recommendation. Nothing in this output should be acted on
+  as an audience hypothesis.
+
+========================================================================================
+REMINDER: every affinity above is FIXTURE DATA until docs/API_NOTES.md records a live probe.
+========================================================================================[stop_reason=insufficiency — no recommendation produced]
+

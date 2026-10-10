@@ -1,0 +1,32 @@
+# --- secrets: never commit a key ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- local output ---
+*.log
+logs/
+docs/api_probe_results.local.json
+
+# --- editors / os ---
+.DS_Store
+.idea/
+.vscode/
+*.swp

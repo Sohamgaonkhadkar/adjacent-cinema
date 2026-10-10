@@ -1,0 +1,865 @@
+{
+  "evaluation_date": "2026-10-07T14:41:00.965164+00:00",
+  "evaluation_version": "M12.4",
+  "primary_contexts": 2,
+  "secondary_contexts": 1,
+  "results": [
+    {
+      "context_id": "prince_charles_london_2026_10",
+      "venue": "Prince Charles Cinema",
+      "city": "London",
+      "venue_type": "INDEPENDENT",
+      "is_primary": true,
+      "classification_basis": "Independent repertory cinema, not part of any chain",
+      "programme_window": "October 2026 (Horror season)",
+      "programme_films": [
+        {
+          "title": "The Thing",
+          "year": 1982,
+          "imdb_id": "tt0084787"
+        },
+        {
+          "title": "The Shining",
+          "year": 1980,
+          "imdb_id": "tt0081505"
+        },
+        {
+          "title": "Suspiria",
+          "year": 1977,
+          "imdb_id": "tt0076786"
+        },
+        {
+          "title": "Perfect Blue",
+          "year": 1997,
+          "imdb_id": "tt0156887"
+        },
+        {
+          "title": "Akira",
+          "year": 1988,
+          "imdb_id": "tt0094625"
+        },
+        {
+          "title": "Possession",
+          "year": 1981,
+          "imdb_id": "tt0082933"
+        },
+        {
+          "title": "Halloween",
+          "year": 1978,
+          "imdb_id": "tt0077651"
+        },
+        {
+          "title": "Rosemary's Baby",
+          "year": 1968,
+          "imdb_id": "tt0063522"
+        }
+      ],
+      "qloo_success": true,
+      "qloo_coverage": {
+        "total": 8,
+        "resolved": 8,
+        "resolution_rate": 1.0
+      },
+      "programme_names": [
+        "The Thing",
+        "The Shining",
+        "Suspiria",
+        "Perfect Blue",
+        "Akira",
+        "Possession",
+        "Halloween",
+        "Rosemary's Baby"
+      ],
+      "raw_qloo_candidates": 150,
+      "evidence_pass_count": 136,
+      "programmability_pass_count": 136,
+      "strong_opportunity_count": 136,
+      "plausible_opportunity_count": 0,
+      "top_5": [
+        {
+          "entity_title": "What Remains",
+          "domain": "tv_show",
+          "affinity": 0.9596,
+          "qualifying_members": 50,
+          "total_members": 50,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "qloo_call_id": "local-c026",
+          "programme_films": [
+            "The Thing",
+            "The Shining",
+            "Suspiria"
+          ],
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "relevance": 2,
+          "evidence_strength": 2,
+          "programmability": 2,
+          "distinctiveness": 2,
+          "testability": 2,
+          "total_score": 10,
+          "classification": "STRONG",
+          "experiment": "themed screening season",
+          "opportunity_score": 0.9879
+        },
+        {
+          "entity_title": "Harlan Coben's Shelter",
+          "domain": "tv_show",
+          "affinity": 0.9571,
+          "qualifying_members": 50,
+          "total_members": 50,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "qloo_call_id": "local-c026",
+          "programme_films": [
+            "The Thing",
+            "The Shining",
+            "Suspiria"
+          ],
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "relevance": 2,
+          "evidence_strength": 2,
+          "programmability": 2,
+          "distinctiveness": 2,
+          "testability": 2,
+          "total_score": 10,
+          "classification": "STRONG",
+          "experiment": "themed screening season",
+          "opportunity_score": 0.9871
+        },
+        {
+          "entity_title": "Retribution",
+          "domain": "tv_show",
+          "affinity": 0.957,
+          "qualifying_members": 50,
+          "total_members": 50,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "qloo_call_id": "local-c026",
+          "programme_films": [
+            "The Thing",
+            "The Shining",
+            "Suspiria"
+          ],
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "relevance": 2,
+          "evidence_strength": 2,
+          "programmability": 2,
+          "distinctiveness": 2,
+          "testability": 2,
+          "total_score": 10,
+          "classification": "STRONG",
+          "experiment": "themed screening season",
+          "opportunity_score": 0.9871
+        },
+        {
+          "entity_title": "American Gothic",
+          "domain": "tv_show",
+          "affinity": 0.9554,
+          "qualifying_members": 50,
+          "total_members": 50,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "qloo_call_id": "local-c026",
+          "programme_films": [
+            "The Thing",
+            "The Shining",
+            "Suspiria"
+          ],
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "relevance": 2,
+          "evidence_strength": 2,
+          "programmability": 2,
+          "distinctiveness": 2,
+          "testability": 2,
+          "total_score": 10,
+          "classification": "STRONG",
+          "experiment": "themed screening season",
+          "opportunity_score": 0.9866
+        },
+        {
+          "entity_title": "Chambers",
+          "domain": "tv_show",
+          "affinity": 0.9552,
+          "qualifying_members": 50,
+          "total_members": 50,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "qloo_call_id": "local-c026",
+          "programme_films": [
+            "The Thing",
+            "The Shining",
+            "Suspiria"
+          ],
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "relevance": 2,
+          "evidence_strength": 2,
+          "programmability": 2,
+          "distinctiveness": 2,
+          "testability": 2,
+          "total_score": 10,
+          "classification": "STRONG",
+          "experiment": "themed screening season",
+          "opportunity_score": 0.9866
+        }
+      ],
+      "primary_programme_bet": {
+        "primary_entity": "What Remains",
+        "primary_domain": "tv_show",
+        "affinity": 0.9596,
+        "opportunity_score": 0.9879,
+        "classification": "STRONG",
+        "experiment": "themed screening season",
+        "why": "This tv_show has the highest opportunity score (0.988) with affinity 0.960 and 50 qualifying members.",
+        "evidence": {
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "qloo_call_id": "local-c026",
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1"
+        },
+        "falsification": "This hypothesis is rejected if a subsequent analysis of a similar programme does not produce a tv_show cohort with affinity \u2265 0.7 in the top-3 ranked opportunities.",
+        "alternatives": [
+          {
+            "entity": "Harlan Coben's Shelter",
+            "domain": "tv_show",
+            "score": 0.9871,
+            "reason_not_selected": "Lower opportunity score (0.987 vs 0.988)"
+          },
+          {
+            "entity": "Retribution",
+            "domain": "tv_show",
+            "score": 0.9871,
+            "reason_not_selected": "Lower opportunity score (0.987 vs 0.988)"
+          },
+          {
+            "entity": "American Gothic",
+            "domain": "tv_show",
+            "score": 0.9866,
+            "reason_not_selected": "Lower opportunity score (0.987 vs 0.988)"
+          },
+          {
+            "entity": "Chambers",
+            "domain": "tv_show",
+            "score": 0.9866,
+            "reason_not_selected": "Lower opportunity score (0.987 vs 0.988)"
+          }
+        ]
+      },
+      "consistency_check": [
+        {
+          "entity": "What Remains",
+          "classification": "STRONG",
+          "expected_from_rules": "STRONG",
+          "consistent": true
+        },
+        {
+          "entity": "Harlan Coben's Shelter",
+          "classification": "STRONG",
+          "expected_from_rules": "STRONG",
+          "consistent": true
+        },
+        {
+          "entity": "Retribution",
+          "classification": "STRONG",
+          "expected_from_rules": "STRONG",
+          "consistent": true
+        },
+        {
+          "entity": "American Gothic",
+          "classification": "STRONG",
+          "expected_from_rules": "STRONG",
+          "consistent": true
+        },
+        {
+          "entity": "Chambers",
+          "classification": "STRONG",
+          "expected_from_rules": "STRONG",
+          "consistent": true
+        }
+      ],
+      "nonfilm_domains": [
+        "brand",
+        "artist",
+        "tv_show"
+      ],
+      "taste_tags": [
+        " Airy",
+        "Gift shop",
+        "Lifestyle Focused",
+        "Shopping mall",
+        "Expensive",
+        "American Express",
+        "Parenthood",
+        "Surrealism",
+        "Artists",
+        "Intense"
+      ]
+    },
+    {
+      "context_id": "genesis_london_2026_10",
+      "venue": "Genesis Cinema",
+      "city": "London",
+      "venue_type": "INDEPENDENT",
+      "is_primary": true,
+      "classification_basis": "Independent community cinema in Stepney Green",
+      "programme_window": "October 2026",
+      "programme_films": [
+        {
+          "title": "American History X",
+          "year": 1998,
+          "imdb_id": "tt0120586"
+        },
+        {
+          "title": "Rosemary's Baby",
+          "year": 1968,
+          "imdb_id": "tt0063522"
+        },
+        {
+          "title": "Halloween",
+          "year": 1978,
+          "imdb_id": "tt0077651"
+        },
+        {
+          "title": "Parasite",
+          "year": 2019,
+          "imdb_id": "tt6751668"
+        },
+        {
+          "title": "The Substance",
+          "year": 2024,
+          "imdb_id": "tt17526714"
+        },
+        {
+          "title": "Conclave",
+          "year": 2024,
+          "imdb_id": "tt20215234"
+        }
+      ],
+      "qloo_success": true,
+      "qloo_coverage": {
+        "total": 6,
+        "resolved": 6,
+        "resolution_rate": 1.0
+      },
+      "programme_names": [
+        "American History X",
+        "Rosemary's Baby",
+        "Halloween",
+        "Parasite",
+        "The Substance",
+        "Conclave"
+      ],
+      "raw_qloo_candidates": 200,
+      "evidence_pass_count": 180,
+      "programmability_pass_count": 180,
+      "strong_opportunity_count": 180,
+      "plausible_opportunity_count": 0,
+      "top_5": [
+        {
+          "entity_title": "What Remains",
+          "domain": "tv_show",
+          "affinity": 0.956,
+          "qualifying_members": 50,
+          "total_members": 50,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "qloo_call_id": "local-c024",
+          "programme_films": [
+            "American History X",
+            "Rosemary's Baby",
+            "Halloween"
+          ],
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "relevance": 2,
+          "evidence_strength": 2,
+          "programmability": 2,
+          "distinctiveness": 2,
+          "testability": 2,
+          "total_score": 10,
+          "classification": "STRONG",
+          "experiment": "themed screening season",
+          "opportunity_score": 0.9868
+        },
+        {
+          "entity_title": "Retribution",
+          "domain": "tv_show",
+          "affinity": 0.9548,
+          "qualifying_members": 50,
+          "total_members": 50,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "qloo_call_id": "local-c024",
+          "programme_films": [
+            "American History X",
+            "Rosemary's Baby",
+            "Halloween"
+          ],
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "relevance": 2,
+          "evidence_strength": 2,
+          "programmability": 2,
+          "distinctiveness": 2,
+          "testability": 2,
+          "total_score": 10,
+          "classification": "STRONG",
+          "experiment": "themed screening season",
+          "opportunity_score": 0.9864
+        },
+        {
+          "entity_title": "Somebody",
+          "domain": "tv_show",
+          "affinity": 0.9544,
+          "qualifying_members": 50,
+          "total_members": 50,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "qloo_call_id": "local-c024",
+          "programme_films": [
+            "American History X",
+            "Rosemary's Baby",
+            "Halloween"
+          ],
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "relevance": 2,
+          "evidence_strength": 2,
+          "programmability": 2,
+          "distinctiveness": 2,
+          "testability": 2,
+          "total_score": 10,
+          "classification": "STRONG",
+          "experiment": "themed screening season",
+          "opportunity_score": 0.9863
+        },
+        {
+          "entity_title": "Harlan Coben's Shelter",
+          "domain": "tv_show",
+          "affinity": 0.9526,
+          "qualifying_members": 50,
+          "total_members": 50,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "qloo_call_id": "local-c024",
+          "programme_films": [
+            "American History X",
+            "Rosemary's Baby",
+            "Halloween"
+          ],
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "relevance": 2,
+          "evidence_strength": 2,
+          "programmability": 2,
+          "distinctiveness": 2,
+          "testability": 2,
+          "total_score": 10,
+          "classification": "STRONG",
+          "experiment": "themed screening season",
+          "opportunity_score": 0.9858
+        },
+        {
+          "entity_title": "Red Rose",
+          "domain": "tv_show",
+          "affinity": 0.9523,
+          "qualifying_members": 50,
+          "total_members": 50,
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+          "qloo_call_id": "local-c024",
+          "programme_films": [
+            "American History X",
+            "Rosemary's Baby",
+            "Halloween"
+          ],
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "relevance": 2,
+          "evidence_strength": 2,
+          "programmability": 2,
+          "distinctiveness": 2,
+          "testability": 2,
+          "total_score": 10,
+          "classification": "STRONG",
+          "experiment": "themed screening season",
+          "opportunity_score": 0.9857
+        }
+      ],
+      "primary_programme_bet": {
+        "primary_entity": "What Remains",
+        "primary_domain": "tv_show",
+        "affinity": 0.956,
+        "opportunity_score": 0.9868,
+        "classification": "STRONG",
+        "experiment": "themed screening season",
+        "why": "This tv_show has the highest opportunity score (0.987) with affinity 0.956 and 50 qualifying members.",
+        "evidence": {
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "qloo_call_id": "local-c024",
+          "cohort_id": "urn:entity:tv_show:tag_cluster:1"
+        },
+        "falsification": "This hypothesis is rejected if a subsequent analysis of a similar programme does not produce a tv_show cohort with affinity \u2265 0.7 in the top-3 ranked opportunities.",
+        "alternatives": [
+          {
+            "entity": "Retribution",
+            "domain": "tv_show",
+            "score": 0.9864,
+            "reason_not_selected": "Lower opportunity score (0.986 vs 0.987)"
+          },
+          {
+            "entity": "Somebody",
+            "domain": "tv_show",
+            "score": 0.9863,
+            "reason_not_selected": "Lower opportunity score (0.986 vs 0.987)"
+          },
+          {
+            "entity": "Harlan Coben's Shelter",
+            "domain": "tv_show",
+            "score": 0.9858,
+            "reason_not_selected": "Lower opportunity score (0.986 vs 0.987)"
+          },
+          {
+            "entity": "Red Rose",
+            "domain": "tv_show",
+            "score": 0.9857,
+            "reason_not_selected": "Lower opportunity score (0.986 vs 0.987)"
+          }
+        ]
+      },
+      "consistency_check": [
+        {
+          "entity": "What Remains",
+          "classification": "STRONG",
+          "expected_from_rules": "STRONG",
+          "consistent": true
+        },
+        {
+          "entity": "Retribution",
+          "classification": "STRONG",
+          "expected_from_rules": "STRONG",
+          "consistent": true
+        },
+        {
+          "entity": "Somebody",
+          "classification": "STRONG",
+          "expected_from_rules": "STRONG",
+          "consistent": true
+        },
+        {
+          "entity": "Harlan Coben's Shelter",
+          "classification": "STRONG",
+          "expected_from_rules": "STRONG",
+          "consistent": true
+        },
+        {
+          "entity": "Red Rose",
+          "classification": "STRONG",
+          "expected_from_rules": "STRONG",
+          "consistent": true
+        }
+      ],
+      "nonfilm_domains": [
+        "book",
+        "brand",
+        "artist",
+        "tv_show"
+      ],
+      "taste_tags": [
+        "Identifies as women-owned",
+        "Four Star",
+        "Parenthood",
+        "Scallop Risotto",
+        "Expensive",
+        "Lifestyle Focused",
+        " Airy",
+        "JCB",
+        "Gift shop",
+        "Progressive Electronic"
+      ]
+    },
+    {
+      "context_id": "ritzy_brixton_2026_10",
+      "venue": "Ritzy Picturehouse",
+      "city": "London",
+      "venue_type": "CHAIN",
+      "is_primary": false,
+      "classification_basis": "Part of Picturehouses chain (Cineworld-owned)",
+      "programme_window": "October 2026",
+      "programme_films": [
+        {
+          "title": "24 Hour Party People",
+          "year": 2002,
+          "imdb_id": "tt0274309"
+        },
+        {
+          "title": "28 Days Later",
+          "year": 2002,
+          "imdb_id": "tt0289043"
+        },
+        {
+          "title": "Amadeus",
+          "year": 1984,
+          "imdb_id": "tt0086879"
+        },
+        {
+          "title": "An American Werewolf in London",
+          "year": 1981,
+          "imdb_id": "tt0082010"
+        },
+        {
+          "title": "The Substance",
+          "year": 2024,
+          "imdb_id": "tt17526714"
+        },
+        {
+          "title": "Conclave",
+          "year": 2024,
+          "imdb_id": "tt20215234"
+        },
+        {
+          "title": "The Brutalist",
+          "year": 2024,
+          "imdb_id": "tt15398776"
+        },
+        {
+          "title": "A Real Pain",
+          "year": 2024,
+          "imdb_id": "tt21157474"
+        }
+      ],
+      "qloo_success": true,
+      "qloo_coverage": {
+        "total": 8,
+        "resolved": 7,
+        "resolution_rate": 0.88
+      },
+      "programme_names": [
+        "24 Hour Party People",
+        "28 Days Later",
+        "Amadeus",
+        "An American Werewolf in London",
+        "The Substance",
+        "Conclave",
+        "The Brutalist"
+      ],
+      "raw_qloo_candidates": 99,
+      "evidence_pass_count": 97,
+      "programmability_pass_count": 97,
+      "strong_opportunity_count": 97,
+      "plausible_opportunity_count": 0,
+      "top_5": [
+        {
+          "entity_title": "Frances Forever",
+          "domain": "artist",
+          "affinity": 0.8999,
+          "qualifying_members": 49,
+          "total_members": 49,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "qloo_call_id": "local-c022",
+          "programme_films": [
+            "24 Hour Party People",
+            "28 Days Later",
+            "Amadeus"
+          ],
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "relevance": 2,
+          "evidence_strength": 2,
+          "programmability": 2,
+          "distinctiveness": 2,
+          "testability": 2,
+          "total_score": 10,
+          "classification": "STRONG",
+          "experiment": "screening + live performance",
+          "opportunity_score": 0.97
+        },
+        {
+          "entity_title": "Starcrawler",
+          "domain": "artist",
+          "affinity": 0.8987,
+          "qualifying_members": 49,
+          "total_members": 49,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "qloo_call_id": "local-c022",
+          "programme_films": [
+            "24 Hour Party People",
+            "28 Days Later",
+            "Amadeus"
+          ],
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "relevance": 2,
+          "evidence_strength": 2,
+          "programmability": 2,
+          "distinctiveness": 2,
+          "testability": 2,
+          "total_score": 10,
+          "classification": "STRONG",
+          "experiment": "screening + live performance",
+          "opportunity_score": 0.9696
+        },
+        {
+          "entity_title": "Oscar Lang",
+          "domain": "artist",
+          "affinity": 0.8984,
+          "qualifying_members": 49,
+          "total_members": 49,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "qloo_call_id": "local-c022",
+          "programme_films": [
+            "24 Hour Party People",
+            "28 Days Later",
+            "Amadeus"
+          ],
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "relevance": 2,
+          "evidence_strength": 2,
+          "programmability": 2,
+          "distinctiveness": 2,
+          "testability": 2,
+          "total_score": 10,
+          "classification": "STRONG",
+          "experiment": "screening + live performance",
+          "opportunity_score": 0.9695
+        },
+        {
+          "entity_title": "Unloved",
+          "domain": "artist",
+          "affinity": 0.8968,
+          "qualifying_members": 49,
+          "total_members": 49,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "qloo_call_id": "local-c022",
+          "programme_films": [
+            "24 Hour Party People",
+            "28 Days Later",
+            "Amadeus"
+          ],
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "relevance": 2,
+          "evidence_strength": 2,
+          "programmability": 2,
+          "distinctiveness": 2,
+          "testability": 2,
+          "total_score": 10,
+          "classification": "STRONG",
+          "experiment": "screening + live performance",
+          "opportunity_score": 0.969
+        },
+        {
+          "entity_title": "Coach Party",
+          "domain": "artist",
+          "affinity": 0.8901,
+          "qualifying_members": 49,
+          "total_members": 49,
+          "cohort_id": "urn:entity:artist:tag_cluster:1",
+          "qloo_call_id": "local-c022",
+          "programme_films": [
+            "24 Hour Party People",
+            "28 Days Later",
+            "Amadeus"
+          ],
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "relevance": 2,
+          "evidence_strength": 2,
+          "programmability": 2,
+          "distinctiveness": 2,
+          "testability": 2,
+          "total_score": 10,
+          "classification": "STRONG",
+          "experiment": "screening + live performance",
+          "opportunity_score": 0.967
+        }
+      ],
+      "primary_programme_bet": {
+        "primary_entity": "Frances Forever",
+        "primary_domain": "artist",
+        "affinity": 0.8999,
+        "opportunity_score": 0.97,
+        "classification": "STRONG",
+        "experiment": "screening + live performance",
+        "why": "This artist has the highest opportunity score (0.970) with affinity 0.900 and 49 qualifying members.",
+        "evidence": {
+          "retrieval_provenance": true,
+          "cultural_evidence": true,
+          "qloo_call_id": "local-c022",
+          "cohort_id": "urn:entity:artist:tag_cluster:1"
+        },
+        "falsification": "This hypothesis is rejected if a subsequent analysis of a similar programme does not produce a artist cohort with affinity \u2265 0.7 in the top-3 ranked opportunities.",
+        "alternatives": [
+          {
+            "entity": "Starcrawler",
+            "domain": "artist",
+            "score": 0.9696,
+            "reason_not_selected": "Lower opportunity score (0.970 vs 0.970)"
+          },
+          {
+            "entity": "Oscar Lang",
+            "domain": "artist",
+            "score": 0.9695,
+            "reason_not_selected": "Lower opportunity score (0.970 vs 0.970)"
+          },
+          {
+            "entity": "Unloved",
+            "domain": "artist",
+            "score": 0.969,
+            "reason_not_selected": "Lower opportunity score (0.969 vs 0.970)"
+          },
+          {
+            "entity": "Coach Party",
+            "domain": "artist",
+            "score": 0.967,
+            "reason_not_selected": "Lower opportunity score (0.967 vs 0.970)"
+          }
+        ]
+      },
+      "consistency_check": [
+        {
+          "entity": "Frances Forever",
+          "classification": "STRONG",
+          "expected_from_rules": "STRONG",
+          "consistent": true
+        },
+        {
+          "entity": "Starcrawler",
+          "classification": "STRONG",
+          "expected_from_rules": "STRONG",
+          "consistent": true
+        },
+        {
+          "entity": "Oscar Lang",
+          "classification": "STRONG",
+          "expected_from_rules": "STRONG",
+          "consistent": true
+        },
+        {
+          "entity": "Unloved",
+          "classification": "STRONG",
+          "expected_from_rules": "STRONG",
+          "consistent": true
+        },
+        {
+          "entity": "Coach Party",
+          "classification": "STRONG",
+          "expected_from_rules": "STRONG",
+          "consistent": true
+        }
+      ],
+      "nonfilm_domains": [
+        "brand",
+        "artist"
+      ],
+      "taste_tags": [
+        "Stadium",
+        "Fashion",
+        "Eccentricity",
+        "british",
+        "Rave",
+        "Punk",
+        "Classical Music",
+        "Manchester",
+        "Music Scene",
+        "Visionary Leader"
+      ]
+    }
+  ]
+}

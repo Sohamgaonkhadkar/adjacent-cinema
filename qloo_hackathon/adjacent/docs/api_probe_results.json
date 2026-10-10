@@ -1,0 +1,1097 @@
+{
+  "generated_at": "2026-10-06T08:08:01.934737+00:00",
+  "mode": "live",
+  "verified_against_qloo": true,
+  "banner": null,
+  "fixture_notice": null,
+  "base_url": "https://hackathon.api.qloo.com",
+  "key_fingerprint": "sha256:3a723d1101cb\u00b7len=45",
+  "cities_tested": [
+    "London, UK",
+    "New York, NY",
+    "Portland, Oregon"
+  ],
+  "programme_inputs": [
+    {
+      "title": "Perfect Days",
+      "year": 2023,
+      "imdb_id": "tt7594358"
+    },
+    {
+      "title": "The Zone of Interest",
+      "year": 2023,
+      "imdb_id": "tt7160372"
+    },
+    {
+      "title": "Taipei Story",
+      "year": 1985,
+      "imdb_id": "tt0089853"
+    },
+    {
+      "title": "Sansho the Bailiff",
+      "year": 1954,
+      "imdb_id": "tt0047445"
+    },
+    {
+      "title": "Le Samourai",
+      "year": 1967,
+      "imdb_id": "tt0062229"
+    }
+  ],
+  "probes": [
+    {
+      "probe_id": "A",
+      "name": "External ID entity resolution",
+      "endpoint": "/entities",
+      "request": "GET /entities?external.imdb.ids=tt7594358,tt7160372,tt0089853,tt0047445,tt0062229",
+      "mode": "live",
+      "http_status": 200,
+      "result_count": 4,
+      "relevant_fields": [
+        "disambiguation",
+        "entity_id",
+        "name",
+        "popularity",
+        "properties",
+        "references",
+        "tags",
+        "types"
+      ],
+      "latency_ms": 384,
+      "success": true,
+      "observed_limitation": "1 of 5 IMDb ids did not resolve",
+      "verified_against_qloo": true,
+      "skipped_reason": null,
+      "error": null,
+      "extra": {
+        "requested_imdb_ids": [
+          "tt7594358",
+          "tt7160372",
+          "tt0089853",
+          "tt0047445",
+          "tt0062229"
+        ],
+        "resolved_entity_ids": [
+          "3ECAC26F-AC87-4E09-8A54-4B138B8596C6",
+          "1EA804CA-FB88-4EC5-95D4-930363E85879",
+          "78C10D49-4BC8-41BE-A2CD-5B9E5F5339F3",
+          "6EB01624-99E0-4F16-96CB-5AD0085AC88E"
+        ],
+        "resolved_count": 4,
+        "unresolved_imdb_ids_estimate": [
+          "tt7594358",
+          "tt7160372",
+          "tt0089853",
+          "tt0047445",
+          "tt0062229"
+        ],
+        "observed_shape": [
+          "_list"
+        ],
+        "data_status": "measured"
+      }
+    },
+    {
+      "probe_id": "B",
+      "name": "Programme \u2192 tag affinity (taste DNA)",
+      "endpoint": "/v2/insights",
+      "request": "GET /v2/insights?filter.type=urn:tag&signal.interests.entities=3ECAC26F-AC87-4E09-8A54-4B138B8596C6,1EA804CA-FB88-4EC5-95D4-930363E85879,78C10D49-4BC8-41BE-A2CD-5B9E5F5339F3,6EB01624-99E0-4F16-96CB-5AD0085AC88E&take=50",
+      "mode": "live",
+      "http_status": 200,
+      "result_count": 50,
+      "relevant_fields": [
+        "name",
+        "popularity",
+        "query",
+        "subtype",
+        "tag_id",
+        "tag_value",
+        "types"
+      ],
+      "latency_ms": 937,
+      "success": true,
+      "observed_limitation": "",
+      "verified_against_qloo": true,
+      "skipped_reason": null,
+      "error": null,
+      "extra": {
+        "scored_tag_count": 50,
+        "tags_above_medium": 50,
+        "top_tags": [
+          {
+            "tag_id": "urn:tag:cultural_relevance:qloo:sustainability",
+            "name": "Sustainability",
+            "affinity": 0.9997651755312904,
+            "band": "very_high",
+            "popularity": 0.9951123655604031
+          },
+          {
+            "tag_id": "urn:tag:personal_style:qloo:practical",
+            "name": "Practical",
+            "affinity": 0.9997121473805411,
+            "band": "very_high",
+            "popularity": 0.995301496411462
+          },
+          {
+            "tag_id": "urn:tag:lifestyle:qloo:sustainability",
+            "name": "Sustainability",
+            "affinity": 0.9994553376906318,
+            "band": "very_high",
+            "popularity": 0.9943189270814172
+          },
+          {
+            "tag_id": "urn:tag:adjective:qloo:affordable",
+            "name": "affordable",
+            "affinity": 0.9993308798929408,
+            "band": "very_high",
+            "popularity": 0.9968877042377203
+          },
+          {
+            "tag_id": "urn:tag:customer_identity:qloo:eco_conscious_individuals",
+            "name": "Eco-conscious Individuals",
+            "affinity": 0.9992600813910469,
+            "band": "very_high",
+            "popularity": 0.9965224803969782
+          },
+          {
+            "tag_id": "urn:tag:keyword:qloo:escapism",
+            "name": "Escapism",
+            "affinity": 0.998908789885611,
+            "band": "very_high",
+            "popularity": 0.9911792422287591
+          },
+          {
+            "tag_id": "urn:tag:industry:qloo:retail",
+            "name": "Retail",
+            "affinity": 0.9988833620952188,
+            "band": "very_high",
+            "popularity": 0.9996780534225537
+          },
+          {
+            "tag_id": "urn:tag:product_service:qloo:footwear",
+            "name": "Footwear",
+            "affinity": 0.9987092930897538,
+            "band": "very_high",
+            "popularity": 0.9986608467564138
+          }
+        ],
+        "observed_shape": [
+          "tags"
+        ]
+      }
+    },
+    {
+      "probe_id": "C",
+      "name": "Programme \u2192 artist cross-domain adjacency",
+      "endpoint": "/v2/insights",
+      "request": "GET /v2/insights?filter.type=urn:entity:artist&signal.interests.entities=3ECAC26F-AC87-4E09-8A54-4B138B8596C6,1EA804CA-FB88-4EC5-95D4-930363E85879,78C10D49-4BC8-41BE-A2CD-5B9E5F5339F3,6EB01624-99E0-4F16-96CB-5AD0085AC88E&take=12",
+      "mode": "live",
+      "http_status": 200,
+      "result_count": 12,
+      "relevant_fields": [
+        "disambiguation",
+        "entity_id",
+        "external",
+        "name",
+        "popularity",
+        "properties",
+        "query",
+        "subtype",
+        "tags",
+        "type"
+      ],
+      "latency_ms": 3217,
+      "success": true,
+      "observed_limitation": "",
+      "verified_against_qloo": true,
+      "skipped_reason": null,
+      "error": null,
+      "extra": {
+        "scored_count": 12,
+        "returned_entity_ids": [
+          "FA295951-408A-4CAE-A399-776AB308D5FD",
+          "C82327A0-304C-4E89-A38C-99A39D2CFF5A",
+          "87A1DBD4-1C1B-4272-A1F7-FA7E3891D05E",
+          "2AC3D59B-857B-430F-80E0-7E40B9C239D0",
+          "1A758B66-ED5E-4DB7-A8FF-FE4EFA06001B",
+          "876A6875-9CA2-4F15-B8A8-25496507C11E",
+          "B078BEF5-3988-4CC2-BEFF-598263AA96D0",
+          "8D778858-C8B9-4F96-B72D-F367E4F3E396",
+          "EBF3F83E-CFDB-48D1-8A63-A5C7E723350C",
+          "968F572A-76A8-48C9-B347-217D6CBD4D59",
+          "546E9AE9-BA5B-4AF8-8F70-4A3653561545",
+          "F233AC9E-804C-461E-AD3B-4ACB37B0F3C0"
+        ],
+        "top": [
+          {
+            "entity_id": "FA295951-408A-4CAE-A399-776AB308D5FD",
+            "name": "Nico",
+            "affinity": 0.9373267567382539,
+            "band": "very_high",
+            "popularity": 0.9940329905825452
+          },
+          {
+            "entity_id": "C82327A0-304C-4E89-A38C-99A39D2CFF5A",
+            "name": "Television",
+            "affinity": 0.9357612431819622,
+            "band": "very_high",
+            "popularity": 0.9946883458178506
+          },
+          {
+            "entity_id": "87A1DBD4-1C1B-4272-A1F7-FA7E3891D05E",
+            "name": "The Velvet Underground",
+            "affinity": 0.9355866041257217,
+            "band": "very_high",
+            "popularity": 0.9994658854832262
+          },
+          {
+            "entity_id": "2AC3D59B-857B-430F-80E0-7E40B9C239D0",
+            "name": "Captain Beefheart & His Magic Band",
+            "affinity": 0.9335680539584063,
+            "band": "very_high",
+            "popularity": 0.994180445510489
+          },
+          {
+            "entity_id": "1A758B66-ED5E-4DB7-A8FF-FE4EFA06001B",
+            "name": "Talking Heads",
+            "affinity": 0.9326713560236098,
+            "band": "very_high",
+            "popularity": 0.9992004666129275
+          },
+          {
+            "entity_id": "876A6875-9CA2-4F15-B8A8-25496507C11E",
+            "name": "Scott Walker",
+            "affinity": 0.9318896783086112,
+            "band": "very_high",
+            "popularity": 0.9908479641389615
+          }
+        ],
+        "observed_shape": [
+          "entities"
+        ]
+      }
+    },
+    {
+      "probe_id": "D",
+      "name": "filter.results.entities completeness",
+      "endpoint": "/v2/insights",
+      "request": "GET /v2/insights?filter.type=urn:entity:movie&signal.interests.entities=<4 programme ids>&filter.results.entities=<12 supplied ids>&take=50",
+      "mode": "live",
+      "http_status": 200,
+      "result_count": 12,
+      "relevant_fields": [
+        "disambiguation",
+        "entity_id",
+        "external",
+        "name",
+        "popularity",
+        "properties",
+        "query",
+        "subtype",
+        "tags",
+        "type"
+      ],
+      "latency_ms": 153,
+      "success": true,
+      "observed_limitation": "",
+      "verified_against_qloo": true,
+      "skipped_reason": null,
+      "error": null,
+      "extra": {
+        "supplied_count": 12,
+        "returned_count": 12,
+        "returned_scored_count": 12,
+        "all_supplied_returned": true,
+        "all_supplied_returned_and_scored": true,
+        "missing_ids": [],
+        "take_used": 50,
+        "conclusion": "SAFE: rank all candidate cohorts in a single query via filter.results.entities.",
+        "observed_shape": [
+          "entities"
+        ]
+      }
+    },
+    {
+      "probe_id": "E",
+      "name": "Heatmap coverage by city",
+      "endpoint": "/v2/insights",
+      "request": "filter.location.query=London, UK; filter.location.query=New York, NY; filter.location.query=Portland, Oregon",
+      "mode": "live",
+      "http_status": 200,
+      "result_count": 429,
+      "relevant_fields": [],
+      "latency_ms": null,
+      "success": true,
+      "observed_limitation": "geography supported in: London, UK, New York, NY, Portland, Oregon",
+      "verified_against_qloo": true,
+      "skipped_reason": null,
+      "error": null,
+      "extra": {
+        "cities_tested": [
+          "London, UK",
+          "New York, NY",
+          "Portland, Oregon"
+        ],
+        "cities_supporting_geography": [
+          "London, UK",
+          "New York, NY",
+          "Portland, Oregon"
+        ],
+        "min_cells_required": 10,
+        "per_city": {
+          "London, UK": {
+            "ok": true,
+            "cell_count": 207,
+            "scored_cell_count": 206,
+            "locality_echo": {
+              "entity_id": "4F18635D-75D6-43EC-B8B9-8DFAEB8C5A29",
+              "name": "London",
+              "subtype": "urn:entity:locality",
+              "location": {
+                "lat": 51.50049650582372,
+                "lon": -0.10941546935661342
+              },
+              "popularity": 0.99987906,
+              "disambiguation": "London, London Borough of Lambeth, Inner London - East, Surrey, Greater London, England, United Kingdom"
+            },
+            "locality_matched_as": "London",
+            "top_cells": [
+              {
+                "lat": 51.5506,
+                "lng": -0.12634277,
+                "geohash": "gcpvm0",
+                "affinity": 1.0,
+                "affinity_rank": null
+              },
+              {
+                "lat": 51.418762,
+                "lng": -0.20324707,
+                "geohash": "gcpue2",
+                "affinity": 0.9951456310679612,
+                "affinity_rank": null
+              },
+              {
+                "lat": 51.495667,
+                "lng": -0.09338379,
+                "geohash": "gcpuvy",
+                "affinity": 0.9902912621359223,
+                "affinity_rank": null
+              }
+            ],
+            "latency_ms": 523,
+            "supports_geographic_claim": true
+          },
+          "New York, NY": {
+            "ok": true,
+            "cell_count": 203,
+            "scored_cell_count": 202,
+            "locality_echo": {
+              "entity_id": "BDFC9271-4583-412E-84D8-F285BB8220FE",
+              "name": "New York",
+              "subtype": "urn:entity:locality",
+              "location": {
+                "lat": 42.92258073352795,
+                "lon": -75.5978240134976
+              },
+              "popularity": 0.9999389,
+              "disambiguation": "New York, United States"
+            },
+            "locality_matched_as": "New York",
+            "top_cells": [
+              {
+                "lat": 42.69287,
+                "lng": -74.904785,
+                "geohash": "drddz",
+                "affinity": 1.0,
+                "affinity_rank": null
+              },
+              {
+                "lat": 42.34131,
+                "lng": -73.586426,
+                "geohash": "dre8v",
+                "affinity": 0.995049504950495,
+                "affinity_rank": null
+              },
+              {
+                "lat": 41.02295,
+                "lng": -72.22412,
+                "geohash": "drk9k",
+                "affinity": 0.9900990099009901,
+                "affinity_rank": null
+              }
+            ],
+            "latency_ms": 363,
+            "supports_geographic_claim": true
+          },
+          "Portland, Oregon": {
+            "ok": true,
+            "cell_count": 19,
+            "scored_cell_count": 18,
+            "locality_echo": {
+              "entity_id": "E0AE6376-A732-453A-925F-80F0E2F22AA0",
+              "name": "Portland",
+              "subtype": "urn:entity:locality",
+              "location": {
+                "lat": 45.537304763762485,
+                "lon": -122.65035907485722
+              },
+              "popularity": 0.99897826,
+              "disambiguation": "Portland, Multnomah County, Oregon, United States"
+            },
+            "locality_matched_as": "Portland",
+            "top_cells": [
+              {
+                "lat": 45.534897,
+                "lng": -122.62047,
+                "geohash": "c20g19q",
+                "affinity": 1.0,
+                "affinity_rank": null
+              },
+              {
+                "lat": 45.54039,
+                "lng": -122.66304,
+                "geohash": "c20g0dr",
+                "affinity": 0.9444444444444444,
+                "affinity_rank": null
+              },
+              {
+                "lat": 45.522537,
+                "lng": -122.68089,
+                "geohash": "c20fbr4",
+                "affinity": 0.8888888888888888,
+                "affinity_rank": null
+              }
+            ],
+            "latency_ms": 277,
+            "supports_geographic_claim": true
+          }
+        },
+        "result_is_meaningful": true,
+        "dry_run_caveat": null,
+        "recommendation": "Use 'London, UK' for the geographic demo, pending a venue in that city."
+      }
+    },
+    {
+      "probe_id": "F",
+      "name": "feature.explainability payload",
+      "endpoint": "/v2/insights",
+      "request": "feature.explainability=false vs true at take=12",
+      "mode": "live",
+      "http_status": 200,
+      "result_count": null,
+      "relevant_fields": [],
+      "latency_ms": null,
+      "success": true,
+      "observed_limitation": "no attribution field observed in the response payload",
+      "verified_against_qloo": true,
+      "skipped_reason": null,
+      "error": null,
+      "extra": {
+        "payload_bytes_without": 390983,
+        "payload_bytes_with": 395653,
+        "size_ratio": 1.01,
+        "attribution_field_observed": false
+      }
+    },
+    {
+      "probe_id": "G",
+      "name": "Audience catalogue",
+      "endpoint": "/v2/audiences",
+      "request": "GET /v2/audiences?filter.parents.types=urn:audience:hobbies_and_interests,urn:audience:leisure&take=50",
+      "mode": "live",
+      "http_status": 200,
+      "result_count": 50,
+      "relevant_fields": [
+        "disambiguation",
+        "entity_id",
+        "id",
+        "name",
+        "parents",
+        "tags",
+        "type"
+      ],
+      "latency_ms": 79,
+      "success": true,
+      "observed_limitation": "",
+      "verified_against_qloo": true,
+      "skipped_reason": null,
+      "error": null,
+      "extra": {
+        "sample_audience_ids": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "results_shape": [
+          "audiences"
+        ]
+      }
+    },
+    {
+      "probe_id": "H",
+      "name": "Rate limit behaviour",
+      "endpoint": "/search",
+      "request": "10 sequential GET /search?query=probeN&take=1 (no pacing)",
+      "mode": "live",
+      "http_status": null,
+      "result_count": 0,
+      "relevant_fields": [],
+      "latency_ms": 364,
+      "success": true,
+      "observed_limitation": "no rejections in 10 rapid calls",
+      "verified_against_qloo": true,
+      "skipped_reason": null,
+      "error": null,
+      "extra": {
+        "status_codes": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "rejected_count": 0,
+        "max_latency_ms": 364
+      }
+    }
+  ],
+  "trace": [
+    {
+      "call_id": "probe-c001",
+      "seq": 1,
+      "tool": "probe_a_resolve_entities",
+      "endpoint": "/entities",
+      "method": "GET",
+      "params": {
+        "external.imdb.ids": [
+          "tt7594358",
+          "tt7160372",
+          "tt0089853",
+          "tt0047445",
+          "tt0062229"
+        ]
+      },
+      "started_at": "2026-10-06T08:08:01.934933+00:00",
+      "duration_ms": 382,
+      "status": 200,
+      "result_count": 4,
+      "cache": "bypass",
+      "source": "qloo",
+      "data_status": "measured",
+      "attempt": 1,
+      "backfill_detected": false,
+      "error": null,
+      "notes": []
+    },
+    {
+      "call_id": "probe-c002",
+      "seq": 2,
+      "tool": "probe_b_taste_dna",
+      "endpoint": "/v2/insights",
+      "method": "GET",
+      "params": {
+        "filter.type": "urn:tag",
+        "signal.interests.entities": [
+          "3ECAC26F-AC87-4E09-8A54-4B138B8596C6",
+          "1EA804CA-FB88-4EC5-95D4-930363E85879",
+          "78C10D49-4BC8-41BE-A2CD-5B9E5F5339F3",
+          "6EB01624-99E0-4F16-96CB-5AD0085AC88E"
+        ],
+        "take": 50
+      },
+      "started_at": "2026-10-06T08:08:02.320073+00:00",
+      "duration_ms": 937,
+      "status": 200,
+      "result_count": 50,
+      "cache": "bypass",
+      "source": "qloo",
+      "data_status": "measured",
+      "attempt": 1,
+      "backfill_detected": false,
+      "error": null,
+      "notes": []
+    },
+    {
+      "call_id": "probe-c003",
+      "seq": 3,
+      "tool": "probe_c_adjacency",
+      "endpoint": "/v2/insights",
+      "method": "GET",
+      "params": {
+        "filter.type": "urn:entity:artist",
+        "signal.interests.entities": [
+          "3ECAC26F-AC87-4E09-8A54-4B138B8596C6",
+          "1EA804CA-FB88-4EC5-95D4-930363E85879",
+          "78C10D49-4BC8-41BE-A2CD-5B9E5F5339F3",
+          "6EB01624-99E0-4F16-96CB-5AD0085AC88E"
+        ],
+        "take": 12
+      },
+      "started_at": "2026-10-06T08:08:03.257769+00:00",
+      "duration_ms": 3214,
+      "status": 200,
+      "result_count": 12,
+      "cache": "bypass",
+      "source": "qloo",
+      "data_status": "measured",
+      "attempt": 1,
+      "backfill_detected": false,
+      "error": null,
+      "notes": []
+    },
+    {
+      "call_id": "probe-c004",
+      "seq": 4,
+      "tool": "probe_d_results_entities",
+      "endpoint": "/v2/insights",
+      "method": "GET",
+      "params": {
+        "filter.type": "urn:entity:artist",
+        "signal.interests.entities": [
+          "3ECAC26F-AC87-4E09-8A54-4B138B8596C6",
+          "1EA804CA-FB88-4EC5-95D4-930363E85879",
+          "78C10D49-4BC8-41BE-A2CD-5B9E5F5339F3",
+          "6EB01624-99E0-4F16-96CB-5AD0085AC88E"
+        ],
+        "filter.results.entities": [
+          "FA295951-408A-4CAE-A399-776AB308D5FD",
+          "C82327A0-304C-4E89-A38C-99A39D2CFF5A",
+          "87A1DBD4-1C1B-4272-A1F7-FA7E3891D05E",
+          "2AC3D59B-857B-430F-80E0-7E40B9C239D0",
+          "1A758B66-ED5E-4DB7-A8FF-FE4EFA06001B",
+          "876A6875-9CA2-4F15-B8A8-25496507C11E",
+          "B078BEF5-3988-4CC2-BEFF-598263AA96D0",
+          "8D778858-C8B9-4F96-B72D-F367E4F3E396",
+          "EBF3F83E-CFDB-48D1-8A63-A5C7E723350C",
+          "968F572A-76A8-48C9-B347-217D6CBD4D59",
+          "546E9AE9-BA5B-4AF8-8F70-4A3653561545",
+          "F233AC9E-804C-461E-AD3B-4ACB37B0F3C0"
+        ],
+        "take": 50
+      },
+      "started_at": "2026-10-06T08:08:06.475290+00:00",
+      "duration_ms": 149,
+      "status": 200,
+      "result_count": 12,
+      "cache": "bypass",
+      "source": "qloo",
+      "data_status": "measured",
+      "attempt": 1,
+      "backfill_detected": false,
+      "error": null,
+      "notes": []
+    },
+    {
+      "call_id": "probe-c005",
+      "seq": 5,
+      "tool": "probe_e_heatmap:London, UK",
+      "endpoint": "/v2/insights",
+      "method": "GET",
+      "params": {
+        "filter.type": "urn:heatmap",
+        "signal.interests.entities": [
+          "3ECAC26F-AC87-4E09-8A54-4B138B8596C6",
+          "1EA804CA-FB88-4EC5-95D4-930363E85879",
+          "78C10D49-4BC8-41BE-A2CD-5B9E5F5339F3",
+          "6EB01624-99E0-4F16-96CB-5AD0085AC88E"
+        ],
+        "filter.location.query": "London, UK",
+        "filter.location.radius": 0.0,
+        "output.heatmap.boundary": "urn:geohash"
+      },
+      "started_at": "2026-10-06T08:08:06.629287+00:00",
+      "duration_ms": 522,
+      "status": 200,
+      "result_count": 207,
+      "cache": "bypass",
+      "source": "qloo",
+      "data_status": "measured",
+      "attempt": 1,
+      "backfill_detected": false,
+      "error": null,
+      "notes": [
+        "Heatmap cells are MODEL ESTIMATES of taste concentration, not counts of people, and not attendance."
+      ]
+    },
+    {
+      "call_id": "probe-c006",
+      "seq": 6,
+      "tool": "probe_e_heatmap:New York, NY",
+      "endpoint": "/v2/insights",
+      "method": "GET",
+      "params": {
+        "filter.type": "urn:heatmap",
+        "signal.interests.entities": [
+          "3ECAC26F-AC87-4E09-8A54-4B138B8596C6",
+          "1EA804CA-FB88-4EC5-95D4-930363E85879",
+          "78C10D49-4BC8-41BE-A2CD-5B9E5F5339F3",
+          "6EB01624-99E0-4F16-96CB-5AD0085AC88E"
+        ],
+        "filter.location.query": "New York, NY",
+        "filter.location.radius": 0.0,
+        "output.heatmap.boundary": "urn:geohash"
+      },
+      "started_at": "2026-10-06T08:08:07.152984+00:00",
+      "duration_ms": 362,
+      "status": 200,
+      "result_count": 203,
+      "cache": "bypass",
+      "source": "qloo",
+      "data_status": "measured",
+      "attempt": 1,
+      "backfill_detected": false,
+      "error": null,
+      "notes": [
+        "Heatmap cells are MODEL ESTIMATES of taste concentration, not counts of people, and not attendance."
+      ]
+    },
+    {
+      "call_id": "probe-c007",
+      "seq": 7,
+      "tool": "probe_e_heatmap:Portland, Oregon",
+      "endpoint": "/v2/insights",
+      "method": "GET",
+      "params": {
+        "filter.type": "urn:heatmap",
+        "signal.interests.entities": [
+          "3ECAC26F-AC87-4E09-8A54-4B138B8596C6",
+          "1EA804CA-FB88-4EC5-95D4-930363E85879",
+          "78C10D49-4BC8-41BE-A2CD-5B9E5F5339F3",
+          "6EB01624-99E0-4F16-96CB-5AD0085AC88E"
+        ],
+        "filter.location.query": "Portland, Oregon",
+        "filter.location.radius": 0.0,
+        "output.heatmap.boundary": "urn:geohash"
+      },
+      "started_at": "2026-10-06T08:08:07.516622+00:00",
+      "duration_ms": 277,
+      "status": 200,
+      "result_count": 19,
+      "cache": "bypass",
+      "source": "qloo",
+      "data_status": "measured",
+      "attempt": 1,
+      "backfill_detected": false,
+      "error": null,
+      "notes": [
+        "Heatmap cells are MODEL ESTIMATES of taste concentration, not counts of people, and not attendance."
+      ]
+    },
+    {
+      "call_id": "probe-c008",
+      "seq": 8,
+      "tool": "probe_f_explainability:False",
+      "endpoint": "/v2/insights",
+      "method": "GET",
+      "params": {
+        "filter.type": "urn:entity:movie",
+        "signal.interests.entities": [
+          "3ECAC26F-AC87-4E09-8A54-4B138B8596C6",
+          "1EA804CA-FB88-4EC5-95D4-930363E85879",
+          "78C10D49-4BC8-41BE-A2CD-5B9E5F5339F3",
+          "6EB01624-99E0-4F16-96CB-5AD0085AC88E"
+        ],
+        "feature.explainability": false,
+        "take": 12
+      },
+      "started_at": "2026-10-06T08:08:07.794887+00:00",
+      "duration_ms": 1636,
+      "status": 200,
+      "result_count": 12,
+      "cache": "bypass",
+      "source": "qloo",
+      "data_status": "measured",
+      "attempt": 1,
+      "backfill_detected": false,
+      "error": null,
+      "notes": []
+    },
+    {
+      "call_id": "probe-c009",
+      "seq": 9,
+      "tool": "probe_f_explainability:True",
+      "endpoint": "/v2/insights",
+      "method": "GET",
+      "params": {
+        "filter.type": "urn:entity:movie",
+        "signal.interests.entities": [
+          "3ECAC26F-AC87-4E09-8A54-4B138B8596C6",
+          "1EA804CA-FB88-4EC5-95D4-930363E85879",
+          "78C10D49-4BC8-41BE-A2CD-5B9E5F5339F3",
+          "6EB01624-99E0-4F16-96CB-5AD0085AC88E"
+        ],
+        "feature.explainability": true,
+        "take": 12
+      },
+      "started_at": "2026-10-06T08:08:09.438872+00:00",
+      "duration_ms": 1463,
+      "status": 200,
+      "result_count": 12,
+      "cache": "bypass",
+      "source": "qloo",
+      "data_status": "measured",
+      "attempt": 1,
+      "backfill_detected": false,
+      "error": null,
+      "notes": []
+    },
+    {
+      "call_id": "probe-c010",
+      "seq": 10,
+      "tool": "probe_g_audiences",
+      "endpoint": "/v2/audiences",
+      "method": "GET",
+      "params": {
+        "filter.parents.types": [
+          "urn:audience:hobbies_and_interests",
+          "urn:audience:leisure"
+        ],
+        "take": 50
+      },
+      "started_at": "2026-10-06T08:08:10.911850+00:00",
+      "duration_ms": 79,
+      "status": 200,
+      "result_count": 50,
+      "cache": "bypass",
+      "source": "qloo",
+      "data_status": "measured",
+      "attempt": 1,
+      "backfill_detected": false,
+      "error": null,
+      "notes": []
+    },
+    {
+      "call_id": "probe-c011",
+      "seq": 11,
+      "tool": "probe_h_rate_limit",
+      "endpoint": "/search",
+      "method": "GET",
+      "params": {
+        "query": "probe0",
+        "take": 1
+      },
+      "started_at": "2026-10-06T08:08:10.991884+00:00",
+      "duration_ms": 336,
+      "status": 200,
+      "result_count": 0,
+      "cache": "bypass",
+      "source": "qloo",
+      "data_status": "measured",
+      "attempt": 1,
+      "backfill_detected": false,
+      "error": null,
+      "notes": []
+    },
+    {
+      "call_id": "probe-c012",
+      "seq": 12,
+      "tool": "probe_h_rate_limit",
+      "endpoint": "/search",
+      "method": "GET",
+      "params": {
+        "query": "probe1",
+        "take": 1
+      },
+      "started_at": "2026-10-06T08:08:11.328261+00:00",
+      "duration_ms": 349,
+      "status": 200,
+      "result_count": 0,
+      "cache": "bypass",
+      "source": "qloo",
+      "data_status": "measured",
+      "attempt": 1,
+      "backfill_detected": false,
+      "error": null,
+      "notes": []
+    },
+    {
+      "call_id": "probe-c013",
+      "seq": 13,
+      "tool": "probe_h_rate_limit",
+      "endpoint": "/search",
+      "method": "GET",
+      "params": {
+        "query": "probe2",
+        "take": 1
+      },
+      "started_at": "2026-10-06T08:08:11.677968+00:00",
+      "duration_ms": 321,
+      "status": 200,
+      "result_count": 0,
+      "cache": "bypass",
+      "source": "qloo",
+      "data_status": "measured",
+      "attempt": 1,
+      "backfill_detected": false,
+      "error": null,
+      "notes": []
+    },
+    {
+      "call_id": "probe-c014",
+      "seq": 14,
+      "tool": "probe_h_rate_limit",
+      "endpoint": "/search",
+      "method": "GET",
+      "params": {
+        "query": "probe3",
+        "take": 1
+      },
+      "started_at": "2026-10-06T08:08:12.000113+00:00",
+      "duration_ms": 334,
+      "status": 200,
+      "result_count": 1,
+      "cache": "bypass",
+      "source": "qloo",
+      "data_status": "measured",
+      "attempt": 1,
+      "backfill_detected": false,
+      "error": null,
+      "notes": []
+    },
+    {
+      "call_id": "probe-c015",
+      "seq": 15,
+      "tool": "probe_h_rate_limit",
+      "endpoint": "/search",
+      "method": "GET",
+      "params": {
+        "query": "probe4",
+        "take": 1
+      },
+      "started_at": "2026-10-06T08:08:12.335097+00:00",
+      "duration_ms": 338,
+      "status": 200,
+      "result_count": 0,
+      "cache": "bypass",
+      "source": "qloo",
+      "data_status": "measured",
+      "attempt": 1,
+      "backfill_detected": false,
+      "error": null,
+      "notes": []
+    },
+    {
+      "call_id": "probe-c016",
+      "seq": 16,
+      "tool": "probe_h_rate_limit",
+      "endpoint": "/search",
+      "method": "GET",
+      "params": {
+        "query": "probe5",
+        "take": 1
+      },
+      "started_at": "2026-10-06T08:08:12.673950+00:00",
+      "duration_ms": 326,
+      "status": 200,
+      "result_count": 0,
+      "cache": "bypass",
+      "source": "qloo",
+      "data_status": "measured",
+      "attempt": 1,
+      "backfill_detected": false,
+      "error": null,
+      "notes": []
+    },
+    {
+      "call_id": "probe-c017",
+      "seq": 17,
+      "tool": "probe_h_rate_limit",
+      "endpoint": "/search",
+      "method": "GET",
+      "params": {
+        "query": "probe6",
+        "take": 1
+      },
+      "started_at": "2026-10-06T08:08:13.001060+00:00",
+      "duration_ms": 333,
+      "status": 200,
+      "result_count": 0,
+      "cache": "bypass",
+      "source": "qloo",
+      "data_status": "measured",
+      "attempt": 1,
+      "backfill_detected": false,
+      "error": null,
+      "notes": []
+    },
+    {
+      "call_id": "probe-c018",
+      "seq": 18,
+      "tool": "probe_h_rate_limit",
+      "endpoint": "/search",
+      "method": "GET",
+      "params": {
+        "query": "probe7",
+        "take": 1
+      },
+      "started_at": "2026-10-06T08:08:13.334405+00:00",
+      "duration_ms": 335,
+      "status": 200,
+      "result_count": 0,
+      "cache": "bypass",
+      "source": "qloo",
+      "data_status": "measured",
+      "attempt": 1,
+      "backfill_detected": false,
+      "error": null,
+      "notes": []
+    },
+    {
+      "call_id": "probe-c019",
+      "seq": 19,
+      "tool": "probe_h_rate_limit",
+      "endpoint": "/search",
+      "method": "GET",
+      "params": {
+        "query": "probe8",
+        "take": 1
+      },
+      "started_at": "2026-10-06T08:08:13.669979+00:00",
+      "duration_ms": 364,
+      "status": 200,
+      "result_count": 0,
+      "cache": "bypass",
+      "source": "qloo",
+      "data_status": "measured",
+      "attempt": 1,
+      "backfill_detected": false,
+      "error": null,
+      "notes": []
+    },
+    {
+      "call_id": "probe-c020",
+      "seq": 20,
+      "tool": "probe_h_rate_limit",
+      "endpoint": "/search",
+      "method": "GET",
+      "params": {
+        "query": "probe9",
+        "take": 1
+      },
+      "started_at": "2026-10-06T08:08:14.034877+00:00",
+      "duration_ms": 302,
+      "status": 200,
+      "result_count": 0,
+      "cache": "bypass",
+      "source": "qloo",
+      "data_status": "measured",
+      "attempt": 1,
+      "backfill_detected": false,
+      "error": null,
+      "notes": []
+    }
+  ],
+  "call_count": 20
+}

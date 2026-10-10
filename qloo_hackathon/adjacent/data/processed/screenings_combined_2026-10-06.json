@@ -1,0 +1,65 @@
+[
+  {
+    "film_title": "Follow us:",
+    "source": "Prince Charles Cinema",
+    "venue_id": "princecharles_london",
+    "source_url": "https://princecharlescinema.com",
+    "retrieved_at": "2026-10-06T16:29:19.799679+00:00",
+    "parser_version": "1.0.0",
+    "robots_status": "found"
+  },
+  {
+    "film_title": "Obsession (2026)",
+    "source": "Prince Charles Cinema",
+    "venue_id": "princecharles_london",
+    "source_url": "https://princecharlescinema.com",
+    "retrieved_at": "2026-10-06T16:29:19.799695+00:00",
+    "parser_version": "1.0.0",
+    "robots_status": "found"
+  },
+  {
+    "film_title": "Irreversible",
+    "source": "Prince Charles Cinema",
+    "venue_id": "princecharles_london",
+    "source_url": "https://princecharlescinema.com",
+    "retrieved_at": "2026-10-06T16:29:19.799698+00:00",
+    "parser_version": "1.0.0",
+    "robots_status": "found"
+  },
+  {
+    "film_title": "The Exorcist (Extended Cut)",
+    "source": "Prince Charles Cinema",
+    "venue_id": "princecharles_london",
+    "source_url": "https://princecharlescinema.com",
+    "retrieved_at": "2026-10-06T16:29:19.799700+00:00",
+    "parser_version": "1.0.0",
+    "robots_status": "found"
+  },
+  {
+    "film_title": "The Room",
+    "source": "Prince Charles Cinema",
+    "venue_id": "princecharles_london",
+    "source_url": "https://princecharlescinema.com",
+    "retrieved_at": "2026-10-06T16:29:19.799702+00:00",
+    "parser_version": "1.0.0",
+    "robots_status": "found"
+  },
+  {
+    "film_title": "Follow us:",
+    "source": "Prince Charles Cinema",
+    "venue_id": "princecharles_london",
+    "source_url": "https://princecharlescinema.com",
+    "retrieved_at": "2026-10-06T16:29:19.799704+00:00",
+    "parser_version": "1.0.0",
+    "robots_status": "found"
+  },
+  {
+    "film_title": "You may also be interested in",
+    "source": "Prince Charles Cinema",
+    "venue_id": "princecharles_london",
+    "source_url": "https://princecharlescinema.com",
+    "retrieved_at": "2026-10-06T16:29:19.799706+00:00",
+    "parser_version": "1.0.0",
+    "robots_status": "found"
+  }
+]

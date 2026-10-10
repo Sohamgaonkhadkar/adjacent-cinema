@@ -1,0 +1,93 @@
+{
+  "benchmark_version": "M13.1",
+  "created_date": "2026-10-07",
+  "description": "Real outcome benchmark — currently EMPTY because no publicly available dataset has both real attendance labels AND joinable identifiers to Qloo entities.",
+  "ml_readiness": "NOT_ML_READY",
+  "readiness_reason": "The only public dataset with screening-level attendance (Kaggle Cinema Tickets) uses anonymized film/cinema codes that cannot be joined to Qloo entities.",
+  "label_schema": {
+    "event_id": "string",
+    "venue_id": "string",
+    "venue_name": "string",
+    "city": "string",
+    "event_date": "date",
+    "film_or_event_id": "string",
+    "film_or_event_name": "string",
+    "domain": "enum: film|tv_show|artist|book|podcast",
+    "event_type": "enum: screening|themed_season|live_event|discussion",
+    "capacity": "int (NULL if unavailable)",
+    "attendance": "int (NULL if unavailable)",
+    "tickets_sold": "int (NULL if unavailable)",
+    "occupancy_rate": "float (NULL if unavailable)",
+    "sell_through_rate": "float (NULL if unavailable)",
+    "price": "float (NULL if unavailable)",
+    "programme_context_id": "string",
+    "source_url": "string",
+    "source_dataset": "string",
+    "source_record_id": "string",
+    "join_status": "enum: VERIFIED|AMBIGUOUS|MISMATCH|UNRESOLVED",
+    "label_quality": "enum: DIRECT_OUTCOME|STRONG_PROXY|WEAK_PROXY|UNAVAILABLE",
+    "provenance": "string"
+  },
+  "target_hierarchy": [
+    {"priority": 1, "target": "attendance_count", "type": "int", "definition": "People who attended"},
+    {"priority": 2, "target": "occupancy_rate", "type": "float", "definition": "attendance / capacity"},
+    {"priority": 3, "target": "tickets_sold", "type": "int", "definition": "Tickets sold"},
+    {"priority": 4, "target": "sell_through_rate", "type": "float", "definition": "tickets_sold / capacity"},
+    {"priority": 5, "target": "sold_out", "type": "bool", "definition": "All tickets sold"},
+    {"priority": 6, "target": "booking_count", "type": "int", "definition": "Number of bookings"}
+  ],
+  "dataset_audit": [
+    {
+      "source": "Kaggle Cinema Tickets",
+      "url": "https://www.kaggle.com/datasets/arashnic/cinema-ticket",
+      "outcome_type": "DIRECT_OUTCOME",
+      "records": 142524,
+      "period": "Feb 2018 - Nov 2018",
+      "targets": ["tickets_sold", "occu_perc"],
+      "joinable_to_qloo": false,
+      "join_blocker": "Anonymized film_code and cinema_code — no mapping to real titles",
+      "license": "CC BY-NC-SA 4.0"
+    },
+    {
+      "source": "BFI Weekend Box Office",
+      "url": "https://www.bfi.org.uk/industry-data-insights/weekend-box-office-figures",
+      "outcome_type": "NOT_OUTCOME",
+      "reason": "National aggregate — no venue-level data",
+      "joinable_to_qloo": false
+    },
+    {
+      "source": "Cinema Context",
+      "url": "https://www.cinemacontext.nl/",
+      "outcome_type": "NOT_OUTCOME",
+      "reason": "Metadata only — no attendance/ticket data",
+      "joinable_to_qloo": true,
+      "join_method": "IMDB ID → Qloo entity resolution"
+    },
+    {
+      "source": "Poland show-level (Baranowski et al., 2020)",
+      "outcome_type": "DIRECT_OUTCOME",
+      "records": 179103,
+      "period": "Oct 2016 - Mar 2018",
+      "targets": ["attendance"],
+      "joinable_to_qloo": "UNKNOWN",
+      "availability": "PROPRIETARY — not publicly released"
+    },
+    {
+      "source": "UK Showtimes Scraper (Apify)",
+      "outcome_type": "STRONG_PROXY",
+      "targets": ["sold_out"],
+      "joinable_to_qloo": true,
+      "join_method": "Film title → Qloo entity resolution"
+    }
+  ],
+  "observations": [],
+  "observations_count": 0,
+  "observations_note": "No observations included — no dataset currently satisfies both (a) real outcome labels AND (b) joinable identifiers to Qloo entities.",
+  "next_steps": [
+    "1. Attempt Apify sold_out scraping for UK independent cinemas (weak proxy)",
+    "2. Explore Kaggle film_code reverse-engineering (if community has mapping)",
+    "3. Seek cinema chain data partnership for de-identified screening data",
+    "4. Build prospective data collection: record Adjacent recommendations → track outcomes"
+  ],
+  "research_answer": "D. There is currently insufficient real data to validate whether Qloo affinity predicts attendance."
+}

@@ -1,0 +1,94 @@
+[
+  {
+    "name": "title_only",
+    "params": {
+      "title": "Parasite"
+    },
+    "expected": "AMBIGUOUS",
+    "actual": "AMBIGUOUS",
+    "passed": true,
+    "entity_id": "A499EC25-7FF6-46DE-9DA5-3E78E99B9E26",
+    "entity_name": "Parasite",
+    "verification_notes": [
+      "Qloo result has year 2019 but input has no year \u2014 ambiguous"
+    ]
+  },
+  {
+    "name": "title_and_year",
+    "params": {
+      "title": "Parasite",
+      "year": 2019
+    },
+    "expected": "VERIFIED",
+    "actual": "VERIFIED",
+    "passed": true,
+    "entity_id": "A499EC25-7FF6-46DE-9DA5-3E78E99B9E26",
+    "entity_name": "Parasite",
+    "verification_notes": [
+      "year matches: 2019"
+    ]
+  },
+  {
+    "name": "correct_imdb",
+    "params": {
+      "title": "Parasite",
+      "year": 2019,
+      "external_id": "tt6751668",
+      "external_family": "imdb"
+    },
+    "expected": "VERIFIED",
+    "actual": "VERIFIED",
+    "passed": true,
+    "entity_id": "A499EC25-7FF6-46DE-9DA5-3E78E99B9E26",
+    "entity_name": "Parasite",
+    "verification_notes": [
+      "year matches: 2019"
+    ]
+  },
+  {
+    "name": "wrong_imdb",
+    "params": {
+      "title": "Parasite",
+      "year": 2019,
+      "external_id": "tt9999999",
+      "external_family": "imdb"
+    },
+    "expected": "MISMATCH",
+    "actual": "MISMATCH",
+    "passed": true,
+    "entity_id": "A499EC25-7FF6-46DE-9DA5-3E78E99B9E26",
+    "entity_name": "Parasite",
+    "verification_notes": [
+      "year matches: 2019",
+      "external ID tt9999999 not found in Qloo \u2014 supplied ID does not match any Qloo entity"
+    ]
+  },
+  {
+    "name": "ambiguous_title",
+    "params": {
+      "title": "Dune"
+    },
+    "expected": "AMBIGUOUS",
+    "actual": "AMBIGUOUS",
+    "passed": true,
+    "entity_id": "3037F0E8-C912-4DC0-BDE3-1F94631F9DA6",
+    "entity_name": "Dune",
+    "verification_notes": [
+      "Qloo result has year 2021 but input has no year \u2014 ambiguous"
+    ]
+  },
+  {
+    "name": "unresolved_title",
+    "params": {
+      "title": "xyznonexistentmovie123"
+    },
+    "expected": "UNRESOLVED",
+    "actual": "UNRESOLVED",
+    "passed": true,
+    "entity_id": null,
+    "entity_name": null,
+    "verification_notes": [
+      "/search returned no results"
+    ]
+  }
+]

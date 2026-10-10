@@ -1,0 +1,61 @@
+{
+  "version": "M13.6",
+  "collection_date": "2026-10-08T12:53:04.056361+00:00",
+  "prediction_run_id": "e33dd96a15fcb849",
+  "collection": {
+    "success": true,
+    "screenings": 665,
+    "new": 0
+  },
+  "snapshots": {
+    "total_eligible": 761,
+    "by_horizon": {
+      "168": {
+        "created": 725,
+        "skipped_events": 36
+      },
+      "72": {
+        "created": 725,
+        "skipped_events": 36
+      },
+      "24": {
+        "created": 725,
+        "skipped_events": 36
+      }
+    }
+  },
+  "outcomes": {
+    "pending": 2175,
+    "updated": 0
+  },
+  "leakage_audit": {
+    "total_snapshots": 2175,
+    "violations": {
+      "qloo_after_prediction": 0,
+      "negative_from_censored": 0,
+      "duplicate_rows": 0,
+      "horizon_mismatch": 0
+    },
+    "passed": true
+  },
+  "benchmark_stats": {
+    "total": 2175,
+    "by_horizon": {
+      "168": 725,
+      "72": 725,
+      "24": 725
+    },
+    "by_outcome": {
+      "PENDING": 2175,
+      "SOLD_OUT_OBSERVED": 0,
+      "AVAILABLE_NEAR_SHOWTIME": 0,
+      "CENSORED": 0,
+      "UNKNOWN": 0
+    },
+    "with_qloo_entity": 1614
+  },
+  "signal_analysis": {
+    "status": "INCONCLUSIVE",
+    "completed": 0
+  }
+}

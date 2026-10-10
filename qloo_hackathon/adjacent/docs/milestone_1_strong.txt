@@ -1,0 +1,238 @@
+cd backend && python3 -m app.cli run --fixture fixtures/portland_strong.json --mock
+========================================================================================
+ADJACENT — MILESTONE 1 (FIXTURE SPINE)
+========================================================================================
+SCENARIO      portland_strong
+FIXTURE       /home/user/qloo_hackathon/adjacent/backend/tests/fixtures/portland_strong.json
+DESCRIPTION   Illustrative single-venue cinema programme with cross-domain adjacency, geographic coverage, one weak cohort, one over-popular candidate, and one sub-Medium tag. Used to exercise the happy path and the rejection path.
+
+!! DATA STATUS: FIXTURE — SYNTHETIC, HAND-AUTHORED, NOT MEASURED QLOO OUTPUT !!
+!! SYNTHETIC FIXTURE DATA — hand-authored to match documented Qloo response shapes. NOT measured Qloo output and must never be presented as such.
+!! This run made no live Qloo call. Every affinity below is a fixture value. !!
+
+----------------------------------------------------------------------------------------
+PROGRAMME
+----------------------------------------------------------------------------------------
+items: 8   (source of the item list: the fixture file)
+   1. Perfect Days (2023)  [resolved]   imdb=tt7594358   → 11111111-1111-4111-8111-000000000001
+   2. The Zone of Interest (2023)  [resolved]   imdb=tt7160372   → 11111111-1111-4111-8111-000000000002
+   3. Taipei Story (1985)  [resolved]   imdb=tt0089853   → 11111111-1111-4111-8111-000000000003
+   4. Sansho the Bailiff (1954)  [resolved]   imdb=tt0047445   → 11111111-1111-4111-8111-000000000004
+   5. Le Samourai (1967)  [resolved]   imdb=tt0062229   → 11111111-1111-4111-8111-000000000005
+   6. All the Beauty and the Bloodshed (2022)  [resolved]   imdb=tt2137482   → 11111111-1111-4111-8111-000000000006
+   7. Sorcerer (1977)  [resolved]   imdb=tt0076740   → 11111111-1111-4111-8111-000000000007
+   8. Fire of Love (2022)  [resolved]   imdb=tt12979666   → 11111111-1111-4111-8111-000000000008
+
+----------------------------------------------------------------------------------------
+RESOLUTION
+----------------------------------------------------------------------------------------
+endpoint /entities · calls: m1-portland_strong-c001, m1-portland_strong-c002
+  resolved 8 / 8 · unresolved 0
+  evidence: resolved_ok · sufficient=True
+
+----------------------------------------------------------------------------------------
+TASTE PROFILE
+----------------------------------------------------------------------------------------
+endpoint /v2/insights · filter.type=urn:tag · signal.interests.entities=<8 resolved id(s)>
+  call: m1-portland_strong-c003
+  scored tags: 8 · at/above High (0.6): 6
+  0.84  very_high  Slow Cinema                    pop=0.31  urn:tag:keyword:media:slow_cinema
+  0.79  high       Documentary                    pop=0.62  urn:tag:genre:movie:documentary
+  0.74  high       35mm Film                      pop=0.22  urn:tag:keyword:media:film_35mm
+  0.68  high       Urban Alienation               pop=0.18  urn:tag:keyword:theme:urban_alienation
+  0.63  high       Minimalism                     pop=0.27  urn:tag:style:minimalism
+  0.61  high       Existential Drama              pop=0.34  urn:tag:genre:movie:existential_drama
+  0.56  low        Environment                    pop=0.55  urn:tag:keyword:theme:environment
+  0.44  low        Crime Noir                     pop=0.41  urn:tag:genre:movie:crime_noir
+  evidence: tags_ok · sufficient=True
+
+----------------------------------------------------------------------------------------
+CANDIDATE COHORTS (construction — scores are not shown at this stage)
+----------------------------------------------------------------------------------------
+All scoring happens once, in the RANKED COHORTS operation below. Showing scores here
+as well would invite comparing numbers produced by different calls.
+  expanded urn:entity:artist: 6 candidate(s)  [call m1-portland_strong-c004]
+  expanded urn:entity:book: 4 candidate(s)  [call m1-portland_strong-c007]
+  expanded urn:entity:brand: 3 candidate(s)  [call m1-portland_strong-c008]
+  expanded urn:entity:movie: 7 candidate(s)  [call m1-portland_strong-c005]
+  expanded urn:entity:tv_show: 3 candidate(s)  [call m1-portland_strong-c006]
+
+cohorts constructed: 8 across 5 domain(s): urn:entity:artist, urn:entity:book, urn:entity:brand, urn:entity:movie, urn:entity:tv_show
+
+   1. urn:entity:artist:tag_cluster:1   kind=tag_cluster   members=3
+      why grouped: 3 artist entities returned for this programme share Qloo tag(s) urn:tag:genre:music:ambient, urn:tag:genre:music:drone — grouped together because the shared tags are a relationship Qloo returned, not an assumption.
+      members: Brian Eno, Grouper, William Basinski
+      evidence rule: shared_tag_component · call m1-portland_strong-c004
+
+   2. urn:entity:artist:subtype:composer:1   kind=subtype_group   members=2
+      why grouped: 2 artist entities returned for this programme share the Qloo subtype 'composer' — grouped because the subtype is a property Qloo returned for every member, not a classification we applied.
+      members: Hildur Gudnadottir, Nils Frahm
+      evidence rule: shared_subtype_group · call m1-portland_strong-c004
+
+   3. urn:entity:artist:domain_group:2   kind=singleton_group   members=1
+      why grouped: a single artist entity was returned that shares no Qloo tag and no Qloo subtype with another candidate — kept as a candidate cohort so it can be explicitly rejected as insufficient_members rather than silently dropped.
+      members: Astrud Gilberto
+      evidence rule: domain_grouping_fallback · call m1-portland_strong-c004
+
+   4. urn:entity:movie:subtype:feature:1   kind=subtype_group   members=5
+      why grouped: 5 movie entities returned for this programme share the Qloo subtype 'feature' — grouped because the subtype is a property Qloo returned for every member, not a classification we applied.
+      members: Paterson, Aguirre, the Wrath of God, In the Mood for Love, The Straight Story, Nostalghia
+      evidence rule: shared_subtype_group · call m1-portland_strong-c005
+
+   5. urn:entity:movie:subtype:documentary:2   kind=subtype_group   members=2
+      why grouped: 2 movie entities returned for this programme share the Qloo subtype 'documentary' — grouped because the subtype is a property Qloo returned for every member, not a classification we applied.
+      members: Koyaanisqatsi, Baraka
+      evidence rule: shared_subtype_group · call m1-portland_strong-c005
+
+   6. urn:entity:tv_show:subtype:scripted:1   kind=subtype_group   members=3
+      why grouped: 3 tv_show entities returned for this programme share the Qloo subtype 'scripted' — grouped because the subtype is a property Qloo returned for every member, not a classification we applied.
+      members: Twin Peaks, Detectorists, Forbrydelsen
+      evidence rule: shared_subtype_group · call m1-portland_strong-c006
+
+   7. urn:entity:book:subtype:nonfiction:1   kind=subtype_group   members=4
+      why grouped: 4 book entities returned for this programme share the Qloo subtype 'nonfiction' — grouped because the subtype is a property Qloo returned for every member, not a classification we applied.
+      members: A Field Guide to Getting Lost, The Rings of Saturn, Wanderlust, The Empathy Exams
+      evidence rule: shared_subtype_group · call m1-portland_strong-c007
+
+   8. urn:entity:brand:domain_group:7   kind=domain_group   members=3
+      why grouped: 3 additional brand entities returned for this programme share no Qloo tag and no Qloo subtype with another candidate, so the only relationship Qloo returned for them is the entity type itself.
+      members: Example Roasters Co, Example Gear Works, Example Press
+      evidence rule: domain_grouping_fallback · call m1-portland_strong-c008
+
+----------------------------------------------------------------------------------------
+RANKED COHORTS (one logical operation)
+----------------------------------------------------------------------------------------
+operation: m1-portland_strong-c009   logical operations of this kind recorded: 1  (PASS — exactly 1 expected)
+scoring contexts: 5 · scoring calls: 5 · cohorts scored: 8 · entities scored: 23
+rule: one scoring call per CONTEXT (entity type), never one per cohort. Numbers are
+      comparable only inside their own context; cross-context order uses strength,
+      novelty and member counts — never raw affinity.
+
+  #1  urn:entity:artist:tag_cluster:1   [strong]   context=ctx:urn:entity:artist
+      mean affinity 0.71 · novelty proxy 0.76 · max 0.79   [call m1-portland_strong-c010]
+      ordered here because: strength=strong → novelty=0.76 → members clearing Medium=3  (mean affinity is only ever a within-context tiebreaker)
+      0.79  high       Brian Eno                      pop=0.74  subtype=musician     counts toward the gate (>=0.5)
+      0.71  high       Grouper                        pop=0.24  subtype=musician     counts toward the gate (>=0.5)
+      0.64  high       William Basinski               pop=0.21  subtype=composer     counts toward the gate (>=0.5)
+
+  #2  urn:entity:book:subtype:nonfiction:1   [strong]   context=ctx:urn:entity:book
+      mean affinity 0.61 · novelty proxy 0.72 · max 0.66   [call m1-portland_strong-c011]
+      ordered here because: strength=strong → novelty=0.725 → members clearing Medium=4  (mean affinity is only ever a within-context tiebreaker)
+      0.66  high       A Field Guide to Getting Lost  pop=0.44  subtype=nonfiction   counts toward the gate (>=0.5)
+      0.63  high       The Rings of Saturn            pop=0.29  subtype=nonfiction   counts toward the gate (>=0.5)
+      0.59  low        Wanderlust                     pop=0.22  subtype=nonfiction   marginal (<0.6) counts toward the gate (>=0.5)
+      0.58  low        The Empathy Exams              pop=0.26  subtype=nonfiction   marginal (<0.6) counts toward the gate (>=0.5)
+
+  #3  urn:entity:tv_show:subtype:scripted:1   [strong]   context=ctx:urn:entity:tv_show
+      mean affinity 0.62 · novelty proxy 0.69 · max 0.74   [call m1-portland_strong-c014]
+      ordered here because: strength=strong → novelty=0.69 → members clearing Medium=3  (mean affinity is only ever a within-context tiebreaker)
+      0.74  high       Twin Peaks                     pop=0.72  subtype=scripted     counts toward the gate (>=0.5)
+      0.61  high       Detectorists                   pop=0.28  subtype=scripted     counts toward the gate (>=0.5)
+      0.51  low        Forbrydelsen                   pop=0.31  subtype=scripted     marginal (<0.6) counts toward the gate (>=0.5)
+
+  #4  urn:entity:artist:subtype:composer:1   [strong]   context=ctx:urn:entity:artist
+      mean affinity 0.63 · novelty proxy 0.47 · max 0.68   [call m1-portland_strong-c010]
+      ordered here because: strength=strong → novelty=0.475 → members clearing Medium=2  (mean affinity is only ever a within-context tiebreaker)
+      0.68  high       Hildur Gudnadottir             pop=0.58  subtype=composer     counts toward the gate (>=0.5)
+      0.58  low        Nils Frahm                     pop=0.47  subtype=composer     marginal (<0.6) counts toward the gate (>=0.5)
+
+  #5  urn:entity:movie:subtype:feature:1   [strong]   context=ctx:urn:entity:movie
+      mean affinity 0.72 · novelty proxy 0.34 · max 0.81   [call m1-portland_strong-c013]
+      ordered here because: strength=strong → novelty=0.34 → members clearing Medium=5  (mean affinity is only ever a within-context tiebreaker)
+      0.81  very_high  Paterson                       pop=0.66  subtype=feature      counts toward the gate (>=0.5)
+      0.77  high       Aguirre, the Wrath of God      pop=0.71  subtype=feature      counts toward the gate (>=0.5)
+      0.76  high       In the Mood for Love           pop=0.79  subtype=feature      counts toward the gate (>=0.5)
+      0.72  high       The Straight Story             pop=0.39  subtype=feature      counts toward the gate (>=0.5)
+      0.52  low        Nostalghia                     pop=0.33  subtype=feature      marginal (<0.6) counts toward the gate (>=0.5)
+
+  #6  urn:entity:movie:subtype:documentary:2   [strong]   context=ctx:urn:entity:movie
+      mean affinity 0.84 · novelty proxy 0.26 · max 0.86   [call m1-portland_strong-c013]
+      ordered here because: strength=strong → novelty=0.255 → members clearing Medium=2  (mean affinity is only ever a within-context tiebreaker)
+      0.86  very_high  Baraka                         pop=0.88  subtype=documentary  counts toward the gate (>=0.5)
+      0.83  very_high  Koyaanisqatsi                  pop=0.61  subtype=documentary  counts toward the gate (>=0.5)
+      flagged (still shown, never hidden): Baraka = oversaturated
+
+----------------------------------------------------------------------------------------
+REJECTED
+----------------------------------------------------------------------------------------
+  urn:entity:brand:domain_group:7   reason=weak_evidence   (evidence gate verdict: weak_evidence)
+      1 of 3 members clear the Medium band (needs 2).
+      members=3 · clearing Medium (>=0.5)=1   [call m1-portland_strong-c012]
+      0.51  low        Example Roasters Co            pop=0.12  subtype=food         marginal (<0.6) counts toward the gate (>=0.5)
+      0.48  low        Example Gear Works             pop=0.19  subtype=outdoor      marginal (<0.6) below the gate (<0.5)
+      0.44  low        Example Press                  pop=0.08  subtype=publishing   marginal (<0.6) below the gate (<0.5)
+      flagged (still shown, never hidden): Example Gear Works = below_medium; Example Press = below_medium
+  urn:entity:artist:domain_group:2   reason=insufficient_members   (evidence gate verdict: weak_evidence)
+      only 1 candidate(s) in this grouping; 2 are required before a cohort can be judged.
+      members=1 · clearing Medium (>=0.5)=1   [call m1-portland_strong-c010]
+      0.52  low        Astrud Gilberto                pop=0.39  subtype=musician     marginal (<0.6) counts toward the gate (>=0.5)
+
+----------------------------------------------------------------------------------------
+ORCHESTRATION (agent trace — separate from the Qloo trace below)
+----------------------------------------------------------------------------------------
+run m1-portland_strong · runtime=fixture:portland_strong · phase=STOP · status=finished
+budget  steps 9/14 · qloo calls 13/24 · elapsed 0.003s/90.00s · transitions 14
+  #    from     → to       action               reason
+    1  INIT     → PLAN     plan                 input accepted: 8 programme item(s); runtime=MockQlooClient:portland_strong (fixture); budget=14 steps / 24 calls
+    2  PLAN     → RESOLVE  resolve_programme    no programme entity has been resolved yet (8 item(s) supplied)
+    3  RESOLVE  → EVALUATE resolve_programme    resolved 8/8 programme item(s) in 2 call(s); gate=resolved_ok
+    4  EVALUATE → PLAN     assess_evidence      gate(s) not satisfied: taste_profile, candidate_cohorts (candidate_cohorts=FAIL resolution=ok taste_profile=FAIL)
+    5  PLAN     → ANALYSE  get_taste_profile    characterise the programme's taste from 8 resolved id(s)
+    6  ANALYSE  → EVALUATE get_taste_profile    8 tag(s) scored from 8 signal id(s); gate=tags_ok
+    7  EVALUATE → PLAN     assess_evidence      gate(s) not satisfied: candidate_cohorts (candidate_cohorts=FAIL resolution=ok taste_profile=ok)
+    8  PLAN     → EXPAND   expand_candidates    ask Qloo for adjacent entities from 8 signal id(s)
+    9  EXPAND   → EVALUATE expand_candidates    23 candidate(s) across 5/5 domain(s); 0 domain(s) failed
+   10  EVALUATE → PLAN     assess_evidence      gate(s) not satisfied: candidate_cohorts (candidate_cohorts=FAIL resolution=ok taste_profile=ok)
+   11  PLAN     → RANK     rank_cohorts         construct candidate cohorts and rank them in one operation
+   12  RANK     → EVALUATE rank_cohorts         ONE logical operation over 8 candidate cohort(s) in 5 scoring context(s); 6 cleared the gate, 2 rejected
+   13  EVALUATE → PLAN     assess_evidence      all gates satisfied (candidate_cohorts=ok resolution=ok taste_profile=ok)
+   14  PLAN     → STOP     stop                 complete: -
+
+cycle: PLAN → SELECT → ACT → EVALUATE → STOP. Every line above was written by
+deterministic code, not by a model; no state followed STOP, and no tool ran twice.
+
+evidence report: all gates satisfied (candidate_cohorts=ok resolution=ok taste_profile=ok)
+  ready=True · progress_possible=True · surviving cohorts=6 · rejected cohorts=2
+
+----------------------------------------------------------------------------------------
+EVIDENCE (Qloo trace)
+----------------------------------------------------------------------------------------
+client calls made: 13 (budget 24) · trace rows: 14 (incl. 1 logical-operation row) · rows with an error: 0
+   m1-portland_strong-c001  resolve_entities:external.imdb     /entities      status=200 n=8 src=mock data=fixture
+   m1-portland_strong-c002  resolve_entities:by_id             /entities      status=200 n=8 src=mock data=fixture
+   m1-portland_strong-c003  taste_profile                      /v2/insights   status=200 n=8 src=mock data=fixture
+   m1-portland_strong-c004  expand_adjacency:urn:entity:artist /v2/insights   status=200 n=6 src=mock data=fixture
+   m1-portland_strong-c005  expand_adjacency:urn:entity:movie  /v2/insights   status=200 n=7 src=mock data=fixture
+   m1-portland_strong-c006  expand_adjacency:urn:entity:tv_show /v2/insights   status=200 n=3 src=mock data=fixture
+   m1-portland_strong-c007  expand_adjacency:urn:entity:book   /v2/insights   status=200 n=4 src=mock data=fixture
+   m1-portland_strong-c008  expand_adjacency:urn:entity:brand  /v2/insights   status=200 n=3 src=mock data=fixture
+   m1-portland_strong-c009  build_and_rank_cohorts             /v2/insights   status=200 n=23 src=mock data=fixture
+       note: LOGICAL OPERATION 'build_and_rank_cohorts': one scoring call per scoring context (entity type), never one per cohort.
+       note: Cohort scores are comparable ONLY within their context_id. Cross-context ordering uses band strength, novelty proxy and qualifying-member count.
+       note: scoring contexts: 5 · scoring calls: 5 · cohorts scored: 8 · entities scored: 23
+       note: sub-call ids: m1-portland_strong-c010, m1-portland_strong-c011, m1-portland_strong-c012, m1-portland_strong-c013, m1-portland_strong-c014
+   m1-portland_strong-c010  score_context:urn:entity:artist    /v2/insights   status=200 n=6 src=mock data=fixture
+   m1-portland_strong-c011  score_context:urn:entity:book      /v2/insights   status=200 n=4 src=mock data=fixture
+   m1-portland_strong-c012  score_context:urn:entity:brand     /v2/insights   status=200 n=3 src=mock data=fixture
+   m1-portland_strong-c013  score_context:urn:entity:movie     /v2/insights   status=200 n=7 src=mock data=fixture
+   m1-portland_strong-c014  score_context:urn:entity:tv_show   /v2/insights   status=200 n=3 src=mock data=fixture
+
+findings (machine-readable codes produced by deterministic code, never by a model):
+  none
+
+fixture simulation limits — what this replay does NOT prove:
+  · the fixture replays a fixed candidate set; request filters such as filter.popularity.min/max are passed to the mock but NOT applied by it
+  · filter.results.entities returns every id present in the fixture branch; the live behaviour of that filter is probe D and is still unverified
+  · no backfill results exist in these fixtures, so backfill detection is not exercised by this run
+
+----------------------------------------------------------------------------------------
+STOP
+----------------------------------------------------------------------------------------
+stop_reason = complete
+message     = 6 cohort(s) cleared the evidence gate, covering 4 of the 5 expanded domain(s); 2 candidate cohort(s) were rejected.
+
+PROVENANCE  numbers displayed: 129 · backed by a Qloo-call trace row: 100 · fixture-file/input-derived: 29 · unverified: 0
+
+========================================================================================
+REMINDER: every affinity above is FIXTURE DATA until docs/API_NOTES.md records a live probe.
+========================================================================================

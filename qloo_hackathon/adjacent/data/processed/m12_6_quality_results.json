@@ -1,0 +1,1118 @@
+{
+  "evaluation_date": "2026-10-07T17:44:20.942220+00:00",
+  "evaluation_version": "M12.6",
+  "component_independence": {
+    "entity_fit": {
+      "inputs": [
+        "affinity",
+        "qualifying_members",
+        "total_members"
+      ],
+      "source": "Qloo API",
+      "overlap": "NONE"
+    },
+    "event_feasibility": {
+      "inputs": [
+        "domain",
+        "programme_films_count"
+      ],
+      "source": "Entity dict + domain rules",
+      "overlap": "NONE"
+    },
+    "programme_fit": {
+      "inputs": [
+        "programme_direction (genres/themes from film metadata)",
+        "member_ratio (qualifying/total)"
+      ],
+      "source": "Film metadata (NOT Qloo) + entity dict",
+      "overlap": "NONE \u2014 uses programme_direction from film titles/years, not affinity"
+    },
+    "testability": {
+      "inputs": [
+        "event_format (string)",
+        "qualifying_members"
+      ],
+      "source": "Feasibility output (format string only, NOT score) + entity dict",
+      "overlap": "format string shared with differentiation (NOT score)"
+    },
+    "differentiation": {
+      "inputs": [
+        "domain",
+        "event_format (string)"
+      ],
+      "source": "Entity dict + feasibility output (format string only)",
+      "overlap": "format string shared with testability (NOT score)"
+    }
+  },
+  "results": [
+    {
+      "context_id": "genesis_london_2026_10",
+      "venue": "Genesis Cinema",
+      "venue_type": "INDEPENDENT",
+      "programme_films": [
+        {
+          "title": "American History X",
+          "year": 1998,
+          "imdb_id": "tt0120586"
+        },
+        {
+          "title": "Rosemary's Baby",
+          "year": 1968,
+          "imdb_id": "tt0063522"
+        },
+        {
+          "title": "Halloween",
+          "year": 1978,
+          "imdb_id": "tt0077651"
+        },
+        {
+          "title": "Parasite",
+          "year": 2019,
+          "imdb_id": "tt6751668"
+        },
+        {
+          "title": "The Substance",
+          "year": 2024,
+          "imdb_id": "tt17526714"
+        },
+        {
+          "title": "Conclave",
+          "year": 2024,
+          "imdb_id": "tt20215234"
+        }
+      ],
+      "qloo_success": true,
+      "qloo_coverage": {
+        "total": 6,
+        "resolved": 6,
+        "resolution_rate": 1.0
+      },
+      "programme_names": [
+        "American History X",
+        "Rosemary's Baby",
+        "Halloween",
+        "Parasite",
+        "The Substance",
+        "Conclave"
+      ],
+      "raw_count": 200,
+      "programme_direction": {
+        "genres": "{'dark_comedy', 'body_horror', 'drama', 'crime', 'horror', 'sci-fi', 'thriller'}",
+        "decades": "{'2010s', '1990s', '2020s', '1970s', '1960s'}",
+        "themes": "{'countercultural', 'futuristic', 'speculative', 'subcultural', 'narrative', 'dark', 'character_driven', 'atmospheric', 'emotional', 'experimental', 'tension'}",
+        "has_horror": true,
+        "has_dark_themes": true,
+        "era_spread": 5
+      },
+      "evidence_qualified": 153,
+      "feasibility_qualified": 103,
+      "programme_fit_qualified": 103,
+      "classification_counts": {
+        "STRONG": 148,
+        "REJECT": 50,
+        "PLAUSIBLE": 2,
+        "WEAK": 0
+      },
+      "top_5": [
+        {
+          "entity_title": "Unloved",
+          "domain": "artist",
+          "affinity": 0.9007,
+          "qualifying_members": 48,
+          "total_members": 48,
+          "programme_films": [
+            "American History X",
+            "Rosemary's Baby",
+            "Halloween",
+            "Parasite",
+            "The Substance"
+          ],
+          "entity_fit": 2,
+          "event_feasibility": 2,
+          "programme_fit": 2,
+          "testability": 2,
+          "differentiation": 2,
+          "total_score": 10,
+          "classification": "STRONG",
+          "entity_fit_details": {
+            "reason": "Strong signal: affinity=0.901, 48 qualifying members"
+          },
+          "event_feasibility_details": {
+            "feasible": true,
+            "format": "Film screening + live music/DJ set",
+            "reason": "6 programme films support music event"
+          },
+          "programme_fit_details": {
+            "domain_themes": [
+              "atmospheric",
+              "countercultural",
+              "dark",
+              "experimental",
+              "subcultural"
+            ],
+            "programme_themes": [
+              "atmospheric",
+              "character_driven",
+              "countercultural",
+              "dark",
+              "emotional",
+              "experimental",
+              "futuristic",
+              "narrative",
+              "speculative",
+              "subcultural",
+              "tension"
+            ],
+            "theme_overlap_count": 5,
+            "thematic_score": 2,
+            "qualifying_members": 48,
+            "total_members": 48,
+            "member_ratio": 1.0,
+            "composition_score": 2,
+            "programme_fit_score": 2,
+            "note": "Uses programme direction (from film metadata) and member composition. Does NOT use affinity."
+          },
+          "testability_details": {
+            "outcome_clarity": 2,
+            "sample_size_score": 2,
+            "confound_score": 2,
+            "testability_score": 2,
+            "observable_outcome": "Attendance and engagement at the specific event",
+            "measurement_note": "Success threshold TBD \u2014 requires empirical baseline from the cinema's historical data"
+          },
+          "differentiation_details": {
+            "domain_novelty": 2,
+            "format_novelty": 2,
+            "differentiation_score": 2
+          }
+        },
+        {
+          "entity_title": "Frances Forever",
+          "domain": "artist",
+          "affinity": 0.8851,
+          "qualifying_members": 48,
+          "total_members": 48,
+          "programme_films": [
+            "American History X",
+            "Rosemary's Baby",
+            "Halloween",
+            "Parasite",
+            "The Substance"
+          ],
+          "entity_fit": 1,
+          "event_feasibility": 2,
+          "programme_fit": 2,
+          "testability": 2,
+          "differentiation": 2,
+          "total_score": 9,
+          "classification": "STRONG",
+          "entity_fit_details": {
+            "reason": "Moderate signal: affinity=0.885, 48 qualifying members"
+          },
+          "event_feasibility_details": {
+            "feasible": true,
+            "format": "Film screening + live music/DJ set",
+            "reason": "6 programme films support music event"
+          },
+          "programme_fit_details": {
+            "domain_themes": [
+              "atmospheric",
+              "countercultural",
+              "dark",
+              "experimental",
+              "subcultural"
+            ],
+            "programme_themes": [
+              "atmospheric",
+              "character_driven",
+              "countercultural",
+              "dark",
+              "emotional",
+              "experimental",
+              "futuristic",
+              "narrative",
+              "speculative",
+              "subcultural",
+              "tension"
+            ],
+            "theme_overlap_count": 5,
+            "thematic_score": 2,
+            "qualifying_members": 48,
+            "total_members": 48,
+            "member_ratio": 1.0,
+            "composition_score": 2,
+            "programme_fit_score": 2,
+            "note": "Uses programme direction (from film metadata) and member composition. Does NOT use affinity."
+          },
+          "testability_details": {
+            "outcome_clarity": 2,
+            "sample_size_score": 2,
+            "confound_score": 2,
+            "testability_score": 2,
+            "observable_outcome": "Attendance and engagement at the specific event",
+            "measurement_note": "Success threshold TBD \u2014 requires empirical baseline from the cinema's historical data"
+          },
+          "differentiation_details": {
+            "domain_novelty": 2,
+            "format_novelty": 2,
+            "differentiation_score": 2
+          }
+        },
+        {
+          "entity_title": "Ashton Irwin",
+          "domain": "artist",
+          "affinity": 0.8845,
+          "qualifying_members": 48,
+          "total_members": 48,
+          "programme_films": [
+            "American History X",
+            "Rosemary's Baby",
+            "Halloween",
+            "Parasite",
+            "The Substance"
+          ],
+          "entity_fit": 1,
+          "event_feasibility": 2,
+          "programme_fit": 2,
+          "testability": 2,
+          "differentiation": 2,
+          "total_score": 9,
+          "classification": "STRONG",
+          "entity_fit_details": {
+            "reason": "Moderate signal: affinity=0.885, 48 qualifying members"
+          },
+          "event_feasibility_details": {
+            "feasible": true,
+            "format": "Film screening + live music/DJ set",
+            "reason": "6 programme films support music event"
+          },
+          "programme_fit_details": {
+            "domain_themes": [
+              "atmospheric",
+              "countercultural",
+              "dark",
+              "experimental",
+              "subcultural"
+            ],
+            "programme_themes": [
+              "atmospheric",
+              "character_driven",
+              "countercultural",
+              "dark",
+              "emotional",
+              "experimental",
+              "futuristic",
+              "narrative",
+              "speculative",
+              "subcultural",
+              "tension"
+            ],
+            "theme_overlap_count": 5,
+            "thematic_score": 2,
+            "qualifying_members": 48,
+            "total_members": 48,
+            "member_ratio": 1.0,
+            "composition_score": 2,
+            "programme_fit_score": 2,
+            "note": "Uses programme direction (from film metadata) and member composition. Does NOT use affinity."
+          },
+          "testability_details": {
+            "outcome_clarity": 2,
+            "sample_size_score": 2,
+            "confound_score": 2,
+            "testability_score": 2,
+            "observable_outcome": "Attendance and engagement at the specific event",
+            "measurement_note": "Success threshold TBD \u2014 requires empirical baseline from the cinema's historical data"
+          },
+          "differentiation_details": {
+            "domain_novelty": 2,
+            "format_novelty": 2,
+            "differentiation_score": 2
+          }
+        },
+        {
+          "entity_title": "Starcrawler",
+          "domain": "artist",
+          "affinity": 0.8841,
+          "qualifying_members": 48,
+          "total_members": 48,
+          "programme_films": [
+            "American History X",
+            "Rosemary's Baby",
+            "Halloween",
+            "Parasite",
+            "The Substance"
+          ],
+          "entity_fit": 1,
+          "event_feasibility": 2,
+          "programme_fit": 2,
+          "testability": 2,
+          "differentiation": 2,
+          "total_score": 9,
+          "classification": "STRONG",
+          "entity_fit_details": {
+            "reason": "Moderate signal: affinity=0.884, 48 qualifying members"
+          },
+          "event_feasibility_details": {
+            "feasible": true,
+            "format": "Film screening + live music/DJ set",
+            "reason": "6 programme films support music event"
+          },
+          "programme_fit_details": {
+            "domain_themes": [
+              "atmospheric",
+              "countercultural",
+              "dark",
+              "experimental",
+              "subcultural"
+            ],
+            "programme_themes": [
+              "atmospheric",
+              "character_driven",
+              "countercultural",
+              "dark",
+              "emotional",
+              "experimental",
+              "futuristic",
+              "narrative",
+              "speculative",
+              "subcultural",
+              "tension"
+            ],
+            "theme_overlap_count": 5,
+            "thematic_score": 2,
+            "qualifying_members": 48,
+            "total_members": 48,
+            "member_ratio": 1.0,
+            "composition_score": 2,
+            "programme_fit_score": 2,
+            "note": "Uses programme direction (from film metadata) and member composition. Does NOT use affinity."
+          },
+          "testability_details": {
+            "outcome_clarity": 2,
+            "sample_size_score": 2,
+            "confound_score": 2,
+            "testability_score": 2,
+            "observable_outcome": "Attendance and engagement at the specific event",
+            "measurement_note": "Success threshold TBD \u2014 requires empirical baseline from the cinema's historical data"
+          },
+          "differentiation_details": {
+            "domain_novelty": 2,
+            "format_novelty": 2,
+            "differentiation_score": 2
+          }
+        },
+        {
+          "entity_title": "The Daughters of Eve",
+          "domain": "artist",
+          "affinity": 0.8828,
+          "qualifying_members": 48,
+          "total_members": 48,
+          "programme_films": [
+            "American History X",
+            "Rosemary's Baby",
+            "Halloween",
+            "Parasite",
+            "The Substance"
+          ],
+          "entity_fit": 1,
+          "event_feasibility": 2,
+          "programme_fit": 2,
+          "testability": 2,
+          "differentiation": 2,
+          "total_score": 9,
+          "classification": "STRONG",
+          "entity_fit_details": {
+            "reason": "Moderate signal: affinity=0.883, 48 qualifying members"
+          },
+          "event_feasibility_details": {
+            "feasible": true,
+            "format": "Film screening + live music/DJ set",
+            "reason": "6 programme films support music event"
+          },
+          "programme_fit_details": {
+            "domain_themes": [
+              "atmospheric",
+              "countercultural",
+              "dark",
+              "experimental",
+              "subcultural"
+            ],
+            "programme_themes": [
+              "atmospheric",
+              "character_driven",
+              "countercultural",
+              "dark",
+              "emotional",
+              "experimental",
+              "futuristic",
+              "narrative",
+              "speculative",
+              "subcultural",
+              "tension"
+            ],
+            "theme_overlap_count": 5,
+            "thematic_score": 2,
+            "qualifying_members": 48,
+            "total_members": 48,
+            "member_ratio": 1.0,
+            "composition_score": 2,
+            "programme_fit_score": 2,
+            "note": "Uses programme direction (from film metadata) and member composition. Does NOT use affinity."
+          },
+          "testability_details": {
+            "outcome_clarity": 2,
+            "sample_size_score": 2,
+            "confound_score": 2,
+            "testability_score": 2,
+            "observable_outcome": "Attendance and engagement at the specific event",
+            "measurement_note": "Success threshold TBD \u2014 requires empirical baseline from the cinema's historical data"
+          },
+          "differentiation_details": {
+            "domain_novelty": 2,
+            "format_novelty": 2,
+            "differentiation_score": 2
+          }
+        }
+      ],
+      "programme_bet": {
+        "entity": "Unloved",
+        "domain": "artist",
+        "affinity": 0.9007,
+        "qualifying_members": 48,
+        "supporting_films": [
+          "American History X",
+          "Rosemary's Baby",
+          "Halloween",
+          "Parasite",
+          "The Substance"
+        ],
+        "why": "The artist 'Unloved' has cultural affinity (0.901) with 48 qualifying members. 6 programme films support music event",
+        "experiment": "Film screening + live music/DJ set",
+        "hypothesis": "A cinema with this programming profile should test a artist-adjacent event because 'Unloved' shares cultural DNA with the programme.",
+        "success_criterion": "Primary outcome: attendance / new-to-venue attendance / engagement. Threshold: TBD \u2014 must be calibrated against the cinema's historical baseline. Do not use arbitrary thresholds.",
+        "falsification": "This hypothesis is rejected if: (1) the artist affinity signal cannot be reproduced across the next comparable programme analysis, or (2) a subsequent analysis does not surface a similar artist opportunity in the top-5, or (3) the event format proves operationally infeasible at the venue."
+      },
+      "alternatives": [
+        {
+          "entity": "Frances Forever",
+          "domain": "artist",
+          "score": 9,
+          "affinity": 0.8851,
+          "reason_not_selected": "Lower total score (9 vs 10)"
+        },
+        {
+          "entity": "Ashton Irwin",
+          "domain": "artist",
+          "score": 9,
+          "affinity": 0.8845,
+          "reason_not_selected": "Lower total score (9 vs 10)"
+        },
+        {
+          "entity": "Starcrawler",
+          "domain": "artist",
+          "score": 9,
+          "affinity": 0.8841,
+          "reason_not_selected": "Lower total score (9 vs 10)"
+        },
+        {
+          "entity": "The Daughters of Eve",
+          "domain": "artist",
+          "score": 9,
+          "affinity": 0.8828,
+          "reason_not_selected": "Lower total score (9 vs 10)"
+        }
+      ],
+      "ablation": [
+        {
+          "removed_component": "entity_fit",
+          "bet_entity": "Unloved",
+          "bet_full_score": 10,
+          "bet_ablated_score": 8,
+          "bet_rank": 1,
+          "new_top_entity": "Unloved",
+          "new_top_score": 8,
+          "rank_change": 0
+        },
+        {
+          "removed_component": "event_feasibility",
+          "bet_entity": "Unloved",
+          "bet_full_score": 10,
+          "bet_ablated_score": 8,
+          "bet_rank": 1,
+          "new_top_entity": "Unloved",
+          "new_top_score": 8,
+          "rank_change": 0
+        },
+        {
+          "removed_component": "programme_fit",
+          "bet_entity": "Unloved",
+          "bet_full_score": 10,
+          "bet_ablated_score": 8,
+          "bet_rank": 1,
+          "new_top_entity": "Unloved",
+          "new_top_score": 8,
+          "rank_change": 0
+        },
+        {
+          "removed_component": "testability",
+          "bet_entity": "Unloved",
+          "bet_full_score": 10,
+          "bet_ablated_score": 8,
+          "bet_rank": 1,
+          "new_top_entity": "Unloved",
+          "new_top_score": 8,
+          "rank_change": 0
+        },
+        {
+          "removed_component": "differentiation",
+          "bet_entity": "Unloved",
+          "bet_full_score": 10,
+          "bet_ablated_score": 8,
+          "bet_rank": 1,
+          "new_top_entity": "Unloved",
+          "new_top_score": 8,
+          "rank_change": 0
+        }
+      ]
+    },
+    {
+      "context_id": "prince_charles_london_2026_10",
+      "venue": "Prince Charles Cinema",
+      "venue_type": "INDEPENDENT",
+      "programme_films": [
+        {
+          "title": "The Thing",
+          "year": 1982,
+          "imdb_id": "tt0084787"
+        },
+        {
+          "title": "The Shining",
+          "year": 1980,
+          "imdb_id": "tt0081505"
+        },
+        {
+          "title": "Suspiria",
+          "year": 1977,
+          "imdb_id": "tt0076786"
+        },
+        {
+          "title": "Perfect Blue",
+          "year": 1997,
+          "imdb_id": "tt0156887"
+        },
+        {
+          "title": "Akira",
+          "year": 1988,
+          "imdb_id": "tt0094625"
+        },
+        {
+          "title": "Possession",
+          "year": 1981,
+          "imdb_id": "tt0082933"
+        },
+        {
+          "title": "Halloween",
+          "year": 1978,
+          "imdb_id": "tt0077651"
+        },
+        {
+          "title": "Rosemary's Baby",
+          "year": 1968,
+          "imdb_id": "tt0063522"
+        }
+      ],
+      "qloo_success": true,
+      "qloo_coverage": {
+        "total": 8,
+        "resolved": 8,
+        "resolution_rate": 1.0
+      },
+      "programme_names": [
+        "The Thing",
+        "The Shining",
+        "Suspiria",
+        "Perfect Blue",
+        "Akira",
+        "Possession",
+        "Halloween",
+        "Rosemary's Baby"
+      ],
+      "raw_count": 150,
+      "programme_direction": {
+        "genres": "{'cyberpunk', 'psychological', 'anime', 'sci-fi', 'horror', 'supernatural', 'thriller'}",
+        "decades": "{'1960s', '1980s', '1990s', '1970s'}",
+        "themes": "{'futuristic', 'speculative', 'visual', 'subcultural', 'dark', 'narrative', 'atmospheric', 'experimental', 'intellectual', 'tension'}",
+        "has_horror": true,
+        "has_dark_themes": true,
+        "era_spread": 4
+      },
+      "evidence_qualified": 150,
+      "feasibility_qualified": 100,
+      "programme_fit_qualified": 100,
+      "classification_counts": {
+        "STRONG": 100,
+        "REJECT": 50,
+        "PLAUSIBLE": 0,
+        "WEAK": 0
+      },
+      "top_5": [
+        {
+          "entity_title": "The Contortions",
+          "domain": "artist",
+          "affinity": 0.8997,
+          "qualifying_members": 50,
+          "total_members": 50,
+          "programme_films": [
+            "The Thing",
+            "The Shining",
+            "Suspiria",
+            "Perfect Blue",
+            "Akira"
+          ],
+          "entity_fit": 1,
+          "event_feasibility": 2,
+          "programme_fit": 2,
+          "testability": 2,
+          "differentiation": 2,
+          "total_score": 9,
+          "classification": "STRONG",
+          "entity_fit_details": {
+            "reason": "Moderate signal: affinity=0.900, 50 qualifying members"
+          },
+          "event_feasibility_details": {
+            "feasible": true,
+            "format": "Film screening + live music/DJ set",
+            "reason": "8 programme films support music event"
+          },
+          "programme_fit_details": {
+            "domain_themes": [
+              "atmospheric",
+              "countercultural",
+              "dark",
+              "experimental",
+              "subcultural"
+            ],
+            "programme_themes": [
+              "atmospheric",
+              "dark",
+              "experimental",
+              "futuristic",
+              "intellectual",
+              "narrative",
+              "speculative",
+              "subcultural",
+              "tension",
+              "visual"
+            ],
+            "theme_overlap_count": 4,
+            "thematic_score": 2,
+            "qualifying_members": 50,
+            "total_members": 50,
+            "member_ratio": 1.0,
+            "composition_score": 2,
+            "programme_fit_score": 2,
+            "note": "Uses programme direction (from film metadata) and member composition. Does NOT use affinity."
+          },
+          "testability_details": {
+            "outcome_clarity": 2,
+            "sample_size_score": 2,
+            "confound_score": 2,
+            "testability_score": 2,
+            "observable_outcome": "Attendance and engagement at the specific event",
+            "measurement_note": "Success threshold TBD \u2014 requires empirical baseline from the cinema's historical data"
+          },
+          "differentiation_details": {
+            "domain_novelty": 2,
+            "format_novelty": 2,
+            "differentiation_score": 2
+          }
+        },
+        {
+          "entity_title": "Edward Ka-Spel",
+          "domain": "artist",
+          "affinity": 0.8916,
+          "qualifying_members": 50,
+          "total_members": 50,
+          "programme_films": [
+            "The Thing",
+            "The Shining",
+            "Suspiria",
+            "Perfect Blue",
+            "Akira"
+          ],
+          "entity_fit": 1,
+          "event_feasibility": 2,
+          "programme_fit": 2,
+          "testability": 2,
+          "differentiation": 2,
+          "total_score": 9,
+          "classification": "STRONG",
+          "entity_fit_details": {
+            "reason": "Moderate signal: affinity=0.892, 50 qualifying members"
+          },
+          "event_feasibility_details": {
+            "feasible": true,
+            "format": "Film screening + live music/DJ set",
+            "reason": "8 programme films support music event"
+          },
+          "programme_fit_details": {
+            "domain_themes": [
+              "atmospheric",
+              "countercultural",
+              "dark",
+              "experimental",
+              "subcultural"
+            ],
+            "programme_themes": [
+              "atmospheric",
+              "dark",
+              "experimental",
+              "futuristic",
+              "intellectual",
+              "narrative",
+              "speculative",
+              "subcultural",
+              "tension",
+              "visual"
+            ],
+            "theme_overlap_count": 4,
+            "thematic_score": 2,
+            "qualifying_members": 50,
+            "total_members": 50,
+            "member_ratio": 1.0,
+            "composition_score": 2,
+            "programme_fit_score": 2,
+            "note": "Uses programme direction (from film metadata) and member composition. Does NOT use affinity."
+          },
+          "testability_details": {
+            "outcome_clarity": 2,
+            "sample_size_score": 2,
+            "confound_score": 2,
+            "testability_score": 2,
+            "observable_outcome": "Attendance and engagement at the specific event",
+            "measurement_note": "Success threshold TBD \u2014 requires empirical baseline from the cinema's historical data"
+          },
+          "differentiation_details": {
+            "domain_novelty": 2,
+            "format_novelty": 2,
+            "differentiation_score": 2
+          }
+        },
+        {
+          "entity_title": "Dalis Car",
+          "domain": "artist",
+          "affinity": 0.89,
+          "qualifying_members": 50,
+          "total_members": 50,
+          "programme_films": [
+            "The Thing",
+            "The Shining",
+            "Suspiria",
+            "Perfect Blue",
+            "Akira"
+          ],
+          "entity_fit": 1,
+          "event_feasibility": 2,
+          "programme_fit": 2,
+          "testability": 2,
+          "differentiation": 2,
+          "total_score": 9,
+          "classification": "STRONG",
+          "entity_fit_details": {
+            "reason": "Moderate signal: affinity=0.890, 50 qualifying members"
+          },
+          "event_feasibility_details": {
+            "feasible": true,
+            "format": "Film screening + live music/DJ set",
+            "reason": "8 programme films support music event"
+          },
+          "programme_fit_details": {
+            "domain_themes": [
+              "atmospheric",
+              "countercultural",
+              "dark",
+              "experimental",
+              "subcultural"
+            ],
+            "programme_themes": [
+              "atmospheric",
+              "dark",
+              "experimental",
+              "futuristic",
+              "intellectual",
+              "narrative",
+              "speculative",
+              "subcultural",
+              "tension",
+              "visual"
+            ],
+            "theme_overlap_count": 4,
+            "thematic_score": 2,
+            "qualifying_members": 50,
+            "total_members": 50,
+            "member_ratio": 1.0,
+            "composition_score": 2,
+            "programme_fit_score": 2,
+            "note": "Uses programme direction (from film metadata) and member composition. Does NOT use affinity."
+          },
+          "testability_details": {
+            "outcome_clarity": 2,
+            "sample_size_score": 2,
+            "confound_score": 2,
+            "testability_score": 2,
+            "observable_outcome": "Attendance and engagement at the specific event",
+            "measurement_note": "Success threshold TBD \u2014 requires empirical baseline from the cinema's historical data"
+          },
+          "differentiation_details": {
+            "domain_novelty": 2,
+            "format_novelty": 2,
+            "differentiation_score": 2
+          }
+        },
+        {
+          "entity_title": "These Immortal Souls",
+          "domain": "artist",
+          "affinity": 0.89,
+          "qualifying_members": 50,
+          "total_members": 50,
+          "programme_films": [
+            "The Thing",
+            "The Shining",
+            "Suspiria",
+            "Perfect Blue",
+            "Akira"
+          ],
+          "entity_fit": 1,
+          "event_feasibility": 2,
+          "programme_fit": 2,
+          "testability": 2,
+          "differentiation": 2,
+          "total_score": 9,
+          "classification": "STRONG",
+          "entity_fit_details": {
+            "reason": "Moderate signal: affinity=0.890, 50 qualifying members"
+          },
+          "event_feasibility_details": {
+            "feasible": true,
+            "format": "Film screening + live music/DJ set",
+            "reason": "8 programme films support music event"
+          },
+          "programme_fit_details": {
+            "domain_themes": [
+              "atmospheric",
+              "countercultural",
+              "dark",
+              "experimental",
+              "subcultural"
+            ],
+            "programme_themes": [
+              "atmospheric",
+              "dark",
+              "experimental",
+              "futuristic",
+              "intellectual",
+              "narrative",
+              "speculative",
+              "subcultural",
+              "tension",
+              "visual"
+            ],
+            "theme_overlap_count": 4,
+            "thematic_score": 2,
+            "qualifying_members": 50,
+            "total_members": 50,
+            "member_ratio": 1.0,
+            "composition_score": 2,
+            "programme_fit_score": 2,
+            "note": "Uses programme direction (from film metadata) and member composition. Does NOT use affinity."
+          },
+          "testability_details": {
+            "outcome_clarity": 2,
+            "sample_size_score": 2,
+            "confound_score": 2,
+            "testability_score": 2,
+            "observable_outcome": "Attendance and engagement at the specific event",
+            "measurement_note": "Success threshold TBD \u2014 requires empirical baseline from the cinema's historical data"
+          },
+          "differentiation_details": {
+            "domain_novelty": 2,
+            "format_novelty": 2,
+            "differentiation_score": 2
+          }
+        },
+        {
+          "entity_title": "Snakefinger",
+          "domain": "artist",
+          "affinity": 0.8897,
+          "qualifying_members": 50,
+          "total_members": 50,
+          "programme_films": [
+            "The Thing",
+            "The Shining",
+            "Suspiria",
+            "Perfect Blue",
+            "Akira"
+          ],
+          "entity_fit": 1,
+          "event_feasibility": 2,
+          "programme_fit": 2,
+          "testability": 2,
+          "differentiation": 2,
+          "total_score": 9,
+          "classification": "STRONG",
+          "entity_fit_details": {
+            "reason": "Moderate signal: affinity=0.890, 50 qualifying members"
+          },
+          "event_feasibility_details": {
+            "feasible": true,
+            "format": "Film screening + live music/DJ set",
+            "reason": "8 programme films support music event"
+          },
+          "programme_fit_details": {
+            "domain_themes": [
+              "atmospheric",
+              "countercultural",
+              "dark",
+              "experimental",
+              "subcultural"
+            ],
+            "programme_themes": [
+              "atmospheric",
+              "dark",
+              "experimental",
+              "futuristic",
+              "intellectual",
+              "narrative",
+              "speculative",
+              "subcultural",
+              "tension",
+              "visual"
+            ],
+            "theme_overlap_count": 4,
+            "thematic_score": 2,
+            "qualifying_members": 50,
+            "total_members": 50,
+            "member_ratio": 1.0,
+            "composition_score": 2,
+            "programme_fit_score": 2,
+            "note": "Uses programme direction (from film metadata) and member composition. Does NOT use affinity."
+          },
+          "testability_details": {
+            "outcome_clarity": 2,
+            "sample_size_score": 2,
+            "confound_score": 2,
+            "testability_score": 2,
+            "observable_outcome": "Attendance and engagement at the specific event",
+            "measurement_note": "Success threshold TBD \u2014 requires empirical baseline from the cinema's historical data"
+          },
+          "differentiation_details": {
+            "domain_novelty": 2,
+            "format_novelty": 2,
+            "differentiation_score": 2
+          }
+        }
+      ],
+      "programme_bet": {
+        "entity": "The Contortions",
+        "domain": "artist",
+        "affinity": 0.8997,
+        "qualifying_members": 50,
+        "supporting_films": [
+          "The Thing",
+          "The Shining",
+          "Suspiria",
+          "Perfect Blue",
+          "Akira"
+        ],
+        "why": "The artist 'The Contortions' has cultural affinity (0.900) with 50 qualifying members. 8 programme films support music event",
+        "experiment": "Film screening + live music/DJ set",
+        "hypothesis": "A cinema with this programming profile should test a artist-adjacent event because 'The Contortions' shares cultural DNA with the programme.",
+        "success_criterion": "Primary outcome: attendance / new-to-venue attendance / engagement. Threshold: TBD \u2014 must be calibrated against the cinema's historical baseline. Do not use arbitrary thresholds.",
+        "falsification": "This hypothesis is rejected if: (1) the artist affinity signal cannot be reproduced across the next comparable programme analysis, or (2) a subsequent analysis does not surface a similar artist opportunity in the top-5, or (3) the event format proves operationally infeasible at the venue."
+      },
+      "alternatives": [
+        {
+          "entity": "Edward Ka-Spel",
+          "domain": "artist",
+          "score": 9,
+          "affinity": 0.8916,
+          "reason_not_selected": "Lower total score (9 vs 9)"
+        },
+        {
+          "entity": "Dalis Car",
+          "domain": "artist",
+          "score": 9,
+          "affinity": 0.89,
+          "reason_not_selected": "Lower total score (9 vs 9)"
+        },
+        {
+          "entity": "These Immortal Souls",
+          "domain": "artist",
+          "score": 9,
+          "affinity": 0.89,
+          "reason_not_selected": "Lower total score (9 vs 9)"
+        },
+        {
+          "entity": "Snakefinger",
+          "domain": "artist",
+          "score": 9,
+          "affinity": 0.8897,
+          "reason_not_selected": "Lower total score (9 vs 9)"
+        }
+      ],
+      "ablation": [
+        {
+          "removed_component": "entity_fit",
+          "bet_entity": "The Contortions",
+          "bet_full_score": 9,
+          "bet_ablated_score": 8,
+          "bet_rank": 1,
+          "new_top_entity": "The Contortions",
+          "new_top_score": 8,
+          "rank_change": 0
+        },
+        {
+          "removed_component": "event_feasibility",
+          "bet_entity": "The Contortions",
+          "bet_full_score": 9,
+          "bet_ablated_score": 7,
+          "bet_rank": 1,
+          "new_top_entity": "The Contortions",
+          "new_top_score": 7,
+          "rank_change": 0
+        },
+        {
+          "removed_component": "programme_fit",
+          "bet_entity": "The Contortions",
+          "bet_full_score": 9,
+          "bet_ablated_score": 7,
+          "bet_rank": 1,
+          "new_top_entity": "The Contortions",
+          "new_top_score": 7,
+          "rank_change": 0
+        },
+        {
+          "removed_component": "testability",
+          "bet_entity": "The Contortions",
+          "bet_full_score": 9,
+          "bet_ablated_score": 7,
+          "bet_rank": 51,
+          "new_top_entity": "What Remains",
+          "new_top_score": 7,
+          "rank_change": 50
+        },
+        {
+          "removed_component": "differentiation",
+          "bet_entity": "The Contortions",
+          "bet_full_score": 9,
+          "bet_ablated_score": 7,
+          "bet_rank": 51,
+          "new_top_entity": "What Remains",
+          "new_top_score": 7,
+          "rank_change": 50
+        }
+      ]
+    }
+  ]
+}

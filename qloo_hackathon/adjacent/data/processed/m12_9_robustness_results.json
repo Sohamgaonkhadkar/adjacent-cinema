@@ -1,0 +1,851 @@
+{
+  "evaluation_date": "2026-10-07T19:06:25.267496+00:00",
+  "evaluation_version": "M12.9",
+  "scoring_policies": [
+    "affinity_only",
+    "affinity_qualifying",
+    "affinity_popularity",
+    "balanced"
+  ],
+  "field_classification": {
+    "CANDIDATE_EVIDENCE": [
+      "affinity",
+      "popularity",
+      "band",
+      "candidate_tags"
+    ],
+    "COHORT_EVIDENCE": [
+      "qualifying_members",
+      "total_members",
+      "qualifying_ratio",
+      "cohort_kind",
+      "shared_tags",
+      "construction_evidence"
+    ],
+    "DERIVED": [
+      "qloo_evidence_score",
+      "qualifying_ratio",
+      "rank_correlations"
+    ],
+    "PRODUCT_POLICY": [
+      "scoring_weights"
+    ],
+    "UNKNOWN": [
+      "actual_attendance_impact",
+      "per_film_attribution",
+      "success_thresholds"
+    ]
+  },
+  "results": [
+    {
+      "venue": "Genesis Cinema",
+      "raw_count": 200,
+      "policy_rankings": {
+        "affinity_only": {
+          "top_10": [
+            {
+              "title": "What Remains",
+              "domain": "tv_show",
+              "score": 0.956,
+              "affinity": 0.956,
+              "popularity": 0.6476,
+              "qr": 1.0
+            },
+            {
+              "title": "Retribution",
+              "domain": "tv_show",
+              "score": 0.9548,
+              "affinity": 0.9548,
+              "popularity": 0.7398,
+              "qr": 1.0
+            },
+            {
+              "title": "Somebody",
+              "domain": "tv_show",
+              "score": 0.9544,
+              "affinity": 0.9544,
+              "popularity": 0.767,
+              "qr": 1.0
+            },
+            {
+              "title": "Harlan Coben's Shelter",
+              "domain": "tv_show",
+              "score": 0.9526,
+              "affinity": 0.9526,
+              "popularity": 0.5905,
+              "qr": 1.0
+            },
+            {
+              "title": "Red Rose",
+              "domain": "tv_show",
+              "score": 0.9523,
+              "affinity": 0.9523,
+              "popularity": 0.7931,
+              "qr": 1.0
+            },
+            {
+              "title": "The Pact",
+              "domain": "tv_show",
+              "score": 0.9516,
+              "affinity": 0.9516,
+              "popularity": 0.5017,
+              "qr": 1.0
+            },
+            {
+              "title": "The Woman in the Wall",
+              "domain": "tv_show",
+              "score": 0.9515,
+              "affinity": 0.9515,
+              "popularity": 0.6291,
+              "qr": 1.0
+            },
+            {
+              "title": "Reckoning",
+              "domain": "tv_show",
+              "score": 0.9515,
+              "affinity": 0.9515,
+              "popularity": 0.5639,
+              "qr": 1.0
+            },
+            {
+              "title": "Tomorrow",
+              "domain": "tv_show",
+              "score": 0.9511,
+              "affinity": 0.9511,
+              "popularity": 0.882,
+              "qr": 1.0
+            },
+            {
+              "title": "Gyeongseong Creature",
+              "domain": "tv_show",
+              "score": 0.951,
+              "affinity": 0.951,
+              "popularity": 0.6823,
+              "qr": 1.0
+            }
+          ],
+          "winner": "What Remains",
+          "winner_domain": "tv_show",
+          "winner_score": 0.956,
+          "domain_top20": {
+            "tv_show": 0
+          }
+        },
+        "affinity_qualifying": {
+          "top_10": [
+            {
+              "title": "What Remains",
+              "domain": "tv_show",
+              "score": 0.9648,
+              "affinity": 0.956,
+              "popularity": 0.6476,
+              "qr": 1.0
+            },
+            {
+              "title": "Retribution",
+              "domain": "tv_show",
+              "score": 0.9639,
+              "affinity": 0.9548,
+              "popularity": 0.7398,
+              "qr": 1.0
+            },
+            {
+              "title": "Somebody",
+              "domain": "tv_show",
+              "score": 0.9635,
+              "affinity": 0.9544,
+              "popularity": 0.767,
+              "qr": 1.0
+            },
+            {
+              "title": "Harlan Coben's Shelter",
+              "domain": "tv_show",
+              "score": 0.9621,
+              "affinity": 0.9526,
+              "popularity": 0.5905,
+              "qr": 1.0
+            },
+            {
+              "title": "Red Rose",
+              "domain": "tv_show",
+              "score": 0.9619,
+              "affinity": 0.9523,
+              "popularity": 0.7931,
+              "qr": 1.0
+            },
+            {
+              "title": "The Pact",
+              "domain": "tv_show",
+              "score": 0.9613,
+              "affinity": 0.9516,
+              "popularity": 0.5017,
+              "qr": 1.0
+            },
+            {
+              "title": "The Woman in the Wall",
+              "domain": "tv_show",
+              "score": 0.9612,
+              "affinity": 0.9515,
+              "popularity": 0.6291,
+              "qr": 1.0
+            },
+            {
+              "title": "Reckoning",
+              "domain": "tv_show",
+              "score": 0.9612,
+              "affinity": 0.9515,
+              "popularity": 0.5639,
+              "qr": 1.0
+            },
+            {
+              "title": "Tomorrow",
+              "domain": "tv_show",
+              "score": 0.9609,
+              "affinity": 0.9511,
+              "popularity": 0.882,
+              "qr": 1.0
+            },
+            {
+              "title": "Gyeongseong Creature",
+              "domain": "tv_show",
+              "score": 0.9608,
+              "affinity": 0.951,
+              "popularity": 0.6823,
+              "qr": 1.0
+            }
+          ],
+          "winner": "What Remains",
+          "winner_domain": "tv_show",
+          "winner_score": 0.9648,
+          "domain_top20": {
+            "tv_show": 0
+          }
+        },
+        "affinity_popularity": {
+          "top_10": [
+            {
+              "title": "Tomorrow",
+              "domain": "tv_show",
+              "score": 0.9373,
+              "affinity": 0.9511,
+              "popularity": 0.882,
+              "qr": 1.0
+            },
+            {
+              "title": "Glitch",
+              "domain": "tv_show",
+              "score": 0.9358,
+              "affinity": 0.9458,
+              "popularity": 0.896,
+              "qr": 1.0
+            },
+            {
+              "title": "Devil in Ohio",
+              "domain": "tv_show",
+              "score": 0.9346,
+              "affinity": 0.9466,
+              "popularity": 0.8863,
+              "qr": 1.0
+            },
+            {
+              "title": "Keep Breathing",
+              "domain": "tv_show",
+              "score": 0.9325,
+              "affinity": 0.9489,
+              "popularity": 0.8667,
+              "qr": 1.0
+            },
+            {
+              "title": "Dirty John",
+              "domain": "tv_show",
+              "score": 0.9325,
+              "affinity": 0.9465,
+              "popularity": 0.8766,
+              "qr": 1.0
+            },
+            {
+              "title": "Stateless",
+              "domain": "tv_show",
+              "score": 0.9263,
+              "affinity": 0.9484,
+              "popularity": 0.8378,
+              "qr": 1.0
+            },
+            {
+              "title": "Thirteen",
+              "domain": "tv_show",
+              "score": 0.9257,
+              "affinity": 0.9489,
+              "popularity": 0.8329,
+              "qr": 1.0
+            },
+            {
+              "title": "The Five",
+              "domain": "tv_show",
+              "score": 0.9213,
+              "affinity": 0.9493,
+              "popularity": 0.8092,
+              "qr": 1.0
+            },
+            {
+              "title": "Red Rose",
+              "domain": "tv_show",
+              "score": 0.9205,
+              "affinity": 0.9523,
+              "popularity": 0.7931,
+              "qr": 1.0
+            },
+            {
+              "title": "Chambers",
+              "domain": "tv_show",
+              "score": 0.9182,
+              "affinity": 0.9456,
+              "popularity": 0.8085,
+              "qr": 1.0
+            }
+          ],
+          "winner": "Tomorrow",
+          "winner_domain": "tv_show",
+          "winner_score": 0.9373,
+          "domain_top20": {
+            "tv_show": 0,
+            "artist": 0
+          }
+        },
+        "balanced": {
+          "top_10": [
+            {
+              "title": "Tomorrow",
+              "domain": "tv_show",
+              "score": 0.9471,
+              "affinity": 0.9511,
+              "popularity": 0.882,
+              "qr": 1.0
+            },
+            {
+              "title": "Glitch",
+              "domain": "tv_show",
+              "score": 0.9467,
+              "affinity": 0.9458,
+              "popularity": 0.896,
+              "qr": 1.0
+            },
+            {
+              "title": "Devil in Ohio",
+              "domain": "tv_show",
+              "score": 0.9452,
+              "affinity": 0.9466,
+              "popularity": 0.8863,
+              "qr": 1.0
+            },
+            {
+              "title": "Dirty John",
+              "domain": "tv_show",
+              "score": 0.9432,
+              "affinity": 0.9465,
+              "popularity": 0.8766,
+              "qr": 1.0
+            },
+            {
+              "title": "Keep Breathing",
+              "domain": "tv_show",
+              "score": 0.9427,
+              "affinity": 0.9489,
+              "popularity": 0.8667,
+              "qr": 1.0
+            },
+            {
+              "title": "Stateless",
+              "domain": "tv_show",
+              "score": 0.9366,
+              "affinity": 0.9484,
+              "popularity": 0.8378,
+              "qr": 1.0
+            },
+            {
+              "title": "Thirteen",
+              "domain": "tv_show",
+              "score": 0.9359,
+              "affinity": 0.9489,
+              "popularity": 0.8329,
+              "qr": 1.0
+            },
+            {
+              "title": "The Five",
+              "domain": "tv_show",
+              "score": 0.9314,
+              "affinity": 0.9493,
+              "popularity": 0.8092,
+              "qr": 1.0
+            },
+            {
+              "title": "Red Rose",
+              "domain": "tv_show",
+              "score": 0.93,
+              "affinity": 0.9523,
+              "popularity": 0.7931,
+              "qr": 1.0
+            },
+            {
+              "title": "Chambers",
+              "domain": "tv_show",
+              "score": 0.9291,
+              "affinity": 0.9456,
+              "popularity": 0.8085,
+              "qr": 1.0
+            }
+          ],
+          "winner": "Tomorrow",
+          "winner_domain": "tv_show",
+          "winner_score": 0.9471,
+          "domain_top20": {
+            "tv_show": 0,
+            "artist": 0
+          }
+        }
+      },
+      "sensitivity": {
+        "affinity_qualifying": {
+          "kendall_tau": 1.0,
+          "top5_overlap": 5,
+          "top10_overlap": 10,
+          "winner_same": true,
+          "winner": "What Remains",
+          "winner_domain": "tv_show"
+        },
+        "affinity_popularity": {
+          "kendall_tau": 0.6325,
+          "top5_overlap": 0,
+          "top10_overlap": 2,
+          "winner_same": false,
+          "winner": "Tomorrow",
+          "winner_domain": "tv_show"
+        },
+        "balanced": {
+          "kendall_tau": 0.5458,
+          "top5_overlap": 0,
+          "top10_overlap": 2,
+          "winner_same": false,
+          "winner": "Tomorrow",
+          "winner_domain": "tv_show"
+        }
+      },
+      "winner_stability": {
+        "unique_winners": [
+          "Tomorrow",
+          "What Remains"
+        ],
+        "robust": true
+      },
+      "evidence_classification": {
+        "qualifying_ratio_all_same_top10": true,
+        "popularity_range_top10": 0.3803,
+        "affinity_range_top10": 0.005
+      }
+    },
+    {
+      "venue": "Prince Charles Cinema",
+      "raw_count": 150,
+      "policy_rankings": {
+        "affinity_only": {
+          "top_10": [
+            {
+              "title": "What Remains",
+              "domain": "tv_show",
+              "score": 0.9596,
+              "affinity": 0.9596,
+              "popularity": 0.6476,
+              "qr": 1.0
+            },
+            {
+              "title": "Harlan Coben's Shelter",
+              "domain": "tv_show",
+              "score": 0.9571,
+              "affinity": 0.9571,
+              "popularity": 0.5905,
+              "qr": 1.0
+            },
+            {
+              "title": "Retribution",
+              "domain": "tv_show",
+              "score": 0.957,
+              "affinity": 0.957,
+              "popularity": 0.7398,
+              "qr": 1.0
+            },
+            {
+              "title": "American Gothic",
+              "domain": "tv_show",
+              "score": 0.9554,
+              "affinity": 0.9554,
+              "popularity": 0.627,
+              "qr": 1.0
+            },
+            {
+              "title": "Requiem",
+              "domain": "tv_show",
+              "score": 0.9553,
+              "affinity": 0.9553,
+              "popularity": 0.7469,
+              "qr": 1.0
+            },
+            {
+              "title": "Chambers",
+              "domain": "tv_show",
+              "score": 0.9552,
+              "affinity": 0.9552,
+              "popularity": 0.8085,
+              "qr": 1.0
+            },
+            {
+              "title": "Red Rose",
+              "domain": "tv_show",
+              "score": 0.9549,
+              "affinity": 0.9549,
+              "popularity": 0.7931,
+              "qr": 1.0
+            },
+            {
+              "title": "The Woman in the Wall",
+              "domain": "tv_show",
+              "score": 0.9542,
+              "affinity": 0.9542,
+              "popularity": 0.6291,
+              "qr": 1.0
+            },
+            {
+              "title": "The Burning Girls",
+              "domain": "tv_show",
+              "score": 0.9541,
+              "affinity": 0.9541,
+              "popularity": 0.3657,
+              "qr": 1.0
+            },
+            {
+              "title": "Devil in Ohio",
+              "domain": "tv_show",
+              "score": 0.9538,
+              "affinity": 0.9538,
+              "popularity": 0.8863,
+              "qr": 1.0
+            }
+          ],
+          "winner": "What Remains",
+          "winner_domain": "tv_show",
+          "winner_score": 0.9596,
+          "domain_top20": {
+            "tv_show": 0
+          }
+        },
+        "affinity_qualifying": {
+          "top_10": [
+            {
+              "title": "What Remains",
+              "domain": "tv_show",
+              "score": 0.9677,
+              "affinity": 0.9596,
+              "popularity": 0.6476,
+              "qr": 1.0
+            },
+            {
+              "title": "Harlan Coben's Shelter",
+              "domain": "tv_show",
+              "score": 0.9656,
+              "affinity": 0.9571,
+              "popularity": 0.5905,
+              "qr": 1.0
+            },
+            {
+              "title": "Retribution",
+              "domain": "tv_show",
+              "score": 0.9656,
+              "affinity": 0.957,
+              "popularity": 0.7398,
+              "qr": 1.0
+            },
+            {
+              "title": "American Gothic",
+              "domain": "tv_show",
+              "score": 0.9643,
+              "affinity": 0.9554,
+              "popularity": 0.627,
+              "qr": 1.0
+            },
+            {
+              "title": "Requiem",
+              "domain": "tv_show",
+              "score": 0.9642,
+              "affinity": 0.9553,
+              "popularity": 0.7469,
+              "qr": 1.0
+            },
+            {
+              "title": "Chambers",
+              "domain": "tv_show",
+              "score": 0.9641,
+              "affinity": 0.9552,
+              "popularity": 0.8085,
+              "qr": 1.0
+            },
+            {
+              "title": "Red Rose",
+              "domain": "tv_show",
+              "score": 0.9639,
+              "affinity": 0.9549,
+              "popularity": 0.7931,
+              "qr": 1.0
+            },
+            {
+              "title": "The Woman in the Wall",
+              "domain": "tv_show",
+              "score": 0.9634,
+              "affinity": 0.9542,
+              "popularity": 0.6291,
+              "qr": 1.0
+            },
+            {
+              "title": "The Burning Girls",
+              "domain": "tv_show",
+              "score": 0.9633,
+              "affinity": 0.9541,
+              "popularity": 0.3657,
+              "qr": 1.0
+            },
+            {
+              "title": "Devil in Ohio",
+              "domain": "tv_show",
+              "score": 0.963,
+              "affinity": 0.9538,
+              "popularity": 0.8863,
+              "qr": 1.0
+            }
+          ],
+          "winner": "What Remains",
+          "winner_domain": "tv_show",
+          "winner_score": 0.9677,
+          "domain_top20": {
+            "tv_show": 0
+          }
+        },
+        "affinity_popularity": {
+          "top_10": [
+            {
+              "title": "Devil in Ohio",
+              "domain": "tv_show",
+              "score": 0.9403,
+              "affinity": 0.9538,
+              "popularity": 0.8863,
+              "qr": 1.0
+            },
+            {
+              "title": "Slasher",
+              "domain": "tv_show",
+              "score": 0.9354,
+              "affinity": 0.9506,
+              "popularity": 0.8745,
+              "qr": 1.0
+            },
+            {
+              "title": "Millennium",
+              "domain": "tv_show",
+              "score": 0.9287,
+              "affinity": 0.9514,
+              "popularity": 0.8378,
+              "qr": 1.0
+            },
+            {
+              "title": "Thirteen",
+              "domain": "tv_show",
+              "score": 0.926,
+              "affinity": 0.9492,
+              "popularity": 0.8329,
+              "qr": 1.0
+            },
+            {
+              "title": "Chambers",
+              "domain": "tv_show",
+              "score": 0.9258,
+              "affinity": 0.9552,
+              "popularity": 0.8085,
+              "qr": 1.0
+            },
+            {
+              "title": "Shiki",
+              "domain": "tv_show",
+              "score": 0.9251,
+              "affinity": 0.9505,
+              "popularity": 0.8235,
+              "qr": 1.0
+            },
+            {
+              "title": "The Five",
+              "domain": "tv_show",
+              "score": 0.9233,
+              "affinity": 0.9518,
+              "popularity": 0.8092,
+              "qr": 1.0
+            },
+            {
+              "title": "Red Rose",
+              "domain": "tv_show",
+              "score": 0.9226,
+              "affinity": 0.9549,
+              "popularity": 0.7931,
+              "qr": 1.0
+            },
+            {
+              "title": "The Rig",
+              "domain": "tv_show",
+              "score": 0.9218,
+              "affinity": 0.9479,
+              "popularity": 0.8174,
+              "qr": 1.0
+            },
+            {
+              "title": "Inuyashiki",
+              "domain": "tv_show",
+              "score": 0.9207,
+              "affinity": 0.9484,
+              "popularity": 0.8103,
+              "qr": 1.0
+            }
+          ],
+          "winner": "Devil in Ohio",
+          "winner_domain": "tv_show",
+          "winner_score": 0.9403,
+          "domain_top20": {
+            "tv_show": 0
+          }
+        },
+        "balanced": {
+          "top_10": [
+            {
+              "title": "Devil in Ohio",
+              "domain": "tv_show",
+              "score": 0.9495,
+              "affinity": 0.9538,
+              "popularity": 0.8863,
+              "qr": 1.0
+            },
+            {
+              "title": "Slasher",
+              "domain": "tv_show",
+              "score": 0.9453,
+              "affinity": 0.9506,
+              "popularity": 0.8745,
+              "qr": 1.0
+            },
+            {
+              "title": "Millennium",
+              "domain": "tv_show",
+              "score": 0.9384,
+              "affinity": 0.9514,
+              "popularity": 0.8378,
+              "qr": 1.0
+            },
+            {
+              "title": "Thirteen",
+              "domain": "tv_show",
+              "score": 0.9361,
+              "affinity": 0.9492,
+              "popularity": 0.8329,
+              "qr": 1.0
+            },
+            {
+              "title": "Shiki",
+              "domain": "tv_show",
+              "score": 0.935,
+              "affinity": 0.9505,
+              "popularity": 0.8235,
+              "qr": 1.0
+            },
+            {
+              "title": "Chambers",
+              "domain": "tv_show",
+              "score": 0.9348,
+              "affinity": 0.9552,
+              "popularity": 0.8085,
+              "qr": 1.0
+            },
+            {
+              "title": "The Five",
+              "domain": "tv_show",
+              "score": 0.9329,
+              "affinity": 0.9518,
+              "popularity": 0.8092,
+              "qr": 1.0
+            },
+            {
+              "title": "The Rig",
+              "domain": "tv_show",
+              "score": 0.9323,
+              "affinity": 0.9479,
+              "popularity": 0.8174,
+              "qr": 1.0
+            },
+            {
+              "title": "Red Rose",
+              "domain": "tv_show",
+              "score": 0.9316,
+              "affinity": 0.9549,
+              "popularity": 0.7931,
+              "qr": 1.0
+            },
+            {
+              "title": "Inuyashiki",
+              "domain": "tv_show",
+              "score": 0.9311,
+              "affinity": 0.9484,
+              "popularity": 0.8103,
+              "qr": 1.0
+            }
+          ],
+          "winner": "Devil in Ohio",
+          "winner_domain": "tv_show",
+          "winner_score": 0.9495,
+          "domain_top20": {
+            "tv_show": 0
+          }
+        }
+      },
+      "sensitivity": {
+        "affinity_qualifying": {
+          "kendall_tau": 1.0,
+          "top5_overlap": 5,
+          "top10_overlap": 10,
+          "winner_same": true,
+          "winner": "What Remains",
+          "winner_domain": "tv_show"
+        },
+        "affinity_popularity": {
+          "kendall_tau": 0.5096,
+          "top5_overlap": 0,
+          "top10_overlap": 3,
+          "winner_same": false,
+          "winner": "Devil in Ohio",
+          "winner_domain": "tv_show"
+        },
+        "balanced": {
+          "kendall_tau": 0.4098,
+          "top5_overlap": 0,
+          "top10_overlap": 3,
+          "winner_same": false,
+          "winner": "Devil in Ohio",
+          "winner_domain": "tv_show"
+        }
+      },
+      "winner_stability": {
+        "unique_winners": [
+          "Devil in Ohio",
+          "What Remains"
+        ],
+        "robust": true
+      },
+      "evidence_classification": {
+        "qualifying_ratio_all_same_top10": true,
+        "popularity_range_top10": 0.5206,
+        "affinity_range_top10": 0.0058
+      }
+    }
+  ]
+}

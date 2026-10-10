@@ -1,0 +1,309 @@
+{
+  "_fixture": true,
+  "_fixture_notice": "SYNTHETIC FIXTURE DATA - hand-authored to match documented Qloo response shapes. NOT measured Qloo output and must never be presented as such.",
+  "scenario": "insufficient_evidence",
+  "description": "Deliberately sparse evidence: one resolved title, no tag above Medium, no cohort clearing the evidence threshold, and too few heatmap cells. Used to prove that no recommendation is fabricated when Qloo has nothing.",
+  "city": {
+    "query": "Springfield, Nowhere",
+    "locality": null
+  },
+  "programme": [
+    {
+      "title": "Obscure Local Shorts Reel 1",
+      "year": null,
+      "imdb_id": null,
+      "entity_id": "99999999-9999-4999-8999-000000000001",
+      "popularity": 0.03
+    },
+    {
+      "title": "Obscure Local Shorts Reel 2",
+      "year": null,
+      "imdb_id": null,
+      "entity_id": null
+    },
+    {
+      "title": "Untitled Work In Progress",
+      "year": null,
+      "imdb_id": null,
+      "entity_id": null
+    }
+  ],
+  "responses": {
+    "entities": {
+      "external": {
+        "imdb": {
+          "results": {
+            "entities": []
+          },
+          "query": {}
+        }
+      },
+      "by_id": {
+        "results": {
+          "entities": [
+            {
+              "entity_id": "99999999-9999-4999-8999-000000000001",
+              "name": "Obscure Local Shorts Reel 1",
+              "type": "urn:entity:movie",
+              "subtype": "short",
+              "affinity": null,
+              "properties": {
+                "popularity": 0.03
+              }
+            }
+          ]
+        },
+        "query": {}
+      }
+    },
+    "search": {
+      "default": {
+        "results": {
+          "entities": []
+        },
+        "query": {}
+      }
+    },
+    "insights": {
+      "urn:tag": {
+        "default": {
+          "results": {
+            "tags": [
+              {
+                "tag_id": "urn:tag:keyword:media:experimental",
+                "name": "Experimental",
+                "subtype": "urn:tag:keyword",
+                "affinity": 0.42,
+                "properties": {
+                  "popularity": 0.02
+                }
+              },
+              {
+                "tag_id": "urn:tag:keyword:media:local_history",
+                "name": "Local History",
+                "subtype": "urn:tag:keyword",
+                "affinity": 0.38,
+                "properties": {
+                  "popularity": 0.01
+                }
+              },
+              {
+                "tag_id": "urn:tag:keyword:media:amateur",
+                "name": "Amateur",
+                "subtype": "urn:tag:keyword",
+                "affinity": 0.31,
+                "properties": {
+                  "popularity": 0.01
+                }
+              }
+            ]
+          },
+          "query": {}
+        }
+      },
+      "urn:demographics": {
+        "default": {
+          "results": {},
+          "query": {}
+        }
+      },
+      "urn:entity:artist": {
+        "default": {
+          "results": {
+            "entities": [
+              {
+                "entity_id": "aaaaaaa1-aaaa-4aaa-8aaa-000000000001",
+                "name": "Example Local Ensemble",
+                "type": "urn:entity:artist",
+                "subtype": "ensemble",
+                "affinity": 0.47,
+                "properties": {
+                  "popularity": 0.02
+                }
+              },
+              {
+                "entity_id": "aaaaaaa1-aaaa-4aaa-8aaa-000000000002",
+                "name": "Example Tiny Label Artist",
+                "type": "urn:entity:artist",
+                "subtype": "musician",
+                "affinity": 0.44,
+                "properties": {
+                  "popularity": 0.01
+                }
+              },
+              {
+                "entity_id": "aaaaaaa1-aaaa-4aaa-8aaa-000000000003",
+                "name": "Example Open Mic Regular",
+                "type": "urn:entity:artist",
+                "subtype": "musician",
+                "affinity": 0.51,
+                "properties": {
+                  "popularity": 0.01
+                }
+              }
+            ]
+          },
+          "query": {
+            "entities": {
+              "filter": {
+                "types": [
+                  "urn:entity:movie"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "urn:entity:movie": {
+        "default": {
+          "results": {
+            "entities": []
+          },
+          "query": {
+            "entities": {
+              "filter": {
+                "types": [
+                  "urn:entity:movie"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "urn:entity:tv_show": {
+        "default": {
+          "results": {
+            "entities": []
+          },
+          "query": {
+            "entities": {
+              "filter": {
+                "types": [
+                  "urn:entity:movie"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "urn:entity:book": {
+        "default": {
+          "results": {
+            "entities": []
+          },
+          "query": {
+            "entities": {
+              "filter": {
+                "types": [
+                  "urn:entity:movie"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "urn:entity:brand": {
+        "default": {
+          "results": {
+            "entities": []
+          },
+          "query": {
+            "entities": {
+              "filter": {
+                "types": [
+                  "urn:entity:movie"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "urn:heatmap": {
+        "default": {
+          "results": {
+            "cells": [
+              {
+                "lat": 39.78,
+                "lng": -89.65,
+                "geohash": "dp0",
+                "affinity": 0.35,
+                "affinity_rank": 1,
+                "popularity": 0.02
+              },
+              {
+                "lat": 39.79,
+                "lng": -89.66,
+                "geohash": "dp1",
+                "affinity": 0.33,
+                "affinity_rank": 2,
+                "popularity": 0.01
+              },
+              {
+                "lat": 39.8,
+                "lng": -89.67,
+                "geohash": "dp2",
+                "affinity": 0.31,
+                "affinity_rank": 3,
+                "popularity": 0.01
+              },
+              {
+                "lat": 39.81,
+                "lng": -89.68,
+                "geohash": "dp3",
+                "affinity": 0.29,
+                "affinity_rank": 4,
+                "popularity": 0.01
+              }
+            ]
+          },
+          "query": {
+            "boundary": "urn:geohash",
+            "localities": {
+              "filter": null
+            }
+          }
+        }
+      }
+    },
+    "tags": {
+      "default": {
+        "results": {
+          "tags": []
+        },
+        "query": {}
+      }
+    },
+    "audiences": {
+      "default": {
+        "results": {
+          "audiences": []
+        },
+        "query": {}
+      }
+    },
+    "trending": {
+      "default": {
+        "results": {
+          "entities": []
+        },
+        "query": {}
+      }
+    },
+    "compare": {
+      "default": {
+        "results": {
+          "tags": []
+        },
+        "query": {}
+      }
+    }
+  },
+  "expectations": {
+    "resolved_entity_count": 1,
+    "min_cohorts_meeting_evidence": 0,
+    "expected_insufficiency": "insufficient_cohorts",
+    "heatmap_cells": 4,
+    "geography_claim_supported": false,
+    "must_not_produce_recommendation": true
+  }
+}

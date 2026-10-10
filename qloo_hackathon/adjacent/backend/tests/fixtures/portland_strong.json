@@ -1,0 +1,1246 @@
+{
+  "_fixture": true,
+  "_fixture_notice": "SYNTHETIC FIXTURE DATA - hand-authored to match documented Qloo response shapes. NOT measured Qloo output and must never be presented as such.",
+  "scenario": "portland_strong",
+  "description": "Illustrative single-venue cinema programme with cross-domain adjacency, geographic coverage, one weak cohort, one over-popular candidate, and one sub-Medium tag. Used to exercise the happy path and the rejection path.",
+  "city": {
+    "query": "Portland, Oregon",
+    "locality": {
+      "name": "Portland",
+      "state": "Oregon",
+      "country": "USA"
+    }
+  },
+  "programme": [
+    {
+      "title": "Perfect Days",
+      "year": 2023,
+      "imdb_id": "tt7594358",
+      "entity_id": "11111111-1111-4111-8111-000000000001",
+      "popularity": 0.71
+    },
+    {
+      "title": "The Zone of Interest",
+      "year": 2023,
+      "imdb_id": "tt7160372",
+      "entity_id": "11111111-1111-4111-8111-000000000002",
+      "popularity": 0.83
+    },
+    {
+      "title": "Taipei Story",
+      "year": 1985,
+      "imdb_id": "tt0089853",
+      "entity_id": "11111111-1111-4111-8111-000000000003",
+      "popularity": 0.11
+    },
+    {
+      "title": "Sansho the Bailiff",
+      "year": 1954,
+      "imdb_id": "tt0047445",
+      "entity_id": "11111111-1111-4111-8111-000000000004",
+      "popularity": 0.14
+    },
+    {
+      "title": "Le Samourai",
+      "year": 1967,
+      "imdb_id": "tt0062229",
+      "entity_id": "11111111-1111-4111-8111-000000000005",
+      "popularity": 0.42
+    },
+    {
+      "title": "All the Beauty and the Bloodshed",
+      "year": 2022,
+      "imdb_id": "tt2137482",
+      "entity_id": "11111111-1111-4111-8111-000000000006",
+      "popularity": 0.35
+    },
+    {
+      "title": "Sorcerer",
+      "year": 1977,
+      "imdb_id": "tt0076740",
+      "entity_id": "11111111-1111-4111-8111-000000000007",
+      "popularity": 0.19
+    },
+    {
+      "title": "Fire of Love",
+      "year": 2022,
+      "imdb_id": "tt12979666",
+      "entity_id": "11111111-1111-4111-8111-000000000008",
+      "popularity": 0.58
+    }
+  ],
+  "responses": {
+    "entities": {
+      "external": {
+        "imdb": {
+          "_fixture_note": "Returns this scenario's resolved entity set. The mock does not simulate partial resolution for external lookups - real partial resolution is measured by probe A.",
+          "results": {
+            "entities": [
+              {
+                "entity_id": "11111111-1111-4111-8111-000000000001",
+                "name": "Perfect Days",
+                "type": "urn:entity:movie",
+                "subtype": "feature",
+                "affinity": null,
+                "properties": {
+                  "popularity": 0.71
+                }
+              },
+              {
+                "entity_id": "11111111-1111-4111-8111-000000000002",
+                "name": "The Zone of Interest",
+                "type": "urn:entity:movie",
+                "subtype": "feature",
+                "affinity": null,
+                "properties": {
+                  "popularity": 0.83
+                }
+              },
+              {
+                "entity_id": "11111111-1111-4111-8111-000000000003",
+                "name": "Taipei Story",
+                "type": "urn:entity:movie",
+                "subtype": "feature",
+                "affinity": null,
+                "properties": {
+                  "popularity": 0.11
+                }
+              },
+              {
+                "entity_id": "11111111-1111-4111-8111-000000000004",
+                "name": "Sansho the Bailiff",
+                "type": "urn:entity:movie",
+                "subtype": "feature",
+                "affinity": null,
+                "properties": {
+                  "popularity": 0.14
+                }
+              },
+              {
+                "entity_id": "11111111-1111-4111-8111-000000000005",
+                "name": "Le Samourai",
+                "type": "urn:entity:movie",
+                "subtype": "feature",
+                "affinity": null,
+                "properties": {
+                  "popularity": 0.42
+                }
+              },
+              {
+                "entity_id": "11111111-1111-4111-8111-000000000006",
+                "name": "All the Beauty and the Bloodshed",
+                "type": "urn:entity:movie",
+                "subtype": "feature",
+                "affinity": null,
+                "properties": {
+                  "popularity": 0.35
+                }
+              },
+              {
+                "entity_id": "11111111-1111-4111-8111-000000000007",
+                "name": "Sorcerer",
+                "type": "urn:entity:movie",
+                "subtype": "feature",
+                "affinity": null,
+                "properties": {
+                  "popularity": 0.19
+                }
+              },
+              {
+                "entity_id": "11111111-1111-4111-8111-000000000008",
+                "name": "Fire of Love",
+                "type": "urn:entity:movie",
+                "subtype": "feature",
+                "affinity": null,
+                "properties": {
+                  "popularity": 0.58
+                }
+              }
+            ]
+          },
+          "query": {
+            "entities": {
+              "filter": {
+                "external": {
+                  "imdb": {
+                    "ids": [
+                      "tt7594358",
+                      "tt7160372",
+                      "tt0089853",
+                      "tt0047445",
+                      "tt0062229",
+                      "tt2137482",
+                      "tt0076740",
+                      "tt12979666"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "by_id": {
+        "results": {
+          "entities": [
+            {
+              "entity_id": "11111111-1111-4111-8111-000000000001",
+              "name": "Perfect Days",
+              "type": "urn:entity:movie",
+              "subtype": "feature",
+              "affinity": null,
+              "properties": {
+                "popularity": 0.71
+              }
+            },
+            {
+              "entity_id": "11111111-1111-4111-8111-000000000002",
+              "name": "The Zone of Interest",
+              "type": "urn:entity:movie",
+              "subtype": "feature",
+              "affinity": null,
+              "properties": {
+                "popularity": 0.83
+              }
+            },
+            {
+              "entity_id": "11111111-1111-4111-8111-000000000003",
+              "name": "Taipei Story",
+              "type": "urn:entity:movie",
+              "subtype": "feature",
+              "affinity": null,
+              "properties": {
+                "popularity": 0.11
+              }
+            },
+            {
+              "entity_id": "11111111-1111-4111-8111-000000000004",
+              "name": "Sansho the Bailiff",
+              "type": "urn:entity:movie",
+              "subtype": "feature",
+              "affinity": null,
+              "properties": {
+                "popularity": 0.14
+              }
+            },
+            {
+              "entity_id": "11111111-1111-4111-8111-000000000005",
+              "name": "Le Samourai",
+              "type": "urn:entity:movie",
+              "subtype": "feature",
+              "affinity": null,
+              "properties": {
+                "popularity": 0.42
+              }
+            },
+            {
+              "entity_id": "11111111-1111-4111-8111-000000000006",
+              "name": "All the Beauty and the Bloodshed",
+              "type": "urn:entity:movie",
+              "subtype": "feature",
+              "affinity": null,
+              "properties": {
+                "popularity": 0.35
+              }
+            },
+            {
+              "entity_id": "11111111-1111-4111-8111-000000000007",
+              "name": "Sorcerer",
+              "type": "urn:entity:movie",
+              "subtype": "feature",
+              "affinity": null,
+              "properties": {
+                "popularity": 0.19
+              }
+            },
+            {
+              "entity_id": "11111111-1111-4111-8111-000000000008",
+              "name": "Fire of Love",
+              "type": "urn:entity:movie",
+              "subtype": "feature",
+              "affinity": null,
+              "properties": {
+                "popularity": 0.58
+              }
+            }
+          ]
+        },
+        "query": {
+          "entities": {
+            "filter": {
+              "ids": [
+                "11111111-1111-4111-8111-000000000001",
+                "11111111-1111-4111-8111-000000000002",
+                "11111111-1111-4111-8111-000000000003",
+                "11111111-1111-4111-8111-000000000004",
+                "11111111-1111-4111-8111-000000000005",
+                "11111111-1111-4111-8111-000000000006",
+                "11111111-1111-4111-8111-000000000007",
+                "11111111-1111-4111-8111-000000000008"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "search": {
+      "default": {
+        "results": {
+          "entities": [
+            {
+              "entity_id": "11111111-1111-4111-8111-000000000004",
+              "name": "Sansho the Bailiff",
+              "type": "urn:entity:movie",
+              "subtype": "feature",
+              "affinity": null,
+              "properties": {
+                "popularity": 0.14
+              }
+            }
+          ]
+        },
+        "query": {
+          "entities": {
+            "filter": {
+              "query": "Sansho the Bailiff"
+            }
+          }
+        }
+      }
+    },
+    "insights": {
+      "urn:tag": {
+        "default": {
+          "results": {
+            "tags": [
+              {
+                "tag_id": "urn:tag:keyword:media:slow_cinema",
+                "name": "Slow Cinema",
+                "subtype": "urn:tag:keyword",
+                "affinity": 0.84,
+                "properties": {
+                  "popularity": 0.31
+                }
+              },
+              {
+                "tag_id": "urn:tag:genre:movie:documentary",
+                "name": "Documentary",
+                "subtype": "urn:tag:genre",
+                "affinity": 0.79,
+                "properties": {
+                  "popularity": 0.62
+                }
+              },
+              {
+                "tag_id": "urn:tag:keyword:media:film_35mm",
+                "name": "35mm Film",
+                "subtype": "urn:tag:keyword",
+                "affinity": 0.74,
+                "properties": {
+                  "popularity": 0.22
+                }
+              },
+              {
+                "tag_id": "urn:tag:keyword:theme:urban_alienation",
+                "name": "Urban Alienation",
+                "subtype": "urn:tag:keyword",
+                "affinity": 0.68,
+                "properties": {
+                  "popularity": 0.18
+                }
+              },
+              {
+                "tag_id": "urn:tag:style:minimalism",
+                "name": "Minimalism",
+                "subtype": "urn:tag:style",
+                "affinity": 0.63,
+                "properties": {
+                  "popularity": 0.27
+                }
+              },
+              {
+                "tag_id": "urn:tag:genre:movie:existential_drama",
+                "name": "Existential Drama",
+                "subtype": "urn:tag:genre",
+                "affinity": 0.61,
+                "properties": {
+                  "popularity": 0.34
+                }
+              },
+              {
+                "tag_id": "urn:tag:keyword:theme:environment",
+                "name": "Environment",
+                "subtype": "urn:tag:keyword",
+                "affinity": 0.56,
+                "properties": {
+                  "popularity": 0.55
+                }
+              },
+              {
+                "tag_id": "urn:tag:genre:movie:crime_noir",
+                "name": "Crime Noir",
+                "subtype": "urn:tag:genre",
+                "affinity": 0.44,
+                "properties": {
+                  "popularity": 0.41
+                }
+              }
+            ]
+          },
+          "query": {
+            "tags": {
+              "filter": {
+                "types": [
+                  "urn:tag"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "urn:demographics": {
+        "default": {
+          "results": {
+            "demographics": [
+              {
+                "query": {
+                  "age": {
+                    "24_and_younger": -0.09,
+                    "25_to_29": 0.31,
+                    "30_to_34": 0.24,
+                    "35_to_44": 0.18,
+                    "45_to_54": -0.04,
+                    "55_to_64": -0.12,
+                    "65_and_older": -0.21
+                  },
+                  "gender": {
+                    "male": 0.04,
+                    "female": -0.04
+                  }
+                },
+                "affinity": 0.62
+              }
+            ]
+          },
+          "query": {
+            "demographics": {
+              "filter": {
+                "types": [
+                  "urn:demographics"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "urn:entity:artist": {
+        "default": {
+          "results": {
+            "entities": [
+              {
+                "entity_id": "22222222-2222-4222-8222-000000000001",
+                "name": "Brian Eno",
+                "type": "urn:entity:artist",
+                "subtype": "musician",
+                "affinity": 0.79,
+                "properties": {
+                  "popularity": 0.74,
+                  "tags": [
+                    "urn:tag:genre:music:ambient"
+                  ]
+                }
+              },
+              {
+                "entity_id": "22222222-2222-4222-8222-000000000002",
+                "name": "Grouper",
+                "type": "urn:entity:artist",
+                "subtype": "musician",
+                "affinity": 0.71,
+                "properties": {
+                  "popularity": 0.24,
+                  "tags": [
+                    "urn:tag:genre:music:ambient",
+                    "urn:tag:genre:music:drone"
+                  ]
+                }
+              },
+              {
+                "entity_id": "22222222-2222-4222-8222-000000000003",
+                "name": "Hildur Gudnadottir",
+                "type": "urn:entity:artist",
+                "subtype": "composer",
+                "affinity": 0.68,
+                "properties": {
+                  "popularity": 0.58,
+                  "tags": [
+                    "urn:tag:genre:music:modern_composition"
+                  ]
+                }
+              },
+              {
+                "entity_id": "22222222-2222-4222-8222-000000000004",
+                "name": "William Basinski",
+                "type": "urn:entity:artist",
+                "subtype": "composer",
+                "affinity": 0.64,
+                "properties": {
+                  "popularity": 0.21,
+                  "tags": [
+                    "urn:tag:genre:music:drone"
+                  ]
+                }
+              },
+              {
+                "entity_id": "22222222-2222-4222-8222-000000000005",
+                "name": "Nils Frahm",
+                "type": "urn:entity:artist",
+                "subtype": "composer",
+                "affinity": 0.58,
+                "properties": {
+                  "popularity": 0.47
+                }
+              },
+              {
+                "entity_id": "22222222-2222-4222-8222-000000000006",
+                "name": "Astrud Gilberto",
+                "type": "urn:entity:artist",
+                "subtype": "musician",
+                "affinity": 0.52,
+                "properties": {
+                  "popularity": 0.39
+                }
+              }
+            ]
+          },
+          "query": {
+            "entities": {
+              "filter": {
+                "types": [
+                  "urn:entity:movie"
+                ]
+              }
+            }
+          }
+        },
+        "results": {
+          "results": {
+            "entities": [
+              {
+                "entity_id": "22222222-2222-4222-8222-000000000001",
+                "name": "Brian Eno",
+                "type": "urn:entity:artist",
+                "subtype": "musician",
+                "affinity": 0.79,
+                "properties": {
+                  "popularity": 0.74,
+                  "tags": [
+                    "urn:tag:genre:music:ambient"
+                  ]
+                }
+              },
+              {
+                "entity_id": "22222222-2222-4222-8222-000000000002",
+                "name": "Grouper",
+                "type": "urn:entity:artist",
+                "subtype": "musician",
+                "affinity": 0.71,
+                "properties": {
+                  "popularity": 0.24,
+                  "tags": [
+                    "urn:tag:genre:music:ambient",
+                    "urn:tag:genre:music:drone"
+                  ]
+                }
+              },
+              {
+                "entity_id": "22222222-2222-4222-8222-000000000003",
+                "name": "Hildur Gudnadottir",
+                "type": "urn:entity:artist",
+                "subtype": "composer",
+                "affinity": 0.68,
+                "properties": {
+                  "popularity": 0.58,
+                  "tags": [
+                    "urn:tag:genre:music:modern_composition"
+                  ]
+                }
+              },
+              {
+                "entity_id": "22222222-2222-4222-8222-000000000004",
+                "name": "William Basinski",
+                "type": "urn:entity:artist",
+                "subtype": "composer",
+                "affinity": 0.64,
+                "properties": {
+                  "popularity": 0.21,
+                  "tags": [
+                    "urn:tag:genre:music:drone"
+                  ]
+                }
+              },
+              {
+                "entity_id": "22222222-2222-4222-8222-000000000005",
+                "name": "Nils Frahm",
+                "type": "urn:entity:artist",
+                "subtype": "composer",
+                "affinity": 0.58,
+                "properties": {
+                  "popularity": 0.47
+                }
+              },
+              {
+                "entity_id": "22222222-2222-4222-8222-000000000006",
+                "name": "Astrud Gilberto",
+                "type": "urn:entity:artist",
+                "subtype": "musician",
+                "affinity": 0.52,
+                "properties": {
+                  "popularity": 0.39
+                }
+              }
+            ]
+          },
+          "query": {
+            "entities": {
+              "filter": {
+                "types": [
+                  "urn:entity:movie"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "urn:entity:movie": {
+        "default": {
+          "results": {
+            "entities": [
+              {
+                "entity_id": "33333333-3333-4333-8333-000000000001",
+                "name": "Paterson",
+                "type": "urn:entity:movie",
+                "subtype": "feature",
+                "affinity": 0.81,
+                "properties": {
+                  "popularity": 0.66
+                }
+              },
+              {
+                "entity_id": "33333333-3333-4333-8333-000000000002",
+                "name": "Aguirre, the Wrath of God",
+                "type": "urn:entity:movie",
+                "subtype": "feature",
+                "affinity": 0.77,
+                "properties": {
+                  "popularity": 0.71
+                }
+              },
+              {
+                "entity_id": "33333333-3333-4333-8333-000000000003",
+                "name": "In the Mood for Love",
+                "type": "urn:entity:movie",
+                "subtype": "feature",
+                "affinity": 0.76,
+                "properties": {
+                  "popularity": 0.79
+                }
+              },
+              {
+                "entity_id": "33333333-3333-4333-8333-000000000004",
+                "name": "The Straight Story",
+                "type": "urn:entity:movie",
+                "subtype": "feature",
+                "affinity": 0.72,
+                "properties": {
+                  "popularity": 0.39
+                }
+              },
+              {
+                "entity_id": "33333333-3333-4333-8333-000000000005",
+                "name": "Koyaanisqatsi",
+                "type": "urn:entity:movie",
+                "subtype": "documentary",
+                "affinity": 0.83,
+                "properties": {
+                  "popularity": 0.61
+                }
+              },
+              {
+                "entity_id": "33333333-3333-4333-8333-000000000006",
+                "name": "Baraka",
+                "type": "urn:entity:movie",
+                "subtype": "documentary",
+                "affinity": 0.86,
+                "properties": {
+                  "popularity": 0.88
+                }
+              },
+              {
+                "entity_id": "33333333-3333-4333-8333-000000000007",
+                "name": "Nostalghia",
+                "type": "urn:entity:movie",
+                "subtype": "feature",
+                "affinity": 0.52,
+                "properties": {
+                  "popularity": 0.33
+                }
+              }
+            ]
+          },
+          "query": {
+            "entities": {
+              "filter": {
+                "types": [
+                  "urn:entity:movie"
+                ]
+              }
+            }
+          }
+        },
+        "results": {
+          "results": {
+            "entities": [
+              {
+                "entity_id": "33333333-3333-4333-8333-000000000001",
+                "name": "Paterson",
+                "type": "urn:entity:movie",
+                "subtype": "feature",
+                "affinity": 0.81,
+                "properties": {
+                  "popularity": 0.66
+                }
+              },
+              {
+                "entity_id": "33333333-3333-4333-8333-000000000002",
+                "name": "Aguirre, the Wrath of God",
+                "type": "urn:entity:movie",
+                "subtype": "feature",
+                "affinity": 0.77,
+                "properties": {
+                  "popularity": 0.71
+                }
+              },
+              {
+                "entity_id": "33333333-3333-4333-8333-000000000003",
+                "name": "In the Mood for Love",
+                "type": "urn:entity:movie",
+                "subtype": "feature",
+                "affinity": 0.76,
+                "properties": {
+                  "popularity": 0.79
+                }
+              },
+              {
+                "entity_id": "33333333-3333-4333-8333-000000000004",
+                "name": "The Straight Story",
+                "type": "urn:entity:movie",
+                "subtype": "feature",
+                "affinity": 0.72,
+                "properties": {
+                  "popularity": 0.39
+                }
+              },
+              {
+                "entity_id": "33333333-3333-4333-8333-000000000005",
+                "name": "Koyaanisqatsi",
+                "type": "urn:entity:movie",
+                "subtype": "documentary",
+                "affinity": 0.83,
+                "properties": {
+                  "popularity": 0.61
+                }
+              },
+              {
+                "entity_id": "33333333-3333-4333-8333-000000000006",
+                "name": "Baraka",
+                "type": "urn:entity:movie",
+                "subtype": "documentary",
+                "affinity": 0.86,
+                "properties": {
+                  "popularity": 0.88
+                }
+              },
+              {
+                "entity_id": "33333333-3333-4333-8333-000000000007",
+                "name": "Nostalghia",
+                "type": "urn:entity:movie",
+                "subtype": "feature",
+                "affinity": 0.52,
+                "properties": {
+                  "popularity": 0.33
+                }
+              }
+            ]
+          },
+          "query": {
+            "entities": {
+              "filter": {
+                "types": [
+                  "urn:entity:movie"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "urn:entity:tv_show": {
+        "default": {
+          "results": {
+            "entities": [
+              {
+                "entity_id": "44444444-4444-4444-8444-000000000001",
+                "name": "Twin Peaks",
+                "type": "urn:entity:tv_show",
+                "subtype": "scripted",
+                "affinity": 0.74,
+                "properties": {
+                  "popularity": 0.72
+                }
+              },
+              {
+                "entity_id": "44444444-4444-4444-8444-000000000002",
+                "name": "Detectorists",
+                "type": "urn:entity:tv_show",
+                "subtype": "scripted",
+                "affinity": 0.61,
+                "properties": {
+                  "popularity": 0.28
+                }
+              },
+              {
+                "entity_id": "44444444-4444-4444-8444-000000000003",
+                "name": "Forbrydelsen",
+                "type": "urn:entity:tv_show",
+                "subtype": "scripted",
+                "affinity": 0.51,
+                "properties": {
+                  "popularity": 0.31
+                }
+              }
+            ]
+          },
+          "query": {
+            "entities": {
+              "filter": {
+                "types": [
+                  "urn:entity:movie"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "urn:entity:book": {
+        "default": {
+          "results": {
+            "entities": [
+              {
+                "entity_id": "55555555-5555-4555-8555-000000000001",
+                "name": "A Field Guide to Getting Lost",
+                "type": "urn:entity:book",
+                "subtype": "nonfiction",
+                "affinity": 0.66,
+                "properties": {
+                  "popularity": 0.44
+                }
+              },
+              {
+                "entity_id": "55555555-5555-4555-8555-000000000002",
+                "name": "The Rings of Saturn",
+                "type": "urn:entity:book",
+                "subtype": "nonfiction",
+                "affinity": 0.63,
+                "properties": {
+                  "popularity": 0.29
+                }
+              },
+              {
+                "entity_id": "55555555-5555-4555-8555-000000000003",
+                "name": "Wanderlust",
+                "type": "urn:entity:book",
+                "subtype": "nonfiction",
+                "affinity": 0.59,
+                "properties": {
+                  "popularity": 0.22
+                }
+              },
+              {
+                "entity_id": "55555555-5555-4555-8555-000000000004",
+                "name": "The Empathy Exams",
+                "type": "urn:entity:book",
+                "subtype": "nonfiction",
+                "affinity": 0.58,
+                "properties": {
+                  "popularity": 0.26
+                }
+              }
+            ]
+          },
+          "query": {
+            "entities": {
+              "filter": {
+                "types": [
+                  "urn:entity:movie"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "urn:entity:brand": {
+        "default": {
+          "results": {
+            "entities": [
+              {
+                "entity_id": "66666666-6666-4666-8666-000000000001",
+                "name": "Example Roasters Co",
+                "type": "urn:entity:brand",
+                "subtype": "food",
+                "affinity": 0.51,
+                "properties": {
+                  "popularity": 0.12
+                }
+              },
+              {
+                "entity_id": "66666666-6666-4666-8666-000000000002",
+                "name": "Example Gear Works",
+                "type": "urn:entity:brand",
+                "subtype": "outdoor",
+                "affinity": 0.48,
+                "properties": {
+                  "popularity": 0.19
+                }
+              },
+              {
+                "entity_id": "66666666-6666-4666-8666-000000000003",
+                "name": "Example Press",
+                "type": "urn:entity:brand",
+                "subtype": "publishing",
+                "affinity": 0.44,
+                "properties": {
+                  "popularity": 0.08
+                }
+              }
+            ]
+          },
+          "query": {
+            "entities": {
+              "filter": {
+                "types": [
+                  "urn:entity:movie"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "urn:heatmap": {
+        "default": {
+          "results": {
+            "cells": [
+              {
+                "lat": 45.5,
+                "lng": -122.75,
+                "geohash": "c20fa00",
+                "affinity": 0.88,
+                "affinity_rank": 1,
+                "popularity": 0.2
+              },
+              {
+                "lat": 45.514,
+                "lng": -122.746,
+                "geohash": "c20fb01",
+                "affinity": 0.866,
+                "affinity_rank": 2,
+                "popularity": 0.25
+              },
+              {
+                "lat": 45.528,
+                "lng": -122.742,
+                "geohash": "c20fc02",
+                "affinity": 0.852,
+                "affinity_rank": 3,
+                "popularity": 0.3
+              },
+              {
+                "lat": 45.542,
+                "lng": -122.738,
+                "geohash": "c20fd03",
+                "affinity": 0.838,
+                "affinity_rank": 4,
+                "popularity": 0.35
+              },
+              {
+                "lat": 45.556,
+                "lng": -122.734,
+                "geohash": "c20fe04",
+                "affinity": 0.824,
+                "affinity_rank": 5,
+                "popularity": 0.4
+              },
+              {
+                "lat": 45.57,
+                "lng": -122.73,
+                "geohash": "c20ff05",
+                "affinity": 0.81,
+                "affinity_rank": 6,
+                "popularity": 0.45
+              },
+              {
+                "lat": 45.503,
+                "lng": -122.722,
+                "geohash": "c20fg06",
+                "affinity": 0.796,
+                "affinity_rank": 7,
+                "popularity": 0.5
+              },
+              {
+                "lat": 45.517,
+                "lng": -122.718,
+                "geohash": "c20fh07",
+                "affinity": 0.782,
+                "affinity_rank": 8,
+                "popularity": 0.2
+              },
+              {
+                "lat": 45.531,
+                "lng": -122.714,
+                "geohash": "c20fi08",
+                "affinity": 0.768,
+                "affinity_rank": 9,
+                "popularity": 0.25
+              },
+              {
+                "lat": 45.545,
+                "lng": -122.71,
+                "geohash": "c20fj09",
+                "affinity": 0.754,
+                "affinity_rank": 10,
+                "popularity": 0.3
+              },
+              {
+                "lat": 45.559,
+                "lng": -122.706,
+                "geohash": "c20fk10",
+                "affinity": 0.74,
+                "affinity_rank": 11,
+                "popularity": 0.35
+              },
+              {
+                "lat": 45.573,
+                "lng": -122.702,
+                "geohash": "c20fl11",
+                "affinity": 0.726,
+                "affinity_rank": 12,
+                "popularity": 0.4
+              },
+              {
+                "lat": 45.506,
+                "lng": -122.694,
+                "geohash": "c20fm12",
+                "affinity": 0.712,
+                "affinity_rank": 13,
+                "popularity": 0.45
+              },
+              {
+                "lat": 45.52,
+                "lng": -122.69,
+                "geohash": "c20fn13",
+                "affinity": 0.698,
+                "affinity_rank": 14,
+                "popularity": 0.5
+              },
+              {
+                "lat": 45.534,
+                "lng": -122.686,
+                "geohash": "c20fo14",
+                "affinity": 0.684,
+                "affinity_rank": 15,
+                "popularity": 0.2
+              },
+              {
+                "lat": 45.548,
+                "lng": -122.682,
+                "geohash": "c20fp15",
+                "affinity": 0.67,
+                "affinity_rank": 16,
+                "popularity": 0.25
+              },
+              {
+                "lat": 45.562,
+                "lng": -122.678,
+                "geohash": "c20fq16",
+                "affinity": 0.656,
+                "affinity_rank": 17,
+                "popularity": 0.3
+              },
+              {
+                "lat": 45.576,
+                "lng": -122.674,
+                "geohash": "c20fr17",
+                "affinity": 0.642,
+                "affinity_rank": 18,
+                "popularity": 0.35
+              },
+              {
+                "lat": 45.509,
+                "lng": -122.666,
+                "geohash": "c20fs18",
+                "affinity": 0.628,
+                "affinity_rank": 19,
+                "popularity": 0.4
+              },
+              {
+                "lat": 45.523,
+                "lng": -122.662,
+                "geohash": "c20ft19",
+                "affinity": 0.614,
+                "affinity_rank": 20,
+                "popularity": 0.45
+              },
+              {
+                "lat": 45.537,
+                "lng": -122.658,
+                "geohash": "c20fa20",
+                "affinity": 0.6,
+                "affinity_rank": 21,
+                "popularity": 0.5
+              },
+              {
+                "lat": 45.551,
+                "lng": -122.654,
+                "geohash": "c20fb21",
+                "affinity": 0.586,
+                "affinity_rank": 22,
+                "popularity": 0.2
+              },
+              {
+                "lat": 45.565,
+                "lng": -122.65,
+                "geohash": "c20fc22",
+                "affinity": 0.572,
+                "affinity_rank": 23,
+                "popularity": 0.25
+              },
+              {
+                "lat": 45.579,
+                "lng": -122.646,
+                "geohash": "c20fd23",
+                "affinity": 0.558,
+                "affinity_rank": 24,
+                "popularity": 0.3
+              }
+            ]
+          },
+          "query": {
+            "boundary": "urn:geohash",
+            "localities": {
+              "filter": {
+                "name": "Portland",
+                "state": "Oregon",
+                "country": "USA"
+              },
+              "results": [
+                {
+                  "name": "Portland",
+                  "state": "Oregon",
+                  "country": "USA",
+                  "location": {
+                    "lat": 45.5152,
+                    "lng": -122.6784
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "tags": {
+      "default": {
+        "results": {
+          "tags": [
+            {
+              "tag_id": "urn:tag:keyword:media:slow_cinema",
+              "name": "Slow Cinema",
+              "subtype": "urn:tag:keyword",
+              "affinity": 0.84,
+              "properties": {
+                "popularity": 0.31
+              }
+            }
+          ]
+        },
+        "query": {
+          "tags": {
+            "filter": {
+              "query": "slow observational documentary"
+            }
+          }
+        }
+      }
+    },
+    "audiences": {
+      "default": {
+        "results": {
+          "audiences": [
+            {
+              "audience_id": "urn:audience:hobbies_and_interests:example_film_societies",
+              "name": "Example: film society members",
+              "affinity": 0.57,
+              "properties": {
+                "popularity": 0.22
+              }
+            }
+          ]
+        },
+        "query": {
+          "audiences": {
+            "filter": {
+              "types": [
+                "urn:audience:hobbies_and_interests"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "trending": {
+      "default": {
+        "results": {
+          "entities": []
+        },
+        "query": {}
+      }
+    },
+    "compare": {
+      "default": {
+        "results": {
+          "tags": []
+        },
+        "query": {}
+      }
+    }
+  },
+  "expectations": {
+    "resolved_entity_count": 8,
+    "min_cross_domain_count": 4,
+    "min_cohorts_meeting_evidence": 3,
+    "weak_candidate_names": [
+      "Astrud Gilberto",
+      "Forbrydelsen",
+      "Example Roasters Co",
+      "Example Gear Works",
+      "Example Press",
+      "Nostalghia"
+    ],
+    "over_popular_candidate_names": [
+      "Baraka"
+    ],
+    "sub_medium_tag_ids": [
+      "urn:tag:genre:movie:crime_noir"
+    ],
+    "min_heatmap_cells": 20,
+    "geography_claim_supported": true
+  }
+}

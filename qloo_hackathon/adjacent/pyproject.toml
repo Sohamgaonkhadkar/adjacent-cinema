@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "adjacent-backend"
+version = "0.1.0"
+description = "Adjacent — audience-development decision support for programmed cultural venues. Backend."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "httpx>=0.27",
+    "pydantic>=2.7",
+    "uvicorn>=0.30",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+# Deliberately absent on Day 1:
+#   psycopg     — add when persistence is actually needed (Phase 1/9), not before
+#   langgraph   — the agent is a small explicit state machine; see docs/METHOD notes
+#   redis       — the cache is a Postgres table until proven otherwise
+#   pandas/numpy — no numeric work needs them
+
+[tool.setuptools]
+package-dir = { "" = "backend" }
+packages = ["app", "app.agent", "app.domain", "app.qloo"]
+
+[tool.pytest.ini_options]
+pythonpath = ["backend"]
+testpaths = ["backend/tests"]
+addopts = "-q --strict-markers"
+markers = [
+    "live: requires QLOO_API_KEY (deselect with '-m not live')",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning:starlette.*",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+extend-exclude = ["backend/tests/fixtures"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM", "RUF"]
+ignore = [
+    "E501",    # line length is handled by the formatter, not the linter
+    "SIM108",  # ternaries are not always clearer
+    "B008",    # FastAPI dependency calls in defaults are idiomatic
+    "RUF001", "RUF002", "RUF003",  # typographic characters (·, →, —) are intentional
+    "UP046",   # Pydantic generics: keep Generic[T] rather than PEP 695 syntax
+]
+
+[tool.ruff.lint.per-file-ignores]
+"backend/tests/*" = ["E402", "B011"]
+"scripts/*" = ["E402"]  # sys.path bootstrap before imports is intentional
+
+[tool.ruff.format]
+quote-style = "double"

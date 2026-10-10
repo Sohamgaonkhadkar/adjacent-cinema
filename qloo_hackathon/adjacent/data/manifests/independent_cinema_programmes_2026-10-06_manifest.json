@@ -1,0 +1,18 @@
+{
+  "dataset_name": "independent_cinema_programmes",
+  "version": "2026-10-06",
+  "created_at": "2026-10-06T17:10:38.917343",
+  "source": "Cinema Context (University of Amsterdam)",
+  "source_url": "https://data.create.humanities.uva.nl/sparql",
+  "license": "CC-BY 4.0",
+  "record_count": 20628,
+  "venue_count": 10,
+  "film_count": 9054,
+  "date_range": {
+    "start": "1907-09-20",
+    "end": "1955-06-24"
+  },
+  "venue_specific": true,
+  "historical": true,
+  "not_chain_duplicated": true
+}

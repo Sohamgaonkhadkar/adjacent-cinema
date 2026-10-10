@@ -1,0 +1,157 @@
+{
+  "version": "M13.2",
+  "baselines": {
+    "B0_venue_history": {
+      "description": "Historical sold_out rate at this venue",
+      "features": [
+        "venue_historical_sold_out_rate"
+      ],
+      "type": "binary_classification",
+      "note": "Minimum bar \u2014 does anything beat the venue's base rate?"
+    },
+    "B1_film_metadata": {
+      "description": "Film metadata only (no Qloo)",
+      "features": [
+        "genre",
+        "year",
+        "rating",
+        "director_popularity",
+        "format"
+      ],
+      "type": "binary_classification",
+      "note": "Can standard film features predict sold_out?"
+    },
+    "B2_qloo_affinity": {
+      "description": "Qloo affinity only",
+      "features": [
+        "qloo_affinity"
+      ],
+      "type": "binary_classification",
+      "note": "Does Qloo's cultural signal alone predict outcomes?"
+    },
+    "B3_current_ranker": {
+      "description": "Current Adjacent deterministic ranker",
+      "features": [
+        "qloo_affinity",
+        "qloo_popularity",
+        "qualifying_ratio"
+      ],
+      "type": "ranking",
+      "note": "Does the current weighted score predict outcomes?"
+    },
+    "B4_qloo_plus_metadata": {
+      "description": "Qloo + film metadata",
+      "features": [
+        "qloo_affinity",
+        "qloo_popularity",
+        "genre",
+        "year",
+        "format"
+      ],
+      "type": "binary_classification",
+      "note": "Does Qloo add value beyond metadata?"
+    }
+  },
+  "metrics": {
+    "sold_out_binary": {
+      "primary": "PR_AUC",
+      "secondary": [
+        "ROC_AUC",
+        "F1",
+        "Precision_at_high_recall"
+      ],
+      "rationale": "Imbalanced classes \u2014 most screenings not sold out"
+    },
+    "occupancy_rate": {
+      "primary": "MAE",
+      "secondary": [
+        "RMSE",
+        "R_squared"
+      ],
+      "rationale": "Continuous target \u2014 interpretability matters"
+    },
+    "ranking": {
+      "primary": "NDCG_at_5",
+      "secondary": [
+        "Kendall_tau",
+        "Hit_at_5"
+      ],
+      "rationale": "We care about top-K ranking quality"
+    }
+  },
+  "leakage_controls": {
+    "temporal_split": {
+      "description": "Train on earlier dates, test on later dates",
+      "rule": "No future information in training set"
+    },
+    "venue_grouping": {
+      "description": "Evaluate per-venue, report macro-averaged",
+      "rule": "Venue-level effects don't leak across splits"
+    },
+    "film_leakage": {
+      "description": "Same film can appear in train and test (different screenings)",
+      "rule": "But Qloo features must be from prediction-time, not future"
+    },
+    "qloo_temporal": {
+      "description": "Use only Qloo data available at screening time",
+      "rule": "No future Qloo popularity or affinity"
+    }
+  },
+  "readiness_gates": {
+    "minimum_observations": {
+      "description": "Enough observations for meaningful evaluation",
+      "threshold": "Not a fixed number \u2014 assess based on variance",
+      "assessment_factors": [
+        "number_of_venues",
+        "number_of_screenings",
+        "number_of_distinct_films",
+        "sold_out_rate",
+        "outcome_variance",
+        "time_coverage"
+      ]
+    },
+    "target_variance": {
+      "description": "Meaningful variation in target variable",
+      "threshold": "sold_out rate between 5% and 50%",
+      "note": "If <5% sold out, too rare. If >50%, too common."
+    },
+    "venue_diversity": {
+      "description": "Multiple venues to avoid venue-specific bias",
+      "threshold": "At least 2 distinct venues"
+    },
+    "temporal_coverage": {
+      "description": "Enough time to capture seasonal effects",
+      "threshold": "At least 3 months of data"
+    }
+  },
+  "benchmark_schema": {
+    "event_id": "string \u2014 unique event identifier",
+    "venue_id": "string \u2014 venue identifier",
+    "venue_name": "string \u2014 human-readable venue name",
+    "city": "string \u2014 city name",
+    "event_date": "YYYY-MM-DD",
+    "film_id": "string \u2014 film identifier",
+    "film_title": "string \u2014 human-readable film title",
+    "film_year": "int \u2014 release year",
+    "imdb_id": "string \u2014 IMDB ID if available (NULL if not)",
+    "qloo_entity_id": "string \u2014 Qloo entity ID if resolved (NULL if not)",
+    "domain": "string \u2014 film, tv_show, artist, etc.",
+    "event_type": "string \u2014 screening, themed_season, etc.",
+    "format": "string \u2014 35mm, 4K, DCP, etc.",
+    "capacity": "int \u2014 venue capacity (NULL if unavailable)",
+    "tickets_sold": "int \u2014 actual tickets sold (NULL if unavailable)",
+    "occupancy_rate": "float \u2014 tickets/capacity (NULL if unavailable)",
+    "sold_out": "bool \u2014 venue reported sold out (NULL if not observed)",
+    "ticket_price": "float \u2014 price (NULL if unavailable)",
+    "qloo_affinity": "float \u2014 Qloo affinity at prediction time (NULL if unavailable)",
+    "qloo_popularity": "float \u2014 Qloo popularity at prediction time (NULL if unavailable)",
+    "qloo_evidence_score": "float \u2014 Adjacent evidence score (NULL if unavailable)",
+    "recommendation_rank": "int \u2014 Adjacent rank (NULL if not recommended)",
+    "source": "string \u2014 data source",
+    "join_status": "VERIFIED | AMBIGUOUS | MISMATCH | UNRESOLVED",
+    "label_quality": "DIRECT_OUTCOME | STRONG_PROXY | WEAK_PROXY | UNAVAILABLE",
+    "provenance": "string \u2014 how this record was obtained"
+  },
+  "status": "DESIGN_ONLY \u2014 no real data to evaluate yet",
+  "ml_readiness": "NOT_ML_READY"
+}

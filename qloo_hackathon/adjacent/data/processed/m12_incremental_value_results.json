@@ -1,0 +1,1806 @@
+{
+  "evaluation_date": "2026-10-07T09:52:34.673313+00:00",
+  "total_contexts": 10,
+  "successful_qloo_runs": 10,
+  "cross_domain_contexts": 10,
+  "decision_different_contexts": 10,
+  "aggregate_metrics": {
+    "avg_novelty_score": 0.997,
+    "avg_overlap_score": 0.003,
+    "avg_domain_diversity": 4.0,
+    "total_non_film_domains_discovered": 30
+  },
+  "results": [
+    {
+      "evaluation_context_id": "ica_london_2026_10",
+      "venue": "ICA (Institute of Contemporary Arts)",
+      "city": "London",
+      "description": "Contemporary arthouse and experimental cinema",
+      "source_url": "https://www.ica.art/films",
+      "retrieved_at": "2026-10-07T10:00:00Z",
+      "programme_films": [
+        {
+          "title": "Parasite",
+          "year": 2019,
+          "imdb_id": "tt6751668"
+        },
+        {
+          "title": "The Zone of Interest",
+          "year": 2023,
+          "imdb_id": "tt7160372"
+        },
+        {
+          "title": "Anatomy of a Fall",
+          "year": 2023,
+          "imdb_id": "tt17009710"
+        },
+        {
+          "title": "The Banshees of Inisherin",
+          "year": 2022,
+          "imdb_id": "tt11813216"
+        },
+        {
+          "title": "Perfect Days",
+          "year": 2023,
+          "imdb_id": "tt27503384"
+        },
+        {
+          "title": "Past Lives",
+          "year": 2023,
+          "imdb_id": "tt13238346"
+        }
+      ],
+      "baseline": {
+        "detected_styles": [
+          "asian_cinema",
+          "arthouse_drama"
+        ],
+        "year_range": "2019-2023",
+        "avg_film_year": 2022.2,
+        "programming_directions": [
+          "More recent award-winning arthouse drama",
+          "East Asian cinema seasons"
+        ],
+        "film_count": 6,
+        "approach": "metadata-only",
+        "metadata_fields_used": [
+          "title",
+          "year",
+          "genre/style inference from title patterns"
+        ]
+      },
+      "qloo": {
+        "success": true,
+        "resolved_items": 6,
+        "ranked_cohorts": 3,
+        "rejected_cohorts": 1,
+        "selected_domains": [
+          "urn:entity:artist",
+          "urn:entity:movie",
+          "urn:entity:brand"
+        ],
+        "skipped_domains": [
+          "urn:entity:tv_show",
+          "urn:entity:book",
+          "urn:entity:destination",
+          "urn:entity:podcast"
+        ],
+        "programme_bet": {
+          "primary": {
+            "domain": "artist",
+            "cohort_name": "Oliver Sim",
+            "mean_affinity": 0.871046,
+            "member_count": 49,
+            "call_id": "local-c018"
+          },
+          "runner_up": {
+            "domain": "movie",
+            "cohort_name": "R.M.N.",
+            "mean_affinity": 0.878869,
+            "call_id": "local-c020"
+          },
+          "two_sided_signals": {
+            "programme_adjacency": 0.871046,
+            "adjacency_band": "High",
+            "adjacency_call_id": "local-c018",
+            "cohort_breadth": 1.0,
+            "breadth_band": "High",
+            "breadth_call_id": "local-c018",
+            "methodology_note": "Programme adjacency: mean affinity of cohort members against programme taste profile (Qloo /v2/insights). Cohort breadth: fraction of cohort members above Medium affinity threshold."
+          },
+          "why": "The strongest adjacent cultural group is in the artist domain, featuring Oliver Sim, Timothy Heller, Yola. This group shows very high cultural affinity (mean 0.87) with your programme's taste profile. Evidence dimensions: programme adjacency=0.87 (High), cohort breadth=1.00 (High).",
+          "cultural_bridge": "Your programme's taste profile (Cafe, cabaret, Religion) shares cultural signals with Oliver Sim, Timothy Heller.",
+          "geographic_signal": "Geographic analysis not available.",
+          "programming_direction": "Test programming that connects your existing Cafe, cabaret, Religion profile with the cultural world of Oliver Sim, Timothy Heller through artist-adjacent programming.",
+          "falsification_condition": "Do not continue this programming test if the artist affinity signal cannot be reproduced across the next comparable programme analysis. Specifically: if a subsequent analysis of a similar programme does not produce a artist cohort in the top-3 ranked opportunities, the hypothesis is rejected.",
+          "rejected_candidates": [
+            {
+              "cohort_id": "urn:entity:artist:domain_group:1",
+              "domain": "urn:entity:artist",
+              "reason": "insufficient_members",
+              "detail": "only 1 candidate(s) in this grouping; 2 are required before a cohort can be judged."
+            }
+          ],
+          "geography_call_id": null,
+          "data_status": "measured"
+        },
+        "taste_tags": [
+          "Cafe",
+          "cabaret",
+          "Religion",
+          "Scallop Risotto",
+          "Four Star",
+          "Identifies as women-owned",
+          "Sustainability",
+          "Practical",
+          "Self Improvement",
+          "Sustainability",
+          "Photographs",
+          "affordable",
+          "Eco-conscious Individuals",
+          "Reflective",
+          "Retail"
+        ],
+        "ranked_evidence": [
+          {
+            "domain": "urn:entity:artist",
+            "cohort_id": "urn:entity:artist:tag_cluster:1",
+            "member_count": 49,
+            "mean_affinity": 0.871046,
+            "qualifying_members": 49
+          },
+          {
+            "domain": "urn:entity:movie",
+            "cohort_id": "urn:entity:movie:tag_cluster:1",
+            "member_count": 50,
+            "mean_affinity": 0.878869,
+            "qualifying_members": 50
+          },
+          {
+            "domain": "urn:entity:brand",
+            "cohort_id": "urn:entity:brand:tag_cluster:1",
+            "member_count": 50,
+            "mean_affinity": 0.849785,
+            "qualifying_members": 50
+          }
+        ],
+        "stop_reason": "complete",
+        "data_status": "measured"
+      },
+      "metrics": {
+        "cross_domain_discovery": 2,
+        "non_film_domains": [
+          "urn:entity:artist",
+          "urn:entity:brand"
+        ],
+        "film_domains": [
+          "urn:entity:movie"
+        ],
+        "novelty_score": 1.0,
+        "overlap_score": 0.0,
+        "signal_strength": {
+          "programme_adjacency": 0.871046,
+          "adjacency_band": "High",
+          "cohort_breadth": 1.0,
+          "breadth_band": "High"
+        },
+        "domain_diversity": 3,
+        "decision_difference": true,
+        "qloo_primary_domain": "artist",
+        "is_film_primary": false,
+        "cross_domain_evidence": [
+          {
+            "domain": "urn:entity:artist",
+            "member_count": 49,
+            "mean_affinity": 0.871046
+          },
+          {
+            "domain": "urn:entity:brand",
+            "member_count": 50,
+            "mean_affinity": 0.849785
+          }
+        ]
+      }
+    },
+    {
+      "evaluation_context_id": "curzon_soho_london_2026_10",
+      "venue": "Curzon Soho",
+      "city": "London",
+      "description": "World cinema and arthouse mainstream",
+      "source_url": "https://www.curzon.com/soho",
+      "retrieved_at": "2026-10-07T10:00:00Z",
+      "programme_films": [
+        {
+          "title": "Everything Everywhere All at Once",
+          "year": 2022,
+          "imdb_id": "tt6710474"
+        },
+        {
+          "title": "Dune",
+          "year": 2021,
+          "imdb_id": "tt1160419"
+        },
+        {
+          "title": "Oppenheimer",
+          "year": 2023,
+          "imdb_id": "tt15398776"
+        },
+        {
+          "title": "The Grand Budapest Hotel",
+          "year": 2014,
+          "imdb_id": "tt2278388"
+        },
+        {
+          "title": "Moonlight",
+          "year": 2016,
+          "imdb_id": "tt4975722"
+        },
+        {
+          "title": "Drive My Car",
+          "year": 2021,
+          "imdb_id": "tt14039582"
+        }
+      ],
+      "baseline": {
+        "detected_styles": [
+          "mainstream_arthouse",
+          "asian_cinema",
+          "arthouse_drama"
+        ],
+        "year_range": "2014-2023",
+        "avg_film_year": 2019.5,
+        "programming_directions": [
+          "More recent award-winning arthouse drama",
+          "East Asian cinema seasons",
+          "Prestige crossover cinema"
+        ],
+        "film_count": 6,
+        "approach": "metadata-only",
+        "metadata_fields_used": [
+          "title",
+          "year",
+          "genre/style inference from title patterns"
+        ]
+      },
+      "qloo": {
+        "success": true,
+        "resolved_items": 6,
+        "ranked_cohorts": 4,
+        "rejected_cohorts": 0,
+        "selected_domains": [
+          "urn:entity:artist",
+          "urn:entity:movie",
+          "urn:entity:tv_show",
+          "urn:entity:brand"
+        ],
+        "skipped_domains": [
+          "urn:entity:book",
+          "urn:entity:destination",
+          "urn:entity:podcast"
+        ],
+        "programme_bet": {
+          "primary": {
+            "domain": "tv_show",
+            "cohort_name": "Life After Life",
+            "mean_affinity": 0.947208,
+            "member_count": 50,
+            "call_id": "local-c022"
+          },
+          "runner_up": {
+            "domain": "artist",
+            "cohort_name": "Bryce Dessner",
+            "mean_affinity": 0.883203,
+            "call_id": "local-c019"
+          },
+          "two_sided_signals": {
+            "programme_adjacency": 0.947208,
+            "adjacency_band": "High",
+            "adjacency_call_id": "local-c022",
+            "cohort_breadth": 1.0,
+            "breadth_band": "High",
+            "breadth_call_id": "local-c022",
+            "methodology_note": "Programme adjacency: mean affinity of cohort members against programme taste profile (Qloo /v2/insights). Cohort breadth: fraction of cohort members above Medium affinity threshold."
+          },
+          "why": "The strongest adjacent cultural group is in the tv_show domain, featuring Life After Life, Stateless, Now and Again. This group shows very high cultural affinity (mean 0.95) with your programme's taste profile. Evidence dimensions: programme adjacency=0.95 (High), cohort breadth=1.00 (High).",
+          "cultural_bridge": "Your programme's taste profile (Bar, Salmon Burger, Moderately expensive) shares cultural signals with Life After Life, Stateless.",
+          "geographic_signal": "Geographic analysis not available.",
+          "programming_direction": "Test programming that connects your existing Bar, Salmon Burger, Moderately expensive profile with the cultural world of Life After Life, Stateless through tv_show-adjacent programming.",
+          "falsification_condition": "Do not continue this programming test if the tv_show affinity signal cannot be reproduced across the next comparable programme analysis. Specifically: if a subsequent analysis of a similar programme does not produce a tv_show cohort in the top-3 ranked opportunities, the hypothesis is rejected.",
+          "rejected_candidates": [],
+          "geography_call_id": null,
+          "data_status": "measured"
+        },
+        "taste_tags": [
+          "Bar",
+          "Salmon Burger",
+          "Moderately expensive",
+          "Street Life",
+          "Healing",
+          "Identifies as Black-owned",
+          "Four Star",
+          "TV Networks",
+          "War museum",
+          "Bavarian Pretzel",
+          "K-pop",
+          "swing",
+          "Fit",
+          "powerpop",
+          "Social Media"
+        ],
+        "ranked_evidence": [
+          {
+            "domain": "urn:entity:tv_show",
+            "cohort_id": "urn:entity:tv_show:tag_cluster:1",
+            "member_count": 50,
+            "mean_affinity": 0.947208,
+            "qualifying_members": 50
+          },
+          {
+            "domain": "urn:entity:artist",
+            "cohort_id": "urn:entity:artist:tag_cluster:1",
+            "member_count": 50,
+            "mean_affinity": 0.883203,
+            "qualifying_members": 50
+          },
+          {
+            "domain": "urn:entity:movie",
+            "cohort_id": "urn:entity:movie:tag_cluster:1",
+            "member_count": 50,
+            "mean_affinity": 0.841978,
+            "qualifying_members": 50
+          },
+          {
+            "domain": "urn:entity:brand",
+            "cohort_id": "urn:entity:brand:tag_cluster:1",
+            "member_count": 50,
+            "mean_affinity": 0.841479,
+            "qualifying_members": 50
+          }
+        ],
+        "stop_reason": "complete",
+        "data_status": "measured"
+      },
+      "metrics": {
+        "cross_domain_discovery": 3,
+        "non_film_domains": [
+          "urn:entity:artist",
+          "urn:entity:tv_show",
+          "urn:entity:brand"
+        ],
+        "film_domains": [
+          "urn:entity:movie"
+        ],
+        "novelty_score": 1.0,
+        "overlap_score": 0.0,
+        "signal_strength": {
+          "programme_adjacency": 0.947208,
+          "adjacency_band": "High",
+          "cohort_breadth": 1.0,
+          "breadth_band": "High"
+        },
+        "domain_diversity": 4,
+        "decision_difference": true,
+        "qloo_primary_domain": "tv_show",
+        "is_film_primary": false,
+        "cross_domain_evidence": [
+          {
+            "domain": "urn:entity:tv_show",
+            "member_count": 50,
+            "mean_affinity": 0.947208
+          },
+          {
+            "domain": "urn:entity:artist",
+            "member_count": 50,
+            "mean_affinity": 0.883203
+          },
+          {
+            "domain": "urn:entity:brand",
+            "member_count": 50,
+            "mean_affinity": 0.841479
+          }
+        ]
+      }
+    },
+    {
+      "evaluation_context_id": "genesis_london_2026_10",
+      "venue": "Genesis Cinema",
+      "city": "London",
+      "description": "Community cinema, mix of arthouse and mainstream",
+      "source_url": "https://genesiscinema.co.uk/",
+      "retrieved_at": "2026-10-07T10:00:00Z",
+      "programme_films": [
+        {
+          "title": "Get Out",
+          "year": 2017,
+          "imdb_id": "tt5052448"
+        },
+        {
+          "title": "Moonlight",
+          "year": 2016,
+          "imdb_id": "tt4975722"
+        },
+        {
+          "title": "The Farewell",
+          "year": 2019,
+          "imdb_id": "tt8770154"
+        },
+        {
+          "title": "Minari",
+          "year": 2020,
+          "imdb_id": "tt10633456"
+        },
+        {
+          "title": "Nomadland",
+          "year": 2020,
+          "imdb_id": "tt9770150"
+        }
+      ],
+      "baseline": {
+        "detected_styles": [
+          "horror_thriller",
+          "arthouse_drama"
+        ],
+        "year_range": "2016-2020",
+        "avg_film_year": 2018.4,
+        "programming_directions": [
+          "More recent award-winning arthouse drama"
+        ],
+        "film_count": 5,
+        "approach": "metadata-only",
+        "metadata_fields_used": [
+          "title",
+          "year",
+          "genre/style inference from title patterns"
+        ]
+      },
+      "qloo": {
+        "success": true,
+        "resolved_items": 4,
+        "ranked_cohorts": 0,
+        "rejected_cohorts": 0,
+        "selected_domains": [
+          "urn:entity:artist",
+          "urn:entity:movie",
+          "urn:entity:brand",
+          "urn:entity:destination"
+        ],
+        "skipped_domains": [
+          "urn:entity:tv_show",
+          "urn:entity:book",
+          "urn:entity:podcast"
+        ],
+        "programme_bet": null,
+        "taste_tags": [
+          "Gift shop",
+          "Cultural landmark",
+          "Inexpensive",
+          "Discover",
+          "Illusion",
+          "Four Star",
+          "Identifies as Black-owned",
+          "Moderately expensive",
+          "Salmon Burger",
+          "World War I",
+          "k indie",
+          "Motorcycle Racer",
+          "Urban Lifestyle Vloggers",
+          "Iconic",
+          "athletic achievements"
+        ],
+        "ranked_evidence": [],
+        "stop_reason": "error",
+        "data_status": "measured"
+      },
+      "metrics": {
+        "cross_domain_discovery": 3,
+        "non_film_domains": [
+          "urn:entity:artist",
+          "urn:entity:brand",
+          "urn:entity:destination"
+        ],
+        "film_domains": [
+          "urn:entity:movie"
+        ],
+        "novelty_score": 1.0,
+        "overlap_score": 0.0,
+        "signal_strength": {
+          "programme_adjacency": null,
+          "adjacency_band": null,
+          "cohort_breadth": null,
+          "breadth_band": null
+        },
+        "domain_diversity": 4,
+        "decision_difference": true,
+        "qloo_primary_domain": "",
+        "is_film_primary": false,
+        "cross_domain_evidence": []
+      }
+    },
+    {
+      "evaluation_context_id": "phoenix_leicester_2026_10",
+      "venue": "Phoenix Cinema Leicester",
+      "city": "Leicester",
+      "description": "Independent community cinema",
+      "source_url": "https://phoenix.org.uk",
+      "retrieved_at": "2026-10-07T10:00:00Z",
+      "programme_films": [
+        {
+          "title": "Shoplifters",
+          "year": 2018,
+          "imdb_id": "tt8075192"
+        },
+        {
+          "title": "Roma",
+          "year": 2018,
+          "imdb_id": "tt6155172"
+        },
+        {
+          "title": "Portrait of a Lady on Fire",
+          "year": 2019,
+          "imdb_id": "tt8613070"
+        },
+        {
+          "title": "The Lighthouse",
+          "year": 2019,
+          "imdb_id": "tt7984734"
+        },
+        {
+          "title": "Uncut Gems",
+          "year": 2019,
+          "imdb_id": "tt5727208"
+        }
+      ],
+      "baseline": {
+        "detected_styles": [
+          "horror_thriller",
+          "asian_cinema",
+          "arthouse_drama"
+        ],
+        "year_range": "2018-2019",
+        "avg_film_year": 2018.6,
+        "programming_directions": [
+          "More recent award-winning arthouse drama",
+          "East Asian cinema seasons"
+        ],
+        "film_count": 5,
+        "approach": "metadata-only",
+        "metadata_fields_used": [
+          "title",
+          "year",
+          "genre/style inference from title patterns"
+        ]
+      },
+      "qloo": {
+        "success": true,
+        "resolved_items": 5,
+        "ranked_cohorts": 7,
+        "rejected_cohorts": 1,
+        "selected_domains": [
+          "urn:entity:artist",
+          "urn:entity:movie",
+          "urn:entity:book",
+          "urn:entity:brand",
+          "urn:entity:podcast"
+        ],
+        "skipped_domains": [
+          "urn:entity:tv_show",
+          "urn:entity:destination"
+        ],
+        "programme_bet": {
+          "primary": {
+            "domain": "book",
+            "cohort_name": "The Dark Interval: Letters on Loss, Grief, and Transformation (Modern Library Classics)",
+            "mean_affinity": 0.81319,
+            "member_count": 34,
+            "call_id": "local-c019"
+          },
+          "runner_up": {
+            "domain": "book",
+            "cohort_name": "Dear America: Notes of an Undocumented Citizen",
+            "mean_affinity": 0.818261,
+            "call_id": "local-c019"
+          },
+          "two_sided_signals": {
+            "programme_adjacency": 0.81319,
+            "adjacency_band": "High",
+            "adjacency_call_id": "local-c019",
+            "cohort_breadth": 1.0,
+            "breadth_band": "High",
+            "breadth_call_id": "local-c019",
+            "methodology_note": "Programme adjacency: mean affinity of cohort members against programme taste profile (Qloo /v2/insights). Cohort breadth: fraction of cohort members above Medium affinity threshold."
+          },
+          "why": "The strongest adjacent cultural group is in the book domain, featuring The Dark Interval: Letters on Loss, Grief, and Transformation (Modern Library Classics), I'm Afraid of Men., Some People Need Killing: A Memoir of Murder in My Country. This group shows very high cultural affinity (mean 0.81) with your programme's taste profile. Evidence dimensions: programme adjacency=0.81 (High), cohort breadth=1.00 (High).",
+          "cultural_bridge": "Your programme's taste profile (Buenos Aires, Traditional Mexican, Fine Dining) shares cultural signals with The Dark Interval: Letters on Loss, Grief, and Transformation (Modern Library Classics), I'm Afraid of Men..",
+          "geographic_signal": "Geographic analysis not available.",
+          "programming_direction": "Test programming that connects your existing Buenos Aires, Traditional Mexican, Fine Dining profile with the cultural world of The Dark Interval: Letters on Loss, Grief, and Transformation (Modern Library Classics), I'm Afraid of Men. through book-adjacent programming.",
+          "falsification_condition": "Do not continue this programming test if the book affinity signal cannot be reproduced across the next comparable programme analysis. Specifically: if a subsequent analysis of a similar programme does not produce a book cohort in the top-3 ranked opportunities, the hypothesis is rejected.",
+          "rejected_candidates": [
+            {
+              "cohort_id": "urn:entity:podcast:domain_group:7",
+              "domain": "urn:entity:podcast",
+              "reason": "insufficient_members",
+              "detail": "only 1 candidate(s) in this grouping; 2 are required before a cohort can be judged."
+            }
+          ],
+          "geography_call_id": null,
+          "data_status": "measured"
+        },
+        "taste_tags": [
+          "Buenos Aires",
+          "Traditional Mexican",
+          "Fine Dining",
+          "Brewpub",
+          "Chile En Nogada",
+          "Identifies as women-owned",
+          "Grill",
+          "Women's Studies",
+          "Expensive",
+          "Night Out",
+          "Fancy",
+          "Cold",
+          "Chicken Wings",
+          "Modern Mexican",
+          "Oaxacan"
+        ],
+        "ranked_evidence": [
+          {
+            "domain": "urn:entity:book",
+            "cohort_id": "urn:entity:book:tag_cluster:1",
+            "member_count": 34,
+            "mean_affinity": 0.81319,
+            "qualifying_members": 34
+          },
+          {
+            "domain": "urn:entity:book",
+            "cohort_id": "urn:entity:book:subtype:urn:entity:book:1",
+            "member_count": 16,
+            "mean_affinity": 0.818261,
+            "qualifying_members": 16
+          },
+          {
+            "domain": "urn:entity:artist",
+            "cohort_id": "urn:entity:artist:tag_cluster:1",
+            "member_count": 48,
+            "mean_affinity": 0.89123,
+            "qualifying_members": 48
+          },
+          {
+            "domain": "urn:entity:movie",
+            "cohort_id": "urn:entity:movie:tag_cluster:1",
+            "member_count": 50,
+            "mean_affinity": 0.875205,
+            "qualifying_members": 50
+          },
+          {
+            "domain": "urn:entity:podcast",
+            "cohort_id": "urn:entity:podcast:tag_cluster:1",
+            "member_count": 49,
+            "mean_affinity": 0.849261,
+            "qualifying_members": 49
+          },
+          {
+            "domain": "urn:entity:artist",
+            "cohort_id": "urn:entity:artist:subtype:urn:entity:artist:1",
+            "member_count": 2,
+            "mean_affinity": 0.887851,
+            "qualifying_members": 2
+          },
+          {
+            "domain": "urn:entity:brand",
+            "cohort_id": "urn:entity:brand:tag_cluster:1",
+            "member_count": 50,
+            "mean_affinity": 0.852257,
+            "qualifying_members": 50
+          }
+        ],
+        "stop_reason": "complete",
+        "data_status": "measured"
+      },
+      "metrics": {
+        "cross_domain_discovery": 4,
+        "non_film_domains": [
+          "urn:entity:artist",
+          "urn:entity:book",
+          "urn:entity:brand",
+          "urn:entity:podcast"
+        ],
+        "film_domains": [
+          "urn:entity:movie"
+        ],
+        "novelty_score": 1.0,
+        "overlap_score": 0.0,
+        "signal_strength": {
+          "programme_adjacency": 0.81319,
+          "adjacency_band": "High",
+          "cohort_breadth": 1.0,
+          "breadth_band": "High"
+        },
+        "domain_diversity": 5,
+        "decision_difference": true,
+        "qloo_primary_domain": "book",
+        "is_film_primary": false,
+        "cross_domain_evidence": [
+          {
+            "domain": "urn:entity:book",
+            "member_count": 34,
+            "mean_affinity": 0.81319
+          },
+          {
+            "domain": "urn:entity:book",
+            "member_count": 16,
+            "mean_affinity": 0.818261
+          },
+          {
+            "domain": "urn:entity:artist",
+            "member_count": 48,
+            "mean_affinity": 0.89123
+          },
+          {
+            "domain": "urn:entity:podcast",
+            "member_count": 49,
+            "mean_affinity": 0.849261
+          },
+          {
+            "domain": "urn:entity:artist",
+            "member_count": 2,
+            "mean_affinity": 0.887851
+          },
+          {
+            "domain": "urn:entity:brand",
+            "member_count": 50,
+            "mean_affinity": 0.852257
+          }
+        ]
+      }
+    },
+    {
+      "evaluation_context_id": "prince_charles_london_2026_10",
+      "venue": "Prince Charles Cinema",
+      "city": "London",
+      "description": "Repertory cinema, classics and cult films",
+      "source_url": "https://princecharlescinema.com",
+      "retrieved_at": "2026-10-07T10:00:00Z",
+      "programme_films": [
+        {
+          "title": "Mulholland Drive",
+          "year": 2001,
+          "imdb_id": "tt0166924"
+        },
+        {
+          "title": "In the Mood for Love",
+          "year": 2000,
+          "imdb_id": "tt0118694"
+        },
+        {
+          "title": "Stalker",
+          "year": 1979,
+          "imdb_id": "tt0079944"
+        },
+        {
+          "title": "Le Samoura\u00ef",
+          "year": 1967,
+          "imdb_id": "tt0062229"
+        },
+        {
+          "title": "Paris, Texas",
+          "year": 1984,
+          "imdb_id": "tt0087884"
+        }
+      ],
+      "baseline": {
+        "detected_styles": [
+          "asian_cinema",
+          "cult_repertory"
+        ],
+        "year_range": "1967-2001",
+        "avg_film_year": 1986.2,
+        "programming_directions": [
+          "Classic film retrospectives and restorations",
+          "East Asian cinema seasons"
+        ],
+        "film_count": 5,
+        "approach": "metadata-only",
+        "metadata_fields_used": [
+          "title",
+          "year",
+          "genre/style inference from title patterns"
+        ]
+      },
+      "qloo": {
+        "success": true,
+        "resolved_items": 5,
+        "ranked_cohorts": 0,
+        "rejected_cohorts": 0,
+        "selected_domains": [
+          "urn:entity:artist",
+          "urn:entity:movie",
+          "urn:entity:book",
+          "urn:entity:brand",
+          "urn:entity:destination"
+        ],
+        "skipped_domains": [
+          "urn:entity:tv_show",
+          "urn:entity:podcast"
+        ],
+        "programme_bet": null,
+        "taste_tags": [
+          "country",
+          "17th Century",
+          "China",
+          "Casual",
+          "Breakfast",
+          "Classics",
+          "Discover",
+          "Fear Of The Unknown",
+          " soundtrack",
+          "modern country",
+          "Literature",
+          "ethereal",
+          "Cerebral",
+          "Design",
+          "cabaret"
+        ],
+        "ranked_evidence": [],
+        "stop_reason": "error",
+        "data_status": "measured"
+      },
+      "metrics": {
+        "cross_domain_discovery": 4,
+        "non_film_domains": [
+          "urn:entity:artist",
+          "urn:entity:book",
+          "urn:entity:brand",
+          "urn:entity:destination"
+        ],
+        "film_domains": [
+          "urn:entity:movie"
+        ],
+        "novelty_score": 1.0,
+        "overlap_score": 0.0,
+        "signal_strength": {
+          "programme_adjacency": null,
+          "adjacency_band": null,
+          "cohort_breadth": null,
+          "breadth_band": null
+        },
+        "domain_diversity": 5,
+        "decision_difference": true,
+        "qloo_primary_domain": "",
+        "is_film_primary": false,
+        "cross_domain_evidence": []
+      }
+    },
+    {
+      "evaluation_context_id": "garden_cinema_london_2026_10",
+      "venue": "The Garden Cinema",
+      "city": "London",
+      "description": "Members' cinema with curated arthouse programme",
+      "source_url": "https://www.thegardencinema.co.uk/",
+      "retrieved_at": "2026-10-07T10:00:00Z",
+      "programme_films": [
+        {
+          "title": "The Handmaiden",
+          "year": 2016,
+          "imdb_id": "tt4016934"
+        },
+        {
+          "title": "Call Me by Your Name",
+          "year": 2017,
+          "imdb_id": "tt5726616"
+        },
+        {
+          "title": "Phantom Thread",
+          "year": 2017,
+          "imdb_id": "tt5776858"
+        },
+        {
+          "title": "The Favourite",
+          "year": 2018,
+          "imdb_id": "tt5083738"
+        },
+        {
+          "title": "Lady Bird",
+          "year": 2017,
+          "imdb_id": "tt4925292"
+        }
+      ],
+      "baseline": {
+        "detected_styles": [
+          "asian_cinema",
+          "mainstream_arthouse"
+        ],
+        "year_range": "2016-2018",
+        "avg_film_year": 2017.0,
+        "programming_directions": [
+          "East Asian cinema seasons",
+          "Prestige crossover cinema"
+        ],
+        "film_count": 5,
+        "approach": "metadata-only",
+        "metadata_fields_used": [
+          "title",
+          "year",
+          "genre/style inference from title patterns"
+        ]
+      },
+      "qloo": {
+        "success": true,
+        "resolved_items": 5,
+        "ranked_cohorts": 5,
+        "rejected_cohorts": 1,
+        "selected_domains": [
+          "urn:entity:artist",
+          "urn:entity:movie",
+          "urn:entity:book",
+          "urn:entity:brand"
+        ],
+        "skipped_domains": [
+          "urn:entity:tv_show",
+          "urn:entity:destination",
+          "urn:entity:podcast"
+        ],
+        "programme_bet": {
+          "primary": {
+            "domain": "book",
+            "cohort_name": "Frankissstein: A Love Story",
+            "mean_affinity": 0.800573,
+            "member_count": 22,
+            "call_id": "local-c018"
+          },
+          "runner_up": {
+            "domain": "book",
+            "cohort_name": "I'm Afraid of Men.",
+            "mean_affinity": 0.796074,
+            "call_id": "local-c018"
+          },
+          "two_sided_signals": {
+            "programme_adjacency": 0.800573,
+            "adjacency_band": "High",
+            "adjacency_call_id": "local-c018",
+            "cohort_breadth": 1.0,
+            "breadth_band": "High",
+            "breadth_call_id": "local-c018",
+            "methodology_note": "Programme adjacency: mean affinity of cohort members against programme taste profile (Qloo /v2/insights). Cohort breadth: fraction of cohort members above Medium affinity threshold."
+          },
+          "why": "The strongest adjacent cultural group is in the book domain, featuring Frankissstein: A Love Story, Pew, The Velvet Rage: Overcoming the Pain of Growing Up Gay in a Straight Man's World. This group shows very high cultural affinity (mean 0.80) with your programme's taste profile. Evidence dimensions: programme adjacency=0.80 (High), cohort breadth=1.00 (High).",
+          "cultural_bridge": "Your programme's taste profile (Five Star, Chicken Liver, Complex) shares cultural signals with Frankissstein: A Love Story, Pew.",
+          "geographic_signal": "Geographic analysis not available.",
+          "programming_direction": "Test programming that connects your existing Five Star, Chicken Liver, Complex profile with the cultural world of Frankissstein: A Love Story, Pew through book-adjacent programming.",
+          "falsification_condition": "Do not continue this programming test if the book affinity signal cannot be reproduced across the next comparable programme analysis. Specifically: if a subsequent analysis of a similar programme does not produce a book cohort in the top-3 ranked opportunities, the hypothesis is rejected.",
+          "rejected_candidates": [
+            {
+              "cohort_id": "urn:entity:brand:domain_group:5",
+              "domain": "urn:entity:brand",
+              "reason": "insufficient_members",
+              "detail": "only 1 candidate(s) in this grouping; 2 are required before a cohort can be judged."
+            }
+          ],
+          "geography_call_id": null,
+          "data_status": "measured"
+        },
+        "taste_tags": [
+          "Five Star",
+          "Chicken Liver",
+          "Complex",
+          "Baked Eggs",
+          "Identifies as women-owned",
+          "Art museum",
+          "Professional",
+          "French",
+          "Basque Cheesecake",
+          "Classics",
+          "Actor",
+          "Tourist attraction",
+          "Superhero",
+          "Professional Golfers",
+          " indie"
+        ],
+        "ranked_evidence": [
+          {
+            "domain": "urn:entity:book",
+            "cohort_id": "urn:entity:book:subtype:urn:entity:book:1",
+            "member_count": 22,
+            "mean_affinity": 0.800573,
+            "qualifying_members": 22
+          },
+          {
+            "domain": "urn:entity:book",
+            "cohort_id": "urn:entity:book:tag_cluster:1",
+            "member_count": 28,
+            "mean_affinity": 0.796074,
+            "qualifying_members": 28
+          },
+          {
+            "domain": "urn:entity:artist",
+            "cohort_id": "urn:entity:artist:tag_cluster:1",
+            "member_count": 50,
+            "mean_affinity": 0.877878,
+            "qualifying_members": 50
+          },
+          {
+            "domain": "urn:entity:movie",
+            "cohort_id": "urn:entity:movie:tag_cluster:1",
+            "member_count": 50,
+            "mean_affinity": 0.867379,
+            "qualifying_members": 50
+          },
+          {
+            "domain": "urn:entity:brand",
+            "cohort_id": "urn:entity:brand:tag_cluster:1",
+            "member_count": 49,
+            "mean_affinity": 0.842675,
+            "qualifying_members": 49
+          }
+        ],
+        "stop_reason": "complete",
+        "data_status": "measured"
+      },
+      "metrics": {
+        "cross_domain_discovery": 3,
+        "non_film_domains": [
+          "urn:entity:artist",
+          "urn:entity:book",
+          "urn:entity:brand"
+        ],
+        "film_domains": [
+          "urn:entity:movie"
+        ],
+        "novelty_score": 1.0,
+        "overlap_score": 0.0,
+        "signal_strength": {
+          "programme_adjacency": 0.800573,
+          "adjacency_band": "High",
+          "cohort_breadth": 1.0,
+          "breadth_band": "High"
+        },
+        "domain_diversity": 4,
+        "decision_difference": true,
+        "qloo_primary_domain": "book",
+        "is_film_primary": false,
+        "cross_domain_evidence": [
+          {
+            "domain": "urn:entity:book",
+            "member_count": 22,
+            "mean_affinity": 0.800573
+          },
+          {
+            "domain": "urn:entity:book",
+            "member_count": 28,
+            "mean_affinity": 0.796074
+          },
+          {
+            "domain": "urn:entity:artist",
+            "member_count": 50,
+            "mean_affinity": 0.877878
+          },
+          {
+            "domain": "urn:entity:brand",
+            "member_count": 49,
+            "mean_affinity": 0.842675
+          }
+        ]
+      }
+    },
+    {
+      "evaluation_context_id": "picturehouse_central_london_2026_10",
+      "venue": "Picturehouse Central",
+      "city": "London",
+      "description": "Arthouse mainstream programming",
+      "source_url": "https://www.picturehouses.com",
+      "retrieved_at": "2026-10-07T10:00:00Z",
+      "programme_films": [
+        {
+          "title": "La La Land",
+          "year": 2016,
+          "imdb_id": "tt3783958"
+        },
+        {
+          "title": "The Shape of Water",
+          "year": 2017,
+          "imdb_id": "tt5580390"
+        },
+        {
+          "title": "Three Billboards Outside Ebbing, Missouri",
+          "year": 2017,
+          "imdb_id": "tt5027774"
+        },
+        {
+          "title": "Lady Macbeth",
+          "year": 2016,
+          "imdb_id": "tt4291600"
+        },
+        {
+          "title": "I, Daniel Blake",
+          "year": 2016,
+          "imdb_id": "tt5168192"
+        }
+      ],
+      "baseline": {
+        "detected_styles": [
+          "mainstream_arthouse"
+        ],
+        "year_range": "2016-2017",
+        "avg_film_year": 2016.4,
+        "programming_directions": [
+          "Prestige crossover cinema"
+        ],
+        "film_count": 5,
+        "approach": "metadata-only",
+        "metadata_fields_used": [
+          "title",
+          "year",
+          "genre/style inference from title patterns"
+        ]
+      },
+      "qloo": {
+        "success": true,
+        "resolved_items": 5,
+        "ranked_cohorts": 5,
+        "rejected_cohorts": 0,
+        "selected_domains": [
+          "urn:entity:artist",
+          "urn:entity:movie",
+          "urn:entity:book",
+          "urn:entity:brand"
+        ],
+        "skipped_domains": [
+          "urn:entity:tv_show",
+          "urn:entity:destination",
+          "urn:entity:podcast"
+        ],
+        "programme_bet": {
+          "primary": {
+            "domain": "book",
+            "cohort_name": "Frankissstein: A Love Story",
+            "mean_affinity": 0.785459,
+            "member_count": 25,
+            "call_id": "local-c018"
+          },
+          "runner_up": {
+            "domain": "book",
+            "cohort_name": "Useless Magic: Lyrics and Poetry",
+            "mean_affinity": 0.781759,
+            "call_id": "local-c018"
+          },
+          "two_sided_signals": {
+            "programme_adjacency": 0.785459,
+            "adjacency_band": "High",
+            "adjacency_call_id": "local-c018",
+            "cohort_breadth": 1.0,
+            "breadth_band": "High",
+            "breadth_call_id": "local-c018",
+            "methodology_note": "Programme adjacency: mean affinity of cohort members against programme taste profile (Qloo /v2/insights). Cohort breadth: fraction of cohort members above Medium affinity threshold."
+          },
+          "why": "The strongest adjacent cultural group is in the book domain, featuring Frankissstein: A Love Story, The Velvet Rage: Overcoming the Pain of Growing Up Gay in a Straight Man's World, The Course of Love. This group shows high cultural affinity (mean 0.79) with your programme's taste profile. Evidence dimensions: programme adjacency=0.79 (High), cohort breadth=1.00 (High).",
+          "cultural_bridge": "Your programme's taste profile (Identifies as LGBTQ+ owned, Financial Services, Game store) shares cultural signals with Frankissstein: A Love Story, The Velvet Rage: Overcoming the Pain of Growing Up Gay in a Straight Man's World.",
+          "geographic_signal": "Geographic analysis not available.",
+          "programming_direction": "Test programming that connects your existing Identifies as LGBTQ+ owned, Financial Services, Game store profile with the cultural world of Frankissstein: A Love Story, The Velvet Rage: Overcoming the Pain of Growing Up Gay in a Straight Man's World through book-adjacent programming.",
+          "falsification_condition": "Do not continue this programming test if the book affinity signal cannot be reproduced across the next comparable programme analysis. Specifically: if a subsequent analysis of a similar programme does not produce a book cohort in the top-3 ranked opportunities, the hypothesis is rejected.",
+          "rejected_candidates": [],
+          "geography_call_id": null,
+          "data_status": "measured"
+        },
+        "taste_tags": [
+          "Identifies as LGBTQ+ owned",
+          "Financial Services",
+          "Game store",
+          "Discover",
+          "Moderately expensive",
+          "steampunk",
+          "Heritage",
+          "cabaret",
+          "dark cabaret",
+          " soundtrack",
+          "Bureaucracy",
+          "Fashion-Forward Thinking",
+          "Christian Fiction",
+          "Games",
+          "Forbidden Fruit"
+        ],
+        "ranked_evidence": [
+          {
+            "domain": "urn:entity:book",
+            "cohort_id": "urn:entity:book:subtype:urn:entity:book:1",
+            "member_count": 25,
+            "mean_affinity": 0.785459,
+            "qualifying_members": 25
+          },
+          {
+            "domain": "urn:entity:book",
+            "cohort_id": "urn:entity:book:tag_cluster:1",
+            "member_count": 25,
+            "mean_affinity": 0.781759,
+            "qualifying_members": 25
+          },
+          {
+            "domain": "urn:entity:artist",
+            "cohort_id": "urn:entity:artist:tag_cluster:1",
+            "member_count": 50,
+            "mean_affinity": 0.869217,
+            "qualifying_members": 50
+          },
+          {
+            "domain": "urn:entity:brand",
+            "cohort_id": "urn:entity:brand:tag_cluster:1",
+            "member_count": 50,
+            "mean_affinity": 0.845182,
+            "qualifying_members": 50
+          },
+          {
+            "domain": "urn:entity:movie",
+            "cohort_id": "urn:entity:movie:tag_cluster:1",
+            "member_count": 50,
+            "mean_affinity": 0.877749,
+            "qualifying_members": 50
+          }
+        ],
+        "stop_reason": "complete",
+        "data_status": "measured"
+      },
+      "metrics": {
+        "cross_domain_discovery": 3,
+        "non_film_domains": [
+          "urn:entity:artist",
+          "urn:entity:book",
+          "urn:entity:brand"
+        ],
+        "film_domains": [
+          "urn:entity:movie"
+        ],
+        "novelty_score": 1.0,
+        "overlap_score": 0.0,
+        "signal_strength": {
+          "programme_adjacency": 0.785459,
+          "adjacency_band": "High",
+          "cohort_breadth": 1.0,
+          "breadth_band": "High"
+        },
+        "domain_diversity": 4,
+        "decision_difference": true,
+        "qloo_primary_domain": "book",
+        "is_film_primary": false,
+        "cross_domain_evidence": [
+          {
+            "domain": "urn:entity:book",
+            "member_count": 25,
+            "mean_affinity": 0.785459
+          },
+          {
+            "domain": "urn:entity:book",
+            "member_count": 25,
+            "mean_affinity": 0.781759
+          },
+          {
+            "domain": "urn:entity:artist",
+            "member_count": 50,
+            "mean_affinity": 0.869217
+          },
+          {
+            "domain": "urn:entity:brand",
+            "member_count": 50,
+            "mean_affinity": 0.845182
+          }
+        ]
+      }
+    },
+    {
+      "evaluation_context_id": "bfi_southbank_london_2026_10",
+      "venue": "BFI Southbank",
+      "city": "London",
+      "description": "National film archive, curated seasons and world cinema",
+      "source_url": "https://www.bfi.org.uk",
+      "retrieved_at": "2026-10-07T10:00:00Z",
+      "programme_films": [
+        {
+          "title": "2001: A Space Odyssey",
+          "year": 1968,
+          "imdb_id": "tt0062622"
+        },
+        {
+          "title": "Andrei Rublev",
+          "year": 1966,
+          "imdb_id": "tt0060107"
+        },
+        {
+          "title": "Persona",
+          "year": 1966,
+          "imdb_id": "tt0060827"
+        },
+        {
+          "title": "Tokyo Story",
+          "year": 1953,
+          "imdb_id": "tt0046438"
+        },
+        {
+          "title": "In the Mood for Love",
+          "year": 2000,
+          "imdb_id": "tt0118694"
+        }
+      ],
+      "baseline": {
+        "detected_styles": [
+          "asian_cinema",
+          "cult_repertory"
+        ],
+        "year_range": "1953-2000",
+        "avg_film_year": 1970.6,
+        "programming_directions": [
+          "Classic film retrospectives and restorations",
+          "East Asian cinema seasons"
+        ],
+        "film_count": 5,
+        "approach": "metadata-only",
+        "metadata_fields_used": [
+          "title",
+          "year",
+          "genre/style inference from title patterns"
+        ]
+      },
+      "qloo": {
+        "success": true,
+        "resolved_items": 5,
+        "ranked_cohorts": 0,
+        "rejected_cohorts": 0,
+        "selected_domains": [
+          "urn:entity:movie",
+          "urn:entity:book",
+          "urn:entity:destination"
+        ],
+        "skipped_domains": [
+          "urn:entity:artist",
+          "urn:entity:tv_show",
+          "urn:entity:brand",
+          "urn:entity:podcast"
+        ],
+        "programme_bet": null,
+        "taste_tags": [
+          "Classics",
+          "Literature",
+          "Emotional Growth",
+          "Societal Norms",
+          "Investigative",
+          "Psychological",
+          "Unrequited Love",
+          "Cerebral",
+          "Social Alienation",
+          "Alternate Realities",
+          "Fiction",
+          "Propaganda",
+          "Novels",
+          "Hypocrisy",
+          "Unreliable Narrator"
+        ],
+        "ranked_evidence": [],
+        "stop_reason": "error",
+        "data_status": "measured"
+      },
+      "metrics": {
+        "cross_domain_discovery": 2,
+        "non_film_domains": [
+          "urn:entity:book",
+          "urn:entity:destination"
+        ],
+        "film_domains": [
+          "urn:entity:movie"
+        ],
+        "novelty_score": 1.0,
+        "overlap_score": 0.0,
+        "signal_strength": {
+          "programme_adjacency": null,
+          "adjacency_band": null,
+          "cohort_breadth": null,
+          "breadth_band": null
+        },
+        "domain_diversity": 3,
+        "decision_difference": true,
+        "qloo_primary_domain": "",
+        "is_film_primary": false,
+        "cross_domain_evidence": []
+      }
+    },
+    {
+      "evaluation_context_id": "ritzy_brixton_london_2026_10",
+      "venue": "Ritzy Brixton Picturehouse",
+      "city": "London",
+      "description": "Community-focused arthouse programming",
+      "source_url": "https://www.picturehouses.com",
+      "retrieved_at": "2026-10-07T10:00:00Z",
+      "programme_films": [
+        {
+          "title": "Selma",
+          "year": 2014,
+          "imdb_id": "tt1020072"
+        },
+        {
+          "title": "12 Years a Slave",
+          "year": 2013,
+          "imdb_id": "tt2024544"
+        },
+        {
+          "title": "Mudbound",
+          "year": 2017,
+          "imdb_id": "tt2396589"
+        },
+        {
+          "title": "If Beale Street Could Talk",
+          "year": 2018,
+          "imdb_id": "tt7125860"
+        },
+        {
+          "title": "Small Axe: Mangrove",
+          "year": 2020,
+          "imdb_id": "tt11528558"
+        }
+      ],
+      "baseline": {
+        "detected_styles": [
+          "social_realism"
+        ],
+        "year_range": "2013-2020",
+        "avg_film_year": 2016.4,
+        "programming_directions": [
+          "Socially engaged contemporary cinema"
+        ],
+        "film_count": 5,
+        "approach": "metadata-only",
+        "metadata_fields_used": [
+          "title",
+          "year",
+          "genre/style inference from title patterns"
+        ]
+      },
+      "qloo": {
+        "success": true,
+        "resolved_items": 4,
+        "ranked_cohorts": 5,
+        "rejected_cohorts": 0,
+        "selected_domains": [
+          "urn:entity:artist",
+          "urn:entity:movie",
+          "urn:entity:book",
+          "urn:entity:brand"
+        ],
+        "skipped_domains": [
+          "urn:entity:tv_show",
+          "urn:entity:destination",
+          "urn:entity:podcast"
+        ],
+        "programme_bet": {
+          "primary": {
+            "domain": "book",
+            "cohort_name": "You Got Anything Stronger?",
+            "mean_affinity": 0.856233,
+            "member_count": 25,
+            "call_id": "local-c018"
+          },
+          "runner_up": {
+            "domain": "book",
+            "cohort_name": "More Myself: A Journey",
+            "mean_affinity": 0.869247,
+            "call_id": "local-c018"
+          },
+          "two_sided_signals": {
+            "programme_adjacency": 0.856233,
+            "adjacency_band": "High",
+            "adjacency_call_id": "local-c018",
+            "cohort_breadth": 1.0,
+            "breadth_band": "High",
+            "breadth_call_id": "local-c018",
+            "methodology_note": "Programme adjacency: mean affinity of cohort members against programme taste profile (Qloo /v2/insights). Cohort breadth: fraction of cohort members above Medium affinity threshold."
+          },
+          "why": "The strongest adjacent cultural group is in the book domain, featuring You Got Anything Stronger?, Dapper Dan: Made in Harlem, Both/And: A Memoir. This group shows very high cultural affinity (mean 0.86) with your programme's taste profile. Evidence dimensions: programme adjacency=0.86 (High), cohort breadth=1.00 (High).",
+          "cultural_bridge": "Your programme's taste profile (Five Star, Red Velvet Cake, Identifies as Black-owned) shares cultural signals with You Got Anything Stronger?, Dapper Dan: Made in Harlem.",
+          "geographic_signal": "Geographic analysis not available.",
+          "programming_direction": "Test programming that connects your existing Five Star, Red Velvet Cake, Identifies as Black-owned profile with the cultural world of You Got Anything Stronger?, Dapper Dan: Made in Harlem through book-adjacent programming.",
+          "falsification_condition": "Do not continue this programming test if the book affinity signal cannot be reproduced across the next comparable programme analysis. Specifically: if a subsequent analysis of a similar programme does not produce a book cohort in the top-3 ranked opportunities, the hypothesis is rejected.",
+          "rejected_candidates": [],
+          "geography_call_id": null,
+          "data_status": "measured"
+        },
+        "taste_tags": [
+          "Five Star",
+          "Red Velvet Cake",
+          "Identifies as Black-owned",
+          "Three Star",
+          "Scientific Exploration",
+          "Expensive",
+          "soul",
+          "rhythm & blues",
+          "San Francisco",
+          "Mystical",
+          "Innovation in Design",
+          " Hip Hop",
+          "Social Justice",
+          "Trombone",
+          "Creativity"
+        ],
+        "ranked_evidence": [
+          {
+            "domain": "urn:entity:book",
+            "cohort_id": "urn:entity:book:tag_cluster:1",
+            "member_count": 25,
+            "mean_affinity": 0.856233,
+            "qualifying_members": 25
+          },
+          {
+            "domain": "urn:entity:book",
+            "cohort_id": "urn:entity:book:subtype:urn:entity:book:1",
+            "member_count": 25,
+            "mean_affinity": 0.869247,
+            "qualifying_members": 25
+          },
+          {
+            "domain": "urn:entity:brand",
+            "cohort_id": "urn:entity:brand:tag_cluster:1",
+            "member_count": 50,
+            "mean_affinity": 0.868554,
+            "qualifying_members": 50
+          },
+          {
+            "domain": "urn:entity:artist",
+            "cohort_id": "urn:entity:artist:tag_cluster:1",
+            "member_count": 50,
+            "mean_affinity": 0.888661,
+            "qualifying_members": 50
+          },
+          {
+            "domain": "urn:entity:movie",
+            "cohort_id": "urn:entity:movie:tag_cluster:1",
+            "member_count": 50,
+            "mean_affinity": 0.848233,
+            "qualifying_members": 50
+          }
+        ],
+        "stop_reason": "complete",
+        "data_status": "measured"
+      },
+      "metrics": {
+        "cross_domain_discovery": 3,
+        "non_film_domains": [
+          "urn:entity:artist",
+          "urn:entity:book",
+          "urn:entity:brand"
+        ],
+        "film_domains": [
+          "urn:entity:movie"
+        ],
+        "novelty_score": 1.0,
+        "overlap_score": 0.0,
+        "signal_strength": {
+          "programme_adjacency": 0.856233,
+          "adjacency_band": "High",
+          "cohort_breadth": 1.0,
+          "breadth_band": "High"
+        },
+        "domain_diversity": 4,
+        "decision_difference": true,
+        "qloo_primary_domain": "book",
+        "is_film_primary": false,
+        "cross_domain_evidence": [
+          {
+            "domain": "urn:entity:book",
+            "member_count": 25,
+            "mean_affinity": 0.856233
+          },
+          {
+            "domain": "urn:entity:book",
+            "member_count": 25,
+            "mean_affinity": 0.869247
+          },
+          {
+            "domain": "urn:entity:brand",
+            "member_count": 50,
+            "mean_affinity": 0.868554
+          },
+          {
+            "domain": "urn:entity:artist",
+            "member_count": 50,
+            "mean_affinity": 0.888661
+          }
+        ]
+      }
+    },
+    {
+      "evaluation_context_id": "tyneside_newcastle_2026_10",
+      "venue": "Tyneside Cinema",
+      "city": "Newcastle",
+      "description": "Independent cultural cinema",
+      "source_url": "https://tynesidecinema.co.uk",
+      "retrieved_at": "2026-10-07T10:00:00Z",
+      "programme_films": [
+        {
+          "title": "Paddington 2",
+          "year": 2017,
+          "imdb_id": "tt4468740"
+        },
+        {
+          "title": "The Death of Stalin",
+          "year": 2017,
+          "imdb_id": "tt4686844"
+        },
+        {
+          "title": "The Souvenir",
+          "year": 2019,
+          "imdb_id": "tt6721508"
+        },
+        {
+          "title": "Ammonite",
+          "year": 2020,
+          "imdb_id": "tt7983894"
+        },
+        {
+          "title": "Saint Maud",
+          "year": 2019,
+          "imdb_id": "tt7545066"
+        }
+      ],
+      "baseline": {
+        "detected_styles": [
+          "horror_thriller"
+        ],
+        "year_range": "2017-2020",
+        "avg_film_year": 2018.4,
+        "programming_directions": [
+          "Similar genre/era programming"
+        ],
+        "film_count": 5,
+        "approach": "metadata-only",
+        "metadata_fields_used": [
+          "title",
+          "year",
+          "genre/style inference from title patterns"
+        ]
+      },
+      "qloo": {
+        "success": true,
+        "resolved_items": 3,
+        "ranked_cohorts": 5,
+        "rejected_cohorts": 0,
+        "selected_domains": [
+          "urn:entity:artist",
+          "urn:entity:movie",
+          "urn:entity:book",
+          "urn:entity:brand"
+        ],
+        "skipped_domains": [
+          "urn:entity:tv_show",
+          "urn:entity:destination",
+          "urn:entity:podcast"
+        ],
+        "programme_bet": {
+          "primary": {
+            "domain": "book",
+            "cohort_name": "My Thoughts Exactly",
+            "mean_affinity": 0.840801,
+            "member_count": 10,
+            "call_id": "local-c018"
+          },
+          "runner_up": {
+            "domain": "book",
+            "cohort_name": "The Pink Line: Journeys Across the World's Queer Frontiers",
+            "mean_affinity": 0.845122,
+            "call_id": "local-c018"
+          },
+          "two_sided_signals": {
+            "programme_adjacency": 0.840801,
+            "adjacency_band": "High",
+            "adjacency_call_id": "local-c018",
+            "cohort_breadth": 1.0,
+            "breadth_band": "High",
+            "breadth_call_id": "local-c018",
+            "methodology_note": "Programme adjacency: mean affinity of cohort members against programme taste profile (Qloo /v2/insights). Cohort breadth: fraction of cohort members above Medium affinity threshold."
+          },
+          "why": "The strongest adjacent cultural group is in the book domain, featuring My Thoughts Exactly, Women Don't Owe You Pretty, Show Me the Bodies: How We Let Grenfell Happen. This group shows very high cultural affinity (mean 0.84) with your programme's taste profile. Evidence dimensions: programme adjacency=0.84 (High), cohort breadth=1.00 (High).",
+          "cultural_bridge": "Your programme's taste profile (Academic, Comedian, Emotionally Intense) shares cultural signals with My Thoughts Exactly, Women Don't Owe You Pretty.",
+          "geographic_signal": "Geographic analysis not available.",
+          "programming_direction": "Test programming that connects your existing Academic, Comedian, Emotionally Intense profile with the cultural world of My Thoughts Exactly, Women Don't Owe You Pretty through book-adjacent programming.",
+          "falsification_condition": "Do not continue this programming test if the book affinity signal cannot be reproduced across the next comparable programme analysis. Specifically: if a subsequent analysis of a similar programme does not produce a book cohort in the top-3 ranked opportunities, the hypothesis is rejected.",
+          "rejected_candidates": [],
+          "geography_call_id": null,
+          "data_status": "measured"
+        },
+        "taste_tags": [
+          "Academic",
+          "Comedian",
+          "Emotionally Intense",
+          "british",
+          "Transformation",
+          "British Literature",
+          "Bucolic",
+          "Forbidden Love",
+          " folk",
+          "Politically Minded",
+          "Perseverance",
+          "England",
+          "Dark Humor",
+          "Grief",
+          "Innovation"
+        ],
+        "ranked_evidence": [
+          {
+            "domain": "urn:entity:book",
+            "cohort_id": "urn:entity:book:subtype:urn:entity:book:1",
+            "member_count": 10,
+            "mean_affinity": 0.840801,
+            "qualifying_members": 10
+          },
+          {
+            "domain": "urn:entity:book",
+            "cohort_id": "urn:entity:book:tag_cluster:1",
+            "member_count": 40,
+            "mean_affinity": 0.845122,
+            "qualifying_members": 40
+          },
+          {
+            "domain": "urn:entity:artist",
+            "cohort_id": "urn:entity:artist:tag_cluster:1",
+            "member_count": 50,
+            "mean_affinity": 0.889877,
+            "qualifying_members": 50
+          },
+          {
+            "domain": "urn:entity:movie",
+            "cohort_id": "urn:entity:movie:tag_cluster:1",
+            "member_count": 50,
+            "mean_affinity": 0.860884,
+            "qualifying_members": 50
+          },
+          {
+            "domain": "urn:entity:brand",
+            "cohort_id": "urn:entity:brand:tag_cluster:1",
+            "member_count": 50,
+            "mean_affinity": 0.827425,
+            "qualifying_members": 50
+          }
+        ],
+        "stop_reason": "complete",
+        "data_status": "measured"
+      },
+      "metrics": {
+        "cross_domain_discovery": 3,
+        "non_film_domains": [
+          "urn:entity:artist",
+          "urn:entity:book",
+          "urn:entity:brand"
+        ],
+        "film_domains": [
+          "urn:entity:movie"
+        ],
+        "novelty_score": 0.966,
+        "overlap_score": 0.034,
+        "signal_strength": {
+          "programme_adjacency": 0.840801,
+          "adjacency_band": "High",
+          "cohort_breadth": 1.0,
+          "breadth_band": "High"
+        },
+        "domain_diversity": 4,
+        "decision_difference": true,
+        "qloo_primary_domain": "book",
+        "is_film_primary": false,
+        "cross_domain_evidence": [
+          {
+            "domain": "urn:entity:book",
+            "member_count": 10,
+            "mean_affinity": 0.840801
+          },
+          {
+            "domain": "urn:entity:book",
+            "member_count": 40,
+            "mean_affinity": 0.845122
+          },
+          {
+            "domain": "urn:entity:artist",
+            "member_count": 50,
+            "mean_affinity": 0.889877
+          },
+          {
+            "domain": "urn:entity:brand",
+            "member_count": 50,
+            "mean_affinity": 0.827425
+          }
+        ]
+      }
+    }
+  ]
+}

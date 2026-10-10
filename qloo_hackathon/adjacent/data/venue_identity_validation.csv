@@ -1,0 +1,11 @@
+venue_id,venue_name,city,country,address,lat,lon,first_programme,last_programme,programme_count,source_uri,identity_status,validation_evidence
+B000027,Rialto,Amsterdam,Netherlands,,52.3676,4.8833,1921-05-13,1955-06-24,1741,http://www.cinemacontext.nl/id/B000027,VERIFIED,Cinema Context SPARQL query 2026-10-06; venue has 1741 programmes (1921-1955)
+B001057,Flora,Utrecht,Netherlands,,52.0907,5.1214,1909-12-24,1948-01-02,1740,http://www.cinemacontext.nl/id/B001057,VERIFIED,Cinema Context SPARQL query 2026-10-06; venue has 1740 programmes (1909-1948)
+B000153,Olympia,Den Haag,Netherlands,,52.0705,4.3007,1913-01-03,1947-12-26,1722,http://www.cinemacontext.nl/id/B000153,VERIFIED,Cinema Context SPARQL query 2026-10-06; venue has 1722 programmes (1913-1947)
+B000018,Nöggerath,Amsterdam,Netherlands,,52.3676,4.8833,1907-09-06,1955-06-24,1701,http://www.cinemacontext.nl/id/B000018,VERIFIED,Cinema Context SPARQL query 2026-10-06; venue has 1701 programmes (1907-1955)
+B000118,Apollo,Den Haag,Netherlands,,52.0705,4.3007,1911-04-21,1947-12-26,1694,http://www.cinemacontext.nl/id/B000118,VERIFIED,Cinema Context SPARQL query 2026-10-06; venue has 1694 programmes (1911-1947)
+B001062,Rembrandt,Utrecht,Netherlands,,52.0907,5.1214,1913-02-07,1948-01-02,1654,http://www.cinemacontext.nl/id/B001062,VERIFIED,Cinema Context SPARQL query 2026-10-06; venue has 1654 programmes (1913-1948)
+B000940,Prinses Theater,Rotterdam,Netherlands,,51.9225,4.4792,1917-08-10,1948-01-02,1609,http://www.cinemacontext.nl/id/B000940,VERIFIED,Cinema Context SPARQL query 2026-10-06; venue has 1609 programmes (1917-1948)
+B000170,Thalia,Den Haag,Netherlands,,52.0705,4.3007,1915-07-16,1947-12-26,1551,http://www.cinemacontext.nl/id/B000170,VERIFIED,Cinema Context SPARQL query 2026-10-06; venue has 1551 programmes (1915-1947)
+B000693,Luxor,Leiden,Netherlands,,52.1601,4.4970,1918-08-16,1947-12-26,1521,http://www.cinemacontext.nl/id/B000693,VERIFIED,Cinema Context SPARQL query 2026-10-06; venue has 1521 programmes (1918-1947)
+B000924,Luxor,Rotterdam,Netherlands,,51.9225,4.4792,1917-12-21,1947-09-19,1503,http://www.cinemacontext.nl/id/B000924,VERIFIED,Cinema Context SPARQL query 2026-10-06; venue has 1503 programmes (1917-1947)
