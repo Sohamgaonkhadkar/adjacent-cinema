@@ -1,0 +1,6 @@
+event: trace
+data: {"phase": "INIT", "message": "Starting analysis for 2 film(s) in London"}
+
+event: error
+data: {"message": "QLOO_API_KEY not configured"}
+

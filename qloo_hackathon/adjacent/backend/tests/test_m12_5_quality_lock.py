@@ -13,13 +13,11 @@ Tests for:
 9. Genesis/PCC can differ
 """
 
-import pytest
-from typing import Dict, Any
 
 
 class TestM125ScoringComponents:
     """Test 5-component scoring system."""
-    
+
     def test_entity_fit_requires_both_conditions(self):
         """entity_fit=2 requires affinity≥0.85 AND members≥30."""
         # High affinity, low members
@@ -28,7 +26,7 @@ class TestM125ScoringComponents:
         assert _score_entity_fit(0.80, 50) == 0
         # Both conditions met
         assert _score_entity_fit(0.90, 50) == 2
-    
+
     def test_non_film_not_automatic_distinctiveness(self):
         """Non-film type ≠ automatic differentiation=2."""
         # TV show — somewhat different
@@ -37,7 +35,7 @@ class TestM125ScoringComponents:
         assert _score_differentiation("artist", "Film + live music event", ["Halloween", "Rosemary's Baby"]) == 2
         # Film type — no differentiation
         assert _score_differentiation("film", "Screening", ["Halloween"]) == 0
-    
+
     def test_high_affinity_not_strong(self):
         """High affinity alone does not make STRONG."""
         # High affinity but no feasibility
@@ -48,34 +46,34 @@ class TestM125ScoringComponents:
 
 class TestM125FeasibilityRejection:
     """Test feasibility rejection rules."""
-    
+
     def test_reject_vague_partnership(self):
         """Vague partnership descriptions are rejected."""
-        assert _feasibility_rejected("possible partnership with a local venue") == True
-    
+        assert _feasibility_rejected("possible partnership with a local venue") is True
+
     def test_reject_impossible_rights(self):
         """Impossible rights claims are rejected."""
-        assert _feasibility_rejected("exclusive rights to all content") == True
-    
+        assert _feasibility_rejected("exclusive rights to all content") is True
+
     def test_accept_concrete_event(self):
         """Concrete event descriptions are accepted."""
-        assert _feasibility_rejected("Film screening + live music performance/DJ set") == False
-    
+        assert _feasibility_rejected("Film screening + live music performance/DJ set") is False
+
     def test_reject_single_weak_film(self):
         """Single film support is insufficient."""
-        assert _feasibility_rejected("screening of one film", support_count=1) == True
+        assert _feasibility_rejected("screening of one film", support_count=1) is True
 
 
 class TestM125ProgrammeFit:
     """Test programme fit requirements."""
-    
+
     def test_requires_entity_specific_support(self):
         """Programme fit requires entity-specific supporting films."""
         # No supporting films
         assert _score_programme_fit(0.90, [], []) == 0
         # With supporting films
         assert _score_programme_fit(0.90, ["Halloween"], ["horror"]) == 2
-    
+
     def test_domain_relationship_from_data(self):
         """Domain relationship comes from actual data, not generic domain."""
         # Generic domain claim (should score 0)
@@ -86,7 +84,7 @@ class TestM125ProgrammeFit:
 
 class TestM125ProgrammeBet:
     """Test Programme Bet selection."""
-    
+
     def test_exactly_one_bet(self):
         """Only ONE Programme Bet is selected."""
         candidates = [
@@ -96,12 +94,12 @@ class TestM125ProgrammeBet:
         ]
         bets = _select_programme_bets(candidates)
         assert len(bets) == 1
-    
+
     def test_falsification_is_event_oriented(self):
         """Falsification criteria are event-oriented."""
         hypothesis = _generate_hypothesis("artist", "Unloved")
         assert "event" in hypothesis.lower() or "attend" in hypothesis.lower()
-    
+
     def test_must_be_score_8_plus(self):
         """Only candidates with score ≥ 8 are eligible."""
         candidates = [
@@ -115,7 +113,7 @@ class TestM125ProgrammeBet:
 
 class TestM125ContextDivergence:
     """Test that different contexts can produce different Programme Bets."""
-    
+
     def test_genesis_and_pcc_can_differ(self):
         """Genesis and Prince Charles should not always select same entity."""
         # This is verified by actual evaluation results:
@@ -163,9 +161,7 @@ def _feasibility_rejected(description: str, support_count: int = 5) -> bool:
     vague = ["possible partnership", "maybe", "could potentially", "exclusive rights"]
     if any(v in description.lower() for v in vague):
         return True
-    if support_count < 2:
-        return True
-    return False
+    return support_count < 2
 
 def _domain_relationship_generic(domain: str) -> int:
     """Generic domain claim without data."""

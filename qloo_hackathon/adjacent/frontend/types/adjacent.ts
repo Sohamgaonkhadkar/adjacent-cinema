@@ -20,7 +20,8 @@ export interface ProgrammeFilm {
   resolved: boolean;
   qloo_entity_id: string | null;
   qloo_name: string | null;
-  popularity: number | null;
+  /** Present on some payloads (demo/normalised); the /run result omits it. */
+  popularity?: number | null;
 }
 
 export interface ProgrammeData {
@@ -61,6 +62,15 @@ export interface CohortScore {
   novelty_proxy: number | null;
 }
 
+/// An entity considered but not counted as qualifying — kept visible with a
+/// reason code so the reader can disagree (never silently deleted).
+export interface ExcludedMember {
+  entity_id: string;
+  name: string | null;
+  reason_code: string;
+  affinity: number | null;
+}
+
 export interface RankedCohort {
   cohort_id: string;
   domain: string;
@@ -69,6 +79,8 @@ export interface RankedCohort {
   verdict: string | null;
   score: CohortScore | null;
   members: CohortMember[];
+  qualifying_count?: number;
+  excluded_members?: ExcludedMember[];
 }
 
 export interface RejectedCohort {
@@ -100,7 +112,8 @@ export interface GeographyData {
   city: string;
   city_display: string;
   total_cells: number;
-  cells: HeatmapCell[];
+  /** The backend geography payload sends `highest_affinity_cells`; `cells` may be absent. */
+  cells?: HeatmapCell[];
   highest_affinity_cells: HeatmapCell[];
   call_id: string | null;
   data_status: "measured" | "fixture" | "demo";
@@ -126,14 +139,15 @@ export interface ProgrammeBetData {
     domain: string;
     cohort_name: string;
     member_count: number;
-    mean_affinity: number;
-    call_id: string;
+    mean_affinity: number | null;
+    cohort_id: string | null;
+    call_id: string | null;
   };
   runner_up: {
-    domain: string;
-    cohort_name: string;
-    mean_affinity: number;
-    call_id: string;
+    domain: string | null;
+    cohort_name: string | null;
+    mean_affinity: number | null;
+    call_id: string | null;
   } | null;
   two_sided_signals: TwoSidedSignals;
   why: string;
@@ -163,6 +177,8 @@ export interface TestCardData {
   primary_evidence: string;
   runner_up: string;
   falsification_condition: string;
+  success_criteria?: string;
+  observation_window?: string;
   provenance: Record<string, string | null>;
   data_status: string;
 }
@@ -173,7 +189,7 @@ export interface EvidenceData {
   qloo_calls: number;
   trace_rows: number;
   stop_reason: string;
-  stop_message: string;
+  stop_message: string | null;
 }
 
 // ─── Prediction Lifecycle (M13.6.1) ────────────────────────────────────────
@@ -212,6 +228,8 @@ export interface PredictionSnapshot {
 // ─── Run Result (raw backend response — before normalization) ───────────────
 
 export interface AdjacentRunResult {
+  /** Provenance of the whole result: "measured" for live Qloo, "fixture" for demo runs. */
+  data_status: "measured" | "fixture" | string;
   programme: {
     items: ProgrammeFilm[];
     resolved_count: number;

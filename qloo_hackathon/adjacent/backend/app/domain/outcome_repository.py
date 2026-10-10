@@ -10,13 +10,13 @@ M13.4: Temporal timestamps, lead-time buckets, corrected label semantics,
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-
 
 # ============================================================
 # SCHEMA (M13.4 — adds temporal + film-level resolution columns)
@@ -314,9 +314,9 @@ def compute_lead_time(show_start_at: str | None, source_timestamp: str | None) -
 
     # Ensure both are timezone-aware
     if show_dt.tzinfo is None:
-        show_dt = show_dt.replace(tzinfo=timezone.utc)
+        show_dt = show_dt.replace(tzinfo=UTC)
     if obs_dt.tzinfo is None:
-        obs_dt = obs_dt.replace(tzinfo=timezone.utc)
+        obs_dt = obs_dt.replace(tzinfo=UTC)
 
     delta = (show_dt - obs_dt).total_seconds() / 3600.0
     return delta
@@ -364,7 +364,7 @@ class OutcomeRepository:
         conn = self._conn
 
         # Check if we have the old M13.3 film_resolution schema (keyed by observation_id)
-        if _has_table(conn, "film_resolution"):
+        if _has_table(conn, "film_resolution"):  # noqa: SIM102 — migration guard reads clearer nested
             if _has_column(conn, "film_resolution", "observation_id") and not _has_column(conn, "film_resolution", "film_key"):
                 # Old schema — need to migrate
                 conn.execute("ALTER TABLE film_resolution RENAME TO film_resolution_old")
@@ -386,7 +386,7 @@ class OutcomeRepository:
                         resolution_timestamp TEXT NOT NULL
                     )
                 """)
-                try:
+                with contextlib.suppress(sqlite3.OperationalError):
                     conn.execute("""
                         INSERT OR IGNORE INTO film_resolution
                         (film_key, film_title, film_year, resolution_status,
@@ -402,13 +402,11 @@ class OutcomeRepository:
                         FROM film_resolution_old fro
                         JOIN screening_observation so ON fro.observation_id = so.observation_id
                     """)
-                except sqlite3.OperationalError:
-                    pass
                 conn.execute("DROP TABLE IF EXISTS film_resolution_old")
                 conn.commit()
 
         # Check if we have the old M13.3 qloo_feature_snapshot schema
-        if _has_table(conn, "qloo_feature_snapshot"):
+        if _has_table(conn, "qloo_feature_snapshot"):  # noqa: SIM102 — migration guard reads clearer nested
             if _has_column(conn, "qloo_feature_snapshot", "observation_id") and not _has_column(conn, "qloo_feature_snapshot", "film_key"):
                 conn.execute("ALTER TABLE qloo_feature_snapshot RENAME TO qloo_feature_snapshot_old")
                 conn.executescript("""
@@ -427,7 +425,7 @@ class OutcomeRepository:
                         FOREIGN KEY (film_key) REFERENCES film_resolution(film_key)
                     )
                 """)
-                try:
+                with contextlib.suppress(sqlite3.OperationalError):
                     conn.execute("""
                         INSERT OR IGNORE INTO qloo_feature_snapshot
                         (feature_id, film_key, qloo_entity_id, retrieved_at,
@@ -444,8 +442,6 @@ class OutcomeRepository:
                         FROM qloo_feature_snapshot_old qfo
                         JOIN screening_observation so ON qfo.observation_id = so.observation_id
                     """)
-                except sqlite3.OperationalError:
-                    pass
                 conn.execute("DROP TABLE IF EXISTS qloo_feature_snapshot_old")
                 conn.commit()
 
@@ -455,10 +451,8 @@ class OutcomeRepository:
         # Add missing columns to screening_observation
         for table, column, col_type in _MIGRATIONS:
             if not _has_column(conn, table, column):
-                try:
+                with contextlib.suppress(sqlite3.OperationalError):
                     conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
-                except sqlite3.OperationalError:
-                    pass
 
         conn.commit()
 
@@ -486,7 +480,7 @@ class OutcomeRepository:
              qloo_affinity, qloo_popularity, qloo_evidence_score,
              recommendation_rank, experiment_format, experiment_date)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (rid, rec.get("created_at", datetime.now(timezone.utc).isoformat()),
+            (rid, rec.get("created_at", datetime.now(UTC).isoformat()),
              rec.get("venue_id", ""), rec.get("venue_name", ""),
              rec.get("city", ""), rec.get("programme_context_id", ""),
              json.dumps(rec.get("programme_films", [])),
@@ -654,7 +648,7 @@ class OutcomeRepository:
              resolution.get("qloo_call_id"),
              resolution.get("resolution_provenance", ""),
              resolution.get("resolution_timestamp",
-                            datetime.now(timezone.utc).isoformat())),
+                            datetime.now(UTC).isoformat())),
         )
         self._conn.commit()
 
@@ -833,7 +827,7 @@ class OutcomeRepository:
             (mid, obs_id, label_quality, sold_out_int,
              outcome.get("tickets_sold"), outcome.get("occupancy"),
              outcome.get("capacity"),
-             outcome.get("measurement_timestamp", datetime.now(timezone.utc).isoformat()),
+             outcome.get("measurement_timestamp", datetime.now(UTC).isoformat()),
              outcome.get("source", ""), outcome.get("provenance", "")),
         )
         self._conn.commit()
@@ -1049,7 +1043,7 @@ class OutcomeRepository:
 
     def upsert_canonical_film(self, cf: dict[str, Any]) -> None:
         """Insert or update a canonical film record."""
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         self._conn.execute(
             """INSERT OR REPLACE INTO canonical_film
             (film_key, raw_titles, canonical_title, film_year, year_source,
@@ -1147,26 +1141,20 @@ class OutcomeRepository:
         """Add prediction_state and freeze_timestamp columns if missing."""
         conn = self._conn
         if not _has_column(conn, "prediction_snapshot", "prediction_state"):
-            try:
+            with contextlib.suppress(sqlite3.OperationalError):
                 conn.execute("ALTER TABLE prediction_snapshot ADD COLUMN prediction_state TEXT NOT NULL DEFAULT 'PLANNED'")
-            except sqlite3.OperationalError:
-                pass
         if not _has_column(conn, "prediction_snapshot", "freeze_timestamp"):
-            try:
+            with contextlib.suppress(sqlite3.OperationalError):
                 conn.execute("ALTER TABLE prediction_snapshot ADD COLUMN freeze_timestamp TEXT")
-            except sqlite3.OperationalError:
-                pass
         if not _has_column(conn, "prediction_snapshot", "feature_provenance"):
-            try:
+            with contextlib.suppress(sqlite3.OperationalError):
                 conn.execute("ALTER TABLE prediction_snapshot ADD COLUMN feature_provenance TEXT NOT NULL DEFAULT ''")
-            except sqlite3.OperationalError:
-                pass
         conn.commit()
 
     def create_prediction_run(self, run: dict[str, Any]) -> str:
         """Create a prediction run record. Returns prediction_run_id."""
         rid = run["prediction_run_id"]
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         self._conn.execute(
             """INSERT OR IGNORE INTO prediction_run
             (prediction_run_id, run_timestamp, run_type, total_screenings,
@@ -1200,7 +1188,7 @@ class OutcomeRepository:
         IMMUTABILITY: Once FROZEN, Qloo fields cannot be changed.
         """
         if current_time is None:
-            current_time = datetime.now(timezone.utc)
+            current_time = datetime.now(UTC)
 
         now = current_time.isoformat()
         pred_id = hashlib.sha256(
@@ -1211,7 +1199,7 @@ class OutcomeRepository:
         try:
             pred_ts = datetime.fromisoformat(snap["prediction_timestamp"])
             if pred_ts.tzinfo is None:
-                pred_ts = pred_ts.replace(tzinfo=timezone.utc)
+                pred_ts = pred_ts.replace(tzinfo=UTC)
         except (ValueError, TypeError):
             pred_ts = current_time
 
@@ -1332,7 +1320,7 @@ class OutcomeRepository:
         Returns count of newly frozen predictions.
         """
         if current_time is None:
-            current_time = datetime.now(timezone.utc)
+            current_time = datetime.now(UTC)
 
         now_iso = current_time.isoformat()
 
@@ -1350,7 +1338,7 @@ class OutcomeRepository:
         for row in due:
             fk = row["film_key"]
             pred_ts = row["prediction_timestamp"]
-            from .qloo_signal import assess_feature, temporal_signal_status, parse_timestamp
+            from .qloo_signal import assess_feature, temporal_signal_status
             feature = self.get_latest_usable_qloo_feature(fk, before=pred_ts, cultural_only=True)
             all_features = self.get_qloo_features_for_film(fk)
             resolution = self.get_film_resolution(fk)
@@ -1438,7 +1426,7 @@ class OutcomeRepository:
         Returns repair report.
         """
         if current_time is None:
-            current_time = datetime.now(timezone.utc)
+            current_time = datetime.now(UTC)
 
         now_iso = current_time.isoformat()
 
@@ -1501,7 +1489,7 @@ class OutcomeRepository:
         if snap["prediction_state"] not in (self.PRED_STATE_FROZEN, self.PRED_STATE_PLANNED):
             return
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         outcome_status = outcome["outcome_status"]
         sold_out_observed = outcome.get("sold_out_observed")
         final_observation_timestamp = outcome.get("final_observation_timestamp")
@@ -1648,9 +1636,8 @@ class OutcomeRepository:
                 violations["invalid_horizon"] += 1
 
             # Check 1: future prediction has Qloo
-            if snap["prediction_state"] == self.PRED_STATE_PLANNED:
-                if snap.get("qloo_entity_id"):
-                    violations["future_prediction_has_qloo"] += 1
+            if snap["prediction_state"] == self.PRED_STATE_PLANNED and snap.get("qloo_entity_id"):
+                violations["future_prediction_has_qloo"] += 1
 
             # Check 3: freeze before prediction timestamp
             freeze_ts = snap.get("freeze_timestamp")
@@ -1660,9 +1647,9 @@ class OutcomeRepository:
                     f_dt = datetime.fromisoformat(freeze_ts)
                     p_dt = datetime.fromisoformat(pred_ts)
                     if f_dt.tzinfo is None:
-                        f_dt = f_dt.replace(tzinfo=timezone.utc)
+                        f_dt = f_dt.replace(tzinfo=UTC)
                     if p_dt.tzinfo is None:
-                        p_dt = p_dt.replace(tzinfo=timezone.utc)
+                        p_dt = p_dt.replace(tzinfo=UTC)
                     if f_dt < p_dt:
                         violations["freeze_before_prediction_timestamp"] += 1
                 except (ValueError, TypeError):
@@ -1675,9 +1662,9 @@ class OutcomeRepository:
                     q_dt = datetime.fromisoformat(qts)
                     f_dt = datetime.fromisoformat(freeze_ts)
                     if q_dt.tzinfo is None:
-                        q_dt = q_dt.replace(tzinfo=timezone.utc)
+                        q_dt = q_dt.replace(tzinfo=UTC)
                     if f_dt.tzinfo is None:
-                        f_dt = f_dt.replace(tzinfo=timezone.utc)
+                        f_dt = f_dt.replace(tzinfo=UTC)
                     if q_dt > f_dt:
                         violations["qloo_after_freeze"] += 1
                 except (ValueError, TypeError):
@@ -1690,9 +1677,9 @@ class OutcomeRepository:
                     fin_dt = datetime.fromisoformat(final_ts)
                     p_dt = datetime.fromisoformat(pred_ts)
                     if fin_dt.tzinfo is None:
-                        fin_dt = fin_dt.replace(tzinfo=timezone.utc)
+                        fin_dt = fin_dt.replace(tzinfo=UTC)
                     if p_dt.tzinfo is None:
-                        p_dt = p_dt.replace(tzinfo=timezone.utc)
+                        p_dt = p_dt.replace(tzinfo=UTC)
                     if fin_dt < p_dt:
                         violations["outcome_before_prediction"] += 1
                 except (ValueError, TypeError):

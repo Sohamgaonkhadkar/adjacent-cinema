@@ -15,10 +15,11 @@ export default function GeographyMap({ geography }: Props) {
 
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
-    if (!geography.cells || geography.cells.length === 0) return;
+    const cells = geography.cells ?? geography.highest_affinity_cells ?? [];
+    if (cells.length === 0) return;
 
-    const lats = geography.cells.map((c) => c.latitude);
-    const lngs = geography.cells.map((c) => c.longitude);
+    const lats = cells.map((c) => c.latitude);
+    const lngs = cells.map((c) => c.longitude);
     const centreLat = (Math.min(...lats) + Math.max(...lats)) / 2;
     const centreLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
 
@@ -35,7 +36,7 @@ export default function GeographyMap({ geography }: Props) {
     });
 
     map.on("load", () => {
-      const features = geography.cells.map((cell) => ({
+      const features = cells.map((cell) => ({
         type: "Feature" as const,
         properties: { affinity: cell.affinity },
         geometry: {

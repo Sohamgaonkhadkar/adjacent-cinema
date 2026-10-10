@@ -18,9 +18,8 @@ Rules:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
-
 
 # --- Domain definitions with selection criteria ---
 
@@ -103,7 +102,7 @@ class DomainSelectionResult:
     selections: tuple[DomainSelection, ...]  # all decisions
     qloo_calls_saved: int  # how many calls saved by not querying all domains
     total_tags_analyzed: int
-    
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "selected_domains": list(self.selected_domains),
@@ -126,31 +125,31 @@ class DomainSelectionResult:
 
 def _extract_tag_families(tags: list[Any]) -> dict[str, int]:
     """Extract tag family counts from taste tags.
-    
+
     A tag family is derived from the tag name or tag_id:
     - "urn:tag:genre:media:comedy" → "comedy"
     - "Silent film" → "film"
     - "Music" → "music"
     """
     family_counts: dict[str, int] = {}
-    
+
     for tag in tags:
         name = getattr(tag, "name", None) or ""
         tag_id = getattr(tag, "tag_id", None) or ""
-        
+
         # Extract from tag_id (e.g., "urn:tag:genre:media:comedy")
         if tag_id:
             parts = tag_id.split(":")
             for part in parts:
                 part_lower = part.lower().replace("_", " ")
                 family_counts[part_lower] = family_counts.get(part_lower, 0) + 1
-        
+
         # Extract from name (e.g., "Silent film")
         if name:
             words = name.lower().replace("-", " ").split()
             for word in words:
                 family_counts[word] = family_counts.get(word, 0) + 1
-    
+
     return family_counts
 
 
@@ -173,21 +172,21 @@ def select_domains(
     max_domains: int | None = None,
 ) -> DomainSelectionResult:
     """Select which domains to query based on the Taste DNA.
-    
+
     Args:
         taste_tags: List of scored tags from Qloo insights.
         always_include: Domains to always include (e.g., movie for cinema beachhead).
         max_domains: Maximum domains to select (None = no limit).
-    
+
     Returns:
         DomainSelectionResult with selected/skipped domains and reasons.
     """
     family_counts = _extract_tag_families(taste_tags)
-    
+
     selections = []
     selected = []
     skipped = []
-    
+
     for spec in ALL_DOMAINS:
         # Always include specified domains
         if spec.domain in always_include:
@@ -201,10 +200,10 @@ def select_domains(
             ))
             selected.append(spec.domain)
             continue
-        
+
         # Check signal families
         signal_count, matching_tags = _count_signals(family_counts, spec.signal_families)
-        
+
         if signal_count >= spec.min_signal_count:
             reason = (
                 f"Selected: {signal_count} signal(s) found "
@@ -233,7 +232,7 @@ def select_domains(
                 matching_tags=matching_tags,
             ))
             skipped.append(spec.domain)
-    
+
     # Apply max_domains limit — select by strongest signal
     if max_domains is not None and len(selected) > max_domains:
         # Keep always_include + top signal domains (sorted by signal_count desc)
@@ -260,10 +259,10 @@ def select_domains(
             )
             for s in selections
         )
-    
+
     total_domains = len(ALL_DOMAINS)
     calls_saved = total_domains - len(selected)
-    
+
     return DomainSelectionResult(
         selected_domains=tuple(selected),
         skipped_domains=tuple(skipped),

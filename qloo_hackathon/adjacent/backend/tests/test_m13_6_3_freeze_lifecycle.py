@@ -9,11 +9,11 @@ End-to-end lifecycle tests with fake clock proving:
   E. Multi-horizon cascade: same film, different horizons freeze independently
 """
 
-import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
-from app.domain.outcome_repository import OutcomeRepository
+import pytest
 from app.domain.film_identity import canonical_film_key
+from app.domain.outcome_repository import OutcomeRepository
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ def _make_screening(show_dt: datetime) -> dict:
         "show_start_at": show_dt.isoformat(),
         "format": "35mm",
         "source_url": "https://example.com",
-        "source_timestamp": datetime.now(timezone.utc).isoformat(),
+        "source_timestamp": datetime.now(UTC).isoformat(),
         "sold_out": False,
         "availability_state": "AVAILABLE",
     }
@@ -46,7 +46,7 @@ class TestScenarioA_HappyPath:
     """PLANNED → features captured at T-8d → freezes at T-7d with features → outcome."""
 
     def test_full_lifecycle(self, repo):
-        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=UTC)
         show_dt = now + timedelta(days=14)  # Oct 23
         pred_ts_7d = show_dt - timedelta(days=7)  # Oct 16
         cf_key = canonical_film_key("Alien", 1979)
@@ -137,7 +137,7 @@ class TestScenarioB_NoFeatures:
     """PLANNED → no features captured → FROZEN without Qloo data."""
 
     def test_freeze_without_features(self, repo):
-        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=UTC)
         show_dt = now + timedelta(days=10)
         pred_ts = show_dt - timedelta(days=7)
         cf_key = canonical_film_key("Alien", 1979)
@@ -190,7 +190,7 @@ class TestScenarioC_TemporalGate:
     """Features captured AFTER prediction timestamp must not attach to prediction."""
 
     def test_late_features_rejected(self, repo):
-        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=UTC)
         show_dt = now + timedelta(days=10)
         pred_ts = show_dt - timedelta(days=7)
         cf_key = canonical_film_key("Alien", 1979)
@@ -256,7 +256,7 @@ class TestScenarioD_Immutability:
     """Once FROZEN, features are locked. Subsequent calls cannot overwrite."""
 
     def test_frozen_features_locked(self, repo):
-        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=UTC)
         show_dt = now + timedelta(days=10)
         pred_ts = show_dt - timedelta(days=7)
         cf_key = canonical_film_key("Alien", 1979)
@@ -312,7 +312,7 @@ class TestScenarioE_MultiHorizonCascade:
     """Same film, different horizons freeze at different times."""
 
     def test_cascade_freeze(self, repo):
-        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=UTC)
         show_dt = now + timedelta(days=14)  # Oct 23
 
         # Prediction timestamps: 7d, 3d, 1d before show

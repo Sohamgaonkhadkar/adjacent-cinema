@@ -29,7 +29,7 @@ from .agent.tools import (
     TasteResult,
 )
 from .config import Settings
-from .domain.cohorts import DEFAULT_EXPANSION_DOMAINS, build_candidate_cohorts
+from .domain.cohorts import build_candidate_cohorts
 from .domain.domain_selection import select_domains
 from .domain.ledger import ProvenanceLedger
 from .qloo.client import QlooClient

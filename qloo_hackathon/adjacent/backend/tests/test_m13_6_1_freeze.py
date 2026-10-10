@@ -10,12 +10,11 @@ Tests proving:
 6. Exact future-freeze regression test with fake clock
 """
 
-import pytest
-from datetime import datetime, timezone, timedelta
-from pathlib import Path
+from datetime import UTC, datetime, timedelta
 
-from app.domain.outcome_repository import OutcomeRepository
+import pytest
 from app.domain.film_identity import canonical_film_key
+from app.domain.outcome_repository import OutcomeRepository
 
 
 @pytest.fixture
@@ -26,7 +25,7 @@ def repo(tmp_path):
 @pytest.fixture
 def future_show():
     """Screening 10 days in the future."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     show_dt = now + timedelta(days=10)
     return {
         "venue_id": "test_venue", "venue_name": "Test Cinema",
@@ -49,7 +48,7 @@ class TestFuturePredictionsPlanned:
         """Prediction with future timestamp -> PLANNED, no Qloo features."""
         obs_id, _ = repo.record_screening(future_show)
         cf_key = canonical_film_key("Alien", 1979)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         show_dt = datetime.fromisoformat(future_show["show_start_at"])
 
         # 7-day prediction timestamp is 3 days from now (show is 10 days out)
@@ -77,7 +76,7 @@ class TestFuturePredictionsPlanned:
         """PLANNED predictions have NO Qloo features regardless of input."""
         obs_id, _ = repo.record_screening(future_show)
         cf_key = canonical_film_key("Alien", 1979)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         show_dt = datetime.fromisoformat(future_show["show_start_at"])
 
         repo.upsert_prediction_snapshot({
@@ -151,7 +150,7 @@ class TestFrozenImmutability:
         """Once FROZEN, Qloo fields cannot change."""
         obs_id, _ = repo.record_screening(future_show)
         cf_key = canonical_film_key("Alien", 1979)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         pred_ts = now - timedelta(hours=1)
 
         # Create and freeze
@@ -198,7 +197,7 @@ class TestTrajectorySemantics:
         """SOLD_OUT_OBSERVED if sold_out was observed at ANY point."""
         obs_id, _ = repo.record_screening(future_show)
         cf_key = canonical_film_key("Alien", 1979)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         pred_ts = now - timedelta(hours=1)
 
         repo.upsert_prediction_snapshot({
@@ -227,7 +226,7 @@ class TestTrajectorySemantics:
         """AVAILABLE_NEAR_SHOWTIME when available within final window."""
         obs_id, _ = repo.record_screening(future_show)
         cf_key = canonical_film_key("Alien", 1979)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         repo.upsert_prediction_snapshot({
             "observation_id": obs_id,
@@ -253,7 +252,7 @@ class TestTrajectorySemantics:
         """CENSORED when no valid final observation."""
         obs_id, _ = repo.record_screening(future_show)
         cf_key = canonical_film_key("Alien", 1979)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         repo.upsert_prediction_snapshot({
             "observation_id": obs_id,
@@ -292,9 +291,9 @@ class TestExactRegressionScenario:
         Advance to Oct 13 -> FROZEN with Qloo
         Run again -> same frozen values, no mutation
         """
-        now = datetime(2026, 10, 8, 12, 0, 0, tzinfo=timezone.utc)
-        show_dt = datetime(2026, 10, 20, 19, 0, 0, tzinfo=timezone.utc)  # 20:00 BST = 19:00 UTC
-        pred_ts = datetime(2026, 10, 13, 19, 0, 0, tzinfo=timezone.utc)  # 7 days before
+        now = datetime(2026, 10, 8, 12, 0, 0, tzinfo=UTC)
+        show_dt = datetime(2026, 10, 20, 19, 0, 0, tzinfo=UTC)  # 20:00 BST = 19:00 UTC
+        pred_ts = datetime(2026, 10, 13, 19, 0, 0, tzinfo=UTC)  # 7 days before
 
         # Create screening
         obs_id, _ = repo.record_screening({
@@ -371,7 +370,7 @@ class TestLeakageAuditV2:
         """Leakage audit V2 passes with clean data."""
         obs_id, _ = repo.record_screening(future_show)
         cf_key = canonical_film_key("Alien", 1979)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # PLANNED prediction (no Qloo)
         repo.upsert_prediction_snapshot({
@@ -391,7 +390,7 @@ class TestLeakageAuditV2:
         """Leakage audit fails when PLANNED prediction has Qloo data."""
         obs_id, _ = repo.record_screening(future_show)
         cf_key = canonical_film_key("Alien", 1979)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Manually insert a PLANNED prediction with Qloo data (simulating the bug)
         pred_id = "test_pred_id"
@@ -423,7 +422,7 @@ class TestPredictionRun:
     def test_run_created(self, repo):
         repo.create_prediction_run({
             "prediction_run_id": "test_run",
-            "run_timestamp": datetime.now(timezone.utc).isoformat(),
+            "run_timestamp": datetime.now(UTC).isoformat(),
             "run_type": "INITIAL",
             "total_screenings": 100,
             "eligible_screenings": 90,
@@ -442,7 +441,7 @@ class TestIdempotency:
         """Repeated runs don't create duplicate snapshots."""
         obs_id, _ = repo.record_screening(future_show)
         cf_key = canonical_film_key("Alien", 1979)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         for _ in range(3):
             repo.upsert_prediction_snapshot({
@@ -467,7 +466,7 @@ class TestFreezeDuePredictions:
         """Only predictions whose timestamp has arrived are frozen."""
         obs_id, _ = repo.record_screening(future_show)
         cf_key = canonical_film_key("Alien", 1979)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         show_dt = datetime.fromisoformat(future_show["show_start_at"])
 
         # Create 3 predictions

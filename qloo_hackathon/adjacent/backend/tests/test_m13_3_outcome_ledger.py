@@ -14,10 +14,8 @@ Tests proving:
 10. Provenance is mandatory for external observations
 """
 
-import pytest
-import tempfile
-from pathlib import Path
 
+import pytest
 from app.domain.outcome_repository import OutcomeRepository, _deterministic_obs_id
 
 

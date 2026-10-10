@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import math
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 CULTURAL_SIGNAL = "CULTURAL_SIGNAL"
@@ -29,8 +29,8 @@ def parse_timestamp(value: Any) -> datetime | None:
     except (TypeError, ValueError):
         return None
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc)
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
 
 
 def finite_number(value: Any) -> bool:

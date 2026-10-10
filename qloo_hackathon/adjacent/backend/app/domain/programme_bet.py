@@ -32,6 +32,10 @@ class ProgrammeBet:
     primary_cohort_name: str
     primary_mean_affinity: float
     primary_member_count: int
+    #: Cohort id of the primary bet — links the decision back to the exact
+    #: ranked cohort in `cohorts.ranked`, so the UI can show the evidence the
+    #: bet was built from instead of leaving the connection implicit.
+    primary_cohort_id: str | None = None
 
     # Runner-up
     runner_up_domain: str | None = None
@@ -44,23 +48,23 @@ class ProgrammeBet:
     programme_adjacency: float | None = None
     adjacency_band: str | None = None  # High/Medium/Low
     adjacency_call_id: str | None = None
-    
+
     # Dimension B: What fraction of the cohort clears the quality threshold
     # (qualifying_members / total_members — measures cohort breadth)
     cohort_breadth: float | None = None
     breadth_band: str | None = None  # High/Medium/Low
     breadth_call_id: str | None = None
-    
+
     # Evidence
     why: str = ""
     cultural_bridge: str = ""
     geographic_signal: str = ""
     programming_direction: str = ""
     falsification_condition: str = ""
-    
+
     # Rejected candidates
     rejected_candidates: list[dict[str, Any]] = field(default_factory=list)
-    
+
     # Provenance
     primary_call_id: str | None = None
     runner_up_call_id: str | None = None
@@ -74,6 +78,7 @@ class ProgrammeBet:
                 "cohort_name": self.primary_cohort_name,
                 "mean_affinity": self.primary_mean_affinity,
                 "member_count": self.primary_member_count,
+                "cohort_id": self.primary_cohort_id,
                 "call_id": self.primary_call_id,
             },
             "runner_up": {
@@ -120,6 +125,7 @@ def build_programme_bet(
     programme_adjacency_call_ids: dict[str, str] | None = None,
     cohort_breadth_call_ids: dict[str, str] | None = None,
     rejected_cohorts: list[Any] | None = None,
+    data_status: str = "measured",
 ) -> ProgrammeBet | None:
     """Build a Programme Bet from ranked cohorts and evidence.
 
@@ -135,6 +141,9 @@ def build_programme_bet(
     Both dimensions use the SAME Qloo scoring call but measure different aspects:
     - Adjacency measures STRENGTH of the signal
     - Breadth measures COVERAGE of the signal
+
+    `data_status` must reflect the run's actual source ("measured" for live Qloo,
+    "fixture" for fixture-backed runs) — the bet badge is provenance, not styling.
     """
     if not ranked_cohorts or len(ranked_cohorts) < 1:
         return None
@@ -259,6 +268,7 @@ def build_programme_bet(
         primary_cohort_name=primary_names[0] if primary_names else primary_domain,
         primary_mean_affinity=primary_affinity,
         primary_member_count=len(primary_members),
+        primary_cohort_id=primary_cohort_id,
         runner_up_domain=ru_domain,
         runner_up_cohort_name=ru_names[0] if ru_names else ru_domain,
         runner_up_mean_affinity=ru_affinity,
@@ -277,5 +287,5 @@ def build_programme_bet(
         primary_call_id=primary_call_id,
         runner_up_call_id=ru_call_id,
         geography_call_id=geo_call_id,
-        data_status="measured",
+        data_status=data_status,
     )
