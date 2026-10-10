@@ -34,6 +34,21 @@ Result, on the committed tree with **zero syntax transformations**:
   **1,249 findings** (research 1,161 / scripts 88), deliberately untouched.
 * CI reports the debt count without gating on it.
 
+### 2.1 CI workflow — corrected and verified GREEN
+
+M13.6.9's "CI workflow verified" claim was **wrong**: the workflow lived at
+`qloo_hackathon/adjacent/.github/workflows/ci.yml`, and GitHub only executes
+workflows in the **repository-root** `.github/workflows/`. The repo had
+**zero workflow runs, ever** (confirmed via the Actions API). The file was
+moved to `/.github/workflows/ci.yml` (keeping
+`defaults.run.working-directory: qloo_hackathon/adjacent`).
+
+First real run after the move: **run 38043200974 on commit `0542565` —
+conclusion `success`** (2026-10-10). Every step green: pinned ruff install,
+lint gate `ruff check .`, legacy-debt report, tests, probe, artefact check.
+The "Live-Qloo tests" step was correctly `skipped` (no `secrets.QLOO_API_KEY`);
+it activates automatically once the secret exists.
+
 ## 3. Golden path (live servers, via the Next.js `/api` proxy)
 
 Backend: native 3.12 uvicorn on :8000. Frontend: `next start` on :3000.
