@@ -82,6 +82,37 @@ async def create_run(request: RunRequest) -> RunResponse:
 
 
 # ---------------------------------------------------------------------------
+# POST /run/demo — explicitly labelled fixture run (no Qloo key required)
+# ---------------------------------------------------------------------------
+
+#: The fixture used by the demo route. It is the same verified demo programme the
+#: frontend offers as a sample; every artefact it produces is marked "fixture".
+DEMO_FIXTURE = "portland_strong"
+
+
+@router.post("/run/demo", response_model=RunResponse)
+async def create_demo_run() -> RunResponse:
+    """Start a fixture-backed demo run.
+
+    This route exists so the whole product journey is explorable without a Qloo
+    key — but it never pretends to be live: `data_status` is "fixture" in the
+    result, in every sub-artefact and in the stop notice.
+    """
+    record = run_store.create(
+        city="",  # filled from the fixture once the run starts
+        venue_name="Fixture Demo Cinema (offline)",
+        programme=[],
+    )
+
+    _demo_tasks = set()
+    task = asyncio.create_task(_execute_demo_run(record))
+    _demo_tasks.add(task)
+    task.add_done_callback(_demo_tasks.discard)
+
+    return _record_to_response(record)
+
+
+# ---------------------------------------------------------------------------
 # GET /run/{run_id} — get run status
 # ---------------------------------------------------------------------------
 
@@ -208,122 +239,9 @@ async def _execute_run(record: RunRecord) -> None:
         state = await orchestrator.run(state)
 
         # --- Post-pipeline: Geography, Programme Bet, Test Card ---
-        geography_result = None
-        programme_bet = None
-        test_card = None
-
-        if state.stop_reason == "complete" and state.ranked:
-            record.emit(RunEvent("trace", {
-                "phase": "LOCATE",
-                "message": f"Analysing geographic concentration in {record.city}",
-            }))
-
-            # Geography: call heatmap
-            try:
-                from ..domain.geography import build_geography_result
-                heatmap_response = await client.insights(
-                    filter_type="urn:heatmap",
-                    signal_interests_entities=state.resolved_ids,
-                    filter_location_query=record.city,
-                    filter_location_radius=0,
-                    output_heatmap_boundary="urn:geohash",
-                    take=50,
-                    tool="geography_heatmap",
-                )
-                geography_result = build_geography_result(
-                    city=record.city,
-                    response=heatmap_response,
-                    call_id=heatmap_response.call_id,
-                )
-                record.emit(RunEvent("heatmap", geography_result.to_dict()))
-            except Exception as exc:
-                record.emit(RunEvent("trace", {
-                    "phase": "LOCATE",
-                    "message": f"Geography failed: {exc}",
-                }))
-
-            # Programme Bet (M11.2: Two-sided with real Qloo evidence)
-            record.emit(RunEvent("trace", {
-                "phase": "DECIDE",
-                "message": "Building Programme Bet from ranked cohorts with two-sided evidence",
-            }))
-            try:
-                from ..domain.programme_bet import build_programme_bet
-
-                # Build two-sided evidence from ranked cohorts
-                # M11.3: Renamed for scientific accuracy
-                # A. Programme adjacency: mean_affinity (cultural proximity)
-                # B. Cohort breadth: qualifying_members ratio (coverage)
-                programme_adjacency_scores = {}
-                cohort_breadth_scores = {}
-                programme_adjacency_bands = {}
-                cohort_breadth_bands = {}
-                programme_adjacency_call_ids = {}
-                cohort_breadth_call_ids = {}
-
-                for cohort in state.ranked:
-                    cid = cohort.cohort_id
-                    score = cohort.score
-
-                    # A. Programme adjacency: mean_affinity from Qloo scoring
-                    if score and score.mean_affinity is not None:
-                        programme_adjacency_scores[cid] = score.mean_affinity
-                        programme_adjacency_bands[cid] = (
-                            "High" if score.mean_affinity >= 0.6
-                            else "Medium" if score.mean_affinity >= 0.5
-                            else "Low"
-                        )
-                        programme_adjacency_call_ids[cid] = score.call_id or ""
-
-                    # B. Cohort breadth: qualifying members ratio
-                    total = len(cohort.members) if cohort.members else 0
-                    qualifying = len(cohort.qualifying_members) if cohort.members else 0
-                    if total > 0:
-                        breadth_ratio = qualifying / total
-                        cohort_breadth_scores[cid] = breadth_ratio
-                        cohort_breadth_bands[cid] = (
-                            "High" if breadth_ratio >= 0.5
-                            else "Medium" if breadth_ratio >= 0.3
-                            else "Low"
-                        )
-                        cohort_breadth_call_ids[cid] = score.call_id if score and score.call_id else ""
-
-                programme_bet = build_programme_bet(
-                    ranked_cohorts=state.ranked,
-                    taste_tags=state.taste_tags,
-                    geography=geography_result,
-                    resolved_names=[p.resolved_name or p.title for p in state.resolved_items],
-                    programme_adjacency_scores=programme_adjacency_scores,
-                    cohort_breadth_scores=cohort_breadth_scores,
-                    programme_adjacency_bands=programme_adjacency_bands,
-                    cohort_breadth_bands=cohort_breadth_bands,
-                    programme_adjacency_call_ids=programme_adjacency_call_ids,
-                    cohort_breadth_call_ids=cohort_breadth_call_ids,
-                    rejected_cohorts=state.rejected,
-                )
-                if programme_bet:
-                    record.emit(RunEvent("bet", programme_bet.to_dict()))
-            except Exception as exc:
-                record.emit(RunEvent("trace", {
-                    "phase": "DECIDE",
-                    "message": f"Programme Bet failed: {exc}",
-                }))
-
-            # Test Card
-            if programme_bet:
-                try:
-                    from ..domain.test_card import build_test_card
-                    test_card = build_test_card(
-                        bet=programme_bet,
-                        resolved_names=[p.resolved_name or p.title for p in state.resolved_items],
-                        city=record.city,
-                    )
-                    record.emit(RunEvent("test_card", test_card.to_dict()))
-                except Exception as exc:
-                    record.emit(RunEvent("trace", {
-                        "phase": "DECIDE",
-                        "message": f"Test Card failed: {exc}",
-                    }))
+        geography_result, programme_bet, test_card = await _post_pipeline_artifacts(
+            record, state, client
+        )
 
         # Emit state events
         _emit_state_events(record, state)
@@ -366,6 +284,237 @@ async def _execute_run(record: RunRecord) -> None:
             }))
 
         await client.aclose()
+
+    except Exception as exc:
+        record.status = RunStatus.FAILED
+        record.error = str(exc)
+        record.emit(RunEvent("error", {"message": str(exc)}))
+
+
+async def _post_pipeline_artifacts(
+    record: RunRecord,
+    state: AdjacentState,
+    client: Any,
+) -> tuple[Any, Any, Any]:
+    """Geography → Programme Bet → Test Card, with truthful data_status.
+
+    Shared by the live `/run` path and the fixture `/run/demo` path so both
+    journeys produce identical artefact shapes; the only difference is the
+    client (QlooClient vs MockQlooClient) and `state.data_status`.
+    """
+    geography_result = None
+    programme_bet = None
+    test_card = None
+    data_status = getattr(state, "data_status", "measured") or "measured"
+
+    if state.stop_reason == "complete" and state.ranked:
+        record.emit(RunEvent("trace", {
+            "phase": "LOCATE",
+            "message": f"Analysing geographic concentration in {record.city}",
+        }))
+
+        # Geography: call heatmap
+        try:
+            from ..domain.geography import build_geography_result
+            heatmap_response = await client.insights(
+                filter_type="urn:heatmap",
+                signal_interests_entities=state.resolved_ids,
+                filter_location_query=record.city,
+                filter_location_radius=0,
+                output_heatmap_boundary="urn:geohash",
+                take=50,
+                tool="geography_heatmap",
+            )
+            geography_result = build_geography_result(
+                city=record.city,
+                response=heatmap_response,
+                call_id=heatmap_response.call_id,
+            )
+            record.emit(RunEvent("heatmap", geography_result.to_dict()))
+        except Exception as exc:
+            record.emit(RunEvent("trace", {
+                "phase": "LOCATE",
+                "message": f"Geography failed: {exc}",
+            }))
+
+        # Programme Bet (M11.2: Two-sided with real Qloo evidence)
+        record.emit(RunEvent("trace", {
+            "phase": "DECIDE",
+            "message": "Building Programme Bet from ranked cohorts with two-sided evidence",
+        }))
+        try:
+            from ..domain.programme_bet import build_programme_bet
+
+            # Build two-sided evidence from ranked cohorts
+            # M11.3: Renamed for scientific accuracy
+            # A. Programme adjacency: mean_affinity (cultural proximity)
+            # B. Cohort breadth: qualifying_members ratio (coverage)
+            programme_adjacency_scores = {}
+            cohort_breadth_scores = {}
+            programme_adjacency_bands = {}
+            cohort_breadth_bands = {}
+            programme_adjacency_call_ids = {}
+            cohort_breadth_call_ids = {}
+
+            for cohort in state.ranked:
+                cid = cohort.cohort_id
+                score = cohort.score
+
+                # A. Programme adjacency: mean_affinity from Qloo scoring
+                if score and score.mean_affinity is not None:
+                    programme_adjacency_scores[cid] = score.mean_affinity
+                    programme_adjacency_bands[cid] = (
+                        "High" if score.mean_affinity >= 0.6
+                        else "Medium" if score.mean_affinity >= 0.5
+                        else "Low"
+                    )
+                    programme_adjacency_call_ids[cid] = score.call_id or ""
+
+                # B. Cohort breadth: qualifying members ratio
+                total = len(cohort.members) if cohort.members else 0
+                qualifying = len(cohort.qualifying_members) if cohort.members else 0
+                if total > 0:
+                    breadth_ratio = qualifying / total
+                    cohort_breadth_scores[cid] = breadth_ratio
+                    cohort_breadth_bands[cid] = (
+                        "High" if breadth_ratio >= 0.5
+                        else "Medium" if breadth_ratio >= 0.3
+                        else "Low"
+                    )
+                    cohort_breadth_call_ids[cid] = score.call_id if score and score.call_id else ""
+
+            programme_bet = build_programme_bet(
+                ranked_cohorts=state.ranked,
+                taste_tags=state.taste_tags,
+                geography=geography_result,
+                resolved_names=[p.resolved_name or p.title for p in state.resolved_items],
+                programme_adjacency_scores=programme_adjacency_scores,
+                cohort_breadth_scores=cohort_breadth_scores,
+                programme_adjacency_bands=programme_adjacency_bands,
+                cohort_breadth_bands=cohort_breadth_bands,
+                programme_adjacency_call_ids=programme_adjacency_call_ids,
+                cohort_breadth_call_ids=cohort_breadth_call_ids,
+                rejected_cohorts=state.rejected,
+                data_status=data_status,
+            )
+            if programme_bet:
+                record.emit(RunEvent("bet", programme_bet.to_dict()))
+        except Exception as exc:
+            record.emit(RunEvent("trace", {
+                "phase": "DECIDE",
+                "message": f"Programme Bet failed: {exc}",
+            }))
+
+        # Test Card
+        if programme_bet:
+            try:
+                from ..domain.test_card import build_test_card
+                test_card = build_test_card(
+                    bet=programme_bet,
+                    resolved_names=[p.resolved_name or p.title for p in state.resolved_items],
+                    city=record.city,
+                )
+                record.emit(RunEvent("test_card", test_card.to_dict()))
+            except Exception as exc:
+                record.emit(RunEvent("trace", {
+                    "phase": "DECIDE",
+                    "message": f"Test Card failed: {exc}",
+                }))
+
+    return geography_result, programme_bet, test_card
+
+
+async def _execute_demo_run(record: RunRecord) -> None:
+    """Execute the fixture-backed pipeline (Milestone-1 spine + artefacts).
+
+    No API key, no network. Every emitted artefact carries data_status="fixture".
+    """
+    from ..agent.budget import Budget
+    from ..agent.orchestrator import AgentOrchestrator
+    from ..agent.state import AdjacentState
+    from ..config import Settings
+    from ..domain.ledger import ProvenanceLedger
+    from ..qloo.mock import MockQlooClient
+    from ..runner import FixturePipeline, programme_items, resolve_fixture_path
+
+    record.status = RunStatus.RUNNING
+    record.emit(RunEvent("trace", {
+        "phase": "INIT",
+        "message": f"Starting FIXTURE demo run ({DEMO_FIXTURE}) — offline, no Qloo calls",
+    }))
+
+    try:
+        settings = Settings.from_env()
+        fixture_path = resolve_fixture_path(DEMO_FIXTURE, settings=settings)
+        name = fixture_path.stem
+        client = MockQlooClient(settings, fixture=name, run_id=record.run_id)
+        fx = client.fixture
+
+        record.city = fx.city_query or ""
+        record.programme = [
+            {
+                "title": str(p.get("title", "(unnamed)")),
+                "year": p.get("year"),
+                "imdb_id": p.get("imdb_id"),
+            }
+            for p in fx.programme
+        ]
+
+        state = AdjacentState(
+            run_id=record.run_id,
+            fixture_name=name,
+            fixture_path=str(fixture_path),
+            scenario=fx.scenario,
+            fixture_notice=client.notice,
+            data_status="fixture",
+            description=fx.description,
+            programme=programme_items(fx.programme),
+            budget=Budget(),
+        )
+        state.ledger = ProvenanceLedger(recorder=client.recorder, data_status="fixture")
+
+        orchestrator = AgentOrchestrator(FixturePipeline(client, fx))
+        state = await orchestrator.run(state)
+
+        geography_result, programme_bet, test_card = await _post_pipeline_artifacts(
+            record, state, client
+        )
+
+        _emit_state_events(record, state)
+
+        record.state_json = state.to_json()
+        record.stop_reason = state.stop_reason
+        record.stop_message = state.stop_message
+        record.result = _build_result(
+            state, record.city,
+            geography=geography_result,
+            programme_bet=programme_bet,
+            test_card=test_card,
+        )
+        record.trace = state.trace_rows
+
+        if state.stop_reason == "complete":
+            record.status = RunStatus.COMPLETED
+            record.emit(RunEvent("done", {
+                "stop_reason": state.stop_reason,
+                "stop_message": state.stop_message,
+                "resolved": len(state.resolved_items),
+                "total": len(state.programme),
+                "cohorts_ranked": len(state.ranked),
+                "cohorts_rejected": len(state.rejected),
+            }))
+        elif state.stop_reason == "insufficiency":
+            record.status = RunStatus.INSUFFICIENT
+            record.emit(RunEvent("insufficiency", {
+                "stop_reason": state.stop_reason,
+                "stop_message": state.stop_message,
+            }))
+        else:
+            record.status = RunStatus.FAILED
+            record.emit(RunEvent("error", {
+                "stop_reason": state.stop_reason,
+                "stop_message": state.stop_message,
+            }))
 
     except Exception as exc:
         record.status = RunStatus.FAILED

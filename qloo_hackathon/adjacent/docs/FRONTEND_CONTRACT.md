@@ -1,5 +1,13 @@
 # Frontend Response Contract — Adjacent
 
+> **Status note (2026-10-10).** This document is the historical M6-era contract.
+> The LIVE payload served by `POST /run` / `GET /run/{id}` is built by
+> `_build_result()` in `backend/app/api/routes.py` (programme / taste_dna /
+> cohorts / geography / programme_bet / test_card / evidence / city /
+> data_status) and is typed for the frontend in `frontend/types/adjacent.ts`.
+> The golden-path contract is enforced by `backend/tests/test_run_api_golden_path.py`.
+
+
 > **Schema version:** 1.0.0
 >
 > This document defines the shape of the JSON payload the backend will serve to

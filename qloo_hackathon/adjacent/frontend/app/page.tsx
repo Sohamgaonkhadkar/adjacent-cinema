@@ -3,15 +3,17 @@
 import { useState, useEffect, useRef } from "react";
 import {
   createRun,
+  createDemoRun,
   streamRun,
   getRun,
-  DEMO_PROGRAMME,
   type ProgrammeItemInput,
   type RunResponse,
   type SSEEvent,
 } from "@/lib/api";
+import type { AdjacentRunResult } from "@/types/adjacent";
+import IntakeForm from "@/components/IntakeForm";
 
-// ─── Film data (illustrative programme sample) ──────────────────────────
+// ─── Editorial sample strip (illustrative photography, NOT a live analysis) ──
 
 const FILMS = [
   { id: "substance", title: "The Substance", year: 2024, genre: "Horror · Satire", director: "Coralie Fargeat",
@@ -44,7 +46,19 @@ const NAV_ITEMS = [
   { id: "test", label: "Test" },
 ];
 
-// ─── Main App ───────────────────────────────────────────────────────────
+// ─── Small display helpers ────────────────────────────────────────────────
+
+function domainLabel(domain: string | null | undefined): string {
+  if (!domain) return "unknown domain";
+  return domain.replace("urn:entity:", "").replace(/_/g, " ");
+}
+
+function affinityPct(value: number | null | undefined): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, Math.round(value * 100)));
+}
+
+// ─── Main App ───────────────────────────────────────────────────────────────
 
 export default function Home() {
   const [activeChapter, setActiveChapter] = useState("cinema");
@@ -57,6 +71,8 @@ export default function Home() {
   const [events, setEvents] = useState<SSEEvent[]>([]);
   const [analysing, setAnalysing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [request, setRequest] = useState<{ city: string; venue: string; programme: ProgrammeItemInput[] } | null>(null);
+  const [requestMode, setRequestMode] = useState<"live" | "fixture" | null>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
 
   // Intersection observer for active chapter
@@ -78,57 +94,90 @@ export default function Home() {
   // Cleanup SSE on unmount
   useEffect(() => { return () => cleanupRef.current?.(); }, []);
 
-  const result = run?.result as any;
-  const programme = result?.programme as any;
-  const tasteDna = result?.taste_dna as any;
-  const tasteDnaTags = (tasteDna?.tags ?? []) as any[];
-  const bet = result?.programme_bet as any;
-  const betPrimary = bet?.primary as any;
-  const testCard = result?.test_card as any;
-  const evidence = result?.evidence as any;
-  const dataStatus = String(result?.data_status ?? "unknown");
-  const progItems = (programme?.items ?? []) as any[];
-    // Map active chapter to nav id
+  // ── Typed views of the current result (no `any`: this is the API contract) ──
+  const result: AdjacentRunResult | null = run?.result ?? null;
+  const dataStatus = result?.data_status ?? null;
+  const programme = result?.programme ?? null;
+  const tasteTags = result?.taste_dna?.tags ?? [];
+  const ranked = result?.cohorts?.ranked ?? [];
+  const rejected = result?.cohorts?.rejected ?? [];
+  const geography = result?.geography ?? null;
+  const geoCells = geography ? (geography.highest_affinity_cells ?? geography.cells ?? []) : [];
+  const bet = result?.programme_bet ?? null;
+  const testCard = result?.test_card ?? null;
+  const evidence = result?.evidence ?? null;
+  const progItems = programme?.items ?? [];
+
+  // Map active chapter to nav id
   const activeNavId = activeChapter === "where" || activeChapter === "bet"
     ? "opportunity"
     : activeChapter;
 
-  async function handleAnalyse() {
+  const traceEvents = events.filter((e) => e.event === "trace");
+  const insufficient = run?.status === "insufficient" || run?.stop_reason === "insufficiency";
+  const failed = run?.status === "failed";
+
+  function startStream(id: string) {
+    const cleanup = streamRun(
+      id,
+      (event) => {
+        setEvents((prev) => [...prev, event]);
+        if (event.event === "done" || event.event === "insufficiency") {
+          cleanupRef.current?.();
+          getRun(id)
+            .then((finalRun) => { setRun(finalRun); setAnalysing(false); })
+            .catch(() => { setError("Could not load the completed analysis"); setAnalysing(false); });
+        }
+        if (event.event === "error") {
+          cleanupRef.current?.();
+          setError(String(event.data?.message || "Analysis failed"));
+          getRun(id).then(setRun).catch(() => undefined);
+          setAnalysing(false);
+        }
+      },
+      (err) => { setError(err.message); setAnalysing(false); }
+    );
+    cleanupRef.current = cleanup;
+  }
+
+  // The live path: exactly the values entered in the intake form are submitted.
+  async function handleAnalyse(city: string, venue: string, programmeItems: ProgrammeItemInput[]) {
     setError(null);
     setAnalysing(true);
     setRun(null);
     setEvents([]);
+    setRequest({ city, venue, programme: programmeItems });
+    setRequestMode("live");
 
     try {
-      const programme: ProgrammeItemInput[] = FILMS.map(f => ({ title: f.title, year: f.year }));
-      const response = await createRun({
-        city: "London, UK",
-        venue_name: "Prince Charles Cinema",
-        programme,
-      });
+      const response = await createRun({ city, venue_name: venue, programme: programmeItems });
       setRunId(response.run_id);
-
-      const cleanup = streamRun(
-        response.run_id,
-        (event) => {
-          setEvents((prev) => [...prev, event]);
-          if (event.event === "done" || event.event === "insufficiency") {
-            cleanupRef.current?.();
-            getRun(response.run_id)
-              .then((finalRun) => { setRun(finalRun); setAnalysing(false); })
-              .catch(() => { setError("Could not load completed analysis"); setAnalysing(false); });
-          }
-          if (event.event === "error") {
-            cleanupRef.current?.();
-            setError(String(event.data?.message || "Analysis failed"));
-            setAnalysing(false);
-          }
-        },
-        (err) => { setError(err.message); setAnalysing(false); }
-      );
-      cleanupRef.current = cleanup;
+      setRun(response);
+      document.getElementById("field")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      startStream(response.run_id);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to start analysis");
+      setAnalysing(false);
+    }
+  }
+
+  // The fixture path: an explicit, labelled offline demo — never a silent fallback.
+  async function handleDemo() {
+    setError(null);
+    setAnalysing(true);
+    setRun(null);
+    setEvents([]);
+    setRequest(null);
+    setRequestMode("fixture");
+
+    try {
+      const response = await createDemoRun();
+      setRunId(response.run_id);
+      setRun(response);
+      document.getElementById("field")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      startStream(response.run_id);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to start the fixture demo");
       setAnalysing(false);
     }
   }
@@ -139,8 +188,18 @@ export default function Home() {
     setRun(null);
     setEvents([]);
     setError(null);
+    setRequest(null);
+    setRequestMode(null);
     setAnalysing(false);
+    document.getElementById("programme")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
+
+  const statusIsMeasured = dataStatus === "measured";
+  const statusLabel = statusIsMeasured
+    ? "MEASURED QLOO DATA"
+    : dataStatus === "fixture"
+      ? "FIXTURE DEMO — NOT LIVE QLOO DATA"
+      : "SOURCE NOT REPORTED";
 
   return (
     <main style={{ overflow: "clip", background: "#090909" }}>
@@ -195,16 +254,16 @@ export default function Home() {
             Discover cultural territory adjacent to the films you already programme.
           </p>
           <a className="text-link" href="#programme">
-            <span>Enter cinema</span>
+            <span>Enter your programme</span>
             <span className="link-arrow" aria-hidden="true">&rarr;</span>
           </a>
         </div>
         <div className="hero-footer">
           <div>
-            <span className="micro-label" style={{ fontSize: 8 }}>A DEMO FOR</span>
-            <strong>Prince Charles Cinema</strong>
+            <span className="micro-label" style={{ fontSize: 8 }}>{request ? "ANALYSIS RUNNING FOR" : "BUILT FOR"}</span>
+            <strong>{request ? request.venue : "Your cinema"}</strong>
             <span style={{ color: "#bcb6aa", fontSize: 9, letterSpacing: "0.11em", textTransform: "uppercase" }}>
-              LONDON / UK
+              {request ? request.city : "Any city / any programme"}
             </span>
           </div>
           <div className="hero-foot-note">
@@ -224,11 +283,11 @@ export default function Home() {
             </div>
             <div className="programme-intro">
               <p>Before looking outward, read the shape of the programme already in the room.</p>
-              <span className="mono-note">RECENT SCREENINGS / ILLUSTRATIVE SAMPLE</span>
+              <span className="mono-note">EDITORIAL SAMPLE / ILLUSTRATIVE — NOT AN ANALYSIS</span>
             </div>
           </div>
 
-          <div className="filmstrip" aria-label="Recent programme">
+          <div className="filmstrip" aria-label="Illustrative programme sample">
             {FILMS.map((film, index) => (
               <article key={film.id} className={`film-item${selectedFilm.id === film.id ? " is-selected" : ""}`}>
                 <button
@@ -270,7 +329,10 @@ export default function Home() {
               <span aria-hidden="true">&harr;</span>
             </div>
           </div>
-          <p className="image-note">Editorial photography, not official film stills. Image credits link to their Pexels source.</p>
+          <p className="image-note">Editorial photography, not official film stills. Image credits link to their Pexels source. The strip above is an illustrative sample — the analysis below runs on what YOU enter.</p>
+
+          {/* ─── The real intake ─────────────────────────────────────── */}
+          <IntakeForm onSubmit={handleAnalyse} loading={analysing} />
         </div>
       </section>
 
@@ -286,7 +348,7 @@ export default function Home() {
                 margin: "20px 0 0", color: "var(--paper)",
                 fontFamily: "var(--display)", fontSize: "clamp(56px, 6.1vw, 94px)",
                 fontWeight: 400, letterSpacing: "-0.045em", lineHeight: 0.88
-              }}>
+              }} >
                 A programme is<br />a <em style={{ color: "#bcb4a7" }}>cultural fingerprint.</em>
               </h2>
             </div>
@@ -295,215 +357,306 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Analysis trigger */}
-          <div style={{ padding: "48px 0", borderTop: "1px solid var(--rule)", marginTop: 32 }}>
+          {/* Analysis status / controls */}
+          <div style={{ padding: "40px 0", borderTop: "1px solid var(--rule)", marginTop: 32 }}>
             <p className="eyebrow" style={{ marginBottom: 16 }}><span>&#9656;</span> LIVE ANALYSIS</p>
-            <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.85, maxWidth: 520, marginBottom: 24 }}>
-              Run a real Qloo cultural intelligence analysis on this programme.
-              The engine resolves each film, queries Qloo for cultural adjacency signals,
-              and produces an explainable Programme Bet.
-            </p>
+
+            {!run && !analysing && (
+              <>
+                <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.85, maxWidth: 560, marginBottom: 24 }}>
+                  Enter your cinema and recent programme in <a href="#programme" style={{ color: "var(--amber)", borderBottom: "1px solid rgba(194,154,110,0.4)" }}>02 / Programme</a>.
+                  The engine resolves each film, queries Qloo for cultural adjacency signals, and produces an
+                  explainable Programme Bet with a measurable Test Card.
+                </p>
+                <button onClick={handleDemo} className="intake-sample-btn" style={{ marginRight: 12 }}>
+                  View labelled fixture demo (offline)
+                </button>
+                <span className="mono-note">NO API KEY REQUIRED FOR THE FIXTURE DEMO — IT IS ALWAYS LABELLED, NEVER PRESENTED AS LIVE</span>
+              </>
+            )}
 
             {error && (
-              <div style={{ padding: "12px 16px", background: "rgba(138,80,72,0.15)", border: "1px solid rgba(138,80,72,0.4)", borderRadius: 8, marginBottom: 16, color: "#e8c4b8", fontSize: 12 }}>
+              <div style={{ padding: "12px 16px", background: "rgba(138,80,72,0.15)", border: "1px solid rgba(138,80,72,0.4)", borderRadius: 8, marginBottom: 16, color: "#e8c4b8", fontSize: 12, maxWidth: 720 }}>
+                <strong style={{ display: "block", marginBottom: 4, fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.1em" }}>ANALYSIS ERROR — YOUR ENTRIES ARE PRESERVED IN 02 / PROGRAMME</strong>
                 {error}
               </div>
             )}
 
-            {!run && (
-              <button
-                onClick={handleAnalyse}
-                disabled={analysing}
-                style={{
-                  padding: "12px 28px", background: "var(--amber)", color: "#111",
-                  fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "0.12em",
-                  textTransform: "uppercase", borderRadius: 4,
-                  opacity: analysing ? 0.6 : 1,
-                }}
-              >
-                {analysing ? `Analysing${events.length > 0 ? ` (${events.length} events)` : "…"}` : "Analyse programme with Qloo"}
-              </button>
+            {analysing && (
+              <div>
+                <p style={{ color: "#d8b48a", fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "0.12em", marginBottom: 8 }}>
+                  ANALYSING{requestMode === "fixture" ? " FIXTURE DEMO" : ""}… {events.length > 0 ? `${events.length} EVENTS RECEIVED` : "CONNECTING"}
+                </p>
+                <div className="progress-rail">
+                  {traceEvents.slice(-6).map((e, i) => (
+                    <div className="progress-line" key={i}>
+                      <span className="phase">{String(e.data?.phase ?? "…")}</span>
+                      <span>{String(e.data?.message ?? "")}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
 
-            {run && (
-              <button
-                onClick={resetAnalysis}
-                style={{
-                  padding: "10px 20px", background: "transparent",
-                  color: "var(--muted)", border: "1px solid var(--rule)",
-                  fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.1em",
-                  textTransform: "uppercase", borderRadius: 4,
-                }}
-              >
-                Reset &amp; re-run
-              </button>
+            {run && !analysing && (
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                <button onClick={resetAnalysis} className="intake-sample-btn">
+                  Reset &amp; analyse another programme
+                </button>
+                {requestMode !== "fixture" && (
+                  <button onClick={handleDemo} className="intake-sample-btn">
+                    View labelled fixture demo (offline)
+                  </button>
+                )}
+              </div>
             )}
           </div>
 
+          {/* Insufficiency — a finding, not an error */}
+          {run && !analysing && insufficient && (
+            <div className="insufficient-panel" style={{ marginTop: 32 }}>
+              <h3>Insufficient cultural evidence</h3>
+              <p>
+                {run.stop_message || "Qloo does not return enough verified cultural signal for this programme to name an adjacent audience."}
+              </p>
+              <p style={{ marginTop: 14 }} className="mono-note">
+                THIS IS THE PRODUCT WORKING — A REFUSAL IS AN HONEST RESULT, NOT A FAILURE.
+              </p>
+            </div>
+          )}
+
+          {/* Failure without a result */}
+          {run && !analysing && failed && !result && (
+            <div className="insufficient-panel" style={{ marginTop: 32, borderColor: "rgba(138,80,72,0.45)", background: "rgba(138,80,72,0.08)" }}>
+              <h3 style={{ color: "#d4a89e" }}>The run could not complete</h3>
+              <p>{run.error || run.stop_message || "Unknown failure."}</p>
+            </div>
+          )}
+
           {/* Results */}
-          {run?.result && (
+          {result && (
             <div style={{ marginTop: 32 }}>
               {/* Data status */}
-              <div style={{ marginBottom: 24, padding: "10px 14px", background: dataStatus === "measured" ? "rgba(62,122,76,0.12)" : "rgba(194,154,110,0.12)", border: `1px solid ${dataStatus === "measured" ? "rgba(62,122,76,0.3)" : "rgba(194,154,110,0.3)"}`, borderRadius: 6 }}>
-                <span style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: dataStatus === "measured" ? "#7aba8a" : "#c29a6e" }}>
-                  {dataStatus === "measured" ? "MEASURED QLOO DATA" : dataStatus === "fixture" ? "FIXTURE DEMO (NOT LIVE)" : "SOURCE NOT REPORTED"}
+              <div style={{ marginBottom: 24, padding: "10px 14px", background: statusIsMeasured ? "rgba(62,122,76,0.12)" : "rgba(194,154,110,0.12)", border: `1px solid ${statusIsMeasured ? "rgba(62,122,76,0.3)" : "rgba(194,154,110,0.3)"}`, borderRadius: 6 }}>
+                <span style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: statusIsMeasured ? "#7aba8a" : "#c29a6e" }}>
+                  {statusLabel}
                 </span>
+                {request && (
+                  <span style={{ marginLeft: 16, color: "#908c84", fontSize: 11 }}>
+                    {request.venue} · {request.city} · {request.programme.length} film(s) submitted
+                  </span>
+                )}
               </div>
 
               {/* Programme profile */}
-              <div style={{ marginBottom: 32, padding: 24, border: "1px solid var(--rule)", borderRadius: 8 }}>
-                <h3 style={{ margin: "0 0 16px", fontFamily: "var(--display)", fontSize: 28, fontWeight: 400 }}>
-                  Programme Profile
-                </h3>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 16 }}>
-                  <div>
-                    <span className="micro-label">VENUE</span>
-                    <span style={{ color: "#e9e3d8", fontSize: 13 }}>{run.venue_name || "—"}</span>
-                  </div>
-                  <div>
-                    <span className="micro-label">CITY</span>
-                    <span style={{ color: "#e9e3d8", fontSize: 13 }}>{run.city}</span>
-                  </div>
-                  <div>
-                    <span className="micro-label">FILMS</span>
-                    <span style={{ color: "#e9e3d8", fontSize: 13 }}>{Number(programme?.total_count ?? 0)}</span>
-                  </div>
-                  <div>
-                    <span className="micro-label">RESOLVED</span>
-                    <span style={{ color: "#7aba8a", fontSize: 13 }}>
-                      {Number(programme?.resolved_count ?? 0)}/{Number(programme?.total_count ?? 0)}
-                    </span>
-                  </div>
-                </div>
+              <div className="evidence-panel">
+                <h3>Programme Profile</h3>
+                <span className="mono-note" style={{ display: "block", marginBottom: 16 }}>
+                  {programme?.resolved_count ?? 0}/{programme?.total_count ?? 0} FILMS RESOLVED AGAINST QLOO
+                </span>
                 <div style={{ display: "grid", gap: 6 }}>
-                  {progItems?.map((item: Record<string, unknown>, i: number) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+                  {progItems.map((item, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, flexWrap: "wrap" }}>
                       <span style={{ color: item.resolved ? "#7aba8a" : "#c97a6a" }}>
                         {item.resolved ? "✓" : "✕"}
                       </span>
-                      <span style={{ color: "#e9e3d8" }}>{String(item.title)}</span>
-                      {item.year != null && <span style={{ color: "#88837a" }}>({String(item.year)})</span>}
+                      <span style={{ color: "#e9e3d8" }}>{item.title}</span>
+                      {item.year != null && <span style={{ color: "#88837a" }}>({item.year})</span>}
+                      {item.resolved && item.qloo_name && item.qloo_name !== item.title && (
+                        <span style={{ color: "#88837a", fontSize: 10 }}>→ {item.qloo_name}</span>
+                      )}
+                      {!item.resolved && (
+                        <span style={{ color: "#8a847a", fontSize: 10, fontFamily: "var(--mono)" }}>UNRESOLVED — EXCLUDED FROM EVIDENCE, NEVER GUESSED</span>
+                      )}
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* Taste DNA */}
-              {tasteDnaTags.length > 0 && (
-                <div style={{ marginBottom: 32, padding: 24, border: "1px solid var(--rule)", borderRadius: 8 }}>
-                  <h3 style={{ margin: "0 0 4px", fontFamily: "var(--display)", fontSize: 28, fontWeight: 400 }}>
-                    Taste DNA
-                  </h3>
+              {tasteTags.length > 0 && (
+                <div className="evidence-panel">
+                  <h3>Taste DNA</h3>
                   <span className="mono-note" style={{ display: "block", marginBottom: 16 }}>
-                    {Number(tasteDna?.tag_count ?? 0)} TAGS / {dataStatus === "measured" ? "MEASURED" : "FIXTURE"}
+                    {result.taste_dna?.tag_count ?? tasteTags.length} TAGS · QLOO AFFINITY 0–1 · {statusIsMeasured ? "MEASURED" : "FIXTURE"}
                   </span>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
-                    {tasteDnaTags.slice(0, 16).map((tag: Record<string, unknown>) => (
-                      <div key={String(tag.tag_id)} style={{ padding: "10px 12px", background: "rgba(232,226,213,0.04)", border: "1px solid var(--rule)", borderRadius: 6 }}>
-                        <div style={{ color: "#e7e1d7", fontSize: 12, fontWeight: 500 }}>{String(tag.name)}</div>
+                    {tasteTags.slice(0, 16).map((tag, i) => (
+                      <div key={tag.tag_id || i} style={{ padding: "10px 12px", background: "rgba(232,226,213,0.04)", border: "1px solid var(--rule)", borderRadius: 6 }}>
+                        <div style={{ color: "#e7e1d7", fontSize: 12, fontWeight: 500 }}>{tag.name}</div>
                         <div style={{ color: "#88837a", fontSize: 10, marginTop: 4 }}>
-                          Affinity: {typeof tag.affinity === "number" ? tag.affinity.toFixed(4) : "—"} · {String(tag.band || "—")}
+                          Affinity: {typeof tag.affinity === "number" ? tag.affinity.toFixed(4) : "—"} · {tag.band || "—"}
                         </div>
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Ranked cohorts — the cultural field, ranked */}
+              {ranked.length > 0 && (
+                <div className="evidence-panel">
+                  <h3>Adjacent Cohorts, Ranked</h3>
+                  <span className="mono-note" style={{ display: "block", marginBottom: 16 }}>
+                    {ranked.length} RANKED · {rejected.length} REJECTED WITH REASONS · AFFINITY = QLOO CULTURAL SIMILARITY, NOT AUDIENCE SIZE
+                  </span>
+                  <div style={{ display: "grid", gap: 14 }}>
+                    {ranked.map((cohort) => (
+                      <div key={cohort.cohort_id} style={{ padding: "16px 18px", border: "1px solid var(--rule)", borderRadius: 7, background: "rgba(232,226,213,0.02)" }}>
+                        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
+                          <span style={{ fontFamily: "var(--display)", fontSize: 22, color: "#e9e3d8" }}>
+                            <span style={{ color: "var(--amber)", fontFamily: "var(--mono)", fontSize: 10, marginRight: 10 }}>0{cohort.rank}</span>
+                            {domainLabel(cohort.domain)}
+                          </span>
+                          <span className="mono-note">
+                            {cohort.member_count} MEMBERS · MEAN AFFINITY {typeof cohort.score?.mean_affinity === "number" ? cohort.score.mean_affinity.toFixed(2) : "—"}
+                            {" · "}{cohort.verdict ?? ""}
+                          </span>
+                        </div>
+                        <div style={{ display: "grid", gap: 6 }}>
+                          {cohort.members.slice(0, 5).map((m, mi) => (
+                            <div className="bar-row" key={m.entity_id || mi} style={{ gridTemplateColumns: "minmax(140px, 1.2fr) 2fr auto" }}>
+                              <span className="bar-label">{m.name}</span>
+                              <div className="bar-track">
+                                <div className="bar-fill adjacent" style={{ width: `${affinityPct(m.affinity)}%` }} />
+                              </div>
+                              <span className="bar-value">
+                                {typeof m.affinity === "number" ? m.affinity.toFixed(2) : "—"}{m.band ? ` · ${m.band}` : ""}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {rejected.length > 0 && (
+                    <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--rule)" }}>
+                      <span className="micro-label" style={{ marginBottom: 8 }}>REJECTED — AND WHY</span>
+                      <div style={{ display: "grid", gap: 4 }}>
+                        {rejected.map((r, ri) => (
+                          <div key={r.cohort_id || ri} style={{ color: "#8a847a", fontSize: 11 }}>
+                            {domainLabel(r.domain)} — {r.rejection_reason ?? "rejected"}{r.rejection_detail ? ` (${r.rejection_detail})` : ""}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Geography — with its limits stated */}
+              {geography && (
+                <div className="evidence-panel">
+                  <h3>Where the affinity concentrates</h3>
+                  <span className="mono-note" style={{ display: "block", marginBottom: 4 }}>
+                    {geography.city_display || geography.city} · {geography.total_cells} HEATMAP CELLS · CALL {geography.call_id ?? "—"} · {geography.data_status === "measured" ? "MEASURED" : "FIXTURE"}
+                  </span>
+                  {!geography.sufficient && (
+                    <p style={{ color: "#c29a6e", fontSize: 11, margin: "8px 0 0", lineHeight: 1.7 }}>
+                      {geography.note || "Too few cells for a geographic claim — treat as directional only."}
+                    </p>
+                  )}
+                  <div className="geo-list">
+                    {geoCells.slice(0, 5).map((cell, ci) => (
+                      <div className="geo-row" key={ci}>
+                        <span className="geo-rank">#{cell.affinity_rank ?? ci + 1}</span>
+                        <span className="geo-name">{cell.geohash ?? "cell"}</span>
+                        <span className="geo-coords">{cell.latitude.toFixed(3)}, {cell.longitude.toFixed(3)}</span>
+                        <span className="geo-affinity">{cell.affinity.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mono-note" style={{ marginTop: 12, lineHeight: 1.8 }}>
+                    GEOHASH CELL CENTROIDS FROM A QLOO HEATMAP — A CULTURAL-AFFINITY CONCENTRATION SIGNAL, NOT A POPULATION, CATCHMENT OR DEMAND MODEL.
+                  </p>
                 </div>
               )}
 
               {/* Programme Bet */}
               {bet && (
                 <div style={{ marginBottom: 32, padding: 24, background: "rgba(194,154,110,0.06)", border: "1px solid rgba(194,154,110,0.25)", borderRadius: 8 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, gap: 12, flexWrap: "wrap" }}>
                     <span className="eyebrow" style={{ color: "var(--amber)" }}>&#127919; PROGRAMME BET</span>
                     <span style={{ fontFamily: "var(--mono)", fontSize: 8, letterSpacing: "0.1em", textTransform: "uppercase", color: bet.data_status === "measured" ? "#7aba8a" : "#c29a6e", padding: "3px 8px", background: "rgba(194,154,110,0.1)", borderRadius: 4 }}>
-                      {String(bet?.data_status ?? "unknown") === "measured" ? "MEASURED QLOO" : "FIXTURE"}
+                      {bet.data_status === "measured" ? "MEASURED QLOO" : `DATA STATUS: ${String(bet.data_status ?? "unknown").toUpperCase()}`}
                     </span>
                   </div>
                   <h3 style={{ margin: "0 0 8px", fontFamily: "var(--display)", fontSize: 32, fontWeight: 400, color: "#e9e3d8" }}>
                     {bet.primary?.cohort_name}
                   </h3>
                   <p style={{ color: "#a7a39b", fontSize: 12, lineHeight: 1.7, marginBottom: 16 }}>
-                    {bet.primary?.domain} · {bet.primary?.member_count} entities · affinity {bet.primary?.mean_affinity?.toFixed(2)}
+                    {domainLabel(bet.primary?.domain)} · {bet.primary?.member_count} entities
+                    {typeof bet.primary?.mean_affinity === "number" ? ` · mean affinity ${bet.primary.mean_affinity.toFixed(2)}` : ""}
+                    {bet.primary?.call_id ? ` · call ${bet.primary.call_id}` : ""}
                   </p>
+                  {bet.two_sided_signals && (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 16 }}>
+                      <div style={{ padding: "10px 12px", border: "1px solid var(--rule)", borderRadius: 6 }}>
+                        <span className="micro-label">PROGRAMME ADJACENCY</span>
+                        <span style={{ display: "block", color: "#e9e3d8", fontSize: 14, marginTop: 4 }}>
+                          {typeof bet.two_sided_signals.programme_adjacency === "number" ? bet.two_sided_signals.programme_adjacency.toFixed(2) : "—"}
+                          {bet.two_sided_signals.adjacency_band ? ` · ${bet.two_sided_signals.adjacency_band}` : ""}
+                        </span>
+                      </div>
+                      <div style={{ padding: "10px 12px", border: "1px solid var(--rule)", borderRadius: 6 }}>
+                        <span className="micro-label">COHORT BREADTH</span>
+                        <span style={{ display: "block", color: "#e9e3d8", fontSize: 14, marginTop: 4 }}>
+                          {typeof bet.two_sided_signals.cohort_breadth === "number" ? bet.two_sided_signals.cohort_breadth.toFixed(2) : "—"}
+                          {bet.two_sided_signals.breadth_band ? ` · ${bet.two_sided_signals.breadth_band}` : ""}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                   <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, marginBottom: 12 }}>
-                    {String(bet?.why ?? "")}
+                    {bet.why}
                   </p>
-                  {String(bet?.falsification_condition ?? "") && (
+                  {bet.cultural_bridge && (
+                    <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, marginBottom: 12 }}>
+                      <span className="micro-label" style={{ display: "inline", marginRight: 8 }}>BRIDGE</span>{bet.cultural_bridge}
+                    </p>
+                  )}
+                  {bet.programming_direction && (
+                    <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, marginBottom: 12 }}>
+                      <span className="micro-label" style={{ display: "inline", marginRight: 8 }}>DIRECTION</span>{bet.programming_direction}
+                    </p>
+                  )}
+                  {bet.falsification_condition && (
                     <div style={{ marginTop: 16, padding: "12px 14px", background: "rgba(138,80,72,0.1)", border: "1px solid rgba(138,80,72,0.25)", borderRadius: 6 }}>
                       <span className="micro-label" style={{ color: "#c97a6a", marginBottom: 6, display: "block" }}>&#9888; FALSIFICATION CONDITION</span>
                       <p style={{ color: "#d4a89e", fontSize: 12, lineHeight: 1.7, margin: 0 }}>
-                        {String(bet?.falsification_condition ?? "")}
+                        {bet.falsification_condition}
                       </p>
                     </div>
+                  )}
+                  {bet.runner_up && (
+                    <p className="mono-note" style={{ marginTop: 12, lineHeight: 1.8 }}>
+                      RUNNER-UP: {bet.runner_up.cohort_name ?? domainLabel(bet.runner_up.domain)}
+                      {typeof bet.runner_up.mean_affinity === "number" ? ` · AFFINITY ${bet.runner_up.mean_affinity.toFixed(2)}` : ""}
+                    </p>
                   )}
                 </div>
               )}
 
-              {/* Test Card */}
-              {testCard && (
-                <div style={{ marginBottom: 32, padding: 24, border: "1px solid rgba(130,100,170,0.25)", borderRadius: 8, background: "rgba(130,100,170,0.04)" }}>
-                  <span className="eyebrow" style={{ color: "#b09aca", marginBottom: 12, display: "block" }}>&#128300; TEST CARD</span>
-                  <h3 style={{ margin: "0 0 16px", fontFamily: "var(--display)", fontSize: 28, fontWeight: 400, color: "#ddd0ec" }}>
-                    {String(testCard?.title ?? "")}
-                  </h3>
-                  {[
-                    ["Programme", String(testCard?.programme_context ?? "")],
-                    ["Audience Hypothesis", String(testCard?.audience_hypothesis ?? "")],
-                    ["Cultural Bridge", String(testCard?.cultural_bridge ?? "")],
-                    ["Programming Direction", String(testCard?.programming_direction ?? "")],
-                    ["Falsification", String(testCard?.falsification_condition ?? "")],
-                  ].filter(([, v]) => v).map(([label, value]) => (
-                    <div key={String(label)} style={{ marginBottom: 12 }}>
-                      <span className="micro-label">{String(label)}</span>
-                      <p style={{ color: "#c5bcd4", fontSize: 12, lineHeight: 1.7, margin: "4px 0 0" }}>{String(value)}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Ranked Cohorts */}
-              {result?.cohorts?.ranked?.length > 0 && (
-                <div style={{ marginBottom: 24, padding: 20, border: "1px solid var(--rule)", borderRadius: 8 }}>
-                  <h3 style={{ margin: "0 0 16px", fontFamily: "var(--display)", fontSize: 22, fontWeight: 400 }}>Ranked Cultural Opportunities</h3>
-                  <div style={{ display: "grid", gap: 10 }}>
-                    {result.cohorts.ranked.map((cohort: any) => (
-                      <div key={cohort.cohort_id} style={{ padding: "12px 16px", border: "1px solid var(--rule)", borderRadius: 6 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <div>
-                            <span style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--amber)", marginRight: 12 }}>#{cohort.rank}</span>
-                            <span style={{ color: "#e7e1d7", fontSize: 13, fontWeight: 500 }}>{cohort.domain}</span>
-                          </div>
-                          <span style={{ fontFamily: "var(--mono)", fontSize: 9, color: "#88837a" }}>{cohort.member_count} members · {cohort.verdict}</span>
-                        </div>
-                        {cohort.score && (
-                          <div style={{ marginTop: 8, display: "flex", gap: 16, fontSize: 10, color: "#969187" }}>
-                            <span>Affinity: {cohort.score.mean_affinity?.toFixed(4) ?? "—"}</span>
-                            <span>Novelty: {cohort.score.novelty_proxy?.toFixed(4) ?? "—"}</span>
-                          </div>
-                        )}
+              {/* Evidence / provenance */}
+              {evidence && (
+                <div style={{ padding: 20, border: "1px solid var(--rule)", borderRadius: 8 }}>
+                  <span className="micro-label" style={{ marginBottom: 14, display: "block" }}>PROVENANCE / EVIDENCE</span>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 16 }}>
+                    {([
+                      ["Qloo calls", evidence.qloo_calls],
+                      ["Trace rows", evidence.trace_rows],
+                      ["Stop reason", evidence.stop_reason],
+                      ["Run status", run?.status],
+                      ["Run ID", runId],
+                    ] as [string, unknown][]).map(([label, value]) => (
+                      <div key={label}>
+                        <span className="micro-label">{label}</span>
+                        <span style={{ display: "block", color: "#e9e3d8", fontSize: 13, marginTop: 4, overflowWrap: "anywhere" }}>{String(value ?? "—")}</span>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-
-              {/* Evidence */}
-              <div style={{ padding: 24, border: "1px solid var(--rule)", borderRadius: 8 }}>
-                <h3 style={{ margin: "0 0 16px", fontFamily: "var(--display)", fontSize: 28, fontWeight: 400 }}>Evidence</h3>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
-                  {[
-                    ["Qloo calls", evidence?.qloo_calls],
-                    ["Trace rows", evidence?.trace_rows],
-                    ["Stop reason", evidence?.stop_reason],
-                    ["Status", run.status],
-                  ].map(([label, value]) => (
-                    <div key={String(label)}>
-                      <span className="micro-label">{String(label)}</span>
-                      <span style={{ display: "block", color: "#e9e3d8", fontSize: 14, marginTop: 4 }}>{String(value ?? "—")}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           )}
         </div>
@@ -519,7 +672,7 @@ export default function Home() {
                 margin: "28px 0 0", color: "var(--paper)",
                 fontFamily: "var(--display)", fontSize: "clamp(56px, 6.1vw, 94px)",
                 fontWeight: 400, letterSpacing: "-0.045em", lineHeight: 0.88,
-              }}>
+              }} >
                 The cultural territory<br />you are <em style={{ color: "#bcb4a7" }}>not yet exploring.</em>
               </h2>
             </div>
@@ -528,63 +681,91 @@ export default function Home() {
             </p>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 32, alignItems: "start" }}>
-            {/* Expressed */}
-            <div>
-              <span className="micro-label" style={{ marginBottom: 12, display: "block" }}>01 / EXPRESSED</span>
-              <h3 style={{ fontFamily: "var(--display)", fontSize: "clamp(28px, 3vw, 42px)", fontWeight: 400, margin: "0 0 24px", lineHeight: 1 }}>
-                What the cinema<br /><em style={{ color: "#bcb4a7" }}>already programmes.</em>
-              </h3>
-              {[
-                ["Independent film", "92%"], ["Auteur-led work", "80%"],
-                ["Contemporary stories", "72%"], ["Drama / romance", "63%"],
-                ["Visual authorship", "57%"],
-              ].map(([label, width]) => (
-                <div key={String(label)} style={{ display: "grid", gridTemplateColumns: "120px 1fr 60px", gap: 10, alignItems: "center", marginBottom: 10 }}>
-                  <span style={{ color: "#b3aea4", fontSize: 11 }}>{String(label)}</span>
-                  <div style={{ height: 3, background: "rgba(232,226,213,0.08)", borderRadius: 2 }}>
-                    <div style={{ width: String(width), height: "100%", background: "var(--amber)", borderRadius: 2 }} />
-                  </div>
-                  <span className="mono-note" style={{ fontSize: 8 }}>PRESENT</span>
+          {!result && (
+            <div className="insufficient-panel">
+              <h3>No numbers before evidence</h3>
+              <p>
+                Adjacent never displays territory scores it has not measured. Run an analysis on your
+                programme in <a href="#programme" style={{ color: "var(--amber)" }}>02 / Programme</a> —
+                this panel will then show your programme&rsquo;s expressed taste profile beside the
+                highest-ranked adjacent cohorts, each value taken directly from the Qloo response.
+              </p>
+            </div>
+          )}
+
+          {result && insufficient && (
+            <div className="insufficient-panel">
+              <h3>Insufficient evidence for a territory claim</h3>
+              <p>
+                {run?.stop_message || "Qloo did not return enough verified cultural signal for this programme."}
+              </p>
+            </div>
+          )}
+
+          {result && !insufficient && (
+            <>
+              <div className="opportunity-grid">
+                {/* Expressed — from measured taste tags */}
+                <div>
+                  <span className="micro-label" style={{ marginBottom: 12, display: "block" }}>01 / EXPRESSED · YOUR TASTE PROFILE</span>
+                  <h3 style={{ fontFamily: "var(--display)", fontSize: "clamp(28px, 3vw, 42px)", fontWeight: 400, margin: "0 0 24px", lineHeight: 1 }}>
+                    What your programme<br /><em style={{ color: "#bcb4a7" }}>already expresses.</em>
+                  </h3>
+                  {tasteTags.length > 0 ? tasteTags.slice(0, 5).map((tag, i) => (
+                    <div className="bar-row" key={tag.tag_id || i}>
+                      <span className="bar-label">{tag.name}</span>
+                      <div className="bar-track">
+                        <div className="bar-fill" style={{ width: `${affinityPct(tag.affinity)}%` }} />
+                      </div>
+                      <span className="bar-value">
+                        {typeof tag.affinity === "number" ? tag.affinity.toFixed(2) : "—"}{tag.band ? ` · ${tag.band}` : ""}
+                      </span>
+                    </div>
+                  )) : (
+                    <p style={{ color: "#8a847a", fontSize: 12 }}>No taste tags returned for this programme.</p>
+                  )}
                 </div>
-              ))}
-            </div>
 
-            {/* Bridge arrow */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "48px 0", color: "var(--amber)" }}>
-              <span className="mono-note" style={{ color: "var(--amber)" }}>EXTEND</span>
-              <span style={{ fontSize: 24 }}>&rarr;</span>
-            </div>
-
-            {/* Adjacent */}
-            <div>
-              <span className="micro-label" style={{ marginBottom: 12, display: "block" }}>02 / NEIGHBOURING</span>
-              <h3 style={{ fontFamily: "var(--display)", fontSize: "clamp(28px, 3vw, 42px)", fontWeight: 400, margin: "0 0 24px", lineHeight: 1 }}>
-                Adjacent<br /><em style={{ color: "#bcb4a7" }}>territory.</em>
-              </h3>
-              {[
-                ["Contemporary classical", "86%"], ["Live performance", "78%"],
-                ["Composer-led events", "69%"], ["Experimental sound", "62%"],
-                ["Cultural venues", "55%"],
-              ].map(([label, width]) => (
-                <div key={String(label)} style={{ display: "grid", gridTemplateColumns: "140px 1fr 60px", gap: 10, alignItems: "center", marginBottom: 10 }}>
-                  <span style={{ color: "#b3aea4", fontSize: 11 }}>{String(label)}</span>
-                  <div style={{ height: 3, background: "rgba(232,226,213,0.08)", borderRadius: 2 }}>
-                    <div style={{ width: String(width), height: "100%", background: "rgba(194,154,110,0.5)", borderRadius: 2 }} />
-                  </div>
-                  <span className="mono-note" style={{ fontSize: 8 }}>ADJACENT</span>
+                {/* Bridge arrow */}
+                <div className="opportunity-bridge">
+                  <span className="mono-note" style={{ color: "var(--amber)" }}>EXTEND</span>
+                  <span style={{ fontSize: 24 }}>&rarr;</span>
                 </div>
-              ))}
-            </div>
-          </div>
 
-          <div style={{ textAlign: "center", padding: "48px 0 0", borderTop: "1px solid var(--rule)", marginTop: 48 }}>
-            <span className="micro-label" style={{ marginBottom: 12, display: "block" }}>A DISTINCTION THAT MATTERS</span>
-            <p style={{ fontFamily: "var(--display)", fontSize: "clamp(22px, 2.5vw, 32px)", fontWeight: 400, margin: 0, lineHeight: 1.3 }}>
-              We are not predicting an audience.<br />
-              <em style={{ color: "#bcb4a7" }}>We are identifying a cultural direction worth testing.</em>
-            </p>
-          </div>
+                {/* Adjacent — from ranked cohorts */}
+                <div>
+                  <span className="micro-label" style={{ marginBottom: 12, display: "block" }}>02 / ADJACENT · RANKED COHORTS</span>
+                  <h3 style={{ fontFamily: "var(--display)", fontSize: "clamp(28px, 3vw, 42px)", fontWeight: 400, margin: "0 0 24px", lineHeight: 1 }}>
+                    Adjacent<br /><em style={{ color: "#bcb4a7" }}>territory.</em>
+                  </h3>
+                  {ranked.length > 0 ? ranked.slice(0, 5).map((cohort) => (
+                    <div className="bar-row" key={cohort.cohort_id}>
+                      <span className="bar-label" title={cohort.domain}>{domainLabel(cohort.domain)}</span>
+                      <div className="bar-track">
+                        <div className="bar-fill adjacent" style={{ width: `${affinityPct(cohort.score?.mean_affinity)}%` }} />
+                      </div>
+                      <span className="bar-value">
+                        {typeof cohort.score?.mean_affinity === "number" ? cohort.score.mean_affinity.toFixed(2) : "—"} · {cohort.member_count} ENT
+                      </span>
+                    </div>
+                  )) : (
+                    <p style={{ color: "#8a847a", fontSize: 12 }}>No adjacent cohorts cleared the evidence gate.</p>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ textAlign: "center", padding: "48px 0 0", borderTop: "1px solid var(--rule)", marginTop: 48 }}>
+                <span className="micro-label" style={{ marginBottom: 12, display: "block" }}>HOW TO READ THESE BARS · {statusIsMeasured ? "MEASURED QLOO DATA" : "FIXTURE DEMO DATA"}</span>
+                <p style={{ fontFamily: "var(--display)", fontSize: "clamp(20px, 2.3vw, 30px)", fontWeight: 400, margin: "0 0 14px", lineHeight: 1.35 }}>
+                  Affinity is a Qloo cultural-similarity score (0–1).<br />
+                  <em style={{ color: "#bcb4a7" }}>It is not an audience size, an attendance forecast, or a conversion probability.</em>
+                </p>
+                <p className="mono-note" style={{ maxWidth: 640, margin: "0 auto", lineHeight: 1.9 }}>
+                  LEFT: HIGHEST-AFFINITY TASTE TAGS OF YOUR PROGRAMME. RIGHT: HIGHEST-RANKED ADJACENT COHORTS BY MEAN MEMBER AFFINITY. EVERY VALUE COMES FROM THE QLOO RESPONSES OF THIS RUN — SEE PROVENANCE IN 03.
+                </p>
+              </div>
+            </>
+          )}
         </div>
       </section>
 
@@ -598,7 +779,7 @@ export default function Home() {
                 margin: "20px 0 0", color: "var(--paper)",
                 fontFamily: "var(--display)", fontSize: "clamp(56px, 6.1vw, 94px)",
                 fontWeight: 400, letterSpacing: "-0.045em", lineHeight: 0.88,
-              }}>
+              }} >
                 Programme<br /><em style={{ color: "#bcb4a7" }}>experiment.</em>
               </h2>
             </div>
@@ -608,35 +789,90 @@ export default function Home() {
           </div>
 
           <article style={{ padding: 32, border: "1px solid var(--rule)", borderRadius: 8, background: "rgba(232,226,213,0.02)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 24, paddingBottom: 16, borderBottom: "1px solid var(--rule)" }}>
-              <span className="micro-label">PROGRAMME EXPERIMENT</span>
-              <span className="mono-note">RUN ANALYSIS ABOVE TO POPULATE</span>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 24, paddingBottom: 16, borderBottom: "1px solid var(--rule)", gap: 12, flexWrap: "wrap" }}>
+              <span className="micro-label">PROGRAMME EXPERIMENT · TEST CARD</span>
+              <span className="mono-note">
+                {testCard
+                  ? `DATA STATUS: ${String(testCard.data_status ?? "unknown").toUpperCase()}`
+                  : "RUN AN ANALYSIS ABOVE TO POPULATE"}
+              </span>
             </div>
 
-            {run?.result?.test_card ? (
+            {testCard ? (
               <>
                 <div style={{ marginBottom: 24 }}>
                   <span className="micro-label" style={{ marginBottom: 8, display: "block" }}>THE BET</span>
-                  <h3 style={{ fontFamily: "var(--display)", fontSize: 32, fontWeight: 400, margin: "0 0 8px", color: "#e9e3d8" }}>
-                    {String(testCard?.title ?? "")}
+                  <h3 style={{ fontFamily: "var(--display)", fontSize: 32, fontWeight: 400, margin: 0, color: "#e9e3d8" }}>
+                    {testCard.title}
                   </h3>
                 </div>
-                {String(testCard?.audience_hypothesis ?? "") && (
-                  <div style={{ marginBottom: 24 }}>
-                    <span className="micro-label" style={{ marginBottom: 8, display: "block" }}>HYPOTHESIS</span>
-                    <p style={{ color: "#b3aea4", fontSize: 14, lineHeight: 1.8, margin: 0 }}>
-                      &ldquo;{String(testCard?.audience_hypothesis ?? "")}&rdquo;
-                    </p>
-                  </div>
-                )}
-                {String(testCard?.falsification_condition ?? "") && (
-                  <div style={{ marginBottom: 24 }}>
-                    <span className="micro-label" style={{ marginBottom: 8, display: "block" }}>FAILURE CONDITIONS</span>
-                    <p style={{ color: "#c97a6a", fontSize: 13, lineHeight: 1.7, margin: 0 }}>
-                      {String(testCard?.falsification_condition ?? "")}
-                    </p>
-                  </div>
-                )}
+
+                <div style={{ display: "grid", gap: 22 }}>
+                  {testCard.programme_context && (
+                    <div>
+                      <span className="micro-label" style={{ marginBottom: 8, display: "block" }}>PROGRAMME CONTEXT</span>
+                      <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, margin: 0 }}>{testCard.programme_context}</p>
+                    </div>
+                  )}
+                  {testCard.audience_hypothesis && (
+                    <div>
+                      <span className="micro-label" style={{ marginBottom: 8, display: "block" }}>AUDIENCE HYPOTHESIS</span>
+                      <p style={{ color: "#b3aea4", fontSize: 14, lineHeight: 1.8, margin: 0 }}>
+                        &ldquo;{testCard.audience_hypothesis}&rdquo;
+                      </p>
+                    </div>
+                  )}
+                  {testCard.cultural_bridge && (
+                    <div>
+                      <span className="micro-label" style={{ marginBottom: 8, display: "block" }}>CULTURAL BRIDGE</span>
+                      <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, margin: 0 }}>{testCard.cultural_bridge}</p>
+                    </div>
+                  )}
+                  {testCard.geographic_signal && (
+                    <div>
+                      <span className="micro-label" style={{ marginBottom: 8, display: "block" }}>GEOGRAPHIC SIGNAL</span>
+                      <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, margin: 0 }}>{testCard.geographic_signal}</p>
+                    </div>
+                  )}
+                  {testCard.programming_direction && (
+                    <div>
+                      <span className="micro-label" style={{ marginBottom: 8, display: "block" }}>PROGRAMMING DIRECTION</span>
+                      <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, margin: 0 }}>{testCard.programming_direction}</p>
+                    </div>
+                  )}
+                  {testCard.primary_evidence && (
+                    <div>
+                      <span className="micro-label" style={{ marginBottom: 8, display: "block" }}>PRIMARY EVIDENCE</span>
+                      <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, margin: 0 }}>{testCard.primary_evidence}</p>
+                    </div>
+                  )}
+                  {testCard.runner_up && (
+                    <div>
+                      <span className="micro-label" style={{ marginBottom: 8, display: "block" }}>RUNNER-UP DIRECTION</span>
+                      <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, margin: 0 }}>{testCard.runner_up}</p>
+                    </div>
+                  )}
+                  {testCard.falsification_condition && (
+                    <div style={{ padding: "12px 14px", background: "rgba(138,80,72,0.1)", border: "1px solid rgba(138,80,72,0.25)", borderRadius: 6 }}>
+                      <span className="micro-label" style={{ color: "#c97a6a", marginBottom: 6, display: "block" }}>&#9888; FALSIFICATION CONDITION</span>
+                      <p style={{ color: "#d4a89e", fontSize: 12, lineHeight: 1.7, margin: 0 }}>
+                        {testCard.falsification_condition}
+                      </p>
+                    </div>
+                  )}
+                  {testCard.provenance && (
+                    <div>
+                      <span className="micro-label" style={{ marginBottom: 8, display: "block" }}>PROVENANCE</span>
+                      <div style={{ display: "grid", gap: 4 }}>
+                        {Object.entries(testCard.provenance).map(([k, v]) => (
+                          <div key={k} className="mono-note" style={{ lineHeight: 1.8 }}>
+                            {k.toUpperCase()}: {String(v ?? "—")}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </>
             ) : (
               <div style={{ textAlign: "center", padding: "48px 0", color: "#6b6964" }}>
@@ -650,13 +886,13 @@ export default function Home() {
               </div>
             )}
 
-            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 24, paddingTop: 16, borderTop: "1px solid var(--rule)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 24, paddingTop: 16, borderTop: "1px solid var(--rule)", gap: 12, flexWrap: "wrap" }}>
               <span className="mono-note">NO ATTENDANCE TARGETS / NO CONVERSION CLAIMS</span>
               <span className="mono-note">REVIEW AFTER THE EXPERIMENT</span>
             </div>
           </article>
 
-          <footer style={{ display: "flex", justifyContent: "space-between", marginTop: 48, paddingTop: 24, borderTop: "1px solid var(--rule)" }}>
+          <footer style={{ display: "flex", justifyContent: "space-between", marginTop: 48, paddingTop: 24, borderTop: "1px solid var(--rule)", gap: 12, flexWrap: "wrap" }}>
             <span style={{ fontFamily: "var(--mono)", fontSize: 8, letterSpacing: "0.1em", textTransform: "uppercase", color: "#6b6964" }}>
               ADJACENT / CULTURAL INTELLIGENCE FOR INDEPENDENT CINEMAS
             </span>

@@ -44,23 +44,23 @@ class ProgrammeBet:
     programme_adjacency: float | None = None
     adjacency_band: str | None = None  # High/Medium/Low
     adjacency_call_id: str | None = None
-    
+
     # Dimension B: What fraction of the cohort clears the quality threshold
     # (qualifying_members / total_members — measures cohort breadth)
     cohort_breadth: float | None = None
     breadth_band: str | None = None  # High/Medium/Low
     breadth_call_id: str | None = None
-    
+
     # Evidence
     why: str = ""
     cultural_bridge: str = ""
     geographic_signal: str = ""
     programming_direction: str = ""
     falsification_condition: str = ""
-    
+
     # Rejected candidates
     rejected_candidates: list[dict[str, Any]] = field(default_factory=list)
-    
+
     # Provenance
     primary_call_id: str | None = None
     runner_up_call_id: str | None = None
@@ -120,6 +120,7 @@ def build_programme_bet(
     programme_adjacency_call_ids: dict[str, str] | None = None,
     cohort_breadth_call_ids: dict[str, str] | None = None,
     rejected_cohorts: list[Any] | None = None,
+    data_status: str = "measured",
 ) -> ProgrammeBet | None:
     """Build a Programme Bet from ranked cohorts and evidence.
 
@@ -135,6 +136,9 @@ def build_programme_bet(
     Both dimensions use the SAME Qloo scoring call but measure different aspects:
     - Adjacency measures STRENGTH of the signal
     - Breadth measures COVERAGE of the signal
+
+    `data_status` must reflect the run's actual source ("measured" for live Qloo,
+    "fixture" for fixture-backed runs) — the bet badge is provenance, not styling.
     """
     if not ranked_cohorts or len(ranked_cohorts) < 1:
         return None
@@ -277,5 +281,5 @@ def build_programme_bet(
         primary_call_id=primary_call_id,
         runner_up_call_id=ru_call_id,
         geography_call_id=geo_call_id,
-        data_status="measured",
+        data_status=data_status,
     )
