@@ -1,0 +1,9 @@
+{
+ "status": "failed",
+ "stop_reason": null,
+ "stop_message": null,
+ "error": "QLOO_API_KEY not configured",
+ "current_phase": ""
+}
+result is null: True
+programme echoed: [{'title': 'Chungking Express', 'year': 1994, 'imdb_id': None}, {'title': 'In the Mood for Love', 'year': 2000, 'imdb_id': None}]

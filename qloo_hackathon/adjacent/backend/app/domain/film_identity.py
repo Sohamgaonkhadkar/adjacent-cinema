@@ -24,7 +24,6 @@ import re
 import unicodedata
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any
 
 
 class IdentityStatus(StrEnum):
@@ -325,12 +324,12 @@ def audit_canonicalization(films: list[dict]) -> dict:
 
     # Statistics
     total_raw = len(results)
-    unique_raw = len(set(r.raw_title for r in results))
-    unique_normalized = len(set(r.normalized_title for r in results))
-    unique_canonical = len(set(
+    unique_raw = len({r.raw_title for r in results})
+    unique_normalized = len({r.normalized_title for r in results})
+    unique_canonical = len({
         canonical_film_key(r.canonical_title, r.extracted_year)
         for r in results
-    ))
+    })
 
     # Count by reason
     reason_counts = {}
@@ -380,7 +379,7 @@ def audit_canonicalization(films: list[dict]) -> dict:
         "event_count": len(events),
         "event_examples": event_examples,
         "collapsed_groups_count": len(collapsed_groups),
-        "collapsed_groups": {k: v for k, v in list(collapsed_groups.items())[:20]},
+        "collapsed_groups": dict(list(collapsed_groups.items())[:20]),
         "rule_examples": rule_examples,
         "results": results,
     }

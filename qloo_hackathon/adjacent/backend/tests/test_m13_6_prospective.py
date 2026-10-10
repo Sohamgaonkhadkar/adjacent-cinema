@@ -14,12 +14,11 @@ Tests proving:
 10. No synthetic outcomes are introduced
 """
 
-import pytest
-from datetime import datetime, timezone, timedelta
-from pathlib import Path
+from datetime import UTC, datetime, timedelta
 
-from app.domain.outcome_repository import OutcomeRepository
+import pytest
 from app.domain.film_identity import canonical_film_key
+from app.domain.outcome_repository import OutcomeRepository
 
 
 @pytest.fixture
@@ -32,7 +31,7 @@ def repo(tmp_path):
 @pytest.fixture
 def future_screening():
     """Create a screening 30 days in the future."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     show_dt = now + timedelta(days=30)
     return {
         "venue_id": "test_venue",
@@ -53,7 +52,7 @@ def future_screening():
 @pytest.fixture
 def past_screening():
     """Create a screening 1 day in the past."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     show_dt = now - timedelta(days=1)
     return {
         "venue_id": "test_venue",
@@ -80,11 +79,11 @@ class TestPredictionSnapshotCreation:
         """Prediction snapshot is created with lifecycle state."""
         obs_id, _ = repo.record_screening(future_screening)
         cf_key = canonical_film_key("Alien", 1979)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         show_dt = datetime.fromisoformat(future_screening["show_start_at"])
 
         # M13.6.1: Future prediction -> PLANNED, no Qloo features
-        pred_id = repo.upsert_prediction_snapshot({
+        _pred_id = repo.upsert_prediction_snapshot({
             "observation_id": obs_id,
             "film_key": cf_key,
             "prediction_run_id": "test_run",
@@ -167,7 +166,7 @@ class TestQlooFeatureFreeze:
         """Qloo features are frozen and cannot be modified after outcome."""
         obs_id, _ = repo.record_screening(future_screening)
         cf_key = canonical_film_key("Alien", 1979)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         pred_ts = now + timedelta(days=3)  # Prediction 3 days in future
 
         # Create as PLANNED (current_time before pred_ts)
@@ -237,7 +236,7 @@ class TestQlooFeatureImmutability:
         """Frozen snapshot cannot be modified."""
         obs_id, _ = repo.record_screening(future_screening)
         cf_key = canonical_film_key("Alien", 1979)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         pred_ts = now + timedelta(days=3)
 
         # Create PLANNED then freeze
@@ -308,7 +307,7 @@ class TestOutcomeLabels:
         repo.update_prediction_outcome(obs_id, 168, {
             "outcome_status": "SOLD_OUT_OBSERVED",
             "sold_out_observed": 1,
-            "final_observation_timestamp": datetime.now(timezone.utc).isoformat(),
+            "final_observation_timestamp": datetime.now(UTC).isoformat(),
             "lead_time_at_final_observation": 0.5,
         })
 
@@ -432,7 +431,7 @@ class TestScreeningTrajectories:
         """Full trajectory from prediction to outcome is preserved."""
         obs_id, _ = repo.record_screening(future_screening)
         cf_key = canonical_film_key("Alien", 1979)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         pred_ts = now + timedelta(days=3)
 
         # Create PLANNED then freeze
@@ -586,7 +585,7 @@ class TestPredictionRun:
         """Prediction run is created and retrievable."""
         repo.create_prediction_run({
             "prediction_run_id": "test_run",
-            "run_timestamp": datetime.now(timezone.utc).isoformat(),
+            "run_timestamp": datetime.now(UTC).isoformat(),
             "run_type": "INITIAL",
             "total_screenings": 100,
             "eligible_screenings": 90,

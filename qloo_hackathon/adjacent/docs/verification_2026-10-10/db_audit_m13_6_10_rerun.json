@@ -1,0 +1,132 @@
+{
+  "audit_version": "M13.6.4",
+  "db_totals": {
+    "total_predictions": 2175,
+    "planned": 2068,
+    "frozen": 90,
+    "outcome_final": 11,
+    "censored": 6,
+    "distinct_planned_films": 308,
+    "distinct_all_films": 315,
+    "feature_snapshots_total": 290,
+    "feature_snapshots_distinct_films": 290
+  },
+  "coverage_metrics": {
+    "A_film_resolution": {
+      "metric": "A_FILM_RESOLUTION_COVERAGE",
+      "denominator": 308,
+      "numerator": 262,
+      "pct": 85.1,
+      "unit": "distinct_planned_films",
+      "temporal_rule": "none",
+      "detail": "262 of 308 PLANNED films have a Qloo entity_id"
+    },
+    "B_snapshot_existence": {
+      "metric": "B_SNAPSHOT_EXISTENCE_COVERAGE",
+      "denominator": 308,
+      "numerator": 262,
+      "pct": 85.1,
+      "unit": "distinct_planned_films",
+      "temporal_rule": "none",
+      "detail": "262 of 308 PLANNED films have at least one snapshot row"
+    },
+    "C_temporal_eligibility": {
+      "metric": "C_PREDICTION_TIME_TEMPORAL_COVERAGE",
+      "denominator": 2068,
+      "numerator": 1525,
+      "pct": 73.74,
+      "unit": "planned_prediction_snapshots",
+      "temporal_rule": "feature.retrieved_at <= prediction.prediction_timestamp",
+      "detail": "1525 of 2068 PLANNED predictions have a temporally eligible snapshot"
+    },
+    "D_usable_features": {
+      "metric": "D_USABLE_FEATURE_COVERAGE",
+      "denominator": 2068,
+      "numerator": 165,
+      "pct": 7.98,
+      "unit": "planned_prediction_snapshots",
+      "temporal_rule": "feature.retrieved_at <= prediction.prediction_timestamp AND non-empty tags",
+      "detail": "165 of 2068 PLANNED predictions have temporally eligible non-empty features"
+    },
+    "D2_usable_features_film": {
+      "metric": "D2_USABLE_FEATURE_COVERAGE_FILM_LEVEL",
+      "denominator": 308,
+      "numerator": 36,
+      "pct": 11.7,
+      "unit": "distinct_planned_films",
+      "temporal_rule": "has non-empty tags (film level)",
+      "detail": "36 of 308 PLANNED films have at least one non-empty feature snapshot"
+    },
+    "E_empty_signal": {
+      "metric": "E_EMPTY_SIGNAL_COVERAGE",
+      "numerator": 226,
+      "unit": "distinct_planned_films",
+      "detail": "226 PLANNED films have snapshots with empty tags (API returned no signal)"
+    },
+    "F_retrospective_only": {
+      "metric": "F_RETROSPECTIVE_ONLY",
+      "numerator": 69,
+      "unit": "frozen_and_outcome_predictions",
+      "detail": "69 frozen/outcome predictions have RETROSPECTIVE_ONLY status"
+    },
+    "G_no_resolution": {
+      "metric": "G_NO_RESOLUTION",
+      "numerator": 46,
+      "denominator": 308,
+      "unit": "distinct_planned_films",
+      "detail": "46 PLANNED films have no resolvable Qloo entity"
+    }
+  },
+  "outcome_audit": {
+    "outcome_status_distribution": {
+      "SOLD_OUT_OBSERVED": 11
+    },
+    "frozen_qloo_status_distribution": {
+      "AVAILABLE_AT_PREDICTION_TIME": 14,
+      "NO_FEATURE": 16,
+      "RETROSPECTIVE_ONLY": 60
+    },
+    "available_at_pred_time_with_signal": 0,
+    "available_at_pred_time_without_signal": 14
+  },
+  "reconciliation": {
+    "planned_films": 308,
+    "films_with_entity": 262,
+    "films_no_entity": 46,
+    "films_with_snapshot": 262,
+    "films_with_entity_no_snapshot": 0,
+    "usable_signal_films": 36,
+    "empty_signal_films": 226,
+    "no_resolution_films": 46,
+    "sum_check": 308,
+    "equals_planned": true
+  },
+  "defects": [
+    {
+      "id": "D1_COVERAGE_INFLATION",
+      "severity": "HIGH",
+      "description": "Snapshot existence (85.1%) reported as feature coverage when usable signal is only 7.98%"
+    },
+    {
+      "id": "D2_EMPTY_SNAPSHOTS_EXIST",
+      "severity": "LOW",
+      "description": "226 films have empty feature snapshots. Code fix in M13.6.4: collector now allows re-collection for empty snapshots. Existing empty rows remain in DB as provenance records."
+    },
+    {
+      "id": "D3_MISLEADING_FEATURE_STATUS",
+      "severity": "HIGH",
+      "description": "14 FROZEN predictions are marked AVAILABLE_AT_PREDICTION_TIME but have zero Qloo tags"
+    },
+    {
+      "id": "D4_POSITIVE_ONLY_OUTCOMES",
+      "severity": "HIGH",
+      "description": "All 11 linked outcomes are SOLD_OUT_OBSERVED with zero AVAILABLE_NEAR_SHOWTIME labels. Severe selection bias: only observable sold-out events were linked."
+    },
+    {
+      "id": "D5_RETROSPECTIVE_POPULARITY",
+      "severity": "MEDIUM",
+      "description": "229 feature snapshots have popularity values sourced from film_resolution (retrospective metadata) rather than the API response"
+    }
+  ],
+  "all_planned_films_count": 308
+}

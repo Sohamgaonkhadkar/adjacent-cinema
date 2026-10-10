@@ -1,13 +1,10 @@
 """Tests for agentic domain selection (M11)."""
 
-import pytest
 from app.domain.domain_selection import (
-    DomainSelection,
-    DomainSelectionResult,
     ALL_DOMAINS,
-    select_domains,
-    _extract_tag_families,
     _count_signals,
+    _extract_tag_families,
+    select_domains,
 )
 
 

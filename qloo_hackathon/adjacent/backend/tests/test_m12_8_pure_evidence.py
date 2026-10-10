@@ -6,21 +6,20 @@ is immune to domain, format, testability, differentiation,
 cohort_kind weighting, and tag-count scoring.
 """
 
-import pytest
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "research" / "scripts"))
 
 from m12_8_pure_evidence import (
-    compute_qloo_evidence_score,
-    build_candidate_record,
-    rank_by_evidence,
-    construct_experiment,
-    describe_programme_fit,
     EVIDENCE_WEIGHT_AFFINITY,
     EVIDENCE_WEIGHT_POPULARITY,
     EVIDENCE_WEIGHT_QUALIFYING_RATIO,
+    build_candidate_record,
+    compute_qloo_evidence_score,
+    construct_experiment,
+    describe_programme_fit,
+    rank_by_evidence,
 )
 
 
@@ -53,7 +52,7 @@ class TestDomainInvariance:
 
     def test_all_domains_same_score(self):
         base_score = _score(0.90, 0.80, 40, 40)
-        for domain in ["artist", "tv_show", "book", "podcast", "brand"]:
+        for _domain in ["artist", "tv_show", "book", "podcast", "brand"]:
             assert _score(0.90, 0.80, 40, 40) == base_score
 
     def test_record_domain_invariance(self):

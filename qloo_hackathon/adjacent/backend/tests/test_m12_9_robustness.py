@@ -4,7 +4,6 @@ M12.9: Evidence Score Robustness Lock — Backend Tests
 10 invariance tests. No unconditional/pass-always assertions.
 """
 
-import pytest
 import sys
 from pathlib import Path
 
@@ -12,10 +11,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "research" / "scrip
 
 from m12_9_robustness import (
     POLICIES,
-    score_candidate,
-    rank_under_policy,
     kendall_tau,
     overlap_at_k,
+    rank_under_policy,
+    score_candidate,
 )
 
 
@@ -52,8 +51,7 @@ class TestDomainInvariance:
 class TestFormatInvariance:
     def test_format_not_in_scoring(self):
         """No policy function references event format."""
-        import inspect
-        for policy_name, policy_fn in POLICIES.items():
+        for _policy_name, policy_fn in POLICIES.items():
             # Policy functions are lambdas, so check they only use aff/pop/qr
             result = policy_fn(0.90, 0.80, 1.0)
             assert isinstance(result, float)
@@ -102,9 +100,9 @@ class TestLayerBRemoval:
             _raw("B", "tv_show", 0.90, 0.80, 40, 40),
             _raw("C", "book", 0.85, 0.70, 30, 30),
         ]
-        
+
         ranked_full = rank_under_policy(candidates, POLICIES["balanced"])
-        
+
         # Strip all non-numeric fields
         stripped = []
         for c in candidates:
@@ -115,8 +113,8 @@ class TestLayerBRemoval:
                 "total_members": c["total_members"],
             })
         ranked_stripped = rank_under_policy(stripped, POLICIES["balanced"])
-        
-        for r_full, r_stripped in zip(ranked_full, ranked_stripped):
+
+        for r_full, r_stripped in zip(ranked_full, ranked_stripped, strict=False):
             assert r_full["entity_title"] == r_stripped["entity_title"]
 
 
@@ -187,10 +185,10 @@ class TestWinnerStability:
             _raw("HighAff_LowPop", "tv_show", 0.95, 0.50, 50, 50),
             _raw("LowAff_HighPop", "tv_show", 0.90, 0.95, 50, 50),
         ]
-        
+
         winner_aff = rank_under_policy(candidates, POLICIES["affinity_only"])[0]
         winner_bal = rank_under_policy(candidates, POLICIES["balanced"])[0]
-        
+
         assert winner_aff["entity_title"] == "HighAff_LowPop"
         # With balanced policy, popularity boost might change winner
         # 0.6*0.95+0.2*0.50+0.2*1.0 = 0.87 vs 0.6*0.90+0.2*0.95+0.2*1.0 = 0.93
@@ -213,12 +211,12 @@ class TestRankCorrelation:
         """Reversed rankings → tau = -1.0 (for 2 items)."""
         c1 = _raw("A", "tv_show", 0.95, 0.80, 50, 50)
         c2 = _raw("B", "tv_show", 0.90, 0.70, 50, 50)
-        
+
         r_aff = rank_under_policy([c1, c2], POLICIES["affinity_only"])
         # Reverse: put B first by using negative affinity
         c2_high = _raw("B", "tv_show", 0.99, 0.70, 50, 50)
         r_rev = rank_under_policy([c1, c2_high], POLICIES["affinity_only"])
-        
+
         # A is first in r_aff, B is first in r_rev
         assert r_aff[0]["entity_title"] != r_rev[0]["entity_title"]
 
