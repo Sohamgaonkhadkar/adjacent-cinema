@@ -526,6 +526,21 @@ export default function Home() {
                             </div>
                           ))}
                         </div>
+                        {(cohort.excluded_members?.length ?? 0) > 0 && (
+                          <details style={{ marginTop: 10 }}>
+                            <summary className="mono-note" style={{ cursor: "pointer" }}>
+                              {cohort.qualifying_count ?? cohort.members.length} OF {cohort.member_count} MEMBERS QUALIFY · {cohort.excluded_members?.length} CONSIDERED BUT EXCLUDED — AND WHY
+                            </summary>
+                            <div style={{ display: "grid", gap: 4, marginTop: 8 }}>
+                              {cohort.excluded_members?.map((ex, ei) => (
+                                <div key={ex.entity_id || ei} style={{ color: "#8a847a", fontSize: 11 }}>
+                                  {ex.name ?? ex.entity_id} — {ex.reason_code}
+                                  {typeof ex.affinity === "number" ? ` (affinity ${ex.affinity.toFixed(2)})` : ""}
+                                </div>
+                              ))}
+                            </div>
+                          </details>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -588,6 +603,7 @@ export default function Home() {
                     {domainLabel(bet.primary?.domain)} · {bet.primary?.member_count} entities
                     {typeof bet.primary?.mean_affinity === "number" ? ` · mean affinity ${bet.primary.mean_affinity.toFixed(2)}` : ""}
                     {bet.primary?.call_id ? ` · call ${bet.primary.call_id}` : ""}
+                    {bet.primary?.cohort_id ? ` · built from ranked cohort ${bet.primary.cohort_id} above` : ""}
                   </p>
                   {bet.two_sided_signals && (
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 16 }}>
@@ -858,6 +874,18 @@ export default function Home() {
                       <p style={{ color: "#d4a89e", fontSize: 12, lineHeight: 1.7, margin: 0 }}>
                         {testCard.falsification_condition}
                       </p>
+                    </div>
+                  )}
+                  {testCard.success_criteria && (
+                    <div>
+                      <span className="micro-label" style={{ marginBottom: 8, display: "block" }}>OBSERVABLE SUCCESS CRITERIA</span>
+                      <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, margin: 0 }}>{testCard.success_criteria}</p>
+                    </div>
+                  )}
+                  {testCard.observation_window && (
+                    <div>
+                      <span className="micro-label" style={{ marginBottom: 8, display: "block" }}>OBSERVATION WINDOW</span>
+                      <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, margin: 0 }}>{testCard.observation_window}</p>
                     </div>
                   )}
                   {testCard.provenance && (

@@ -62,6 +62,15 @@ export interface CohortScore {
   novelty_proxy: number | null;
 }
 
+/// An entity considered but not counted as qualifying — kept visible with a
+/// reason code so the reader can disagree (never silently deleted).
+export interface ExcludedMember {
+  entity_id: string;
+  name: string | null;
+  reason_code: string;
+  affinity: number | null;
+}
+
 export interface RankedCohort {
   cohort_id: string;
   domain: string;
@@ -70,6 +79,8 @@ export interface RankedCohort {
   verdict: string | null;
   score: CohortScore | null;
   members: CohortMember[];
+  qualifying_count?: number;
+  excluded_members?: ExcludedMember[];
 }
 
 export interface RejectedCohort {
@@ -129,6 +140,7 @@ export interface ProgrammeBetData {
     cohort_name: string;
     member_count: number;
     mean_affinity: number | null;
+    cohort_id: string | null;
     call_id: string | null;
   };
   runner_up: {
@@ -165,6 +177,8 @@ export interface TestCardData {
   primary_evidence: string;
   runner_up: string;
   falsification_condition: string;
+  success_criteria?: string;
+  observation_window?: string;
   provenance: Record<string, string | null>;
   data_status: string;
 }

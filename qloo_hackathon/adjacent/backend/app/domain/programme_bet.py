@@ -32,6 +32,10 @@ class ProgrammeBet:
     primary_cohort_name: str
     primary_mean_affinity: float
     primary_member_count: int
+    #: Cohort id of the primary bet — links the decision back to the exact
+    #: ranked cohort in `cohorts.ranked`, so the UI can show the evidence the
+    #: bet was built from instead of leaving the connection implicit.
+    primary_cohort_id: str | None = None
 
     # Runner-up
     runner_up_domain: str | None = None
@@ -74,6 +78,7 @@ class ProgrammeBet:
                 "cohort_name": self.primary_cohort_name,
                 "mean_affinity": self.primary_mean_affinity,
                 "member_count": self.primary_member_count,
+                "cohort_id": self.primary_cohort_id,
                 "call_id": self.primary_call_id,
             },
             "runner_up": {
@@ -263,6 +268,7 @@ def build_programme_bet(
         primary_cohort_name=primary_names[0] if primary_names else primary_domain,
         primary_mean_affinity=primary_affinity,
         primary_member_count=len(primary_members),
+        primary_cohort_id=primary_cohort_id,
         runner_up_domain=ru_domain,
         runner_up_cohort_name=ru_names[0] if ru_names else ru_domain,
         runner_up_mean_affinity=ru_affinity,

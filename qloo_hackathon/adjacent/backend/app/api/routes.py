@@ -641,6 +641,18 @@ def _build_result(
                         }
                         for m in c.members
                     ],
+                    # Exclusions are annotations, never deletions (reasons.py):
+                    # surfaced with codes so the reader can disagree with them.
+                    "qualifying_count": len(c.qualifying_members),
+                    "excluded_members": [
+                        {
+                            "entity_id": e.entity_id,
+                            "name": e.name,
+                            "reason_code": e.code.value,
+                            "affinity": e.affinity,
+                        }
+                        for e in c.excluded_members
+                    ],
                 }
                 for c in state.ranked
             ],

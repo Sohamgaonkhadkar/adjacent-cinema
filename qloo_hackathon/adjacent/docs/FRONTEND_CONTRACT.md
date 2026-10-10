@@ -73,7 +73,9 @@ Built by `_build_result()`; TypeScript mirror: `AdjacentRunResult` in
     "call_id", "data_status", "source", "sufficient": bool, "note"
   },
   "programme_bet": {                            // present only when a bet cleared the evidence gate
-    "primary": { "domain", "cohort_name", "member_count", "mean_affinity", "call_id" },
+    "primary": { "domain", "cohort_name", "member_count", "mean_affinity",
+                 "cohort_id",                        // M13.7: links the bet to its ranked cohort
+                 "call_id" },
     "runner_up": {...} | null,
     "two_sided_signals": { "programme_adjacency", "adjacency_band", "adjacency_call_id",
                            "cohort_breadth", "breadth_band", "breadth_call_id", "methodology_note" },
@@ -86,7 +88,11 @@ Built by `_build_result()`; TypeScript mirror: `AdjacentRunResult` in
     "audience_hypothesis",                      // ← the hypothesis field (fixed mapping)
     "cultural_bridge", "geographic_signal", "programming_direction",
     "primary_evidence", "runner_up", "falsification_condition",
-    "provenance": { "primary_call_id", "runner_up_call_id", "geography_call_id", "data_status" },
+    "success_criteria",                              // M13.7: observable, never predicts numbers
+    "observation_window",                            // M13.7: bounded, practical
+    "provenance": { "primary_call_id", "runner_up_call_id", "geography_call_id",
+                    "primary_cohort_id",             // M13.7: card ↔ bet ↔ cohort chain
+                    "data_status" },
     "data_status"
   },
   "evidence": { "qloo_calls", "trace_rows", "stop_reason", "stop_message" },
@@ -106,6 +112,11 @@ Built by `_build_result()`; TypeScript mirror: `AdjacentRunResult` in
    excluded from evidence — never guessed.
 5. Affinity values are Qloo cultural-similarity scores (0–1). They are never
    audience sizes, attendance forecasts or conversion probabilities.
+6. The decision chain is explicit: `cohorts.ranked[0].cohort_id` =
+   `programme_bet.primary.cohort_id` = `test_card.provenance.primary_cohort_id`
+   — the Bet and Test Card always follow from the same ranked cohort.
+7. Excluded cohort members are surfaced with reason codes, never hidden;
+   success criteria are observations, never predictions.
 
 ## 4. SSE events (`GET /run/{id}/stream`)
 

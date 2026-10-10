@@ -42,6 +42,7 @@ export default function IntakeForm({ onSubmit, loading }: Props) {
   const [cityError, setCityError] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<RowErrors[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const [sampleLoaded, setSampleLoaded] = useState(false);
 
   function updateRow(index: number, field: keyof Row, value: string) {
@@ -116,6 +117,21 @@ export default function IntakeForm({ onSubmit, loading }: Props) {
     if (programme.length === 0 && !formErr) {
       formErr = "Add at least one film title to analyse.";
     }
+
+    // Duplicate titles are a warning, never a blocker — a double bill is a
+    // legitimate programme — but listing the same film twice would double its
+    // weight in the taste profile, so the programmer should mean it.
+    const seen = new Map<string, number>();
+    programme.forEach((item) => {
+      const key = `${item.title.toLowerCase()}${item.year ? ` (${item.year})` : ""}`;
+      seen.set(key, (seen.get(key) ?? 0) + 1);
+    });
+    const dupes = [...seen.entries()].filter(([, n]) => n > 1).map(([k]) => k);
+    setDuplicateWarning(
+      dupes.length > 0
+        ? `Listed more than once: ${dupes.join(", ")}. Kept as entered — remove a row only if the repeat was accidental.`
+        : null
+    );
 
     setVenueError(venueErr);
     setCityError(cityErr);
@@ -266,6 +282,9 @@ export default function IntakeForm({ onSubmit, loading }: Props) {
       </div>
 
       {formError && <p className="intake-form-error">{formError}</p>}
+      {duplicateWarning && (
+        <p className="intake-fineprint" style={{ color: "#c29a6e" }} role="note">{duplicateWarning}</p>
+      )}
 
       <p className="intake-fineprint">
         Films are resolved against the Qloo taste graph. Unresolved titles are reported, never
