@@ -1,0 +1,434 @@
+{
+  "generated_at": "2026-10-10T20:57:48.377966+00:00",
+  "methodology": "Offline harness. Condition B ran the real Adjacent pipeline over LABELLED FIXTURE evidence (demo stand-in, not live Qloo data about these fictional films); fixture-based scores demonstrate harness mechanics, not real-world effectiveness. Condition A requires a configured LLM provider; without one it is BLOCKED, never stubbed. The rubric is automated and deterministic; the evidence_traceable criterion measures whether claims cite evidence refs present in the run's evidence set \u2014 Condition A has no evidence by construction, and that asymmetry is the hypothesis under test. No statistical significance is claimed from 5 synthetic briefs.",
+  "rubric_anchors": {
+    "schema_valid": "1 = all required positioning fields present and non-empty strings; 0 otherwise.",
+    "evidence_traceable": "1 = at least one evidence ref present AND every ref exists in the run's evidence set; 0 = no refs or untraceable refs. Condition A scores 0 by construction (no evidence access) \u2014 that asymmetry is the hypothesis under test.",
+    "specific_world": "1 = hypothesis names a specific cultural world/entity beyond the input genre; 0 = generic.",
+    "falsifiable": "1 = success criteria, observation window AND a falsification condition are all concrete and non-empty; 0 otherwise.",
+    "uncertainty_handled": "1 = at least one limitation recorded; 0 = none.",
+    "information_beyond_generic": "1 = the output contains at least two claims tied to evidence refs or to film-specific facts beyond restating the brief; 0 otherwise."
+  },
+  "summary": {
+    "qloo_grounded": {
+      "n": 5,
+      "avg_total": 5.4,
+      "max": 6
+    },
+    "llm_only": {
+      "n": 0,
+      "avg_total": null
+    },
+    "condition_a_status": "blocked",
+    "condition_a_error": "ADJACENT_LLM_API_KEY not configured \u2014 Condition A is BLOCKED (never silently stubbed)."
+  },
+  "runs": [
+    {
+      "output": {
+        "condition": "qloo_grounded",
+        "brief_id": "B1-neon-harbour",
+        "film_title": "Neon Harbour",
+        "positioning": {
+          "hypothesis": "An audience aligned with the artist cultural world \u2014 represented by Brian Eno and 2 similar entities, mean affinity 0.71 \u2014 is reachable with positioning that names that world, more than with your current default framing.",
+          "world": "artist",
+          "success_criteria": "The test succeeds if your own post-release records show: (1) responses, comments or shares that reference the artist framing you tested, and (2) the framing's reach compared against your own recent baseline for comparable releases. Adjacent predicts no view counts, retention or revenue \u2014 judge by what you observe.",
+          "observation_window": "Observe for the first two weeks after release (most short-film attention arrives in the first days), then record what you saw. Re-run this analysis on your next work within one comparable cycle to confirm or falsify the adjacency.",
+          "action_plan": "Position 'Neon Harbour' toward the artist world (e.g. Brian Eno, Grouper) in your title framing, description and community outreach, and test that framing against your usual wording.",
+          "falsification": "Reject this positioning hypothesis if, after the release, your own observations do not show the artist framing connecting \u2014 and if a re-run of this analysis on your next work does not reproduce a artist cohort in the top-3 ranked cultural worlds."
+        },
+        "evidence_refs": [
+          "eval-B1-neon-harbour-c003",
+          "eval-B1-neon-harbour-c004",
+          "eval-B1-neon-harbour-c005",
+          "eval-B1-neon-harbour-c006",
+          "eval-B1-neon-harbour-c007",
+          "eval-B1-neon-harbour-c008",
+          "eval-B1-neon-harbour-c010",
+          "eval-B1-neon-harbour-c011",
+          "eval-B1-neon-harbour-c013",
+          "eval-B1-neon-harbour-c014"
+        ],
+        "limitations": [
+          "This run used FIXTURE demonstration data \u2014 the entities, affinities and cohorts below are demo content, not live Qloo measurements.",
+          "2 candidate world(s) were excluded by the evidence gate (1\u00d7 insufficient_members, 1\u00d7 weak_evidence); exclusions are annotations, not deletions.",
+          "Cultural affinity measures similarity between expressed interests; it is not evidence that any audience will watch, enjoy or share the film."
+        ],
+        "open_questions": [
+          "Whether the proposed framing actually changes reach can only be answered by the creator's own post-release observations."
+        ],
+        "data_status": "fixture",
+        "generator": {
+          "kind": "rule_based_grounded",
+          "model": null
+        },
+        "stop_reason": "complete",
+        "_available_refs": [
+          "eval-B1-neon-harbour-c003",
+          "eval-B1-neon-harbour-c004",
+          "eval-B1-neon-harbour-c005",
+          "eval-B1-neon-harbour-c006",
+          "eval-B1-neon-harbour-c007",
+          "eval-B1-neon-harbour-c008",
+          "eval-B1-neon-harbour-c010",
+          "eval-B1-neon-harbour-c011",
+          "eval-B1-neon-harbour-c013",
+          "eval-B1-neon-harbour-c014"
+        ],
+        "_genre": "urban drama"
+      },
+      "scores": {
+        "checks": {
+          "schema_valid": {
+            "score": 1,
+            "note": ""
+          },
+          "evidence_traceable": {
+            "score": 1,
+            "note": "10 ref(s)"
+          },
+          "specific_world": {
+            "score": 1,
+            "note": "world='artist'"
+          },
+          "falsifiable": {
+            "score": 1,
+            "note": ""
+          },
+          "uncertainty_handled": {
+            "score": 1,
+            "note": ""
+          },
+          "information_beyond_generic": {
+            "score": 1,
+            "note": "10 evidence-linked claim source(s)"
+          }
+        },
+        "total": 6,
+        "max": 6
+      }
+    },
+    {
+      "output": {
+        "condition": "qloo_grounded",
+        "brief_id": "B2-quiet-field",
+        "film_title": "The Quiet Field",
+        "positioning": {
+          "hypothesis": "An audience aligned with the artist cultural world \u2014 represented by Brian Eno and 2 similar entities, mean affinity 0.71 \u2014 is reachable with positioning that names that world, more than with your current default framing.",
+          "world": "artist",
+          "success_criteria": "The test succeeds if your own post-release records show: (1) responses, comments or shares that reference the artist framing you tested, and (2) the framing's reach compared against your own recent baseline for comparable releases. Adjacent predicts no view counts, retention or revenue \u2014 judge by what you observe.",
+          "observation_window": "Observe for the first two weeks after release (most short-film attention arrives in the first days), then record what you saw. Re-run this analysis on your next work within one comparable cycle to confirm or falsify the adjacency.",
+          "action_plan": "Position 'The Quiet Field' toward the artist world (e.g. Brian Eno, Grouper) in your title framing, description and community outreach, and test that framing against your usual wording.",
+          "falsification": "Reject this positioning hypothesis if, after the release, your own observations do not show the artist framing connecting \u2014 and if a re-run of this analysis on your next work does not reproduce a artist cohort in the top-3 ranked cultural worlds."
+        },
+        "evidence_refs": [
+          "eval-B2-quiet-field-c003",
+          "eval-B2-quiet-field-c004",
+          "eval-B2-quiet-field-c005",
+          "eval-B2-quiet-field-c006",
+          "eval-B2-quiet-field-c007",
+          "eval-B2-quiet-field-c008",
+          "eval-B2-quiet-field-c010",
+          "eval-B2-quiet-field-c011",
+          "eval-B2-quiet-field-c013",
+          "eval-B2-quiet-field-c014"
+        ],
+        "limitations": [
+          "This run used FIXTURE demonstration data \u2014 the entities, affinities and cohorts below are demo content, not live Qloo measurements.",
+          "2 candidate world(s) were excluded by the evidence gate (1\u00d7 insufficient_members, 1\u00d7 weak_evidence); exclusions are annotations, not deletions.",
+          "Cultural affinity measures similarity between expressed interests; it is not evidence that any audience will watch, enjoy or share the film."
+        ],
+        "open_questions": [
+          "Whether the proposed framing actually changes reach can only be answered by the creator's own post-release observations."
+        ],
+        "data_status": "fixture",
+        "generator": {
+          "kind": "rule_based_grounded",
+          "model": null
+        },
+        "stop_reason": "complete",
+        "_available_refs": [
+          "eval-B2-quiet-field-c003",
+          "eval-B2-quiet-field-c004",
+          "eval-B2-quiet-field-c005",
+          "eval-B2-quiet-field-c006",
+          "eval-B2-quiet-field-c007",
+          "eval-B2-quiet-field-c008",
+          "eval-B2-quiet-field-c010",
+          "eval-B2-quiet-field-c011",
+          "eval-B2-quiet-field-c013",
+          "eval-B2-quiet-field-c014"
+        ],
+        "_genre": "rural family drama"
+      },
+      "scores": {
+        "checks": {
+          "schema_valid": {
+            "score": 1,
+            "note": ""
+          },
+          "evidence_traceable": {
+            "score": 1,
+            "note": "10 ref(s)"
+          },
+          "specific_world": {
+            "score": 1,
+            "note": "world='artist'"
+          },
+          "falsifiable": {
+            "score": 1,
+            "note": ""
+          },
+          "uncertainty_handled": {
+            "score": 1,
+            "note": ""
+          },
+          "information_beyond_generic": {
+            "score": 1,
+            "note": "10 evidence-linked claim source(s)"
+          }
+        },
+        "total": 6,
+        "max": 6
+      }
+    },
+    {
+      "output": {
+        "condition": "qloo_grounded",
+        "brief_id": "B3-static",
+        "film_title": "Static",
+        "positioning": {
+          "hypothesis": "An audience aligned with the artist cultural world \u2014 represented by Brian Eno and 2 similar entities, mean affinity 0.71 \u2014 is reachable with positioning that names that world, more than with your current default framing.",
+          "world": "artist",
+          "success_criteria": "The test succeeds if your own post-release records show: (1) responses, comments or shares that reference the artist framing you tested, and (2) the framing's reach compared against your own recent baseline for comparable releases. Adjacent predicts no view counts, retention or revenue \u2014 judge by what you observe.",
+          "observation_window": "Observe for the first two weeks after release (most short-film attention arrives in the first days), then record what you saw. Re-run this analysis on your next work within one comparable cycle to confirm or falsify the adjacency.",
+          "action_plan": "Position 'Static' toward the artist world (e.g. Brian Eno, Grouper) in your title framing, description and community outreach, and test that framing against your usual wording.",
+          "falsification": "Reject this positioning hypothesis if, after the release, your own observations do not show the artist framing connecting \u2014 and if a re-run of this analysis on your next work does not reproduce a artist cohort in the top-3 ranked cultural worlds."
+        },
+        "evidence_refs": [
+          "eval-B3-static-c003",
+          "eval-B3-static-c004",
+          "eval-B3-static-c005",
+          "eval-B3-static-c006",
+          "eval-B3-static-c007",
+          "eval-B3-static-c008",
+          "eval-B3-static-c010",
+          "eval-B3-static-c011",
+          "eval-B3-static-c013",
+          "eval-B3-static-c014"
+        ],
+        "limitations": [
+          "This run used FIXTURE demonstration data \u2014 the entities, affinities and cohorts below are demo content, not live Qloo measurements.",
+          "2 candidate world(s) were excluded by the evidence gate (1\u00d7 insufficient_members, 1\u00d7 weak_evidence); exclusions are annotations, not deletions.",
+          "Cultural affinity measures similarity between expressed interests; it is not evidence that any audience will watch, enjoy or share the film."
+        ],
+        "open_questions": [
+          "Whether the proposed framing actually changes reach can only be answered by the creator's own post-release observations."
+        ],
+        "data_status": "fixture",
+        "generator": {
+          "kind": "rule_based_grounded",
+          "model": null
+        },
+        "stop_reason": "complete",
+        "_available_refs": [
+          "eval-B3-static-c003",
+          "eval-B3-static-c004",
+          "eval-B3-static-c005",
+          "eval-B3-static-c006",
+          "eval-B3-static-c007",
+          "eval-B3-static-c008",
+          "eval-B3-static-c010",
+          "eval-B3-static-c011",
+          "eval-B3-static-c013",
+          "eval-B3-static-c014"
+        ],
+        "_genre": "analog horror short"
+      },
+      "scores": {
+        "checks": {
+          "schema_valid": {
+            "score": 1,
+            "note": ""
+          },
+          "evidence_traceable": {
+            "score": 1,
+            "note": "10 ref(s)"
+          },
+          "specific_world": {
+            "score": 1,
+            "note": "world='artist'"
+          },
+          "falsifiable": {
+            "score": 1,
+            "note": ""
+          },
+          "uncertainty_handled": {
+            "score": 1,
+            "note": ""
+          },
+          "information_beyond_generic": {
+            "score": 1,
+            "note": "10 evidence-linked claim source(s)"
+          }
+        },
+        "total": 6,
+        "max": 6
+      }
+    },
+    {
+      "output": {
+        "condition": "qloo_grounded",
+        "brief_id": "B4-ammas-radio",
+        "film_title": "Amma's Radio",
+        "positioning": {
+          "hypothesis": "An audience aligned with the artist cultural world \u2014 represented by Brian Eno and 2 similar entities, mean affinity 0.71 \u2014 is reachable with positioning that names that world, more than with your current default framing.",
+          "world": "artist",
+          "success_criteria": "The test succeeds if your own post-release records show: (1) responses, comments or shares that reference the artist framing you tested, and (2) the framing's reach compared against your own recent baseline for comparable releases. Adjacent predicts no view counts, retention or revenue \u2014 judge by what you observe.",
+          "observation_window": "Observe for the first two weeks after release (most short-film attention arrives in the first days), then record what you saw. Re-run this analysis on your next work within one comparable cycle to confirm or falsify the adjacency.",
+          "action_plan": "Position 'Amma's Radio' toward the artist world (e.g. Brian Eno, Grouper) in your title framing, description and community outreach, and test that framing against your usual wording.",
+          "falsification": "Reject this positioning hypothesis if, after the release, your own observations do not show the artist framing connecting \u2014 and if a re-run of this analysis on your next work does not reproduce a artist cohort in the top-3 ranked cultural worlds."
+        },
+        "evidence_refs": [
+          "eval-B4-ammas-radio-c003",
+          "eval-B4-ammas-radio-c004",
+          "eval-B4-ammas-radio-c005",
+          "eval-B4-ammas-radio-c006",
+          "eval-B4-ammas-radio-c007",
+          "eval-B4-ammas-radio-c008",
+          "eval-B4-ammas-radio-c010",
+          "eval-B4-ammas-radio-c011",
+          "eval-B4-ammas-radio-c013",
+          "eval-B4-ammas-radio-c014"
+        ],
+        "limitations": [
+          "This run used FIXTURE demonstration data \u2014 the entities, affinities and cohorts below are demo content, not live Qloo measurements.",
+          "2 candidate world(s) were excluded by the evidence gate (1\u00d7 insufficient_members, 1\u00d7 weak_evidence); exclusions are annotations, not deletions.",
+          "Cultural affinity measures similarity between expressed interests; it is not evidence that any audience will watch, enjoy or share the film."
+        ],
+        "open_questions": [
+          "Whether the proposed framing actually changes reach can only be answered by the creator's own post-release observations."
+        ],
+        "data_status": "fixture",
+        "generator": {
+          "kind": "rule_based_grounded",
+          "model": null
+        },
+        "stop_reason": "complete",
+        "_available_refs": [
+          "eval-B4-ammas-radio-c003",
+          "eval-B4-ammas-radio-c004",
+          "eval-B4-ammas-radio-c005",
+          "eval-B4-ammas-radio-c006",
+          "eval-B4-ammas-radio-c007",
+          "eval-B4-ammas-radio-c008",
+          "eval-B4-ammas-radio-c010",
+          "eval-B4-ammas-radio-c011",
+          "eval-B4-ammas-radio-c013",
+          "eval-B4-ammas-radio-c014"
+        ],
+        "_genre": "diaspora drama"
+      },
+      "scores": {
+        "checks": {
+          "schema_valid": {
+            "score": 1,
+            "note": ""
+          },
+          "evidence_traceable": {
+            "score": 1,
+            "note": "10 ref(s)"
+          },
+          "specific_world": {
+            "score": 1,
+            "note": "world='artist'"
+          },
+          "falsifiable": {
+            "score": 1,
+            "note": ""
+          },
+          "uncertainty_handled": {
+            "score": 1,
+            "note": ""
+          },
+          "information_beyond_generic": {
+            "score": 1,
+            "note": "10 evidence-linked claim source(s)"
+          }
+        },
+        "total": 6,
+        "max": 6
+      }
+    },
+    {
+      "output": {
+        "condition": "qloo_grounded",
+        "brief_id": "B5-thin-ice",
+        "film_title": "Thin Ice",
+        "positioning": null,
+        "evidence_refs": [
+          "eval-B5-thin-ice-c002",
+          "eval-B5-thin-ice-c003",
+          "eval-B5-thin-ice-c004",
+          "eval-B5-thin-ice-c005",
+          "eval-B5-thin-ice-c006",
+          "eval-B5-thin-ice-c007"
+        ],
+        "limitations": [
+          "This run used FIXTURE demonstration data \u2014 the entities, affinities and cohorts below are demo content, not live Qloo measurements.",
+          "2 of 3 seed reference(s) could not be resolved to Qloo entities (Obscure Local Shorts Reel 2, Untitled Work In Progress) \u2014 they contributed no evidence.",
+          "2 candidate world(s) were excluded by the evidence gate (1\u00d7 insufficient_members, 1\u00d7 weak_evidence); exclusions are annotations, not deletions.",
+          "Cultural affinity measures similarity between expressed interests; it is not evidence that any audience will watch, enjoy or share the film."
+        ],
+        "open_questions": [
+          "No experiment is proposed: without a supported positioning hypothesis there is nothing defensible to test yet.",
+          "Whether the proposed framing actually changes reach can only be answered by the creator's own post-release observations."
+        ],
+        "data_status": "fixture",
+        "generator": {
+          "kind": "rule_based_grounded",
+          "model": null
+        },
+        "stop_reason": "insufficiency",
+        "_available_refs": [
+          "eval-B5-thin-ice-c002",
+          "eval-B5-thin-ice-c003",
+          "eval-B5-thin-ice-c004",
+          "eval-B5-thin-ice-c005",
+          "eval-B5-thin-ice-c006",
+          "eval-B5-thin-ice-c007"
+        ],
+        "_genre": "eco-thriller short"
+      },
+      "scores": {
+        "checks": {
+          "schema_valid": {
+            "score": 0,
+            "note": "missing/empty required fields"
+          },
+          "evidence_traceable": {
+            "score": 1,
+            "note": "6 ref(s)"
+          },
+          "specific_world": {
+            "score": 0,
+            "note": "world=''"
+          },
+          "falsifiable": {
+            "score": 0,
+            "note": ""
+          },
+          "uncertainty_handled": {
+            "score": 1,
+            "note": ""
+          },
+          "information_beyond_generic": {
+            "score": 1,
+            "note": "6 evidence-linked claim source(s)"
+          }
+        },
+        "total": 3,
+        "max": 6
+      }
+    }
+  ]
+}

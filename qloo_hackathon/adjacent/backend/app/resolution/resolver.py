@@ -162,13 +162,13 @@ class EntityResolver:
         """
         # Method 1: /search with title
         result = await self._resolve_by_search(title, year)
-        
+
         # If external ID is supplied, verify it via /entities endpoint
         if external_id and external_family:
             ext_result = await self._resolve_by_external_id(
                 title, year, external_id, external_family
             )
-            
+
             if result.match_status == MatchStatus.VERIFIED:
                 # Search found a match — now verify external ID
                 if ext_result.match_status == MatchStatus.VERIFIED:
@@ -189,9 +189,7 @@ class EntityResolver:
                             qloo_popularity=result.qloo_popularity,
                             match_status=MatchStatus.VERIFIED,
                             match_method=MatchMethod.EXTERNAL_ID,
-                            verification_notes=result.verification_notes + [
-                                f"external ID {external_id} confirmed — same entity"
-                            ],
+                            verification_notes=[*result.verification_notes, f"external ID {external_id} confirmed — same entity"],
                             call_id=result.call_id,
                             search_query=result.search_query,
                             raw_result=result.raw_result,
@@ -211,10 +209,7 @@ class EntityResolver:
                             qloo_popularity=result.qloo_popularity,
                             match_status=MatchStatus.MISMATCH,
                             match_method=MatchMethod.EXTERNAL_ID,
-                            verification_notes=result.verification_notes + [
-                                f"external ID conflict: search found {result.qloo_entity_id} "
-                                f"but external ID {external_id} maps to {ext_result.qloo_entity_id}"
-                            ],
+                            verification_notes=[*result.verification_notes, f"external ID conflict: search found {result.qloo_entity_id} " f"but external ID {external_id} maps to {ext_result.qloo_entity_id}"],
                             call_id=result.call_id,
                             search_query=result.search_query,
                             raw_result=result.raw_result,
@@ -235,10 +230,7 @@ class EntityResolver:
                         qloo_popularity=result.qloo_popularity,
                         match_status=MatchStatus.MISMATCH,
                         match_method=MatchMethod.EXTERNAL_ID,
-                        verification_notes=result.verification_notes + [
-                            f"external ID {external_id} not found in Qloo — "
-                            f"supplied ID does not match any Qloo entity"
-                        ],
+                        verification_notes=[*result.verification_notes, f"external ID {external_id} not found in Qloo — " f"supplied ID does not match any Qloo entity"],
                         call_id=result.call_id,
                         search_query=result.search_query,
                         raw_result=result.raw_result,
@@ -246,19 +238,19 @@ class EntityResolver:
                 else:
                     # External ID returned different status — use search result
                     return result
-            
+
             elif result.match_status == MatchStatus.AMBIGUOUS:
                 # Search was ambiguous — use external ID result if available
                 if ext_result.match_status == MatchStatus.VERIFIED:
                     return ext_result
                 return result
-            
+
             elif result.match_status == MatchStatus.UNRESOLVED:
                 # Search found nothing — use external ID result
                 if ext_result.match_status != MatchStatus.UNRESOLVED:
                     return ext_result
                 return result
-        
+
         return result
 
     async def resolve_programme(

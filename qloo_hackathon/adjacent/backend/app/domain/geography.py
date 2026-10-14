@@ -107,6 +107,12 @@ def build_geography_result(
 
     sufficient = len(cells) >= 10
 
+    # Truthful provenance: the status travels with the Qloo response itself,
+    # so a fixture-backed heatmap is never labelled "measured". Only the known
+    # vocabulary is accepted — anything else (e.g. a bare mock) falls back.
+    raw_status = getattr(response, "data_status", None)
+    data_status = raw_status if isinstance(raw_status, str) and raw_status in ("measured", "fixture") else "measured"
+
     return GeographyResult(
         city=city,
         city_display=city_display,
@@ -114,7 +120,7 @@ def build_geography_result(
         total_cells=len(cells),
         highest_affinity_cells=top,
         call_id=call_id or (response.call_id if hasattr(response, "call_id") else None),
-        data_status="measured",
+        data_status=data_status,
         source="qloo",
         sufficient=sufficient,
         note="" if sufficient else f"Only {len(cells)} cells returned (need ≥10 for geographic claims)",

@@ -13,11 +13,11 @@ Tests proving:
 """
 
 import json
-import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
-from app.domain.outcome_repository import OutcomeRepository
+import pytest
 from app.domain.film_identity import canonical_film_key
+from app.domain.outcome_repository import OutcomeRepository
 
 
 @pytest.fixture
@@ -36,7 +36,7 @@ def _make_screening(show_dt: datetime, title: str = "Alien", year: int = 1979) -
         "show_start_at": show_dt.isoformat(),
         "format": "35mm",
         "source_url": "https://example.com",
-        "source_timestamp": datetime.now(timezone.utc).isoformat(),
+        "source_timestamp": datetime.now(UTC).isoformat(),
         "sold_out": False,
         "availability_state": "AVAILABLE",
     }
@@ -69,7 +69,7 @@ class TestEmptySnapshotsNotUsable:
     """An empty-tag snapshot must not count as usable predictive feature."""
 
     def test_empty_tags_not_usable(self, repo):
-        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=UTC)
         show_dt = now + timedelta(days=14)
         pred_ts = show_dt - timedelta(days=7)
         cf_key = canonical_film_key("Alien", 1979)
@@ -101,8 +101,7 @@ class TestEmptySnapshotsNotUsable:
         assert len(tags) == 0
 
     def test_nonempty_tags_are_usable(self, repo):
-        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=timezone.utc)
-        show_dt = now + timedelta(days=14)
+        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=UTC)
         cf_key = canonical_film_key("Alien", 1979)
 
         _insert_feature(repo._conn, cf_key, "E_ALIEN", now.isoformat(),
@@ -126,7 +125,7 @@ class TestMisleadingFeatureStatus:
 
     def test_empty_feature_still_labeled_available(self, repo):
         """Demonstrates the defect: empty snapshots can be labeled AVAILABLE_AT_PREDICTION_TIME."""
-        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=UTC)
         show_dt = now + timedelta(days=14)
         pred_ts = show_dt - timedelta(days=7)
         cf_key = canonical_film_key("Alien", 1979)
@@ -174,7 +173,7 @@ class TestIdempotencyAllowsReCollection:
     def test_feature_already_exists_for_nonempty(self, repo):
         """Non-empty snapshots should block re-collection."""
         cf_key = canonical_film_key("Alien", 1979)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         _insert_feature(repo._conn, cf_key, "E_ALIEN", now.isoformat(),
                        tags=[{"tag_id": "t1", "name": "sci-fi", "affinity": 0.85}])
@@ -186,7 +185,7 @@ class TestIdempotencyAllowsReCollection:
     def test_feature_already_exists_for_empty(self, repo):
         """Empty snapshots do NOT block re-collection (M13.6.4 fix)."""
         cf_key = canonical_film_key("Alien", 1979)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         _insert_feature(repo._conn, cf_key, "E_ALIEN", now.isoformat(), tags=None)
 
@@ -213,7 +212,7 @@ class TestRetrospectivePopularity:
     def test_popularity_matches_resolution(self, repo):
         """Feature snapshot popularity equals film_resolution popularity — retrospective."""
         cf_key = canonical_film_key("Alien", 1979)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Insert resolution with popularity — must include required fields
         repo._conn.execute(
@@ -246,7 +245,7 @@ class TestOutcomeSelectionBias:
 
     def test_sold_out_is_only_observable_event(self, repo):
         """When only sold-out events are scraped, outcomes are inherently biased."""
-        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=UTC)
         show_dt = now + timedelta(days=5)
         cf_key = canonical_film_key("Alien", 1979)
 
@@ -302,7 +301,7 @@ class TestCoverageHonesty:
 
     def test_existence_vs_usable_distinction(self, repo):
         """Snapshot existence and usable signal have different numerators."""
-        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=UTC)
         show_dt = now + timedelta(days=14)
         cf_key = canonical_film_key("Alien", 1979)
 
@@ -345,7 +344,7 @@ class TestTemporalEligibility:
     """Feature snapshots must be retrieved before prediction timestamp."""
 
     def test_retrieved_before_prediction_is_eligible(self, repo):
-        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=UTC)
         show_dt = now + timedelta(days=14)
         pred_ts = show_dt - timedelta(days=7)
         cf_key = canonical_film_key("Alien", 1979)
@@ -378,7 +377,7 @@ class TestTemporalEligibility:
         assert eligible > 0
 
     def test_retrieved_after_prediction_is_ineligible(self, repo):
-        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=UTC)
         show_dt = now + timedelta(days=14)
         pred_ts = show_dt - timedelta(days=7)
         cf_key = canonical_film_key("Alien", 1979)
@@ -419,7 +418,7 @@ class TestLeakageAuditExtended:
     """The leakage audit should pass for clean data but not catch empty-signal misuse."""
 
     def test_audit_passes_with_clean_data(self, repo):
-        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 10, 9, 12, 0, 0, tzinfo=UTC)
         show_dt = now + timedelta(days=14)
         cf_key = canonical_film_key("Alien", 1979)
 

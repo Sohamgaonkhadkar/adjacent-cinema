@@ -17,7 +17,7 @@ from __future__ import annotations
 import html as html_module
 import re
 import subprocess
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 
 SOURCE_URL = "https://princecharlescinema.com/whats-on/"
@@ -87,10 +87,8 @@ def _parse_show_datetime(date_str: str, time_str: str) -> str | None:
     # Europe/London offset: BST = UTC+1, GMT = UTC+0
     if is_bst:
         tz_offset = timedelta(hours=1)
-        tz_name = "+01:00"
     else:
         tz_offset = timedelta(hours=0)
-        tz_name = "+00:00"
 
     dt_with_tz = naive_dt.replace(tzinfo=timezone(tz_offset))
     return dt_with_tz.isoformat()
@@ -124,7 +122,7 @@ def _is_bst(dt: datetime) -> bool:
 
 def collect_prince_charles() -> dict[str, Any]:
     """Scrape Prince Charles Cinema showtimes."""
-    source_timestamp = datetime.now(timezone.utc).isoformat()
+    source_timestamp = datetime.now(UTC).isoformat()
 
     try:
         result = subprocess.run(

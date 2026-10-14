@@ -20,7 +20,9 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import __version__, evidence
+from .api.creator_routes import router as creator_router
 from .api.routes import router as run_router
+from .api.youtube_routes import router as youtube_router
 from .config import Settings
 from .qloo import MockQlooClient, build_params, registry_summary, unverified_params
 from .qloo.errors import ParamError, QlooError
@@ -52,6 +54,10 @@ app.add_middleware(
 
 # Register run API routes
 app.include_router(run_router)
+# Creator Mode + experiment lifecycle (M13.9)
+app.include_router(creator_router)
+# YouTube authorization + analytics bridge (M13.10)
+app.include_router(youtube_router)
 
 
 def get_settings() -> Settings:

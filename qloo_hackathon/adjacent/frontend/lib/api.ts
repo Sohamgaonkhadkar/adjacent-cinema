@@ -5,7 +5,6 @@
 
 import type {
   AdjacentRunResult,
-  CinemaIdentity,
   CulturalField,
   DataMode,
   GeographyData,
@@ -73,6 +72,20 @@ export async function createRun(request: RunRequest): Promise<RunResponse> {
 export async function getRun(runId: string): Promise<RunResponse> {
   const res = await fetch(`${API_BASE}/run/${runId}`);
   if (!res.ok) throw new Error("Run not found");
+  return res.json();
+}
+
+/**
+ * Start the explicitly labelled fixture demo run (no Qloo key required).
+ * The backend marks every artefact `data_status: "fixture"` — the UI must
+ * always show that labelling. This never replaces a live request.
+ */
+export async function createDemoRun(): Promise<RunResponse> {
+  const res = await fetch(`${API_BASE}/run/demo`, { method: "POST" });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || "Failed to start fixture demo run");
+  }
   return res.json();
 }
 
@@ -177,14 +190,10 @@ export function normalizeCohorts(cohorts: CulturalField): CulturalField {
   };
 }
 
-// ─── Demo Data ──────────────────────────────────────────────────────────────
-
-export const PRINCE_CHARLES_CINEMA: CinemaIdentity = {
-  name: "Prince Charles Cinema",
-  city: "London",
-  country: "United Kingdom",
-  tagline: "The beating heart of repertory cinema in London's West End",
-};
+// ─── Sample programme (explicit demo input) ────────────────────────────────
+// These six verified titles are offered in the intake form as a clearly
+// labelled SAMPLE. They are never submitted silently — only when the
+// programmer deliberately loads them.
 
 export const DEMO_PROGRAMME: ProgrammeItemInput[] = [
   { title: "Perfect Days", year: 2023, imdb_id: "tt7594358" },
@@ -195,158 +204,302 @@ export const DEMO_PROGRAMME: ProgrammeItemInput[] = [
   { title: "Paris, Texas", year: 1984, imdb_id: "tt0087884" },
 ];
 
-export const DEMO_RESULT: AdjacentRunResult = {
-  programme: {
-    items: [
-      { title: "Perfect Days", year: 2023, imdb_id: "tt7594358", resolved: true, qloo_entity_id: "E7C3A2", qloo_name: "Perfect Days", popularity: 0.72 },
-      { title: "The Zone of Interest", year: 2023, imdb_id: "tt7160372", resolved: true, qloo_entity_id: "E8D4B3", qloo_name: "The Zone of Interest", popularity: 0.68 },
-      { title: "Taipei Story", year: 1985, imdb_id: "tt0089853", resolved: true, qloo_entity_id: "E9E5C4", qloo_name: "Taipei Story", popularity: 0.31 },
-      { title: "Sansho the Bailiff", year: 1954, imdb_id: "tt0047445", resolved: true, qloo_entity_id: "EAF6D5", qloo_name: "Sansho the Bailiff", popularity: 0.28 },
-      { title: "Le Samourai", year: 1967, imdb_id: "tt0062229", resolved: true, qloo_entity_id: "EB07E6", qloo_name: "Le Samouraï", popularity: 0.55 },
-      { title: "Paris, Texas", year: 1984, imdb_id: "tt0087884", resolved: true, qloo_entity_id: "EC18F7", qloo_name: "Paris, Texas", popularity: 0.61 },
-    ],
-    resolved_count: 6,
-    total_count: 6,
-  },
-  taste_dna: {
-    tags: [
-      { tag_id: "T1", name: "Japanese Cinema", affinity: 0.82, band: "High", popularity: 0.45 },
-      { tag_id: "T2", name: "Contemplative Drama", affinity: 0.79, band: "High", popularity: 0.38 },
-      { tag_id: "T3", name: "Art House", affinity: 0.76, band: "High", popularity: 0.52 },
-      { tag_id: "T4", name: "European Arthouse", affinity: 0.71, band: "High", popularity: 0.41 },
-      { tag_id: "T5", name: "World Cinema", affinity: 0.68, band: "Medium", popularity: 0.55 },
-      { tag_id: "T6", name: "Slow Cinema", affinity: 0.65, band: "Medium", popularity: 0.22 },
-      { tag_id: "T7", name: "Neo-Noir", affinity: 0.58, band: "Medium", popularity: 0.35 },
-      { tag_id: "T8", name: "Minimalism", affinity: 0.55, band: "Medium", popularity: 0.18 },
-    ],
-    tag_count: 8,
-    call_id: "demo-taste-001",
-  },
-  cohorts: {
-    ranked: [
-      {
-        cohort_id: "C1", domain: "urn:entity:music_artist", rank: 1, member_count: 12,
-        verdict: "EVIDENCE_SUFFICIENT",
-        score: { mean_affinity: 0.72, max_affinity: 0.89, novelty_proxy: 0.65 },
-        members: [
-          { entity_id: "M1", name: "Ryuichi Sakamoto", affinity: 0.89, band: "High", popularity: 0.62 },
-          { entity_id: "M2", name: "Arvo Pärt", affinity: 0.84, band: "High", popularity: 0.48 },
-          { entity_id: "M3", name: "Nils Frahm", affinity: 0.78, band: "High", popularity: 0.55 },
-          { entity_id: "M4", name: "Max Richter", affinity: 0.75, band: "High", popularity: 0.51 },
-          { entity_id: "M5", name: "Bryce Dessner", affinity: 0.71, band: "Medium", popularity: 0.42 },
-        ],
-      },
-      {
-        cohort_id: "C2", domain: "urn:entity:book", rank: 2, member_count: 8,
-        verdict: "EVIDENCE_SUFFICIENT",
-        score: { mean_affinity: 0.68, max_affinity: 0.82, novelty_proxy: 0.58 },
-        members: [
-          { entity_id: "B1", name: "Kenzaburō Ōe", affinity: 0.82, band: "High", popularity: 0.35 },
-          { entity_id: "B2", name: "Yukio Mishima", affinity: 0.79, band: "High", popularity: 0.41 },
-          { entity_id: "B3", name: "Haruki Murakami", affinity: 0.74, band: "High", popularity: 0.72 },
-        ],
-      },
-      {
-        cohort_id: "C3", domain: "urn:entity:artist", rank: 3, member_count: 10,
-        verdict: "EVIDENCE_SUFFICIENT",
-        score: { mean_affinity: 0.64, max_affinity: 0.78, novelty_proxy: 0.71 },
-        members: [
-          { entity_id: "A1", name: "Hiroshi Sugimoto", affinity: 0.78, band: "High", popularity: 0.38 },
-          { entity_id: "A2", name: "Tadao Ando", affinity: 0.74, band: "High", popularity: 0.42 },
-          { entity_id: "A3", name: "Yayoi Kusama", affinity: 0.71, band: "Medium", popularity: 0.65 },
-        ],
-      },
-    ],
-    rejected: [
-      { cohort_id: "R1", domain: "urn:entity:venue", rejection_reason: "INSUFFICIENT_MEMBERS", rejection_detail: "Only 2 qualifying members (need 3+)" },
-    ],
-    total_ranked: 3,
-    total_rejected: 1,
-  },
-  geography: {
-    city: "London, UK",
-    city_display: "London",
-    total_cells: 47,
-    cells: [
-      { latitude: 51.5074, longitude: -0.1278, affinity: 0.85, geohash: "gcpvj", affinity_rank: 1, popularity: 0.72 },
-      { latitude: 51.5155, longitude: -0.1415, affinity: 0.78, geohash: "gcpvn", affinity_rank: 2, popularity: 0.68 },
-      { latitude: 51.5225, longitude: -0.1532, affinity: 0.72, geohash: "gcpvp", affinity_rank: 3, popularity: 0.61 },
-      { latitude: 51.4975, longitude: -0.1351, affinity: 0.69, geohash: "gcpvh", affinity_rank: 4, popularity: 0.55 },
-      { latitude: 51.5301, longitude: -0.1246, affinity: 0.65, geohash: "gcpvq", affinity_rank: 5, popularity: 0.52 },
-      { latitude: 51.5421, longitude: -0.1489, affinity: 0.61, geohash: "gcpvs", affinity_rank: 6, popularity: 0.48 },
-      { latitude: 51.4812, longitude: -0.1102, affinity: 0.58, geohash: "gcpvf", affinity_rank: 7, popularity: 0.45 },
-      { latitude: 51.5532, longitude: -0.1621, affinity: 0.55, geohash: "gcpvt", affinity_rank: 8, popularity: 0.42 },
-      { latitude: 51.4689, longitude: -0.0952, affinity: 0.52, geohash: "gcpve", affinity_rank: 9, popularity: 0.39 },
-      { latitude: 51.5612, longitude: -0.1754, affinity: 0.48, geohash: "gcpvu", affinity_rank: 10, popularity: 0.35 },
-    ],
-    highest_affinity_cells: [
-      { latitude: 51.5074, longitude: -0.1278, affinity: 0.85, geohash: "gcpvj", affinity_rank: 1, popularity: 0.72 },
-      { latitude: 51.5155, longitude: -0.1415, affinity: 0.78, geohash: "gcpvn", affinity_rank: 2, popularity: 0.68 },
-      { latitude: 51.5225, longitude: -0.1532, affinity: 0.72, geohash: "gcpvp", affinity_rank: 3, popularity: 0.61 },
-    ],
-    call_id: "demo-geo-001",
-    data_status: "demo",
-    source: "qloo",
-    sufficient: true,
-    note: "",
-  },
-  programme_bet: {
-    primary: {
-      domain: "urn:entity:music_artist",
-      cohort_name: "Contemporary Classical & Minimalist Composers",
-      member_count: 12,
-      mean_affinity: 0.72,
-      call_id: "demo-bet-001",
-    },
-    runner_up: {
-      domain: "urn:entity:book",
-      cohort_name: "Japanese Literary Fiction",
-      mean_affinity: 0.68,
-      call_id: "demo-bet-002",
-    },
-    two_sided_signals: {
-      programme_adjacency: 0.72,
-      adjacency_band: "High",
-      adjacency_call_id: "demo-bet-001",
-      cohort_breadth: 0.58,
-      breadth_band: "Medium",
-      breadth_call_id: "demo-bet-001",
-      methodology_note: "Programme adjacency measures cultural proximity to your existing film programme. Cohort breadth measures the fraction of the cohort that clears the quality threshold.",
-    },
-    why: "Your programme reveals a strong affinity for contemplative, formally rigorous cinema — from Ozu's spiritual descendants (Wenders, Kore-eda) to European minimalism (Bresson's heirs, the Dardenne tradition). This cultural profile maps directly onto contemporary classical music and minimalist composition.",
-    cultural_bridge: "Ryuichi Sakamoto scored Merry Christmas Mr. Lawrence alongside Bowie — a bridge between your Japanese cinema strand and music audiences. Arvo Pärt's tintinnabuli method shares the structural minimalism of Bresson and Ozu. Nils Frahm's concert-film work (Victoria, music for spaces) already overlaps cinema culture.",
-    geographic_signal: "Cultural affinity concentrates in central London — Bloomsbury, Fitzrovia, Marylebone — with a secondary cluster in Hampstead. These areas overlap with existing independent cinema audiences and contemporary classical concert venues (Wigmore Hall, Barbican).",
-    programming_direction: "Test a screening-and-live-score event: pair a Wenders or Kore-eda film with a live performance by a contemporary classical artist (e.g., Nils Frahm, Max Richter). Use the Prince Charles Cinema's intimate setting as a differentiator from the Barbican's scale.",
-    falsification_condition: "If fewer than 40 tickets sell across two test screenings, or if post-event surveys show no overlap between film and music audiences, the cultural bridge hypothesis is falsified.",
-    rejected_candidates: [
-      { cohort_id: "R1", domain: "urn:entity:venue", reason: "INSUFFICIENT_MEMBERS", detail: "Only 2 qualifying members (need 3+)" },
-    ],
-    geography_call_id: "demo-geo-001",
-    data_status: "demo",
-  },
-  test_card: {
-    title: "Prince Charles Cinema × Contemporary Classical",
-    programme_context: "Prince Charles Cinema, London — 6-film programme spanning Japanese New Wave to European Arthouse",
-    audience_hypothesis: "Contemporary classical and minimalist music audiences share cultural DNA with the Prince Charles Cinema's repertory programme",
-    cultural_bridge: "Ryuichi Sakamoto, Arvo Pärt, Nils Frahm — artists whose work bridges film scoring, minimalism, and contemplative cinema",
-    geographic_signal: "Affinity concentrates in Bloomsbury/Fitzrovia/Marylebone — overlapping with existing independent cinema and concert audiences",
-    programming_direction: "Screen a Wenders or Kore-eda film with live contemporary classical score; test at the Prince Charles Cinema's intimate scale",
-    primary_evidence: "Music Artist cohort: 12 members, mean affinity 0.72 (High programme adjacency), 58% cohort breadth (Medium)",
-    runner_up: "Japanese Literary Fiction: 8 members, mean affinity 0.68 — potential for author events or book-club tie-ins",
-    falsification_condition: "Fewer than 40 tickets across two test screenings, or no audience overlap in post-event surveys",
-    provenance: {
-      "Programme Adjacency": "Qloo /v2/insights (call: demo-bet-001)",
-      "Cohort Breadth": "Qloo /v2/insights (call: demo-bet-001)",
-      "Geography": "Qloo heatmap (call: demo-geo-001)",
-      "Taste Profile": "Qloo /v2/insights (call: demo-taste-001)",
-    },
-    data_status: "demo",
-  },
-  evidence: {
-    qloo_calls: 8,
-    trace_rows: 8,
-    stop_reason: "complete",
-    stop_message: "Analysis complete: 6/6 films resolved, 3 cohorts ranked, 1 Programme Bet generated",
-  },
-  city: "London, UK",
-};
+// ─── Creator Mode (M13.9) ───────────────────────────────────────────────────
+
+export interface CreatorRunRequest {
+  title: string;
+  logline?: string;
+  genre?: string;
+  language?: string;
+  themes?: string[];
+  references?: { title: string; year?: number | null }[];
+  release_goal?: string;
+  city?: string;
+}
+
+export interface ExperimentRecord {
+  experiment_id: string;
+  request_id: string;
+  created_at: string;
+  film_title: string;
+  film_context: Record<string, unknown>;
+  hypothesis: string;
+  success_criteria: string;
+  observation_window: string;
+  action_plan: string;
+  data_status: string;
+  source_run_id: string | null;
+  source_bet: Record<string, unknown>;
+  provenance: Record<string, unknown>;
+  status: string;
+  observation_count?: number;
+  latest_evaluation?: string | null;
+}
+
+export interface ObservationRecord {
+  observation_id: string;
+  experiment_id: string;
+  created_at: string;
+  observed_on: string | null;
+  kind: string;
+  measurement_status: string;
+  metrics: Record<string, number | null>;
+  interpretation: string | null;
+  source: string | null;
+  evidence_ref: string | null;
+  limitations: string | null;
+  supersedes_id: string | null;
+}
+
+export interface EvaluationRecord {
+  evaluation_id: string;
+  experiment_id: string;
+  created_at: string;
+  outcome: "SUPPORTED" | "CONTRADICTED" | "INCONCLUSIVE";
+  rationale: string;
+  observations_used: string[];
+  unknowns: string | null;
+  supersedes_id: string | null;
+}
+
+async function postJson<T>(path: string, body: unknown, label: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(
+      typeof err.detail === "string" ? err.detail : `${label} failed (${res.status})`
+    );
+  }
+  return res.json();
+}
+
+export function createCreatorRun(req: CreatorRunRequest): Promise<RunResponse> {
+  return postJson<RunResponse>("/creator/run", req, "Creator analysis");
+}
+
+export function createCreatorDemoRun(): Promise<RunResponse> {
+  return postJson<RunResponse>("/creator/run/demo", {}, "Creator fixture demo");
+}
+
+export function saveExperiment(
+  body: Record<string, unknown>
+): Promise<{ duplicate: boolean; experiment: ExperimentRecord }> {
+  return postJson("/experiments", body, "Save experiment");
+}
+
+export function addObservation(
+  experimentId: string,
+  body: Record<string, unknown>
+): Promise<{ duplicate: boolean; observation: ObservationRecord }> {
+  return postJson(`/experiments/${experimentId}/observations`, body, "Record observation");
+}
+
+export function addEvaluation(
+  experimentId: string,
+  body: Record<string, unknown>
+): Promise<{ duplicate: boolean; evaluation: EvaluationRecord }> {
+  return postJson(`/experiments/${experimentId}/evaluations`, body, "Record evaluation");
+}
+
+export async function listExperiments(): Promise<ExperimentRecord[]> {
+  const res = await fetch(`${API_BASE}/experiments`);
+  if (!res.ok) throw new Error("Failed to load experiments");
+  const data = await res.json();
+  return data.experiments ?? [];
+}
+
+export async function getExperiment(
+  experimentId: string
+): Promise<{
+  experiment: ExperimentRecord;
+  observations: ObservationRecord[];
+  evaluations: EvaluationRecord[];
+}> {
+  const res = await fetch(`${API_BASE}/experiments/${experimentId}`);
+  if (!res.ok) throw new Error("Experiment not found");
+  return res.json();
+}
+
+// ---------------------------------------------------------------------------
+// YouTube integration (M13.10) — optional, creator-authorized analytics
+// ---------------------------------------------------------------------------
+
+export interface YouTubeStatus {
+  mode: "mock" | "live" | "not_configured";
+  mock_data: boolean;
+  configured: boolean;
+  redirect_uri: string;
+  requested_scopes: string[];
+  single_connection_posture: boolean;
+  connection: {
+    channel_id: string | null;
+    channel_title: string | null;
+    connected_at: string;
+    days_since_connection: number;
+    reauthorization_recommended: boolean;
+  } | null;
+  connected: boolean;
+}
+
+export interface YouTubeVideo {
+  video_id: string;
+  title: string | null;
+  published_at: string | null;
+}
+
+export interface YouTubeMetricsPreview {
+  data_status: "mock" | "live";
+  video_id: string;
+  period: { start_date: string; end_date: string };
+  metrics_queried: string[];
+  row_count: number;
+  metrics: Record<string, number>;
+  limitations: string[];
+  retrieved_at: string;
+}
+
+export async function youtubeStatus(): Promise<YouTubeStatus> {
+  const res = await fetch(`${API_BASE}/youtube/status`);
+  if (!res.ok) throw new Error("Could not load YouTube connection status");
+  return res.json();
+}
+
+/** Begins the consent flow in the top-level window (Google requires it). */
+export function beginYouTubeAuthorization(): void {
+  window.location.href = `${API_BASE}/youtube/authorize?via=proxy`;
+}
+
+export async function youtubeVideos(): Promise<{
+  data_status: "mock" | "live";
+  videos: YouTubeVideo[];
+  note: string;
+}> {
+  const res = await fetch(`${API_BASE}/youtube/videos`);
+  if (res.status === 409) throw new Error("No YouTube connection — authorize first.");
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(typeof body.detail === "string" ? body.detail : "Could not list videos");
+  }
+  return res.json();
+}
+
+export async function youtubeMetrics(
+  videoId: string,
+  startDate: string,
+  endDate: string
+): Promise<YouTubeMetricsPreview> {
+  const params = new URLSearchParams({
+    video_id: videoId,
+    start_date: startDate,
+    end_date: endDate,
+  });
+  const res = await fetch(`${API_BASE}/youtube/metrics?${params.toString()}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(typeof body.detail === "string" ? body.detail : "Could not fetch metrics");
+  }
+  return res.json();
+}
+
+export async function recordYouTubeObservation(
+  experimentId: string,
+  body: {
+    request_id: string;
+    video_id: string;
+    start_date: string;
+    end_date: string;
+    interpretation?: string | null;
+    variant_label?: string | null;
+  }
+): Promise<{ duplicate: boolean; observation: ObservationRecord }> {
+  return postJson(
+    `/experiments/${experimentId}/observations/from-youtube`,
+    body,
+    "Record YouTube observation"
+  );
+}
+
+export async function disconnectYouTube(): Promise<{
+  revoked_upstream: boolean;
+  credentials_deleted: boolean;
+  youtube_observations_deleted: number;
+  experiments_tombstoned: number;
+}> {
+  const res = await fetch(`${API_BASE}/youtube/disconnect`, { method: "POST" });
+  if (!res.ok) throw new Error("Could not disconnect");
+  return res.json();
+}
+
+// ── Role-B synthesis (M13.13): optional, provider-gated decision briefs ────
+
+export interface SynthesisStatus {
+  available: boolean;
+  provider: string;
+  model: string | null;
+  blocked_reason?: string;
+  note?: string;
+}
+
+export interface SynthesisClaim {
+  statement: string;
+  claim_type: "FACT" | "INTERPRETATION" | "HYPOTHESIS" | "UNKNOWN";
+  evidence_refs: string[];
+  rationale?: string;
+  limitations?: string;
+}
+
+export interface SynthesisExperimentProposal {
+  kind: "test" | "information_gathering";
+  hypothesis: string;
+  action_plan: string;
+  success_criteria: string;
+  observation_window: string;
+  falsification: string;
+  relevant_metrics: string[];
+  assumptions: string[];
+  limitations: string;
+}
+
+export interface SynthesisBrief {
+  summary: string;
+  hypothesis_restated: string;
+  rationale: string;
+  alternatives: string[];
+  next_experiment: string;
+  caveats: string[];
+  claims: SynthesisClaim[];
+  experiment_proposal: SynthesisExperimentProposal;
+  _fallback_error?: string;
+}
+
+export interface SynthesisMetadata {
+  schema_version: string;
+  provider_kind: string;
+  model: string | null;
+  /** "live_llm" | "stub" | "deterministic_fallback" — never ambiguous. */
+  method: string;
+  validation: string;
+  llm_error?: string;
+  evidence_refs_available: string[];
+  guarantees?: Record<string, string>;
+}
+
+export interface SynthesisResponse {
+  run_id: string;
+  synthesis: SynthesisBrief;
+  metadata: SynthesisMetadata;
+}
+
+export async function getSynthesisStatus(): Promise<SynthesisStatus> {
+  const res = await fetch(`${API_BASE}/creator/synthesis-status`);
+  if (!res.ok) throw new Error("Failed to load synthesis status");
+  return res.json();
+}
+
+export function synthesizeRun(runId: string): Promise<SynthesisResponse> {
+  return postJson<SynthesisResponse>("/creator/synthesize", { run_id: runId }, "Decision brief");
+}

@@ -42,9 +42,16 @@ filterwarnings = [
 ]
 
 [tool.ruff]
+# Pinned so `ruff check` means the same thing in CI and locally (M13.6.10).
+# CI installs this exact version; do not bump it without re-running the gate.
+required-version = "==0.17.0"
 line-length = 110
 target-version = "py312"
-extend-exclude = ["backend/tests/fixtures"]
+# `backend/tests/fixtures` is data, not code.
+# `research/scripts` and `scripts` carry historical lint debt that is tracked
+# separately in docs/LINT_DEBT.md and deliberately NOT mass-reformatted; the
+# enforceable lint gate covers the active production code in `backend/`.
+extend-exclude = ["backend/tests/fixtures", "research", "scripts"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM", "RUF"]

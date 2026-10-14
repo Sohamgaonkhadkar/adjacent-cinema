@@ -20,17 +20,18 @@ Tests proving:
 16. duplicate snapshots remain idempotent
 """
 
-import pytest
-import tempfile
-from pathlib import Path
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 
+import pytest
+from app.collectors.prince_charles import _is_bst, _parse_show_datetime
 from app.domain.outcome_repository import (
-    OutcomeRepository, _deterministic_obs_id, film_key,
-    _model_target, _label_quality_for_sold_out,
-    compute_lead_time, lead_time_bucket,
+    OutcomeRepository,
+    _label_quality_for_sold_out,
+    _model_target,
+    compute_lead_time,
+    film_key,
+    lead_time_bucket,
 )
-from app.collectors.prince_charles import _parse_show_datetime, _is_bst
 
 
 @pytest.fixture
@@ -477,7 +478,7 @@ class TestModelTargetNeverZero:
 class TestQlooFeatureTimestampPreserved:
     def test_retrieval_timestamp_stored(self, repo, sample_screening):
         """Qloo feature retrieval timestamp is stored and retrievable."""
-        obs_id, _ = repo.record_screening(sample_screening)
+        _obs_id, _ = repo.record_screening(sample_screening)
         fk = film_key("Halloween", 1978)
 
         repo.record_film_resolution({
@@ -505,7 +506,7 @@ class TestQlooFeatureTimestampPreserved:
 
     def test_multiple_snapshots_preserved(self, repo, sample_screening):
         """Multiple Qloo snapshots for same film are preserved."""
-        obs_id, _ = repo.record_screening(sample_screening)
+        _obs_id, _ = repo.record_screening(sample_screening)
         fk = film_key("Halloween", 1978)
 
         repo.record_film_resolution({
@@ -553,7 +554,7 @@ class TestProvenanceRequired:
 
     def test_feature_has_provenance(self, repo, sample_screening):
         """Qloo feature snapshot has provenance field."""
-        obs_id, _ = repo.record_screening(sample_screening)
+        _obs_id, _ = repo.record_screening(sample_screening)
         fk = film_key("Halloween", 1978)
 
         repo.record_film_resolution({
@@ -678,7 +679,7 @@ class TestAnalyticalBenchmark:
 
     def test_benchmark_excludes_future_features(self, repo, sample_screening):
         """Benchmark marks future features as FUTURE_FEATURE_UNAVAILABLE."""
-        obs_id, _ = repo.record_screening(sample_screening)
+        _obs_id, _ = repo.record_screening(sample_screening)
         fk = film_key("Halloween", 1978)
 
         repo.record_film_resolution({
@@ -739,7 +740,7 @@ class TestFilmKey:
 class TestMultiSnapshotAndTransitions:
     def test_multi_snapshot_count(self, repo, sample_screening):
         """Count observations with >1 snapshot."""
-        obs_id, _ = repo.record_screening(sample_screening)
+        _obs_id, _ = repo.record_screening(sample_screening)
         s2 = {**sample_screening, "source_timestamp": "2026-10-08T10:00:00Z"}
         repo.record_screening(s2)
 
@@ -747,7 +748,7 @@ class TestMultiSnapshotAndTransitions:
 
     def test_state_transition_count(self, repo, sample_screening):
         """Count AVAILABLE → SOLD_OUT transitions."""
-        obs_id, _ = repo.record_screening(sample_screening)
+        _obs_id, _ = repo.record_screening(sample_screening)
         sold = {**sample_screening, "sold_out": True, "availability_state": "SOLD_OUT",
                 "source_timestamp": "2026-10-08T10:00:00Z"}
         repo.record_screening(sold)

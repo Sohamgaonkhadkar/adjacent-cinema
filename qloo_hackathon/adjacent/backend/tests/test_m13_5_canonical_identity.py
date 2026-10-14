@@ -18,16 +18,15 @@ Tests proving:
 14. prediction-time Qloo coverage explicitly reported
 """
 
-import pytest
 import json
-from pathlib import Path
 
 from app.domain.film_identity import (
-    canonicalize_film, canonical_film_key, audit_canonicalization,
-    IdentityStatus, NormalizationResult,
+    IdentityStatus,
+    audit_canonicalization,
+    canonical_film_key,
+    canonicalize_film,
 )
 from app.domain.outcome_repository import OutcomeRepository
-
 
 # ============================================================
 # TEST 1: Canonicalization is deterministic
@@ -90,8 +89,8 @@ class TestNoUncertainMerges:
         """Edition suffixes stripped → same key for same film."""
         r1 = canonicalize_film("Alien (Theatrical Cut)")
         r2 = canonicalize_film("Alien")
-        k1 = canonical_film_key(r1.canonical_title, r1.extracted_year)
-        k2 = canonical_film_key(r2.canonical_title, r2.extracted_year)
+        _k1 = canonical_film_key(r1.canonical_title, r1.extracted_year)
+        _k2 = canonical_film_key(r2.canonical_title, r2.extracted_year)
         # Note: "Alien (Theatrical Cut)" extracts no year, "Alien" has no year
         # Both should have same canonical title
         assert r1.canonical_title == r2.canonical_title
@@ -270,7 +269,7 @@ class TestTemporalLeakage:
             "source_timestamp": "2026-10-07T20:00:00Z",
             "sold_out": False, "availability_state": "AVAILABLE",
         }
-        obs_id, _ = repo.record_screening(obs)
+        _obs_id, _ = repo.record_screening(obs)
 
         fk = canonical_film_key("Alien", 1979)
         repo.record_film_resolution({
@@ -298,7 +297,7 @@ class TestTemporalLeakage:
             "source_timestamp": "2026-10-07T20:00:00Z",
             "sold_out": False, "availability_state": "AVAILABLE",
         }
-        obs_id, _ = repo.record_screening(obs)
+        _obs_id, _ = repo.record_screening(obs)
 
         fk = canonical_film_key("Alien", 1979)
         repo.record_qloo_features({

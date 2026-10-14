@@ -1,7 +1,6 @@
 """Tests for two-sided Programme Bet (M11.3: scientifically accurate)."""
 
-import pytest
-from app.domain.programme_bet import ProgrammeBet, build_programme_bet
+from app.domain.programme_bet import build_programme_bet
 
 
 class MockMember:
@@ -236,18 +235,18 @@ class TestBuildProgrammeBet:
         """Test that same inputs produce same outputs."""
         members = [MockScoredMember("Film A", 0.7)]
         cohort = MockCohort("test:cohort:1", "urn:entity:movie", members, MockScore(0.65))
-        kwargs = dict(
-            ranked_cohorts=[cohort],
-            taste_tags=[MockTag("Comedy")],
-            geography=None,
-            resolved_names=["Film A"],
-            programme_adjacency_scores={"test:cohort:1": 0.65},
-            cohort_breadth_scores={"test:cohort:1": 0.5},
-            programme_adjacency_bands={"test:cohort:1": "High"},
-            cohort_breadth_bands={"test:cohort:1": "Medium"},
-            programme_adjacency_call_ids={"test:cohort:1": "adj-call"},
-            cohort_breadth_call_ids={"test:cohort:1": "breadth-call"},
-        )
+        kwargs = {
+            "ranked_cohorts": [cohort],
+            "taste_tags": [MockTag("Comedy")],
+            "geography": None,
+            "resolved_names": ["Film A"],
+            "programme_adjacency_scores": {"test:cohort:1": 0.65},
+            "cohort_breadth_scores": {"test:cohort:1": 0.5},
+            "programme_adjacency_bands": {"test:cohort:1": "High"},
+            "cohort_breadth_bands": {"test:cohort:1": "Medium"},
+            "programme_adjacency_call_ids": {"test:cohort:1": "adj-call"},
+            "cohort_breadth_call_ids": {"test:cohort:1": "breadth-call"},
+        }
         bet1 = build_programme_bet(**kwargs)
         bet2 = build_programme_bet(**kwargs)
         assert bet1.to_dict() == bet2.to_dict()
