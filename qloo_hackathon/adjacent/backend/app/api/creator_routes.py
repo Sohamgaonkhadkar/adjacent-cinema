@@ -1,0 +1,741 @@
+"""Creator Mode + experiment lifecycle routes (M13.9).
+
+Reuses the cinema pipeline (RunRecord store, orchestrator, LivePipeline,
+fixture demo, SSE, traces) with creator-specific seeds and decision
+artefacts. Live runs fail honestly without a key; the demo path is fixture
+and labelled; nothing here ever substitutes fixtures for failed live work.
+
+Authorisation note: like the existing /run surface, this API is a local,
+single-user tool with no auth model in the application today. These write
+endpoints follow the same posture deliberately and are documented as such;
+adding auth is a separate, explicit decision (see M13.9 verification report).
+"""
+
+from __future__ import annotations
+
+import asyncio
+import os
+from pathlib import Path
+from typing import Any
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
+
+from ..domain.creator_analysis import (
+    build_creator_test_card,
+    build_positioning_bet,
+    two_sided_signal_maps,
+)
+from ..domain.cultural_investigation import build_investigation, verify_evidence_refs
+from ..domain.experiment_repository import (
+    DuplicateRequest,
+    ExperimentRepository,
+)
+from ..domain.llm_provider import (
+    LLMProviderConfig,
+    LLMUnavailableError,
+    OpenAICompatibleProvider,
+)
+from ..domain.synthesis import synthesize_investigation
+from .routes import (
+    DEMO_FIXTURE,
+    RunResponse,
+    _build_result,
+    _emit_state_events,
+    _record_to_response,
+    run_store,
+)
+
+router = APIRouter()
+
+#: Runtime experiment data — NOT committed (see .gitignore). Tests override
+#: via ADJACENT_EXPERIMENTS_DB.
+_DEFAULT_DB = Path(__file__).resolve().parents[3] / "data" / "processed" / "experiments.db"
+EXPERIMENTS_DB_PATH = Path(os.environ.get("ADJACENT_EXPERIMENTS_DB", str(_DEFAULT_DB)))
+
+_repo: ExperimentRepository | None = None
+
+
+def get_repo() -> ExperimentRepository:
+    global _repo
+    if _repo is None:
+        _repo = ExperimentRepository(EXPERIMENTS_DB_PATH)
+    return _repo
+
+
+def reset_repo_for_tests(db_path: str | Path | None = None) -> None:
+    """Test hook: point the repository at a temporary database."""
+    global _repo
+    if _repo is not None:
+        _repo.close()
+    _repo = ExperimentRepository(db_path) if db_path else None
+
+
+# ---------------------------------------------------------------------------
+# Models
+# ---------------------------------------------------------------------------
+
+
+class ReferenceInput(BaseModel):
+    title: str = Field(..., min_length=1)
+    year: int | None = None
+
+
+class CreatorRunRequest(BaseModel):
+    title: str = Field(..., min_length=1)
+    logline: str = ""
+    genre: str = ""
+    language: str = ""
+    themes: list[str] = Field(default_factory=list)
+    references: list[ReferenceInput] = Field(default_factory=list)
+    release_goal: str = ""
+    #: Optional release-location context; geography is only analysed when set.
+    city: str = ""
+
+    def seeds(self) -> list[dict[str, Any]]:
+        """Analysis seeds = comparable works + themes, in user order."""
+        items: list[dict[str, Any]] = [
+            {"title": r.title.strip(), "year": r.year, "imdb_id": None}
+            for r in self.references
+            if r.title.strip()
+        ]
+        items += [
+            {"title": t.strip(), "year": None, "imdb_id": None}
+            for t in self.themes
+            if t.strip()
+        ]
+        return items
+
+
+class SaveExperimentRequest(BaseModel):
+    request_id: str = Field(..., min_length=8)
+    film_title: str = Field(..., min_length=1)
+    hypothesis: str = Field(..., min_length=1)
+    film_context: dict[str, Any] = Field(default_factory=dict)
+    success_criteria: str = ""
+    observation_window: str = ""
+    action_plan: str = ""
+    data_status: str = "unknown"
+    source_run_id: str | None = None
+    source_bet: dict[str, Any] = Field(default_factory=dict)
+    provenance: dict[str, Any] = Field(default_factory=dict)
+    # M13.12 (additive): carry the investigation's own record into provenance
+    # so a saved experiment can be traced back to what justified it.
+    investigation_summary: dict[str, Any] | None = None
+    evidence_refs: list[str] = Field(default_factory=list)
+    # M13.14 (additive): when the creator explicitly adopts a Decision Brief
+    # proposal, an immutable sanitised snapshot of the synthesis and the
+    # ORIGINAL proposal are stored in provenance — so a reviewer can always
+    # tell what the model proposed from what the creator actually saved.
+    synthesis_snapshot: dict[str, Any] | None = None
+    adopted_proposal: dict[str, Any] | None = None
+
+
+class ObservationRequest(BaseModel):
+    request_id: str = Field(..., min_length=8)
+    kind: str = "ANALYTICS"
+    measurement_status: str = Field(..., description="OBSERVED|PARTIAL|MISSING|UNAVAILABLE|FAILED")
+    observed_on: str | None = None
+    metrics: dict[str, Any] = Field(default_factory=dict)
+    interpretation: str | None = None
+    source: str | None = None
+    evidence_ref: str | None = None
+    limitations: str | None = None
+    supersedes_id: str | None = None
+
+
+class EvaluationRequest(BaseModel):
+    request_id: str = Field(..., min_length=8)
+    outcome: str = Field(..., description="SUPPORTED|CONTRADICTED|INCONCLUSIVE")
+    rationale: str = Field(..., min_length=1)
+    observation_ids: list[str] = Field(default_factory=list)
+    unknowns: str | None = None
+    supersedes_id: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# POST /creator/run — live creator analysis (fails honestly without a key)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/creator/run", response_model=RunResponse)
+async def create_creator_run(request: CreatorRunRequest) -> RunResponse:
+    seeds = request.seeds()
+    if not seeds:
+        raise HTTPException(
+            status_code=422,
+            detail="Add at least one reference work or theme to analyse.",
+        )
+
+    record = run_store.create(
+        city=request.city.strip(),
+        venue_name=f"Creator: {request.title}",
+        programme=seeds,
+    )
+    record.creator_context = request.model_dump()  # type: ignore[attr-defined]
+
+    _tasks: set[asyncio.Task[None]] = set()
+    task = asyncio.create_task(_execute_creator_run(record, request))
+    _tasks.add(task)
+    task.add_done_callback(_tasks.discard)
+    return _record_to_response(record)
+
+
+@router.post("/creator/run/demo", response_model=RunResponse)
+async def create_creator_demo_run() -> RunResponse:
+    """Fixture-backed creator demo — labelled `fixture` in every artefact."""
+    record = run_store.create(
+        city="",
+        venue_name="Creator Fixture Demo (offline)",
+        programme=[],
+    )
+    _tasks: set[asyncio.Task[None]] = set()
+    task = asyncio.create_task(_execute_creator_demo_run(record))
+    _tasks.add(task)
+    task.add_done_callback(_tasks.discard)
+    return _record_to_response(record)
+
+
+# ---------------------------------------------------------------------------
+# Execution — mirrors routes._execute_run with creator seeds + artefacts
+# ---------------------------------------------------------------------------
+
+
+async def _execute_creator_run(record: Any, request: CreatorRunRequest) -> None:
+    from ..agent.budget import Budget
+    from ..agent.orchestrator import AgentOrchestrator
+    from ..agent.state import AdjacentState, ProgrammeItem
+    from ..config import Settings
+    from ..domain.ledger import ProvenanceLedger
+    from ..live_runner import LivePipeline
+    from ..resolution.resolver import EntityResolver
+    from .routes import RunEvent, RunStatus
+
+    record.status = RunStatus.RUNNING
+    record.emit(RunEvent("trace", {
+        "phase": "INIT",
+        "message": f"Creator analysis for '{request.title}' — {len(record.programme)} seed(s)",
+    }))
+
+    settings = Settings.from_env()
+    if not settings.has_api_key:
+        record.status = RunStatus.FAILED
+        record.error = "QLOO_API_KEY not configured"
+        record.emit(RunEvent("error", {"message": "QLOO_API_KEY not configured"}))
+        return
+
+    try:
+        from ..qloo.client import QlooClient
+        client = QlooClient(settings)
+        resolver = EntityResolver(client, delay_s=2.0)
+
+        state = AdjacentState(
+            run_id=record.run_id,
+            fixture_name=None,
+            fixture_path=None,
+            scenario="live",
+            fixture_notice="LIVE QLOO DATA",
+            data_status="measured",
+            description=f"Creator analysis for '{request.title}'",
+            programme=[
+                ProgrammeItem(
+                    title=str(item.get("title", "(unnamed)")),
+                    year=item.get("year"),
+                    imdb_id=item.get("imdb_id"),
+                )
+                for item in record.programme
+            ],
+            budget=Budget(),
+        )
+        state.ledger = ProvenanceLedger(recorder=client.recorder, data_status="measured")
+
+        pipeline = LivePipeline(client, resolver, record.programme)
+        state = await AgentOrchestrator(pipeline).run(state)
+
+        geography_result, bet, test_card, investigation = await _post_pipeline_creator(
+            record, state, client, request
+        )
+        _emit_state_events(record, state)
+        _finalize_creator(
+            record, state, request, geography_result, bet, test_card, investigation
+        )
+        await client.aclose()
+    except Exception as exc:
+        record.status = RunStatus.FAILED
+        record.error = str(exc)
+        record.emit(RunEvent("error", {"message": str(exc)}))
+
+
+async def _execute_creator_demo_run(record: Any) -> None:
+    from ..agent.budget import Budget
+    from ..agent.orchestrator import AgentOrchestrator
+    from ..agent.state import AdjacentState
+    from ..config import Settings
+    from ..domain.ledger import ProvenanceLedger
+    from ..qloo.mock import MockQlooClient
+    from ..runner import FixturePipeline, programme_items, resolve_fixture_path
+    from .routes import RunEvent, RunStatus
+
+    record.status = RunStatus.RUNNING
+    record.emit(RunEvent("trace", {
+        "phase": "INIT",
+        "message": f"Creator FIXTURE demo ({DEMO_FIXTURE}) — offline, no Qloo calls",
+    }))
+
+    try:
+        settings = Settings.from_env()
+        fixture_path = resolve_fixture_path(DEMO_FIXTURE, settings=settings)
+        name = fixture_path.stem
+        client = MockQlooClient(settings, fixture=name, run_id=record.run_id)
+        fx = client.fixture
+
+        record.programme = [
+            {"title": str(p.get("title", "(unnamed)")), "year": p.get("year"), "imdb_id": p.get("imdb_id")}
+            for p in fx.programme
+        ]
+        demo_request = CreatorRunRequest(
+            title="Sample Short — 'Neon Harbour'",
+            logline="A dockside night-shift romance told in three silent vignettes.",
+            genre="drama",
+            language="English",
+            themes=[t["title"] for t in record.programme if t.get("title")],
+            release_goal="YouTube premiere after festival window",
+        )
+
+        state = AdjacentState(
+            run_id=record.run_id,
+            fixture_name=name,
+            fixture_path=str(fixture_path),
+            scenario=fx.scenario,
+            fixture_notice=client.notice,
+            data_status="fixture",
+            description=fx.description,
+            programme=programme_items(fx.programme),
+            budget=Budget(),
+        )
+        state.ledger = ProvenanceLedger(recorder=client.recorder, data_status="fixture")
+
+        state = await AgentOrchestrator(FixturePipeline(client, fx)).run(state)
+
+        geography_result, bet, test_card, investigation = await _post_pipeline_creator(
+            record, state, client, demo_request
+        )
+        _emit_state_events(record, state)
+        _finalize_creator(
+            record, state, demo_request, geography_result, bet, test_card, investigation
+        )
+    except Exception as exc:
+        record.status = RunStatus.FAILED
+        record.error = str(exc)
+        record.emit(RunEvent("error", {"message": str(exc)}))
+
+
+async def _post_pipeline_creator(
+    record: Any, state: Any, client: Any, request: CreatorRunRequest
+) -> tuple[Any, Any, Any, Any]:
+    """Geography (only with a city) → Bet → Test Card → structured Investigation."""
+    from .routes import RunEvent
+
+    geography_result = None
+    data_status = getattr(state, "data_status", "measured") or "measured"
+
+    if state.stop_reason == "complete" and state.ranked and record.city:
+        try:
+            from ..domain.geography import build_geography_result
+            heatmap = await client.insights(
+                filter_type="urn:heatmap",
+                signal_interests_entities=state.resolved_ids,
+                filter_location_query=record.city,
+                filter_location_radius=0,
+                output_heatmap_boundary="urn:geohash",
+                take=50,
+                tool="geography_heatmap",
+            )
+            geography_result = build_geography_result(
+                city=record.city, response=heatmap, call_id=heatmap.call_id
+            )
+            record.emit(RunEvent("heatmap", geography_result.to_dict()))
+        except Exception as exc:
+            record.emit(RunEvent("trace", {"phase": "LOCATE", "message": f"Geography failed: {exc}"}))
+
+    bet = None
+    test_card = None
+    if state.stop_reason == "complete" and state.ranked:
+        record.emit(RunEvent("trace", {
+            "phase": "DECIDE",
+            "message": "Building Positioning Bet from ranked cultural worlds",
+        }))
+        try:
+            seeds = [str(p.get("title")) for p in record.programme if p.get("title")]
+            bet = build_positioning_bet(
+                ranked_cohorts=state.ranked,
+                taste_tags=state.taste_tags,
+                film_title=request.title,
+                seeds=seeds,
+                signals=two_sided_signal_maps(state),
+                geography=geography_result,
+                rejected_cohorts=state.rejected,
+                data_status=data_status,
+            )
+            if bet:
+                record.emit(RunEvent("bet", bet.to_dict()))
+                test_card = build_creator_test_card(
+                    bet=bet,
+                    film_title=request.title,
+                    seeds=seeds,
+                    release_goal=request.release_goal,
+                )
+                record.emit(RunEvent("test_card", test_card.to_dict()))
+        except Exception as exc:
+            record.emit(RunEvent("trace", {"phase": "DECIDE", "message": f"Positioning Bet failed: {exc}"}))
+
+    # M13.11: the structured investigation account — built from the SAME state
+    # the orchestrator filled, citing the call_ids that actually ran.
+    investigation = build_investigation(
+        state,
+        film={
+            "title": request.title,
+            "logline": request.logline,
+            "genre": request.genre,
+            "language": request.language,
+            "release_goal": request.release_goal,
+        },
+        seeds=seeds if (seeds := [str(p.get("title")) for p in record.programme if p.get("title")]) else [],
+        bet=bet,
+        test_card=test_card,
+        geography=geography_result,
+        city=record.city or None,
+        data_status=data_status,
+    )
+    # M13.12: dangling-reference defence — every evidence ref must resolve to a
+    # call recorded in THIS run's trace, or it is removed (and the removal is
+    # recorded as a limitation rather than silently ignored).
+    known_call_ids = {
+        row.get("call_id") for row in (state.trace_rows or []) if row.get("call_id")
+    }
+    investigation, _dropped_refs = verify_evidence_refs(investigation, known_call_ids)
+    record.emit(RunEvent("investigation", investigation))
+
+    return geography_result, bet, test_card, investigation
+
+
+def _finalize_creator(
+    record: Any,
+    state: Any,
+    request: CreatorRunRequest,
+    geography_result: Any,
+    bet: Any,
+    test_card: Any,
+    investigation: Any = None,
+) -> None:
+    from .routes import RunEvent, RunStatus
+
+    record.state_json = state.to_json()
+    record.stop_reason = state.stop_reason
+    record.stop_message = state.stop_message
+
+    result = _build_result(
+        state, record.city,
+        geography=geography_result,
+        programme_bet=bet,
+        test_card=test_card,
+    )
+    result["mode"] = "creator"
+    result["film"] = {
+        "title": request.title,
+        "logline": request.logline,
+        "genre": request.genre,
+        "language": request.language,
+        "release_goal": request.release_goal,
+    }
+    result["investigation"] = investigation
+    record.result = result
+    record.trace = state.trace_rows
+
+    if state.stop_reason == "complete":
+        record.status = RunStatus.COMPLETED
+        record.emit(RunEvent("done", {
+            "stop_reason": state.stop_reason,
+            "stop_message": state.stop_message,
+            "resolved": len(state.resolved_items),
+            "total": len(state.programme),
+            "cohorts_ranked": len(state.ranked),
+            "cohorts_rejected": len(state.rejected),
+        }))
+    elif state.stop_reason == "insufficiency":
+        record.status = RunStatus.INSUFFICIENT
+        record.emit(RunEvent("insufficiency", {
+            "stop_reason": state.stop_reason,
+            "stop_message": state.stop_message,
+        }))
+    else:
+        record.status = RunStatus.FAILED
+        record.emit(RunEvent("error", {
+            "stop_reason": state.stop_reason,
+            "stop_message": state.stop_message,
+        }))
+
+
+# ---------------------------------------------------------------------------
+# Experiment lifecycle
+# ---------------------------------------------------------------------------
+
+#: M13.14: allowlists — a snapshot stores the decision context, never an
+#: arbitrary object dump, and by construction can never carry credentials
+#: (keys outside the allowlist are dropped, not forwarded).
+_SNAPSHOT_KEYS = frozenset({
+    "investigation_id", "source_run_id", "schema_version", "method",
+    "provider_kind", "model", "validation", "summary", "hypothesis_restated",
+    "claims", "caveats", "limitations", "evidence_refs", "data_status",
+    "experiment_proposal",
+})
+_SNAPSHOT_CLAIM_KEYS = frozenset({
+    "statement", "claim_type", "evidence_refs", "rationale", "limitations",
+})
+_PROPOSAL_KEYS = frozenset({
+    "kind", "hypothesis", "action_plan", "success_criteria",
+    "observation_window", "falsification", "relevant_metrics", "assumptions",
+    "limitations",
+})
+
+
+def _sanitize_snapshot(
+    snapshot: dict[str, Any], known_call_ids: set[str] | None
+) -> dict[str, Any]:
+    """Trim to the allowlist and verify every evidence ref against the source
+    run's recorded trace. Unresolvable refs are never stored as proof: they
+    are moved to `unresolved_evidence_refs` with an explicit status."""
+    trimmed: dict[str, Any] = {
+        k: v for k, v in snapshot.items() if k in _SNAPSHOT_KEYS
+    }
+    claims = trimmed.get("claims")
+    if isinstance(claims, list):
+        trimmed["claims"] = [
+            {k: v for k, v in c.items() if k in _SNAPSHOT_CLAIM_KEYS}
+            for c in claims[:12]
+            if isinstance(c, dict)
+        ]
+    proposal = trimmed.get("experiment_proposal")
+    if isinstance(proposal, dict):
+        trimmed["experiment_proposal"] = {
+            k: v for k, v in proposal.items() if k in _PROPOSAL_KEYS
+        }
+
+    unresolved: list[str] = []
+
+    def _verify(refs: Any) -> list[str]:
+        if not isinstance(refs, list):
+            return []
+        kept = []
+        for r in refs:
+            if not (isinstance(r, str) and r):
+                continue
+            if known_call_ids is None or r in known_call_ids:
+                kept.append(r)
+            else:
+                unresolved.append(r)
+        return kept
+
+    trimmed["evidence_refs"] = _verify(trimmed.get("evidence_refs"))
+    for claim in trimmed.get("claims") or []:
+        claim["evidence_refs"] = _verify(claim.get("evidence_refs"))
+    if known_call_ids is not None:
+        trimmed["evidence_ref_status"] = "verified against source run trace"
+    else:
+        trimmed["evidence_ref_status"] = "unverified — source run not available"
+    if unresolved:
+        trimmed["unresolved_evidence_refs"] = sorted(set(unresolved))
+    return trimmed
+
+
+@router.post("/experiments", status_code=201)
+async def save_experiment(request: SaveExperimentRequest) -> dict[str, Any]:
+    payload = request.model_dump()
+    summary = payload.pop("investigation_summary", None)
+    refs = payload.pop("evidence_refs", [])
+    provenance = dict(payload.get("provenance") or {})
+    snapshot = payload.pop("synthesis_snapshot", None)
+    adopted = payload.pop("adopted_proposal", None)
+    if summary is not None:
+        provenance.setdefault("investigation_summary", summary)
+    if refs:
+        provenance_refs = sorted({r for r in refs if isinstance(r, str) and r})
+        # Honest resolution: when the source run is known, refs that do not
+        # correspond to real recorded calls are dropped and reported.
+        dropped: list[str] = []
+        if payload.get("source_run_id"):
+            record = run_store.get(str(payload["source_run_id"]))
+            if record is not None:
+                known = {
+                    row.get("call_id") for row in (record.trace or []) if row.get("call_id")
+                }
+                dropped = [r for r in provenance_refs if r not in known]
+                provenance_refs = [r for r in provenance_refs if r in known]
+        provenance.setdefault("evidence_refs", provenance_refs)
+        if dropped:
+            provenance["unresolved_evidence_refs"] = dropped
+    if isinstance(snapshot, dict) and snapshot:
+        # Known-call set for snapshot verification (same trace used above).
+        snap_known: set[str] | None = None
+        if payload.get("source_run_id"):
+            snap_record = run_store.get(str(payload["source_run_id"]))
+            if snap_record is not None:
+                snap_known = {
+                    row.get("call_id") for row in (snap_record.trace or [])
+                    if row.get("call_id")
+                }
+        provenance.setdefault("synthesis_snapshot", _sanitize_snapshot(snapshot, snap_known))
+    if isinstance(adopted, dict) and adopted:
+        provenance.setdefault("adopted_proposal", {
+            k: v for k, v in adopted.items() if k in _PROPOSAL_KEYS
+        })
+        # What the creator changed relative to the model's original proposal —
+        # the model is never credited with the creator's manual edits.
+        provenance["creator_edits"] = [
+            field
+            for field in ("hypothesis", "action_plan", "success_criteria", "observation_window")
+            if str(adopted.get(field) or "") != str(payload.get(field) or "")
+        ]
+        provenance["adoption"] = {
+            "origin": "model_proposal",
+            "method": (snapshot or {}).get("method"),
+        }
+    payload["provenance"] = provenance
+    try:
+        experiment = get_repo().save_experiment(**payload)
+    except DuplicateRequest as dup:
+        # Retry-safe: replaying the same request returns the original decision.
+        return {"duplicate": True, "experiment": dup.existing}
+    return {"duplicate": False, "experiment": experiment}
+
+
+@router.get("/experiments")
+async def list_experiments() -> dict[str, Any]:
+    return {"experiments": get_repo().list_experiments()}
+
+
+@router.get("/experiments/{experiment_id}")
+async def get_experiment(experiment_id: str) -> dict[str, Any]:
+    repo = get_repo()
+    experiment = repo.get_experiment(experiment_id)
+    if experiment is None:
+        raise HTTPException(status_code=404, detail=f"Experiment {experiment_id} not found")
+    return {
+        "experiment": experiment,
+        "observations": repo.list_observations(experiment_id),
+        "evaluations": repo.list_evaluations(experiment_id),
+    }
+
+
+@router.post("/experiments/{experiment_id}/observations", status_code=201)
+async def add_observation(experiment_id: str, request: ObservationRequest) -> dict[str, Any]:
+    try:
+        observation = get_repo().add_observation(
+            experiment_id, **request.model_dump()
+        )
+    except DuplicateRequest as dup:
+        return {"duplicate": True, "observation": dup.existing}
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"duplicate": False, "observation": observation}
+
+
+@router.post("/experiments/{experiment_id}/evaluations", status_code=201)
+async def add_evaluation(experiment_id: str, request: EvaluationRequest) -> dict[str, Any]:
+    try:
+        evaluation = get_repo().add_evaluation(
+            experiment_id, **request.model_dump()
+        )
+    except DuplicateRequest as dup:
+        return {"duplicate": True, "evaluation": dup.existing}
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"duplicate": False, "evaluation": evaluation}
+
+
+# ---------------------------------------------------------------------------
+# Role-B synthesis (M13.12) — optional, provider-gated, never silently stubbed
+# ---------------------------------------------------------------------------
+
+_synthesis_provider_override: Any = None
+
+
+def reset_synthesis_for_tests(provider: Any = None) -> None:
+    """Test hook: inject a deterministic synthesis provider (or clear it)."""
+    global _synthesis_provider_override
+    _synthesis_provider_override = provider
+
+
+class SynthesizeRequest(BaseModel):
+    run_id: str = Field(..., min_length=1)
+
+
+@router.get("/creator/synthesis-status")
+def synthesis_status() -> dict[str, Any]:
+    """Provider status WITHOUT secrets. BLOCKED is an honest state."""
+    if _synthesis_provider_override is not None:
+        return {
+            "available": True,
+            "provider": _synthesis_provider_override.kind,
+            "model": getattr(_synthesis_provider_override, "model", None),
+            "note": "test/override provider injected",
+        }
+    config = LLMProviderConfig.from_env()
+    return {
+        "available": config.configured,
+        "provider": "openai_compatible" if config.configured else "none",
+        "model": config.model if config.configured else None,
+        **({} if config.configured else {
+            "blocked_reason": (
+                "ADJACENT_LLM_API_KEY not configured — synthesis is BLOCKED. "
+                "The deterministic investigation remains fully available."
+            )
+        }),
+    }
+
+
+@router.post("/creator/synthesize")
+def creator_synthesize(request: SynthesizeRequest) -> dict[str, Any]:
+    """Render a creator-facing brief from a completed run's investigation.
+
+    The deterministic investigation is the decision engine; this is a bounded
+    natural-language rendering with post-validation and an explicitly labelled
+    deterministic fallback. It NEVER re-executes tools and NEVER fabricates:
+    invalid model output is rejected and the fallback says so.
+    """
+    record = run_store.get(request.run_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail=f"run {request.run_id} not found")
+    result = record.result or {}
+    investigation = result.get("investigation")
+    if not investigation:
+        raise HTTPException(
+            status_code=409,
+            detail="run has no investigation to synthesize (not completed or not a creator run)",
+        )
+
+    if _synthesis_provider_override is not None:
+        provider = _synthesis_provider_override
+    else:
+        config = LLMProviderConfig.from_env()
+        if not config.configured:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "LLM synthesis not configured (ADJACENT_LLM_API_KEY unset). "
+                    "The investigation itself is complete and deterministic; "
+                    "synthesis is optional."
+                ),
+            )
+        provider = OpenAICompatibleProvider(config)
+
+    try:
+        outcome = synthesize_investigation(investigation, provider)
+    except LLMUnavailableError as exc:
+        # Provider construction can still fail (e.g. transport issues upstream).
+        raise HTTPException(status_code=502, detail=f"synthesis provider unavailable: {exc}") from exc
+    return {"run_id": request.run_id, **outcome}

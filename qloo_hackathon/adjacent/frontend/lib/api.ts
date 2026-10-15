@@ -203,3 +203,303 @@ export const DEMO_PROGRAMME: ProgrammeItemInput[] = [
   { title: "Le Samourai", year: 1967, imdb_id: "tt0062229" },
   { title: "Paris, Texas", year: 1984, imdb_id: "tt0087884" },
 ];
+
+// ─── Creator Mode (M13.9) ───────────────────────────────────────────────────
+
+export interface CreatorRunRequest {
+  title: string;
+  logline?: string;
+  genre?: string;
+  language?: string;
+  themes?: string[];
+  references?: { title: string; year?: number | null }[];
+  release_goal?: string;
+  city?: string;
+}
+
+export interface ExperimentRecord {
+  experiment_id: string;
+  request_id: string;
+  created_at: string;
+  film_title: string;
+  film_context: Record<string, unknown>;
+  hypothesis: string;
+  success_criteria: string;
+  observation_window: string;
+  action_plan: string;
+  data_status: string;
+  source_run_id: string | null;
+  source_bet: Record<string, unknown>;
+  provenance: Record<string, unknown>;
+  status: string;
+  observation_count?: number;
+  latest_evaluation?: string | null;
+}
+
+export interface ObservationRecord {
+  observation_id: string;
+  experiment_id: string;
+  created_at: string;
+  observed_on: string | null;
+  kind: string;
+  measurement_status: string;
+  metrics: Record<string, number | null>;
+  interpretation: string | null;
+  source: string | null;
+  evidence_ref: string | null;
+  limitations: string | null;
+  supersedes_id: string | null;
+}
+
+export interface EvaluationRecord {
+  evaluation_id: string;
+  experiment_id: string;
+  created_at: string;
+  outcome: "SUPPORTED" | "CONTRADICTED" | "INCONCLUSIVE";
+  rationale: string;
+  observations_used: string[];
+  unknowns: string | null;
+  supersedes_id: string | null;
+}
+
+async function postJson<T>(path: string, body: unknown, label: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(
+      typeof err.detail === "string" ? err.detail : `${label} failed (${res.status})`
+    );
+  }
+  return res.json();
+}
+
+export function createCreatorRun(req: CreatorRunRequest): Promise<RunResponse> {
+  return postJson<RunResponse>("/creator/run", req, "Creator analysis");
+}
+
+export function createCreatorDemoRun(): Promise<RunResponse> {
+  return postJson<RunResponse>("/creator/run/demo", {}, "Creator fixture demo");
+}
+
+export function saveExperiment(
+  body: Record<string, unknown>
+): Promise<{ duplicate: boolean; experiment: ExperimentRecord }> {
+  return postJson("/experiments", body, "Save experiment");
+}
+
+export function addObservation(
+  experimentId: string,
+  body: Record<string, unknown>
+): Promise<{ duplicate: boolean; observation: ObservationRecord }> {
+  return postJson(`/experiments/${experimentId}/observations`, body, "Record observation");
+}
+
+export function addEvaluation(
+  experimentId: string,
+  body: Record<string, unknown>
+): Promise<{ duplicate: boolean; evaluation: EvaluationRecord }> {
+  return postJson(`/experiments/${experimentId}/evaluations`, body, "Record evaluation");
+}
+
+export async function listExperiments(): Promise<ExperimentRecord[]> {
+  const res = await fetch(`${API_BASE}/experiments`);
+  if (!res.ok) throw new Error("Failed to load experiments");
+  const data = await res.json();
+  return data.experiments ?? [];
+}
+
+export async function getExperiment(
+  experimentId: string
+): Promise<{
+  experiment: ExperimentRecord;
+  observations: ObservationRecord[];
+  evaluations: EvaluationRecord[];
+}> {
+  const res = await fetch(`${API_BASE}/experiments/${experimentId}`);
+  if (!res.ok) throw new Error("Experiment not found");
+  return res.json();
+}
+
+// ---------------------------------------------------------------------------
+// YouTube integration (M13.10) — optional, creator-authorized analytics
+// ---------------------------------------------------------------------------
+
+export interface YouTubeStatus {
+  mode: "mock" | "live" | "not_configured";
+  mock_data: boolean;
+  configured: boolean;
+  redirect_uri: string;
+  requested_scopes: string[];
+  single_connection_posture: boolean;
+  connection: {
+    channel_id: string | null;
+    channel_title: string | null;
+    connected_at: string;
+    days_since_connection: number;
+    reauthorization_recommended: boolean;
+  } | null;
+  connected: boolean;
+}
+
+export interface YouTubeVideo {
+  video_id: string;
+  title: string | null;
+  published_at: string | null;
+}
+
+export interface YouTubeMetricsPreview {
+  data_status: "mock" | "live";
+  video_id: string;
+  period: { start_date: string; end_date: string };
+  metrics_queried: string[];
+  row_count: number;
+  metrics: Record<string, number>;
+  limitations: string[];
+  retrieved_at: string;
+}
+
+export async function youtubeStatus(): Promise<YouTubeStatus> {
+  const res = await fetch(`${API_BASE}/youtube/status`);
+  if (!res.ok) throw new Error("Could not load YouTube connection status");
+  return res.json();
+}
+
+/** Begins the consent flow in the top-level window (Google requires it). */
+export function beginYouTubeAuthorization(): void {
+  window.location.href = `${API_BASE}/youtube/authorize?via=proxy`;
+}
+
+export async function youtubeVideos(): Promise<{
+  data_status: "mock" | "live";
+  videos: YouTubeVideo[];
+  note: string;
+}> {
+  const res = await fetch(`${API_BASE}/youtube/videos`);
+  if (res.status === 409) throw new Error("No YouTube connection — authorize first.");
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(typeof body.detail === "string" ? body.detail : "Could not list videos");
+  }
+  return res.json();
+}
+
+export async function youtubeMetrics(
+  videoId: string,
+  startDate: string,
+  endDate: string
+): Promise<YouTubeMetricsPreview> {
+  const params = new URLSearchParams({
+    video_id: videoId,
+    start_date: startDate,
+    end_date: endDate,
+  });
+  const res = await fetch(`${API_BASE}/youtube/metrics?${params.toString()}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(typeof body.detail === "string" ? body.detail : "Could not fetch metrics");
+  }
+  return res.json();
+}
+
+export async function recordYouTubeObservation(
+  experimentId: string,
+  body: {
+    request_id: string;
+    video_id: string;
+    start_date: string;
+    end_date: string;
+    interpretation?: string | null;
+    variant_label?: string | null;
+  }
+): Promise<{ duplicate: boolean; observation: ObservationRecord }> {
+  return postJson(
+    `/experiments/${experimentId}/observations/from-youtube`,
+    body,
+    "Record YouTube observation"
+  );
+}
+
+export async function disconnectYouTube(): Promise<{
+  revoked_upstream: boolean;
+  credentials_deleted: boolean;
+  youtube_observations_deleted: number;
+  experiments_tombstoned: number;
+}> {
+  const res = await fetch(`${API_BASE}/youtube/disconnect`, { method: "POST" });
+  if (!res.ok) throw new Error("Could not disconnect");
+  return res.json();
+}
+
+// ── Role-B synthesis (M13.13): optional, provider-gated decision briefs ────
+
+export interface SynthesisStatus {
+  available: boolean;
+  provider: string;
+  model: string | null;
+  blocked_reason?: string;
+  note?: string;
+}
+
+export interface SynthesisClaim {
+  statement: string;
+  claim_type: "FACT" | "INTERPRETATION" | "HYPOTHESIS" | "UNKNOWN";
+  evidence_refs: string[];
+  rationale?: string;
+  limitations?: string;
+}
+
+export interface SynthesisExperimentProposal {
+  kind: "test" | "information_gathering";
+  hypothesis: string;
+  action_plan: string;
+  success_criteria: string;
+  observation_window: string;
+  falsification: string;
+  relevant_metrics: string[];
+  assumptions: string[];
+  limitations: string;
+}
+
+export interface SynthesisBrief {
+  summary: string;
+  hypothesis_restated: string;
+  rationale: string;
+  alternatives: string[];
+  next_experiment: string;
+  caveats: string[];
+  claims: SynthesisClaim[];
+  experiment_proposal: SynthesisExperimentProposal;
+  _fallback_error?: string;
+}
+
+export interface SynthesisMetadata {
+  schema_version: string;
+  provider_kind: string;
+  model: string | null;
+  /** "live_llm" | "stub" | "deterministic_fallback" — never ambiguous. */
+  method: string;
+  validation: string;
+  llm_error?: string;
+  evidence_refs_available: string[];
+  guarantees?: Record<string, string>;
+}
+
+export interface SynthesisResponse {
+  run_id: string;
+  synthesis: SynthesisBrief;
+  metadata: SynthesisMetadata;
+}
+
+export async function getSynthesisStatus(): Promise<SynthesisStatus> {
+  const res = await fetch(`${API_BASE}/creator/synthesis-status`);
+  if (!res.ok) throw new Error("Failed to load synthesis status");
+  return res.json();
+}
+
+export function synthesizeRun(runId: string): Promise<SynthesisResponse> {
+  return postJson<SynthesisResponse>("/creator/synthesize", { run_id: runId }, "Decision brief");
+}

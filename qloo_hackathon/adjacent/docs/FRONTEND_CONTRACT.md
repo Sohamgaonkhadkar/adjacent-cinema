@@ -1,6 +1,6 @@
 # Frontend Response Contract — Adjacent (live document)
 
-**Updated:** 2026-10-10 (M13.6.10). This document now describes the payload the
+**Updated:** 2026-10-11 (M13.10 — YouTube Analytics integration). This document now describes the payload the
 backend ACTUALLY serves, matching `_build_result()` / `_record_to_response()` in
 `backend/app/api/routes.py` and the TypeScript types in
 `frontend/types/adjacent.ts`. The contract is enforced by
@@ -123,3 +123,70 @@ Built by `_build_result()`; TypeScript mirror: `AdjacentRunResult` in
 `trace` (phase/message progress) · `resolution` · `taste_dna` · `cohort` (one
 per ranked cohort) · `heatmap` · `bet` · `test_card` · terminal `done` |
 `insufficiency` | `error`. Late subscribers receive the full replay first.
+
+## 5. Creator Mode additions (M13.9)
+
+Creator runs reuse the entire RunResponse/SSE contract above. Two extra routes start a
+run; the same `GET /api/run/{id}`, `/stream`, `/trace` endpoints watch it.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/api/creator/run` | Live creator run. Body: `{title, logline?, genre?, language?, release_goal?, city?, references?:[{title, year?}], themes?:[string]}` — needs ≥1 reference or theme (else 422). Without `QLOO_API_KEY` the run FAILS honestly (`status:"failed"`, `result:null`); it never falls back to fixtures. |
+| `POST` | `/api/creator/run/demo` | Explicitly labelled fixture demo (no key, no body). |
+
+`result` for creator runs = the full `AdjacentRunResult` plus:
+
+```jsonc
+{
+  "mode": "creator",                       // absent on cinema runs
+  "film": { "title", "logline", "genre", "language", "release_goal" },
+  "city": { "name": "…", "analysed": true } | { "analysed": false, "message": "…" }
+}
+```
+
+`programme_bet` and `test_card` carry the same shapes and the same invariant
+(`bet.primary.cohort_id == cohorts.ranked[0].cohort_id ==
+test_card.provenance.primary_cohort_id`). `data_status` is `"fixture"` on demo runs and
+`"live"` otherwise; creator success criteria never predict views/retention/revenue.
+
+## 6. Experiment lifecycle routes (M13.9)
+
+All writes take `request_id` (min 8 chars) and are idempotent: a retry returns the
+original record with `duplicate: true`. Persistence: SQLite, survives restarts.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/api/experiments` | Save a Test Card as a planned experiment. Snapshot fields (`film_context`, `source_bet`, `provenance`, `data_status`, `source_run_id`) are frozen at save time — later evidence never rewrites them. One saved decision per `source_run_id` (second save → `duplicate:true` + original). |
+| `GET` | `/api/experiments` | `{experiments:[…]}` newest first. |
+| `GET` | `/api/experiments/{id}` | `{experiment, observations, evaluations}` — full append-only history; 404 unknown id. |
+| `POST` | `/api/experiments/{id}/observations` | Append observation. `measurement_status` ∈ `OBSERVED\|PARTIAL\|MISSING\|UNAVAILABLE\|FAILED`; `kind` ∈ `ANALYTICS\|SCREENING\|FEEDBACK\|COMMUNITY\|NOTE`. **Zero is data** (`metrics:{"views":0}`); missing data stays out of `metrics` entirely. `interpretation` and `limitations` are stored separately from measurements. |
+| `POST` | `/api/experiments/{id}/evaluations` | `outcome` ∈ `SUPPORTED\|CONTRADICTED\|INCONCLUSIVE` + `rationale` (required). New evaluation sets `supersedes_id` to the previous one; **history is never rewritten** — `evaluations[-1]` is current. |
+
+Frontend: `frontend/app/creator/page.tsx` (linked from the cinema home nav as
+"Creator Mode"); client functions in `frontend/lib/api.ts`
+(`createCreatorRun`, `createCreatorDemoRun`, `saveExperiment`, `listExperiments`,
+`getExperiment`, `addObservation`, `addEvaluation`).
+
+## 7. YouTube Analytics integration (M13.10)
+
+Optional, creator-authorized, single-connection. Tokens NEVER appear in any response.
+Full contract + policy notes: `docs/M13_10_YOUTUBE_ANALYTICS_INTEGRATION.md`.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/youtube/status` | `{mode: "mock"\|"live"\|"not_configured", mock_data, configured, redirect_uri, requested_scopes, single_connection_posture, connection: {channel_title, connected_at, days_since_connection, reauthorization_recommended} \| null, connected}` |
+| `GET` | `/api/youtube/authorize?via=proxy` | 302 into the consent flow (503 when unconfigured). `via=proxy` keeps the mock-mode callback routable behind the `/api` rewrite. |
+| `GET` | `/api/youtube/callback` | OAuth callback. Invalid/expired/replayed `state` → 400 (CSRF). Denied consent → 302 `/creator?yt=denied`. Failure → 302 `/creator?yt=error&reason=…`. Success → 302 `/creator?yt=connected`. |
+| `POST` | `/api/youtube/disconnect` | Revokes upstream (best effort), deletes credentials AND YouTube-sourced observations (Developer-Policies deletion), leaves tombstone NOTEs. `{revoked_upstream, credentials_deleted, youtube_observations_deleted, experiments_tombstoned}` |
+| `GET` | `/api/youtube/videos` | Connected channel's uploads (≤100, no search.list). 409 when not connected. |
+| `GET` | `/api/youtube/metrics?video_id&start_date&end_date` | Per-video preview `{data_status, period, metrics{views, estimated_minutes_watched, average_view_duration_seconds}, limitations, retrieved_at}`. Stores nothing. 422 future/inverted periods. |
+| `POST` | `/api/experiments/{id}/observations/from-youtube` | Fetch + append observation. `request_id`-idempotent. Rows present → `OBSERVED` (zeros kept as data); empty rows → `PARTIAL` with ambiguity note (NEVER fabricated zeros); provider errors → 4xx/5xx and NO observation. `source: "youtube_analytics_api"` or `"mock_youtube_analytics"`; `evidence_ref` JSON carries provider, data_status, video_id, period, retrieved_at, row_count. |
+
+Error codes on the analytics paths: 409 `not connected` · 401 `token invalid/revoked`
+(reconnect required) · 429 `quota_exceeded` · 404 `video_not_found` · 502
+`upstream_unavailable`. Live failures never fall back to mock data.
+
+Frontend: `YouTubePanel` + `DecisionSummary` inside the Creator page's experiment
+detail; client functions in `frontend/lib/api.ts` (`youtubeStatus`,
+`beginYouTubeAuthorization`, `youtubeVideos`, `youtubeMetrics`,
+`recordYouTubeObservation`, `disconnectYouTube`).

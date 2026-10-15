@@ -240,6 +240,17 @@ export interface AdjacentRunResult {
   geography: GeographyData | null;
   programme_bet: ProgrammeBetData | null;
   test_card: TestCardData | null;
+  /// Creator Mode additions (M13.9)
+  mode?: "creator";
+  /// M13.11 structured cultural investigation
+  investigation?: InvestigationData | null;
+  film?: {
+    title: string;
+    logline: string;
+    genre: string;
+    language: string;
+    release_goal: string;
+  };
   evidence: EvidenceData;
   city: string;
 }
@@ -276,4 +287,51 @@ export interface AppState {
   evidence: EvidenceData | null;
   runId: string | null;
   error: string | null;
+}
+/// M13.11 — the structured investigation account of one creator run.
+export interface InvestigationQuestion {
+  id: string;
+  question: string;
+  tool: string;
+  operation: string;
+  status: "answered" | "insufficient" | "unavailable";
+  evidence_refs: string[];
+  summary: string;
+}
+
+export interface InvestigationFinding {
+  kind: "FACT" | "INTERPRETATION";
+  statement: string;
+  evidence_refs: string[];
+}
+
+export interface InvestigationData {
+  investigation_id: string;
+  film: { title?: string; logline?: string; genre?: string; language?: string; release_goal?: string };
+  seeds: string[];
+  questions: InvestigationQuestion[];
+  findings: InvestigationFinding[];
+  hypotheses: {
+    primary: {
+      statement: string;
+      cohort_id: string | null;
+      world: string;
+      evidence_refs: string[];
+      supporting_evidence: string;
+      falsification: string;
+    } | null;
+    alternatives: { statement: string; world: string; evidence_refs: string[] }[];
+    rejected_worlds: { cohort_id: string | null; world: string | null; reason: string | null }[];
+  };
+  experiment: {
+    title: string;
+    action_plan: string;
+    success_criteria: string;
+    observation_window: string;
+    falsification: string;
+  } | null;
+  limitations: string[];
+  open_questions: string[];
+  data_status: string;
+  provenance: { call_ids: string[]; qloo_calls_used: number; run_data_status: string };
 }

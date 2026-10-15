@@ -30,3 +30,9 @@ docs/api_probe_results.local.json
 .idea/
 .vscode/
 *.swp
+
+# --- runtime experiment data (never commit) ---
+data/processed/experiments.db
+
+# --- runtime credentials (NEVER commit) ---
+data/runtime/
