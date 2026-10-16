@@ -14,6 +14,7 @@ import type {
   ProgrammeFilm,
   TestCardData,
   TasteDNA,
+  TraceRow,
 } from "@/types/adjacent";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
@@ -46,7 +47,7 @@ export interface RunResponse {
   stop_message: string | null;
   error: string | null;
   result: AdjacentRunResult | null;
-  trace: unknown[];
+  trace: TraceRow[];
 }
 
 export interface SSEEvent {

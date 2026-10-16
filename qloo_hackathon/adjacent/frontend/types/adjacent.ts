@@ -192,6 +192,27 @@ export interface EvidenceData {
   stop_message: string | null;
 }
 
+/** A redacted provenance row returned with a run; it may represent a call or logical operation. */
+export interface TraceRow {
+  call_id: string;
+  seq?: number;
+  tool?: string;
+  endpoint?: string;
+  method?: string;
+  params?: Record<string, unknown>;
+  started_at?: string;
+  duration_ms?: number | null;
+  status?: number | null;
+  result_count?: number | null;
+  cache?: string;
+  source?: string;
+  data_status?: string;
+  attempt?: number;
+  backfill_detected?: boolean;
+  error?: Record<string, unknown> | null;
+  notes?: string[];
+}
+
 // ─── Prediction Lifecycle (M13.6.1) ────────────────────────────────────────
 
 export type PredictionState =
