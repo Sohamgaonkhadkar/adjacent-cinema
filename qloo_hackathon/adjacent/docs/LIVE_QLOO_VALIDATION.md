@@ -1,9 +1,12 @@
-# Live Qloo Validation Report
+# Live Qloo Validation Report — historical snapshot
 
-> **Generated:** 6 October 2026  
-> **Mode:** LIVE (real Qloo)  
-> **Endpoint:** https://hackathon.api.qloo.com  
-> **Key fingerprint:** sha256:3a723d1101cb·len=45
+> **Historical observation:** generated 6 October 2026 against the live hackathon endpoint. It does **not** establish current credentials, connectivity, or current Qloo behavior. The key fingerprint has been removed from the documentation. See [`NEXT_LIVE_CHECKLIST.md`](NEXT_LIVE_CHECKLIST.md) and [`FINALIZATION_STATUS.md`](FINALIZATION_STATUS.md) for the current gate.
+>
+> The historical entity table includes a known mismatch: IMDb `tt0089853` / Taipei Story was associated with The Purple Rose of Cairo, and `tt7594358` / Perfect Days did not resolve. These observations remain historical; the offline regression tests are not live verification.
+
+> **Generated:** 6 October 2026
+> **Mode:** LIVE (real Qloo, at that time)
+> **Endpoint:** https://hackathon.api.qloo.com
 
 ---
 

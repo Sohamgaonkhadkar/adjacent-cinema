@@ -10,6 +10,7 @@ import {
   createCreatorRun,
   disconnectYouTube,
   getExperiment,
+  getHealth,
   getRun,
   listExperiments,
   recordYouTubeObservation,
@@ -21,6 +22,7 @@ import {
   type SynthesisStatus,
   youtubeStatus,
   youtubeVideos,
+  type BackendHealth,
   type EvaluationRecord,
   type ExperimentRecord,
   type ObservationRecord,
@@ -29,8 +31,9 @@ import {
   type YouTubeStatus,
   type YouTubeVideo,
 } from "@/lib/api";
-import type { AdjacentRunResult, InvestigationData } from "@/types/adjacent";
+import type { AdjacentRunResult, InvestigationData, ProgrammeFilm, TraceRow } from "@/types/adjacent";
 import AdjacencyGraph from "@/components/AdjacencyGraph";
+import { EvidenceReferences, EvidenceTraceLog } from "@/components/EvidenceTrace";
 
 // Small helpers shared with the cinema page's visual language.
 const mono = { fontFamily: "var(--mono)" } as const;
@@ -39,6 +42,25 @@ function statusLabel(status: string | null): string {
   if (status === "measured") return "MEASURED QLOO DATA";
   if (status === "fixture") return "FIXTURE DEMONSTRATION — NOT LIVE DATA";
   return "DATA STATUS UNKNOWN";
+}
+
+function statusTone(status: string | null) {
+  if (status === "measured") {
+    return { color: "#7aba8a", background: "rgba(62,122,76,0.12)", border: "rgba(62,122,76,0.3)" };
+  }
+  if (status === "fixture") {
+    return { color: "#c29a6e", background: "rgba(194,154,110,0.12)", border: "rgba(194,154,110,0.3)" };
+  }
+  return { color: "#a7a39b", background: "rgba(232,226,213,0.04)", border: "rgba(232,226,213,0.18)" };
+}
+
+function resolutionCallLabel(evidence: NonNullable<ProgrammeFilm["resolution_evidence"]>): string {
+  const callIds = [evidence.call_id, ...evidence.related_call_ids].filter(
+    (callId): callId is string => Boolean(callId),
+  );
+  return callIds.length
+    ? ` · CALL${callIds.length === 1 ? "" : "S"} ${callIds.join(", ")}`
+    : "";
 }
 
 export default function CreatorPage() {
@@ -64,11 +86,17 @@ export default function CreatorPage() {
   const [events, setEvents] = useState<SSEEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const stopStream = useRef<(() => void) | null>(null);
+  const experimentDetailRequest = useRef(0);
+  const publicDemoRef = useRef(false);
 
   // ── experiment state ─────────────────────────────────────────────────────
   const [experiments, setExperiments] = useState<ExperimentRecord[]>([]);
+  const [experimentsLoading, setExperimentsLoading] = useState(true);
+  const [experimentsError, setExperimentsError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<string | null>(null);
   const [openExpId, setOpenExpId] = useState<string | null>(null);
+  const [loadingExpId, setLoadingExpId] = useState<string | null>(null);
+  const [expDetailError, setExpDetailError] = useState<string | null>(null);
   const [expDetail, setExpDetail] = useState<{
     experiment: ExperimentRecord;
     observations: ObservationRecord[];
@@ -76,34 +104,54 @@ export default function CreatorPage() {
   } | null>(null);
   const [expError, setExpError] = useState<string | null>(null);
   const [ytBanner, setYtBanner] = useState<string | null>(null);
+  const [backendHealth, setBackendHealth] = useState<BackendHealth | null>(null);
 
   const result: AdjacentRunResult | null = (run?.result as AdjacentRunResult | null) ?? null;
+  const traceRows: TraceRow[] = run?.trace ?? [];
   const insufficient = run?.status === "insufficient";
   const failed = run?.status === "failed";
+  const resultTone = statusTone(failed || insufficient ? null : result?.data_status ?? null);
 
   const refreshExperiments = useCallback(async () => {
+    if (publicDemoRef.current) {
+      setExperiments([]);
+      setExperimentsError("Shared experiment storage is disabled in public-demo mode.");
+      setExperimentsLoading(false);
+      return;
+    }
+    setExperimentsLoading(true);
+    setExperimentsError(null);
     try {
       setExperiments(await listExperiments());
-    } catch {
-      /* experiments panel degrades silently; the analysis still works */
+    } catch (err) {
+      setExperimentsError(err instanceof Error ? err.message : "Could not load saved experiments");
+    } finally {
+      setExperimentsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    // Surface the YouTube OAuth callback result, then clean the URL.
-    const params = new URLSearchParams(window.location.search);
-    const yt = params.get("yt");
-    if (yt === "connected") setYtBanner("YouTube account connected. Pick a video inside a saved experiment to record real analytics.");
-    else if (yt === "denied") setYtBanner("Authorization was declined — no data was accessed. You can reconnect any time.");
-    else if (yt === "error") setYtBanner(`YouTube authorization failed (${params.get("reason") ?? "unknown reason"}). No connection was stored.`);
-    if (yt) {
-      window.history.replaceState({}, "", window.location.pathname);
-    }
-  }, []);
-
-  useEffect(() => {
-    refreshExperiments();
-    return () => stopStream.current?.();
+    let mounted = true;
+    getHealth()
+      .then((health) => {
+        if (!mounted) return;
+        publicDemoRef.current = health.public_demo === true;
+        setBackendHealth(health);
+        if (health.public_demo) {
+          setExperiments([]);
+          setExperimentsError("Shared experiment storage is disabled in public-demo mode.");
+          setExperimentsLoading(false);
+        } else {
+          void refreshExperiments();
+        }
+      })
+      .catch(() => {
+        if (mounted) void refreshExperiments();
+      });
+    return () => {
+      mounted = false;
+      stopStream.current?.();
+    };
   }, [refreshExperiments]);
 
   const watchRun = useCallback((id: string) => {
@@ -134,6 +182,44 @@ export default function CreatorPage() {
     );
   }, []);
 
+  const startDemoRun = useCallback(() => {
+    setError(null);
+    setRun(null);
+    setSaveState(null);
+    setFormError(null);
+    setRequestMode("fixture");
+    setAnalysing(true);
+    createCreatorDemoRun()
+      .then((r) => watchRun(r.run_id))
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Failed to start the fixture demo");
+        setAnalysing(false);
+      });
+  }, [watchRun]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const yt = params.get("yt");
+    const startFixture = params.get("demo") === "fixture";
+
+    if (yt === "connected") setYtBanner("YouTube account connected. Pick a video inside a saved experiment to record real analytics.");
+    else if (yt === "denied") setYtBanner("Authorization was declined — no data was accessed. You can reconnect any time.");
+    else if (yt === "error") setYtBanner(`YouTube authorization failed (${params.get("reason") ?? "unknown reason"}). No connection was stored.`);
+
+    if (yt || startFixture) {
+      params.delete("yt");
+      params.delete("demo");
+      if (yt) params.delete("reason");
+      const query = params.toString();
+      window.history.replaceState(
+        {},
+        "",
+        `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`
+      );
+    }
+    if (startFixture) startDemoRun();
+  }, [startDemoRun]);
+
   function handleAnalyse() {
     setError(null);
     setRun(null);
@@ -153,12 +239,29 @@ export default function CreatorPage() {
       return;
     }
     const themes = themesText.split(",").map((t) => t.trim()).filter(Boolean);
+    if (refs.length > 5) {
+      setFormError("Use at most five reference works.");
+      return;
+    }
+    if (themes.length > 5) {
+      setFormError("Use at most five themes.");
+      return;
+    }
+    if (themes.some((theme) => theme.length > 120)) {
+      setFormError("Each theme must be 120 characters or fewer.");
+      return;
+    }
+    if (refs.some((ref) => ref.title.length > 160)) {
+      setFormError("Each reference title must be 160 characters or fewer.");
+      return;
+    }
     if (refs.length === 0 && themes.length === 0) {
       setFormError("Add at least one reference work or theme — the analysis needs cultural seeds.");
       return;
     }
     setFormError(null);
     setRequestMode("live");
+    setAnalysing(true);
     createCreatorRun({
       title: title.trim(),
       logline: logline.trim(),
@@ -170,22 +273,18 @@ export default function CreatorPage() {
       city: city.trim(),
     })
       .then((r) => watchRun(r.run_id))
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to start analysis"));
-  }
-
-  function handleDemo() {
-    setError(null);
-    setRun(null);
-    setSaveState(null);
-    setFormError(null);
-    setRequestMode("fixture");
-    createCreatorDemoRun()
-      .then((r) => watchRun(r.run_id))
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to start the fixture demo"));
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Failed to start analysis");
+        setAnalysing(false);
+      });
   }
 
   async function handleSaveExperiment() {
     if (!result?.test_card || !runId) return;
+    if (backendHealth?.public_demo) {
+      setExpError("Saving shared experiments is disabled in public-demo mode. The run is temporary.");
+      return;
+    }
     setExpError(null);
     try {
       const card = result.test_card;
@@ -231,16 +330,33 @@ export default function CreatorPage() {
     }
   }
 
+  async function loadExperimentDetail(id: string) {
+    const requestId = ++experimentDetailRequest.current;
+    setLoadingExpId(id);
+    setExpDetailError(null);
+    try {
+      const detail = await getExperiment(id);
+      if (requestId === experimentDetailRequest.current) setExpDetail(detail);
+    } catch (err) {
+      if (requestId === experimentDetailRequest.current) {
+        setExpDetailError(err instanceof Error ? err.message : "Could not load experiment");
+      }
+    } finally {
+      if (requestId === experimentDetailRequest.current) setLoadingExpId(null);
+    }
+  }
+
   async function openExperiment(id: string) {
     setExpError(null);
-    setOpenExpId(id === openExpId ? null : id);
-    if (id !== openExpId) {
-      try {
-        setExpDetail(await getExperiment(id));
-      } catch (err) {
-        setExpError(err instanceof Error ? err.message : "Could not load experiment");
-      }
+    if (id === openExpId) {
+      experimentDetailRequest.current += 1;
+      setOpenExpId(null);
+      setLoadingExpId(null);
+      setExpDetailError(null);
+      return;
     }
+    setOpenExpId(id);
+    await loadExperimentDetail(id);
   }
 
   const bet = result?.programme_bet ?? null;
@@ -272,9 +388,21 @@ export default function CreatorPage() {
       {/* ── Step navigation (M13.15): the creator journey at a glance ────── */}
       <nav className="step-nav" aria-label="Creator journey">
         <a href="#intake">01 · Your film</a>
-        <a href="#analysis" className={result ? "" : "is-disabled"}>02 · Investigation</a>
-        <a href="#fingerprint" className={result?.cohorts ? "" : "is-disabled"}>03 · Fingerprint</a>
-        <a href="#brief" className={result?.investigation ? "" : "is-disabled"}>04 · Decision brief</a>
+        {result ? (
+          <a href="#analysis">02 · Investigation</a>
+        ) : (
+          <span className="is-disabled" aria-disabled="true">02 · Investigation</span>
+        )}
+        {result?.cohorts ? (
+          <a href="#fingerprint">03 · Fingerprint</a>
+        ) : (
+          <span className="is-disabled" aria-disabled="true">03 · Fingerprint</span>
+        )}
+        {result?.investigation ? (
+          <a href="#brief">04 · Decision brief</a>
+        ) : (
+          <span className="is-disabled" aria-disabled="true">04 · Decision brief</span>
+        )}
         <a href="#experiments" className="is-soft">05 · Experiments</a>
       </nav>
 
@@ -282,6 +410,19 @@ export default function CreatorPage() {
         {ytBanner && (
           <div className="evidence-panel" style={{ borderColor: "var(--amber)", marginBottom: 20 }}>
             <span className="mono-note">{ytBanner}</span>
+          </div>
+        )}
+        {backendHealth?.public_demo && (
+          <div className="evidence-panel" role="status" style={{ borderColor: "var(--amber)", marginBottom: 20 }}>
+            <strong className="mono-note" style={{ display: "block", color: "var(--amber)" }}>
+              PUBLIC DEMO MODE · FIXTURE DATA IS LABELLED
+            </strong>
+            <p style={{ color: "#b3aea4", fontSize: 12, lineHeight: 1.7, margin: "8px 0 0" }}>
+              {backendHealth.live_creator_available
+                ? "Bounded live Creator requests are enabled; upstream Qloo may still fail honestly."
+                : "Live Creator requests are disabled. Use the labelled offline fixture demo."}
+              {" Shared experiments, YouTube and synthesis are unavailable. Run records are temporary and expire."}
+            </p>
           </div>
         )}
         {/* ── 1. Film intake ─────────────────────────────────────────── */}
@@ -293,64 +434,74 @@ export default function CreatorPage() {
           <div style={{ display: "grid", gap: 12 }}>
             <label className="micro-label" style={{ display: "grid", gap: 6 }}>
               WORKING TITLE *
-              <input className="intake-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Neon Harbour" />
+              <input className="intake-input" maxLength={160} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Neon Harbour" />
             </label>
             <label className="micro-label" style={{ display: "grid", gap: 6 }}>
               LOGLINE / DESCRIPTION
-              <textarea className="intake-input" rows={2} value={logline} onChange={(e) => setLogline(e.target.value)} placeholder="A dockside night-shift romance told in three silent vignettes." />
+              <textarea className="intake-input" rows={2} maxLength={2000} value={logline} onChange={(e) => setLogline(e.target.value)} placeholder="A dockside night-shift romance told in three silent vignettes." />
             </label>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
               <label className="micro-label" style={{ display: "grid", gap: 6 }}>
                 GENRE
-                <input className="intake-input" value={genre} onChange={(e) => setGenre(e.target.value)} placeholder="drama" />
+                <input className="intake-input" maxLength={120} value={genre} onChange={(e) => setGenre(e.target.value)} placeholder="drama" />
               </label>
               <label className="micro-label" style={{ display: "grid", gap: 6 }}>
                 LANGUAGE
-                <input className="intake-input" value={language} onChange={(e) => setLanguage(e.target.value)} placeholder="English" />
+                <input className="intake-input" maxLength={80} value={language} onChange={(e) => setLanguage(e.target.value)} placeholder="English" />
               </label>
             </div>
             <label className="micro-label" style={{ display: "grid", gap: 6 }}>
               THEMES (COMMA-SEPARATED)
-              <input className="intake-input" value={themesText} onChange={(e) => setThemesText(e.target.value)} placeholder="isolation, night workers, coastal towns" />
+              <input className="intake-input" maxLength={604} value={themesText} onChange={(e) => setThemesText(e.target.value)} placeholder="isolation, night workers, coastal towns" />
             </label>
             <fieldset style={{ border: "1px solid var(--rule)", borderRadius: 6, padding: 12, margin: 0 }}>
               <legend className="micro-label" style={{ padding: "0 6px" }}>COMPARABLE WORKS / REFERENCES</legend>
               {referenceRows.map((row, i) => (
-                <div key={i} style={{ display: "grid", gridTemplateColumns: "3fr 1fr auto", gap: 8, marginBottom: 8 }}>
-                  <input className="intake-input" value={row.title} placeholder="Film, artist, book, game…"
+                <div key={i} style={{ display: "grid", gridTemplateColumns: "minmax(0, 3fr) minmax(72px, 1fr) auto", gap: 8, marginBottom: 8 }}>
+                  <input className="intake-input" maxLength={160} value={row.title} placeholder="Film, artist, book, game…"
+                    aria-label={`Reference work ${i + 1}`}
                     onChange={(e) => setReferenceRows((rows) => rows.map((r, ri) => (ri === i ? { ...r, title: e.target.value } : r)))} />
-                  <input className="intake-input" value={row.year} placeholder="year" inputMode="numeric"
+                  <input className="intake-input" maxLength={4} value={row.year} placeholder="year" inputMode="numeric"
+                    aria-label={`Reference year ${i + 1}`}
                     onChange={(e) => setReferenceRows((rows) => rows.map((r, ri) => (ri === i ? { ...r, year: e.target.value } : r)))} />
                   <button type="button" className="intake-sample-btn" aria-label={`Remove reference ${i + 1}`}
                     onClick={() => setReferenceRows((rows) => rows.filter((_, ri) => ri !== i))}>✕</button>
                 </div>
               ))}
-              <button type="button" className="intake-sample-btn"
-                onClick={() => setReferenceRows((rows) => [...rows, { title: "", year: "" }])}>
-                + Add reference
+              <button type="button" className="intake-sample-btn" disabled={referenceRows.length >= 5}
+                onClick={() => setReferenceRows((rows) => rows.length < 5 ? [...rows, { title: "", year: "" }] : rows)}>
+                {referenceRows.length >= 5 ? "5 reference limit reached" : "+ Add reference"}
               </button>
             </fieldset>
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
               <label className="micro-label" style={{ display: "grid", gap: 6 }}>
                 RELEASE GOAL
-                <input className="intake-input" value={releaseGoal} onChange={(e) => setReleaseGoal(e.target.value)} placeholder="YouTube premiere after festival window" />
+                <input className="intake-input" maxLength={300} value={releaseGoal} onChange={(e) => setReleaseGoal(e.target.value)} placeholder="YouTube premiere after festival window" />
               </label>
               <label className="micro-label" style={{ display: "grid", gap: 6 }}>
                 RELEASE LOCATION (OPTIONAL — ENABLES GEOGRAPHY)
-                <input className="intake-input" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Lisbon, Portugal" />
+                <input className="intake-input" maxLength={120} value={city} onChange={(e) => setCity(e.target.value)} placeholder="Lisbon, Portugal" />
               </label>
             </div>
-            {formError && <p className="intake-form-error">{formError}</p>}
+            {formError && <p className="intake-form-error" role="alert">{formError}</p>}
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <button onClick={handleAnalyse} disabled={analysing} className="intake-submit">
-                {analysing ? "Analysing…" : "Analyse cultural position"}
+              <button
+                onClick={handleAnalyse}
+                disabled={analysing || Boolean(backendHealth?.public_demo && !backendHealth.live_creator_available)}
+                className="intake-submit"
+              >
+                {analysing
+                  ? "Analysing…"
+                  : backendHealth?.public_demo && !backendHealth.live_creator_available
+                    ? "Live Creator disabled in public demo"
+                    : "Analyse cultural position"}
               </button>
-              <button onClick={handleDemo} disabled={analysing} className="intake-sample-btn">
+              <button onClick={startDemoRun} disabled={analysing} className="intake-sample-btn">
                 View labelled fixture demo (offline)
               </button>
             </div>
             {error && (
-              <div className="intake-form-error" style={{ padding: 12, border: "1px solid rgba(138,80,72,0.4)", borderRadius: 6 }}>
+              <div className="intake-form-error" role="alert" style={{ padding: 12, border: "1px solid rgba(138,80,72,0.4)", borderRadius: 6 }}>
                 <strong style={{ display: "block", marginBottom: 4, ...mono, fontSize: 9 }}>
                   ANALYSIS ERROR — YOUR ENTRIES ARE PRESERVED ABOVE
                 </strong>
@@ -358,7 +509,7 @@ export default function CreatorPage() {
               </div>
             )}
             {analysing && (
-              <div className="progress-rail" style={{ marginTop: 8 }}>
+              <div className="progress-rail" role="status" aria-live="polite" style={{ marginTop: 8 }}>
                 {events.filter((e) => e.event === "trace").slice(-5).map((e, i) => (
                   <div className="progress-line" key={i}>
                     <span className="phase">{String(e.data?.phase ?? "…")}</span>
@@ -377,10 +528,11 @@ export default function CreatorPage() {
             <p>{run.stop_message || "Qloo did not return enough verified signal for these seeds. Add more comparable works or themes — a refusal is an honest result."}</p>
           </div>
         )}
-        {run && !analysing && failed && !result && (
-          <div className="insufficient-panel" style={{ marginTop: 24, borderColor: "rgba(138,80,72,0.45)", background: "rgba(138,80,72,0.08)" }}>
+        {run && !analysing && failed && (
+          <div className="insufficient-panel" role="alert" style={{ marginTop: 24, borderColor: "rgba(138,80,72,0.45)", background: "rgba(138,80,72,0.08)" }}>
             <h3 style={{ color: "#d4a89e" }}>The analysis could not complete</h3>
-            <p>{run.error || run.stop_message || "Unknown failure."}</p>
+            <p>{run.error || run.stop_message || result?.evidence?.stop_message || "Unknown failure."}</p>
+            {result && <p>Any partial evidence below is not a completed positioning result.</p>}
           </div>
         )}
 
@@ -388,10 +540,14 @@ export default function CreatorPage() {
         {result && (
           <div style={{ marginTop: 32 }}>
             <div style={{ marginBottom: 20, padding: "10px 14px", borderRadius: 6,
-              background: result.data_status === "measured" ? "rgba(62,122,76,0.12)" : "rgba(194,154,110,0.12)",
-              border: `1px solid ${result.data_status === "measured" ? "rgba(62,122,76,0.3)" : "rgba(194,154,110,0.3)"}` }}>
-              <span style={{ ...mono, fontSize: 9, letterSpacing: "0.1em", color: result.data_status === "measured" ? "#7aba8a" : "#c29a6e" }}>
-                {statusLabel(result.data_status ?? null)}
+              background: resultTone.background,
+              border: `1px solid ${resultTone.border}` }}>
+              <span style={{ ...mono, fontSize: 9, letterSpacing: "0.1em", color: resultTone.color }}>
+                {failed
+                  ? `ANALYSIS FAILED · ${statusLabel(result.data_status ?? null)} · PARTIAL OUTPUT ONLY`
+                  : insufficient
+                    ? `INSUFFICIENT EVIDENCE · ${statusLabel(result.data_status ?? null)}`
+                    : statusLabel(result.data_status ?? null)}
                 {requestMode === "fixture" ? " · FIXTURE DEMO REQUESTED" : ""}
               </span>
             </div>
@@ -408,6 +564,21 @@ export default function CreatorPage() {
                     <span>{item.title}</span>
                     {item.year != null && <span style={{ color: "#88837a" }}>({item.year})</span>}
                     {!item.resolved && <span className="mono-note">UNRESOLVED — EXCLUDED FROM EVIDENCE</span>}
+                    {item.resolution_evidence && (
+                      <span className="mono-note" style={{ color: item.resolved ? "#7aba8a" : "#c29a6e" }}>
+                        {item.resolution_evidence.match_status}
+                        {item.resolution_evidence.match_method ? ` · VIA ${item.resolution_evidence.match_method.toUpperCase()}` : ""}
+                        {item.resolution_evidence.qloo_name ? ` · QLOO ${item.resolution_evidence.qloo_name}` : ""}
+                        {item.resolution_evidence.qloo_year != null ? ` (${item.resolution_evidence.qloo_year})` : ""}
+                        {item.resolution_evidence.qloo_entity_id ? ` · ENTITY ${item.resolution_evidence.qloo_entity_id}` : ""}
+                        {resolutionCallLabel(item.resolution_evidence)}
+                      </span>
+                    )}
+                    {(item.resolution_evidence?.verification_notes.length ?? 0) > 0 && (
+                      <span className="mono-note" style={{ color: "#a7a39b" }}>
+                        {item.resolution_evidence?.verification_notes.join(" · ")}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -444,6 +615,7 @@ export default function CreatorPage() {
                   cohorts={result.cohorts}
                   bet={result.programme_bet}
                   dataStatus={result.data_status}
+                  traceRows={traceRows}
                 />
               </div>
             )}
@@ -509,12 +681,14 @@ export default function CreatorPage() {
               </div>
             )}
 
-            {result.investigation && <InvestigationPanel inv={result.investigation} />}
+            {result.investigation && <InvestigationPanel inv={result.investigation} traceRows={traceRows} />}
+            {!result.investigation && traceRows.length > 0 && <EvidenceTraceLog rows={traceRows} />}
             {result.investigation && runId && (
               <SynthesisBriefPanel
                 runId={runId}
                 filmTitle={(result.film as { title?: string } | undefined)?.title ?? title}
                 inv={result.investigation}
+                traceRows={traceRows}
                 onSaved={(msg) => { setSaveState(msg); refreshExperiments(); }}
               />
             )}
@@ -524,7 +698,7 @@ export default function CreatorPage() {
               <div style={{ marginBottom: 24, padding: 24, background: "rgba(194,154,110,0.06)", border: "1px solid rgba(194,154,110,0.25)", borderRadius: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
                   <span className="eyebrow" style={{ color: "var(--amber)" }}>&#127919; POSITIONING BET</span>
-                  <span style={{ ...mono, fontSize: 8, color: bet.data_status === "measured" ? "#7aba8a" : "#c29a6e" }}>
+                  <span style={{ ...mono, fontSize: 8, color: statusTone(bet.data_status ?? null).color }}>
                     DATA STATUS: {String(bet.data_status ?? "unknown").toUpperCase()}
                   </span>
                 </div>
@@ -538,6 +712,12 @@ export default function CreatorPage() {
                   {bet.primary?.cohort_id ? ` · built from ranked cohort ${bet.primary.cohort_id} above` : ""}
                 </p>
                 <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, marginBottom: 12 }}>{bet.why}</p>
+                {bet.primary?.call_id && (
+                  <div style={{ marginBottom: 12 }}>
+                    <span className="micro-label" style={{ marginBottom: 4 }}>PRIMARY EVIDENCE TRACE</span>
+                    <EvidenceReferences refs={[bet.primary.call_id]} traceRows={traceRows} />
+                  </div>
+                )}
                 {bet.cultural_bridge && (
                   <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, marginBottom: 12 }}>
                     <span className="micro-label" style={{ display: "inline", marginRight: 8 }}>BRIDGE</span>{bet.cultural_bridge}
@@ -594,15 +774,21 @@ export default function CreatorPage() {
                     <span className="micro-label" style={{ marginBottom: 6, display: "block" }}>PROVENANCE</span>
                     <div style={{ display: "grid", gap: 4 }}>
                       {Object.entries(card.provenance ?? {}).map(([k, v]) => (
-                        <div key={k} className="mono-note">{k.toUpperCase()}: {String(v ?? "—")}</div>
+                        <div key={k} className="mono-note">
+                          {k.toUpperCase()}: {k.endsWith("call_id") && typeof v === "string"
+                            ? <EvidenceReferences refs={[v]} traceRows={traceRows} />
+                            : String(v ?? "—")}
+                        </div>
                       ))}
                     </div>
                   </div>
                 </div>
                 <div style={{ marginTop: 24, paddingTop: 18, borderTop: "1px solid var(--rule)", display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-                  <button onClick={handleSaveExperiment} className="intake-submit">Save as planned experiment</button>
-                  {saveState && <span className="mono-note">{saveState}</span>}
-                  {expError && <span className="intake-form-error">{expError}</span>}
+                  <button onClick={handleSaveExperiment} className="intake-submit" disabled={backendHealth?.public_demo}>
+                    {backendHealth?.public_demo ? "Saving disabled in public demo" : "Save as planned experiment"}
+                  </button>
+                  {saveState && <span className="mono-note" role="status" aria-live="polite">{saveState}</span>}
+                  {expError && <span className="intake-form-error" role="alert">{expError}</span>}
                 </div>
               </article>
             )}
@@ -613,22 +799,49 @@ export default function CreatorPage() {
         <div className="evidence-panel" style={{ marginTop: 32 }}>
           <h3 id="experiments">Your experiments</h3>
           <span className="mono-note" style={{ display: "block", marginBottom: 14 }}>
-            SAVED DECISIONS · REAL OBSERVATIONS · HONEST EVALUATIONS · HISTORY IS NEVER REWRITTEN
+            PLANNED DECISIONS · SAVING DOES NOT EXECUTE · REAL OBSERVATIONS · HONEST EVALUATIONS · HISTORY IS NEVER REWRITTEN
           </span>
-          {experiments.length === 0 ? (
-            <p style={{ color: "#88837a", fontSize: 13, lineHeight: 1.8 }}>
-              Nothing saved yet. Run an analysis (or the labelled fixture demo) and save its test
-              card as a planned experiment. After release, record what genuinely happened —
-              observations stay linked to the decision that produced them.
+          {backendHealth?.public_demo ? (
+            <p role="status" style={{ color: "#88837a", fontSize: 13, lineHeight: 1.8 }}>
+              Shared experiment history is intentionally unavailable in this public demo; no shared records are read or written.
             </p>
-          ) : (
+          ) : experimentsError && (
+            <div role="alert" className="intake-form-error" style={{ marginBottom: 12 }}>
+              <p style={{ margin: 0 }}>
+                The Research Log could not be loaded. {experiments.length > 0
+                  ? "Showing the last successfully loaded records."
+                  : "Saved records have not been checked, so this is not an empty-log result."}
+                {` ${experimentsError}`}
+              </p>
+              <button type="button" className="intake-sample-btn" onClick={() => void refreshExperiments()} disabled={experimentsLoading} style={{ marginTop: 8 }}>
+                {experimentsLoading ? "Retrying…" : "Retry Research Log"}
+              </button>
+            </div>
+          )}
+          {experimentsLoading && experiments.length === 0 && (
+            <p role="status" aria-live="polite" style={{ color: "#88837a", fontSize: 13 }}>
+              Loading saved experiments…
+            </p>
+          )}
+          {experimentsLoading && experiments.length > 0 && (
+            <p role="status" aria-live="polite" className="mono-note">Refreshing the Research Log…</p>
+          )}
+          {!experimentsLoading && !experimentsError && experiments.length === 0 && (
+            <p style={{ color: "#88837a", fontSize: 13, lineHeight: 1.8 }}>
+              No saved experiments were returned. Run an analysis (or the labelled fixture demo)
+              and explicitly save its test card as a planned experiment. After release, record what
+              genuinely happened — saving a plan does not execute it.
+            </p>
+          )}
+          {experiments.length > 0 && (
             <div style={{ display: "grid", gap: 10 }}>
               {experiments.map((exp) => (
                 <div key={exp.experiment_id} style={{ border: "1px solid var(--rule)", borderRadius: 7, padding: "12px 14px" }}>
                   <button
                     onClick={() => openExperiment(exp.experiment_id)}
                     aria-expanded={openExpId === exp.experiment_id}
-                    style={{ all: "unset", cursor: "pointer", display: "block", width: "100%" }}
+                    aria-controls={`experiment-detail-${exp.experiment_id}`}
+                    style={{ cursor: "pointer", display: "block", width: "100%", textAlign: "left", padding: 0, border: 0, background: "transparent", color: "inherit", font: "inherit" }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                       <span style={{ color: "#e9e3d8", fontSize: 14 }}>{exp.film_title}</span>
@@ -642,15 +855,38 @@ export default function CreatorPage() {
                       {exp.hypothesis.slice(0, 160)}{exp.hypothesis.length > 160 ? "…" : ""}
                     </p>
                   </button>
-                  {openExpId === exp.experiment_id && expDetail && expDetail.experiment.experiment_id === exp.experiment_id && (
-                    <ExperimentDetail
-                      detail={expDetail}
-                      onChanged={async () => {
-                        setExpDetail(await getExperiment(exp.experiment_id));
-                        refreshExperiments();
-                      }}
-                    />
-                  )}
+                  <div
+                    id={`experiment-detail-${exp.experiment_id}`}
+                    hidden={openExpId !== exp.experiment_id}
+                  >
+                    {openExpId === exp.experiment_id && (
+                      <>
+                        {loadingExpId === exp.experiment_id && (
+                          <p role="status" aria-live="polite" className="mono-note" style={{ marginTop: 10 }}>
+                            Loading the saved decision, observations, and evaluation history…
+                          </p>
+                        )}
+                        {expDetailError && (
+                          <div role="alert" className="intake-form-error" style={{ marginTop: 10 }}>
+                            Could not load this experiment: {expDetailError}
+                            <button type="button" className="intake-sample-btn" onClick={() => void loadExperimentDetail(exp.experiment_id)} style={{ marginTop: 8 }}>
+                              Retry loading this experiment
+                            </button>
+                          </div>
+                        )}
+                        {expDetail && expDetail.experiment.experiment_id === exp.experiment_id && (
+                          <ExperimentDetail
+                            key={exp.experiment_id}
+                            detail={expDetail}
+                            onChanged={async () => {
+                              setExpDetail(await getExperiment(exp.experiment_id));
+                              refreshExperiments();
+                            }}
+                          />
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -673,6 +909,41 @@ function ExperimentDetail({
   const { experiment, observations, evaluations } = detail;
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [sourceTrace, setSourceTrace] = useState<TraceRow[]>([]);
+  const [sourceTraceLoading, setSourceTraceLoading] = useState(Boolean(experiment.source_run_id));
+  const [sourceTraceError, setSourceTraceError] = useState<string | null>(
+    experiment.source_run_id ? null : "No source run reference was saved with this experiment."
+  );
+  const sourceTraceRequest = useRef(0);
+  const sourceTraceScope = `research-${experiment.experiment_id}`;
+
+  const loadSourceTrace = useCallback(async () => {
+    const requestId = ++sourceTraceRequest.current;
+    if (!experiment.source_run_id) {
+      setSourceTrace([]);
+      setSourceTraceLoading(false);
+      setSourceTraceError("No source run reference was saved with this experiment.");
+      return;
+    }
+    setSourceTrace([]);
+    setSourceTraceLoading(true);
+    setSourceTraceError(null);
+    try {
+      const runResponse = await getRun(experiment.source_run_id);
+      if (requestId === sourceTraceRequest.current) setSourceTrace(runResponse.trace ?? []);
+    } catch (err) {
+      if (requestId === sourceTraceRequest.current) {
+        setSourceTraceError(err instanceof Error ? err.message : "Could not load the source run trace");
+      }
+    } finally {
+      if (requestId === sourceTraceRequest.current) setSourceTraceLoading(false);
+    }
+  }, [experiment.source_run_id]);
+
+  useEffect(() => {
+    void loadSourceTrace();
+    return () => { sourceTraceRequest.current += 1; };
+  }, [loadSourceTrace]);
 
   // observation form
   const [oKind, setOKind] = useState("ANALYTICS");
@@ -743,8 +1014,13 @@ function ExperimentDetail({
   return (
     <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--rule)", display: "grid", gap: 18 }}>
       <div>
-        <span className="micro-label">SAVED DECISION (SNAPSHOT — NEVER REWRITTEN)</span>
+        <span className="micro-label">SAVED DECISION (SNAPSHOT — NEVER REWRITTEN · NOT EXECUTED)</span>
         <p style={{ color: "#b3aea4", fontSize: 12, lineHeight: 1.7, margin: "6px 0 0" }}>{experiment.hypothesis}</p>
+        {experiment.action_plan && (
+          <p style={{ color: "#b3aea4", fontSize: 12, lineHeight: 1.7, margin: "6px 0 0" }}>
+            <span className="mono-note">PLANNED ACTION: </span>{experiment.action_plan}
+          </p>
+        )}
         {experiment.success_criteria && (
           <p style={{ color: "#8a847a", fontSize: 12, lineHeight: 1.7, margin: "6px 0 0" }}>
             <span className="mono-note">SUCCESS CRITERIA: </span>{experiment.success_criteria}
@@ -760,7 +1036,33 @@ function ExperimentDetail({
         </p>
       </div>
 
-      <DecisionSummary detail={detail} />
+      <DecisionSummary
+        detail={detail}
+        traceRows={sourceTrace}
+        traceScope={sourceTraceScope}
+        traceAvailability={sourceTraceLoading ? "loading" : sourceTraceError ? "unavailable" : undefined}
+      />
+      {sourceTraceLoading && (
+        <p role="status" aria-live="polite" className="mono-note">
+          Loading the source run&apos;s recorded evidence trace…
+        </p>
+      )}
+      {sourceTraceError && (
+        <div role="status" className="evidence-trace-empty">
+          <p style={{ margin: 0 }}>
+            The source run trace is unavailable here. Saved call IDs remain identifiers, not independently inspectable evidence in this view.
+            {` ${sourceTraceError}`}
+          </p>
+          {experiment.source_run_id && (
+            <button type="button" className="intake-sample-btn" onClick={() => void loadSourceTrace()} style={{ marginTop: 8 }}>
+              Retry source trace
+            </button>
+          )}
+        </div>
+      )}
+      {!sourceTraceLoading && !sourceTraceError && (
+        <EvidenceTraceLog rows={sourceTrace} scope={sourceTraceScope} />
+      )}
 
       {/* observations */}
       <div>
@@ -780,7 +1082,7 @@ function ExperimentDetail({
             </div>
           ))}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
           <select className="intake-input" value={oKind} onChange={(e) => setOKind(e.target.value)} aria-label="Observation kind">
             <option value="ANALYTICS">Analytics</option>
             <option value="SCREENING">Screening</option>
@@ -794,7 +1096,7 @@ function ExperimentDetail({
             <option value="UNAVAILABLE">Unavailable</option>
             <option value="FAILED">Measurement failed</option>
           </select>
-          <input className="intake-input" value={oDate} onChange={(e) => setODate(e.target.value)} placeholder="observed on (YYYY-MM-DD)" aria-label="Observation date" />
+          <input className="intake-input" type="date" value={oDate} onChange={(e) => setODate(e.target.value)} aria-label="Observation date" />
           <input className="intake-input" value={oViews} onChange={(e) => setOViews(e.target.value)} placeholder="views (leave empty if unknown)" inputMode="numeric" aria-label="Views" />
           <input className="intake-input" value={oWatchMin} onChange={(e) => setOWatchMin(e.target.value)} placeholder="watch time minutes (optional)" inputMode="numeric" aria-label="Watch time" />
           <input className="intake-input" value={oInterp} onChange={(e) => setOInterp(e.target.value)} placeholder="your interpretation (kept separate)" aria-label="Interpretation" />
@@ -820,7 +1122,7 @@ function ExperimentDetail({
             </div>
           ))}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 8 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8 }}>
           <select className="intake-input" value={eOutcome} onChange={(e) => setEOutcome(e.target.value as typeof eOutcome)} aria-label="Evaluation outcome">
             <option value="SUPPORTED">Supported</option>
             <option value="CONTRADICTED">Contradicted</option>
@@ -834,7 +1136,7 @@ function ExperimentDetail({
         </button>
       </div>
 
-      {msg && <p className="mono-note">{msg}</p>}
+      {msg && <p className="mono-note" role="status" aria-live="polite">{msg}</p>}
     </div>
   );
 }
@@ -857,14 +1159,49 @@ function parseEvidenceRef(raw: string | null): {
 
 function DecisionSummary({
   detail,
+  traceRows,
+  traceScope,
+  traceAvailability,
 }: {
   detail: { experiment: ExperimentRecord; observations: ObservationRecord[]; evaluations: EvaluationRecord[] };
+  traceRows: TraceRow[];
+  traceScope: string;
+  traceAvailability?: "loading" | "unavailable";
 }) {
   const { experiment, observations, evaluations } = detail;
   const bet = experiment.source_bet as {
     primary?: { cohort_id?: string; cohort_name?: string };
   } | null;
-  const current = [...evaluations].reverse().find((e) => !e.supersedes_id) ?? evaluations[evaluations.length - 1] ?? null;
+  const provenance = experiment.provenance ?? {};
+  const synthesisSnapshot =
+    provenance.synthesis_snapshot && typeof provenance.synthesis_snapshot === "object" && !Array.isArray(provenance.synthesis_snapshot)
+      ? provenance.synthesis_snapshot as Record<string, unknown>
+      : null;
+  const adoptedProposal =
+    provenance.adopted_proposal && typeof provenance.adopted_proposal === "object" && !Array.isArray(provenance.adopted_proposal)
+      ? provenance.adopted_proposal as Record<string, unknown>
+      : null;
+  const readRefs = (value: unknown): string[] =>
+    Array.isArray(value) ? value.filter((ref): ref is string => typeof ref === "string") : [];
+  const evidenceRefs = [...new Set([
+    ...readRefs(provenance.evidence_refs),
+    ...readRefs(synthesisSnapshot?.evidence_refs),
+  ])];
+  const unresolvedEvidenceRefs = [...new Set([
+    ...readRefs(provenance.unresolved_evidence_refs),
+    ...readRefs(synthesisSnapshot?.unresolved_evidence_refs),
+  ])];
+  const creatorEdits = Array.isArray(provenance.creator_edits)
+    ? provenance.creator_edits.filter((field): field is string => typeof field === "string")
+    : [];
+  const originalHypothesis = typeof adoptedProposal?.hypothesis === "string" ? adoptedProposal.hypothesis : null;
+  const originalActionPlan = typeof adoptedProposal?.action_plan === "string" ? adoptedProposal.action_plan : null;
+  const originalSuccessCriteria = typeof adoptedProposal?.success_criteria === "string" ? adoptedProposal.success_criteria : null;
+  const originalObservationWindow = typeof adoptedProposal?.observation_window === "string" ? adoptedProposal.observation_window : null;
+  const synthesisMethod = typeof synthesisSnapshot?.method === "string" ? synthesisSnapshot.method : null;
+  // Evaluations append as a superseding chain; the last record is current and
+  // earlier records remain in the history below rather than being re-selected.
+  const current = evaluations.length > 0 ? evaluations[evaluations.length - 1] : null;
   const youtubeObs = observations.filter((o) =>
     (o.source ?? "").includes("youtube")
   );
@@ -878,13 +1215,52 @@ function DecisionSummary({
       <span className="micro-label">DECISION SUMMARY — HYPOTHESIZED · OBSERVED · CONCLUDED</span>
       <dl style={{ display: "grid", gap: 8, margin: "10px 0 0", fontSize: 12 }}>
         <div>
-          <dt className="mono-note" style={{ color: "#8a847a" }}>HYPOTHESIZED (cultural evidence, snapshot)</dt>
+          <dt className="mono-note" style={{ color: "#8a847a" }}>HYPOTHESIZED (SAVED PLAN — NOT EXECUTED)</dt>
           <dd style={{ color: "#b3aea4", margin: "2px 0 0", lineHeight: 1.6 }}>
             {experiment.hypothesis}
             {bet?.primary?.cohort_name && (
               <span className="mono-note"> · BET COHORT: {bet.primary.cohort_name}</span>
             )}
             <span className="mono-note"> · EVIDENCE: {String(experiment.data_status).toUpperCase()}</span>
+          </dd>
+        </div>
+        {adoptedProposal && (
+          <div style={{ marginLeft: 10, paddingLeft: 10, borderLeft: "1px solid var(--rule)" }}>
+            <dt className="mono-note" style={{ color: "#8a847a" }}>ORIGINAL PROPOSAL (SAVED SEPARATELY FROM YOUR EDITS)</dt>
+            <dd style={{ color: "#b3aea4", margin: "2px 0 0", lineHeight: 1.6 }}>
+              {originalHypothesis && <div>Original hypothesis: {originalHypothesis}</div>}
+              {originalActionPlan && <div>Original action plan: {originalActionPlan}</div>}
+              {originalSuccessCriteria && <div>Original success criteria: {originalSuccessCriteria}</div>}
+              {originalObservationWindow && <div>Original observation window: {originalObservationWindow}</div>}
+              <div className="mono-note">
+                CREATOR-EDITED FIELDS: {creatorEdits.length > 0
+                  ? creatorEdits.join(", ")
+                  : "none recorded for hypothesis, action plan, success criteria, or observation window"}
+                {synthesisMethod ? ` · SYNTHESIS METHOD: ${synthesisMethod}` : ""}
+              </div>
+            </dd>
+          </div>
+        )}
+        <div>
+          <dt className="mono-note" style={{ color: "#8a847a" }}>SAVED EVIDENCE REFERENCES</dt>
+          <dd className="mono-note" style={{ color: "#b3aea4", margin: "2px 0 0", lineHeight: 1.6 }}>
+            {experiment.source_run_id && <div>SOURCE RUN: {experiment.source_run_id}</div>}
+              {evidenceRefs.length > 0
+                ? <div>CALL IDS: <EvidenceReferences
+                    refs={evidenceRefs}
+                    traceRows={traceRows}
+                    scope={traceScope}
+                    availability={traceAvailability}
+                  /></div>
+                : <div>No call references are present in this saved provenance.</div>}
+            {typeof synthesisSnapshot?.evidence_ref_status === "string" && (
+              <div>REFERENCE STATUS: {synthesisSnapshot.evidence_ref_status}</div>
+            )}
+            {unresolvedEvidenceRefs.length > 0 && (
+              <div className="evidence-trace-unresolved">
+                UNRESOLVED — NOT STORED AS PROOF: {unresolvedEvidenceRefs.join(", ")}
+              </div>
+            )}
           </dd>
         </div>
         <div>
@@ -939,7 +1315,12 @@ function DecisionSummary({
 
 function YouTubePanel({ experimentId, onChanged }: { experimentId: string; onChanged: () => Promise<void> }) {
   const [status, setStatus] = useState<YouTubeStatus | null>(null);
+  const [statusLoading, setStatusLoading] = useState(true);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const [videos, setVideos] = useState<YouTubeVideo[] | null>(null);
+  const [videosLoading, setVideosLoading] = useState(false);
+  const [videosError, setVideosError] = useState<string | null>(null);
+  const [videosNote, setVideosNote] = useState<string | null>(null);
   const [videoId, setVideoId] = useState("");
   const today = new Date().toISOString().slice(0, 10);
   const twoWeeksAgo = new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10);
@@ -948,28 +1329,65 @@ function YouTubePanel({ experimentId, onChanged }: { experimentId: string; onCha
   const [variantLabel, setVariantLabel] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const statusRequest = useRef(0);
+  const videosRequest = useRef(0);
 
   const loadStatus = useCallback(async () => {
+    const requestId = ++statusRequest.current;
+    setStatusLoading(true);
+    setStatus(null);
+    setStatusError(null);
     try {
-      setStatus(await youtubeStatus());
-    } catch {
-      setStatus(null);
+      const nextStatus = await youtubeStatus();
+      if (requestId === statusRequest.current) setStatus(nextStatus);
+    } catch (err) {
+      if (requestId === statusRequest.current) {
+        setStatus(null);
+        setStatusError(err instanceof Error ? err.message : "Could not load YouTube connection status");
+      }
+    } finally {
+      if (requestId === statusRequest.current) setStatusLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadStatus();
+    void loadStatus();
+    return () => { statusRequest.current += 1; };
   }, [loadStatus]);
 
-  useEffect(() => {
-    if (!status?.connected && status?.mode !== "mock") {
+  const loadVideos = useCallback(async () => {
+    const requestId = ++videosRequest.current;
+    if (!status?.connected) {
       setVideos(null);
+      setVideosLoading(false);
+      setVideosError(null);
+      setVideosNote(null);
       return;
     }
-    youtubeVideos()
-      .then((res) => setVideos(res.videos))
-      .catch(() => setVideos([]));
+    setVideos(null);
+    setVideosLoading(true);
+    setVideosError(null);
+    setVideosNote(null);
+    try {
+      const response = await youtubeVideos();
+      if (requestId === videosRequest.current) {
+        setVideos(response.videos);
+        setVideosNote(response.note || null);
+      }
+    } catch (err) {
+      if (requestId === videosRequest.current) {
+        setVideos(null);
+        setVideosError(err instanceof Error ? err.message : "Could not load uploads");
+      }
+    } finally {
+      if (requestId === videosRequest.current) setVideosLoading(false);
+    }
   }, [status?.connected, status?.mode]);
+
+  useEffect(() => {
+    void loadVideos();
+    return () => { videosRequest.current += 1; };
+  }, [loadVideos]);
 
   async function record() {
     if (!videoId) {
@@ -1020,23 +1438,45 @@ function YouTubePanel({ experimentId, onChanged }: { experimentId: string; onCha
 
   return (
     <div style={{ marginTop: 14, border: "1px dashed var(--rule)", borderRadius: 8, padding: "12px 14px" }}>
-      <span className="micro-label">YOUTUBE ANALYTICS (OPTIONAL · CREATOR-AUTHORIZED)</span>
-
-      {status?.mode === "mock" && (
+      {statusLoading && (
+        <p role="status" aria-live="polite" className="mono-note" style={{ margin: "6px 0 0" }}>
+          Checking YouTube connection status…
+        </p>
+      )}
+      {!statusLoading && statusError && (
+        <div role="alert" className="intake-form-error" style={{ marginTop: 8 }}>
+          Connection status could not be checked. No authorization state is assumed. {statusError}
+          <button type="button" className="intake-sample-btn" onClick={() => void loadStatus()} style={{ marginTop: 8 }}>
+            Retry YouTube status
+          </button>
+        </div>
+      )}
+      {!statusLoading && !statusError && !status && (
+        <p role="status" className="mono-note" style={{ marginTop: 8 }}>
+          No YouTube connection status was returned; no authorization action is offered.
+        </p>
+      )}
+      {!statusLoading && !statusError && status?.mode === "mock" && (
         <p className="mono-note" style={{ color: "#c29a6e", margin: "6px 0 0" }}>
           MOCK MODE — DEMO DATA, NOT REAL YOUTUBE ANALYTICS
         </p>
       )}
 
-      {!status?.connected && status?.mode !== "mock" && (
+      {!statusLoading && !statusError && status && !status.connected && status.mode !== "mock" && (
         <>
-          <p style={{ color: "#b3aea4", fontSize: 12, lineHeight: 1.6, margin: "6px 0 8px" }}>
-            Connect your own YouTube channel (read-only: youtube.readonly +
-            yt-analytics.readonly) to attach real per-video analytics to this
-            experiment. Nothing is accessed without your explicit consent, and
-            disconnecting deletes the stored data.
-          </p>
-          {status?.mode === "not_configured" ? (
+          {!status.disabled_reason && (
+            <p style={{ color: "#b3aea4", fontSize: 12, lineHeight: 1.6, margin: "6px 0 8px" }}>
+              Connect your own YouTube channel (read-only: youtube.readonly +
+              yt-analytics.readonly) to attach real per-video analytics to this
+              experiment. Nothing is accessed without your explicit consent, and
+              disconnecting deletes the stored data.
+            </p>
+          )}
+          {status.disabled_reason ? (
+            <p role="status" className="mono-note" style={{ color: "#8a847a" }}>
+              {status.disabled_reason}
+            </p>
+          ) : status.mode === "not_configured" ? (
             <p className="mono-note" style={{ color: "#8a847a" }}>
               OAUTH NOT CONFIGURED ON THIS DEPLOYMENT — SEE
               DOCS/M13_10_YOUTUBE_ANALYTICS_INTEGRATION.MD
@@ -1049,7 +1489,7 @@ function YouTubePanel({ experimentId, onChanged }: { experimentId: string; onCha
         </>
       )}
 
-      {status?.connected && (
+      {!statusLoading && !statusError && status?.connected && (
         <>
           <p className="mono-note" style={{ margin: "6px 0 8px" }}>
             CONNECTED: {status.connection?.channel_title ?? "channel"} ·{" "}
@@ -1058,7 +1498,7 @@ function YouTubePanel({ experimentId, onChanged }: { experimentId: string; onCha
               ? " · REAUTHORIZATION RECOMMENDED (30-DAY POLICY)"
               : ""}
           </p>
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
             <select
               className="intake-input"
               value={videoId}
@@ -1066,7 +1506,15 @@ function YouTubePanel({ experimentId, onChanged }: { experimentId: string; onCha
               aria-label="Published video"
             >
               <option value="">
-                {videos === null ? "Loading uploads…" : "Select the published video…"}
+                {videosLoading
+                  ? "Loading uploads…"
+                  : videosError
+                    ? "Uploads unavailable"
+                    : videos?.length
+                      ? "Select the published video…"
+                      : videos
+                        ? "No uploads returned"
+                        : "Uploads not checked"}
               </option>
               {(videos ?? []).map((v) => (
                 <option key={v.video_id} value={v.video_id}>
@@ -1089,6 +1537,22 @@ function YouTubePanel({ experimentId, onChanged }: { experimentId: string; onCha
               aria-label="Period end"
             />
           </div>
+          {videosError && (
+            <div role="alert" className="intake-form-error" style={{ marginTop: 8 }}>
+              Could not load uploads: {videosError}
+              <button type="button" className="intake-sample-btn" onClick={() => void loadVideos()} style={{ marginTop: 8 }}>
+                Retry uploads
+              </button>
+            </div>
+          )}
+          {!videosLoading && !videosError && videos?.length === 0 && (
+            <p role="status" className="mono-note" style={{ marginTop: 6 }}>
+              {videosNote ?? "No uploads were returned for this channel."}
+            </p>
+          )}
+          {videosNote && videos?.length !== 0 && (
+            <p className="mono-note" style={{ marginTop: 6 }}>{videosNote}</p>
+          )}
           <input
             className="intake-input"
             style={{ marginTop: 8 }}
@@ -1098,7 +1562,7 @@ function YouTubePanel({ experimentId, onChanged }: { experimentId: string; onCha
             aria-label="Variant label"
           />
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <button className="intake-sample-btn" onClick={record} disabled={busy}>
+            <button className="intake-sample-btn" onClick={record} disabled={busy || videosLoading || Boolean(videosError) || !videoId}>
               Fetch analytics &amp; record observation
             </button>
             <button
@@ -1117,7 +1581,7 @@ function YouTubePanel({ experimentId, onChanged }: { experimentId: string; onCha
         </>
       )}
 
-      {msg && <p className="mono-note" style={{ marginTop: 8 }}>{msg}</p>}
+      {msg && <p className="mono-note" role="status" aria-live="polite" style={{ marginTop: 8 }}>{msg}</p>}
     </div>
   );
 }
@@ -1128,14 +1592,18 @@ function SynthesisBriefPanel({
   runId,
   filmTitle,
   inv,
+  traceRows,
   onSaved,
 }: {
   runId: string;
   filmTitle: string;
   inv: InvestigationData;
+  traceRows: TraceRow[];
   onSaved: (msg: string) => void;
 }) {
   const [status, setStatus] = useState<SynthesisStatus | null>(null);
+  const [statusLoading, setStatusLoading] = useState(true);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const [brief, setBrief] = useState<SynthesisResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1151,11 +1619,22 @@ function SynthesisBriefPanel({
 
   useEffect(() => {
     let cancelled = false;
+    setStatusLoading(true);
+    setStatus(null);
+    setStatusError(null);
     setBrief(null);
+    setDraft(null);
+    setAdoptMsg(null);
     setError(null);
     getSynthesisStatus()
       .then((st) => { if (!cancelled) setStatus(st); })
-      .catch(() => { if (!cancelled) setStatus(null); });
+      .catch((err) => {
+        if (!cancelled) {
+          setStatus(null);
+          setStatusError(err instanceof Error ? err.message : "Synthesis availability could not be checked");
+        }
+      })
+      .finally(() => { if (!cancelled) setStatusLoading(false); });
     return () => { cancelled = true; };
   }, [runId]);
 
@@ -1246,8 +1725,8 @@ function SynthesisBriefPanel({
         resp.duplicate
           ? "This analysis run already has a saved decision — showing the original. Nothing was overwritten."
           : prop.kind === "information_gathering"
-            ? "Saved as an information-gathering step (no positioning hypothesis was supported)."
-            : "Saved as a planned experiment from the adopted proposal. Record observations below."
+            ? "Saved as an information-gathering plan (no positioning hypothesis was supported). It has not been executed."
+            : "Saved as a planned experiment from the adopted proposal. This records intent; it does not execute the experiment."
       );
       onSaved(resp.duplicate ? "Existing saved decision retained." : "Adopted proposal saved as the planned experiment.");
     } catch (err) {
@@ -1267,19 +1746,27 @@ function SynthesisBriefPanel({
   return (
     <section id="brief" style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--rule)" }}>
       <h3>Decision brief (optional)</h3>
-      {!status && <p style={{ color: "#8a847a", fontSize: 12 }}>Checking synthesis availability…</p>}
-      {status && !status.available && (
+      {statusLoading && <p style={{ color: "#8a847a", fontSize: 12 }}>Checking synthesis availability…</p>}
+      {!statusLoading && statusError && (
+        <p role="alert" style={{ color: "#8a847a", fontSize: 12 }}>
+          Availability could not be checked — {statusError}. The investigation above remains available; no model result is assumed.
+        </p>
+      )}
+      {!statusLoading && !statusError && !status && (
+        <p style={{ color: "#8a847a", fontSize: 12 }}>No synthesis availability status was returned.</p>
+      )}
+      {!statusLoading && status && !status.available && (
         <p style={{ color: "#8a847a", fontSize: 12 }}>
           Unavailable — {status.blocked_reason ?? "no provider configured."} The investigation
           above is complete and does not depend on it.
         </p>
       )}
-      {status?.available && !brief && (
+      {!statusLoading && status?.available && !brief && (
         <button type="button" onClick={generate} disabled={busy}>
           {busy ? "Generating…" : "Generate decision brief"}
         </button>
       )}
-      {error && <p style={{ color: "#b4553f", fontSize: 12 }}>{error}</p>}
+      {error && <p role="alert" style={{ color: "#b4553f", fontSize: 12 }}>{error}</p>}
       {brief && (
         <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
           {methodLabel && <span className="micro-label">{methodLabel}</span>}
@@ -1295,10 +1782,10 @@ function SynthesisBriefPanel({
                 {brief.synthesis.claims.map((c, i) => (
                   <li key={i} style={{ fontSize: 12 }}>
                     <span className="micro-label">{c.claim_type}</span> {c.statement}
-                    {c.evidence_refs?.length > 0 && (
-                      <span style={{ ...mono, color: "#8a847a", fontSize: 10 }}>
-                        {" "}[{c.evidence_refs.join(", ")}]
-                      </span>
+                    {c.evidence_refs?.length > 0 ? (
+                      <EvidenceReferences refs={c.evidence_refs} traceRows={traceRows} />
+                    ) : (
+                      <span className="mono-note"> · no call reference supplied</span>
                     )}
                     {c.limitations ? <em style={{ color: "#8a847a" }}> — {c.limitations}</em> : null}
                   </li>
@@ -1324,10 +1811,11 @@ function SynthesisBriefPanel({
               <p style={{ fontSize: 12 }}>
                 {brief.synthesis.experiment_proposal.action_plan}
               </p>
+              <p className="mono-note">Reviewing opens an unsaved draft. It does not adopt or execute the proposal.</p>
               <button type="button" onClick={startAdoption}>
                 {brief.synthesis.experiment_proposal.kind === "test"
-                  ? "Use this experiment"
-                  : "Use this information-gathering plan"}
+                  ? "Review and edit proposal"
+                  : "Review information-gathering plan"}
               </button>
             </div>
           )}
@@ -1347,7 +1835,7 @@ function SynthesisBriefPanel({
               ))}
               <div style={{ display: "flex", gap: 8 }}>
                 <button type="button" onClick={confirmAdoption} disabled={busy}>
-                  {busy ? "Saving…" : "Save adopted experiment"}
+                  {busy ? "Saving…" : "Confirm adoption and save as planned"}
                 </button>
                 <button type="button" onClick={() => setDraft(null)} disabled={busy}>
                   Cancel
@@ -1355,7 +1843,7 @@ function SynthesisBriefPanel({
               </div>
             </div>
           )}
-          {adoptMsg && <p style={{ color: "#8a847a", fontSize: 12 }}>{adoptMsg}</p>}
+          {adoptMsg && <p role="status" aria-live="polite" style={{ color: "#8a847a", fontSize: 12 }}>{adoptMsg}</p>}
           <p style={{ color: "#8a847a", fontSize: 10, ...mono }}>
             method: {brief.metadata.method} · validation: {brief.metadata.validation}
           </p>
@@ -1365,54 +1853,69 @@ function SynthesisBriefPanel({
   );
 }
 
-function InvestigationPanel({ inv }: { inv: InvestigationData }) {
+function InvestigationPanel({
+  inv,
+  traceRows,
+}: {
+  inv: InvestigationData;
+  traceRows: TraceRow[];
+}) {
   const statusChip = (status: string) => {
     const color =
       status === "answered" ? "#7aba8a" : status === "insufficient" ? "#c29a6e" : "#8a847a";
-    return (
-      <span className="mono-note" style={{ color }}>
-        {status.toUpperCase()}
-      </span>
-    );
+    return <span className="mono-note" style={{ color }}>{status.toUpperCase()}</span>;
   };
+  const investigationStatus =
+    inv.data_status === "measured"
+      ? "MEASURED QLOO DATA"
+      : inv.data_status === "fixture"
+        ? "FIXTURE DEMONSTRATION — NOT LIVE QLOO DATA"
+        : "DATA STATUS UNKNOWN";
+
   return (
-    <div className="evidence-panel" style={{ marginTop: 24 }}>
+    <section className="evidence-panel" style={{ marginTop: 24 }}>
       <h3>Cultural investigation</h3>
       <span className="mono-note" style={{ display: "block", marginBottom: 14 }}>
-        WHAT THE AGENT ASKED · WHICH TOOL ANSWERED · WHAT QLOO ACTUALLY RETURNED
-        {inv.data_status !== "measured" && (
-          <span style={{ color: "#c29a6e" }}> · {inv.data_status.toUpperCase()} DEMONSTRATION DATA</span>
-        )}
+        WHAT THE AGENT ASKED · WHICH TOOL ANSWERED · WHAT THE RECORDED EVIDENCE SUPPORTS · {investigationStatus}
       </span>
 
       <div style={{ display: "grid", gap: 10 }}>
         {inv.questions.map((q) => (
-          <div key={q.id} style={{ border: "1px solid var(--rule)", borderRadius: 6, padding: "10px 12px" }}>
+          <article key={q.id} style={{ border: "1px solid var(--rule)", borderRadius: 6, padding: "10px 12px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
               <strong style={{ fontWeight: 500, fontSize: 13 }}>{q.question}</strong>
               {statusChip(q.status)}
             </div>
             <p style={{ color: "#b3aea4", fontSize: 12, lineHeight: 1.6, margin: "6px 0 0" }}>{q.summary}</p>
-            <p className="mono-note" style={{ marginTop: 4, color: "#8a847a" }}>
-              TOOL: {q.tool} · {q.operation}
-              {q.evidence_refs.length > 0 && <> · EVIDENCE: {q.evidence_refs.join(", ")}</>}
-            </p>
-          </div>
+            <div style={{ display: "grid", gap: 4, marginTop: 6 }}>
+              <span className="mono-note">TOOL: {q.tool} · {q.operation}</span>
+              <span className="mono-note">EVIDENCE REFERENCES</span>
+              {(q.evidence_refs?.length ?? 0) > 0 ? (
+                <EvidenceReferences refs={q.evidence_refs} traceRows={traceRows} />
+              ) : (
+                <span className="evidence-trace-unresolved">No call reference supplied for this question.</span>
+              )}
+            </div>
+          </article>
         ))}
       </div>
 
       {inv.findings.length > 0 && (
         <div style={{ marginTop: 16 }}>
           <span className="micro-label">FINDINGS — SOURCE FACTS vs INTERPRETATION</span>
-          <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
+          <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
             {inv.findings.map((f, i) => (
-              <p key={i} style={{ fontSize: 12, lineHeight: 1.6, margin: 0, color: f.kind === "FACT" ? "#b3aea4" : "#c29a6e" }}>
+              <div key={i} style={{ fontSize: 12, lineHeight: 1.6, color: f.kind === "FACT" ? "#b3aea4" : "#c29a6e" }}>
                 <span className="mono-note">[{f.kind}]</span>{" "}
                 {f.kind === "INTERPRETATION" ? <em>{f.statement}</em> : f.statement}
-                {f.evidence_refs.length > 0 && (
-                  <span className="mono-note"> · {f.evidence_refs.join(", ")}</span>
-                )}
-              </p>
+                <div style={{ marginTop: 3 }}>
+                  {(f.evidence_refs?.length ?? 0) > 0 ? (
+                    <EvidenceReferences refs={f.evidence_refs} traceRows={traceRows} />
+                  ) : (
+                    <span className="evidence-trace-unresolved">No call reference supplied.</span>
+                  )}
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -1424,12 +1927,20 @@ function InvestigationPanel({ inv }: { inv: InvestigationData }) {
           <p style={{ color: "#e4dfd6", fontSize: 13, lineHeight: 1.7, margin: "8px 0 0" }}>
             {inv.hypotheses.primary.statement}
           </p>
-          <p className="mono-note" style={{ marginTop: 6, color: "#8a847a" }}>
-            EVIDENCE: {inv.hypotheses.primary.evidence_refs.join(", ") || "—"}
-          </p>
+          <div style={{ display: "grid", gap: 4, marginTop: 6 }}>
+            <span className="mono-note">HYPOTHESIS EVIDENCE</span>
+            {(inv.hypotheses.primary.evidence_refs?.length ?? 0) > 0 ? (
+              <EvidenceReferences refs={inv.hypotheses.primary.evidence_refs} traceRows={traceRows} />
+            ) : (
+              <span className="evidence-trace-unresolved">No call reference supplied.</span>
+            )}
+          </div>
           {inv.hypotheses.alternatives.map((alt, i) => (
             <p key={i} style={{ color: "#b3aea4", fontSize: 12, lineHeight: 1.6, margin: "8px 0 0" }}>
               <span className="mono-note">ALTERNATIVE:</span> {alt.statement}
+              {(alt.evidence_refs?.length ?? 0) > 0 && (
+                <span> · <EvidenceReferences refs={alt.evidence_refs} traceRows={traceRows} /></span>
+              )}
             </p>
           ))}
         </div>
@@ -1443,16 +1954,22 @@ function InvestigationPanel({ inv }: { inv: InvestigationData }) {
         <div>
           <span className="micro-label">LIMITATIONS</span>
           <ul style={{ margin: "6px 0 0", paddingLeft: 18, color: "#8a847a", fontSize: 12, lineHeight: 1.7 }}>
-            {inv.limitations.map((l, i) => <li key={i}>{l}</li>)}
+            {inv.limitations.length > 0
+              ? inv.limitations.map((limitation, i) => <li key={i}>{limitation}</li>)
+              : <li>No limitations were recorded in this investigation.</li>}
           </ul>
         </div>
         <div>
           <span className="micro-label">OPEN QUESTIONS</span>
           <ul style={{ margin: "6px 0 0", paddingLeft: 18, color: "#8a847a", fontSize: 12, lineHeight: 1.7 }}>
-            {inv.open_questions.map((q, i) => <li key={i}>{q}</li>)}
+            {inv.open_questions.length > 0
+              ? inv.open_questions.map((question, i) => <li key={i}>{question}</li>)
+              : <li>No open questions were recorded.</li>}
           </ul>
         </div>
       </div>
-    </div>
+
+      <EvidenceTraceLog rows={traceRows} />
+    </section>
   );
 }

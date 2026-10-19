@@ -1,8 +1,8 @@
-"""In-memory run store — the interface for run persistence.
+"""Volatile in-memory run records for the API.
 
-This module provides a clean abstraction over run storage. The in-memory
-implementation is used for M6; PostgreSQL will replace it later without
-rewriting API or business logic.
+These process-local records power polling and SSE; public-demo mode prunes the
+completed cache. This is not the append-only SQLite experiment/evaluation
+repository, and there is no durable multi-worker run store here.
 """
 
 from __future__ import annotations
@@ -94,7 +94,7 @@ class RunRecord:
 
 
 class RunStore:
-    """In-memory run store. Replace with PostgreSQL later."""
+    """Process-local run store; records are not durable across restarts."""
 
     def __init__(self) -> None:
         self._runs: dict[str, RunRecord] = {}
@@ -118,6 +118,41 @@ class RunStore:
 
     def get(self, run_id: str) -> RunRecord | None:
         return self._runs.get(run_id)
+
+    def prune_completed(self, *, max_records: int, max_age_s: float) -> int:
+        """Bound the volatile public-demo run cache without evicting active runs.
+
+        The store is intentionally in-memory; this does not alter experiment or
+        evaluation history, which lives in the separate append-only repository.
+        """
+        now = time.time()
+        completed = sorted(
+            (run for run in self._runs.values() if run.status not in {
+                RunStatus.PENDING, RunStatus.RUNNING
+            }),
+            key=lambda run: run.created_at,
+        )
+        removed = 0
+        cutoff = now - max_age_s
+        for run in completed:
+            if run.created_at >= cutoff:
+                continue
+            self._runs.pop(run.run_id, None)
+            removed += 1
+
+        if len(self._runs) > max_records:
+            completed = sorted(
+                (run for run in self._runs.values() if run.status not in {
+                    RunStatus.PENDING, RunStatus.RUNNING
+                }),
+                key=lambda run: run.created_at,
+            )
+            for run in completed:
+                if len(self._runs) <= max_records:
+                    break
+                self._runs.pop(run.run_id, None)
+                removed += 1
+        return removed
 
     def list_runs(self) -> list[RunRecord]:
         return sorted(self._runs.values(), key=lambda r: r.created_at, reverse=True)

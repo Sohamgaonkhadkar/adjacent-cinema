@@ -27,6 +27,7 @@ from app.qloo import (
     UnverifiedParameterError,
     UpstreamError,
 )
+from app.qloo.client import _RATE_LIMITER_REGISTRY
 from app.qloo.errors import InvalidCombinationError, MissingApiKeyError
 from app.qloo.models import EntityAffinityResponse, TagAffinityResponse
 from app.qloo.trace import REDACTED, redact, redact_params
@@ -109,6 +110,37 @@ def test_mock_client_needs_no_key(no_key_settings: Settings) -> None:
     client = MockQlooClient(no_key_settings)
     assert client.fixture.scenario
     asyncio.run(client.aclose())
+
+
+def test_live_clients_share_a_strictest_per_key_process_rate_limit() -> None:
+    key = "synthetic-rate-limit-test-key-not-real"
+    fast = QlooClient(Settings.from_env(
+        qloo_api_key=key,
+        qloo_base_url="https://hackathon.api.qloo.com",
+        rate_limit_rps=20.0,
+    ))
+    slow = QlooClient(Settings.from_env(
+        qloo_api_key=key,
+        qloo_base_url="https://hackathon.api.qloo.com",
+        rate_limit_rps=2.0,
+    ))
+    other_key = QlooClient(Settings.from_env(
+        qloo_api_key=f"{key}-other",
+        qloo_base_url="https://hackathon.api.qloo.com",
+        rate_limit_rps=20.0,
+    ))
+    other_host = QlooClient(Settings.from_env(
+        qloo_api_key=key,
+        qloo_base_url="https://other-qloo.invalid",
+        rate_limit_rps=20.0,
+    ))
+
+    assert fast._limiter is slow._limiter
+    assert slow._limiter._interval == pytest.approx(0.5)
+    assert fast._limiter is not other_key._limiter
+    assert fast._limiter is not other_host._limiter
+    # The registry stores only a digest, never the configured credential.
+    assert key not in repr(_RATE_LIMITER_REGISTRY)
 
 
 def test_real_and_mock_clients_share_the_same_interface(no_key_settings: Settings) -> None:
@@ -218,6 +250,28 @@ def test_request_is_get_with_header_auth_and_no_key_in_the_query() -> None:
     assert FAKE_KEY not in seen["query"]
     assert seen["api_key_header"] not in seen["url"]
     assert "filter.type=urn%3Atag" in seen["query"] or "filter.type=urn:tag" in seen["query"]
+
+
+def test_search_sends_documented_movie_types_filter_in_outgoing_request() -> None:
+    seen: dict[str, str | None] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["types"] = request.url.params.get("types")
+        seen["query"] = request.url.params.get("query")
+        seen["take"] = request.url.params.get("take")
+        return httpx.Response(200, json={"results": {"entities": []}})
+
+    client = client_with(handler, settings_with())
+    asyncio.run(
+        client.search(
+            query="Perfect Days",
+            types=["urn:entity:movie"],
+            take=5,
+            tool="resolve:search",
+        )
+    )
+
+    assert seen == {"types": "urn:entity:movie", "query": "Perfect Days", "take": "5"}
 
 
 # --- 9. tracing -------------------------------------------------------------

@@ -1,8 +1,8 @@
 # Adjacent — Architecture Freeze
 
-> **Date:** 6 October 2026
-> **Status:** FROZEN
-> **Authority:** This document supersedes 01–04 on implementation details. Where the research docs describe capabilities, they remain authoritative. Where they describe implementation choices, this document is the final word.
+> **Historical design snapshot:** 6 October 2026.
+> **Status:** historical baseline; its deployment, rate-limit, and implementation claims are superseded by [`FINALIZATION_STATUS.md`](FINALIZATION_STATUS.md) and the live contract in [`FRONTEND_CONTRACT.md`](FRONTEND_CONTRACT.md), updated 16 October 2026.
+> **Authority:** use this document for the original architecture rationale, not as evidence of current deployment or runtime behavior. Creator Mode is now the primary demo surface; Cinema Mode remains preserved.
 
 ---
 

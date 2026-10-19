@@ -329,7 +329,7 @@ def _parse_entity(item: dict[str, Any]) -> ScoredEntity:
         name=item.get("name"),
         type=item.get("type"),
         subtype=item.get("subtype"),
-        affinity=_as_float(q_affinity or item.get("affinity")),
+        affinity=_as_float(q_affinity if q_affinity is not None else item.get("affinity")),
         popularity=popularity,
         tags=tags,
         location=location,
@@ -349,7 +349,7 @@ def _parse_scored_tag(item: dict[str, Any]) -> ScoredTag:
         tag_id=str(item.get("tag_id") or item.get("id") or item.get("urn") or ""),
         name=item.get("name"),
         subtype=item.get("subtype") or item.get("type"),
-        affinity=_as_float(q_affinity or item.get("affinity")),
+        affinity=_as_float(q_affinity if q_affinity is not None else item.get("affinity")),
         popularity=_as_float((props or {}).get("popularity", item.get("popularity"))),
         parent_type=item.get("parent_type"),
         raw=item,
@@ -445,7 +445,7 @@ def parse_heatmap(
                     loc.get("longitude", item.get("lng", item.get("lon", item.get("longitude"))))
                 ),
                 geohash=loc.get("geohash") or item.get("geohash"),
-                affinity=_as_float(q_affinity or item.get("affinity")),
+                affinity=_as_float(q_affinity if q_affinity is not None else item.get("affinity")),
                 affinity_rank=item.get("affinity_rank")
                 if isinstance(item.get("affinity_rank"), int)
                 else (item.get("query", {}).get("affinity_rank") if isinstance(item.get("query"), dict) and isinstance(item.get("query", {}).get("affinity_rank"), int) else None),

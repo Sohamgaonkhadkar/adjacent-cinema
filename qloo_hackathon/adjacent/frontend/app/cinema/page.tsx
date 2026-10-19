@@ -10,7 +10,7 @@ import {
   type RunResponse,
   type SSEEvent,
 } from "@/lib/api";
-import type { AdjacentRunResult } from "@/types/adjacent";
+import type { AdjacentRunResult, HeatmapCell } from "@/types/adjacent";
 import IntakeForm from "@/components/IntakeForm";
 
 // ─── Editorial sample strip (illustrative photography, NOT a live analysis) ──
@@ -102,7 +102,9 @@ export default function Home() {
   const ranked = result?.cohorts?.ranked ?? [];
   const rejected = result?.cohorts?.rejected ?? [];
   const geography = result?.geography ?? null;
-  const geoCells = geography ? (geography.highest_affinity_cells ?? geography.cells ?? []) : [];
+  const geoCells = (geography ? (geography.highest_affinity_cells ?? geography.cells ?? []) : []).filter(
+    (cell): cell is HeatmapCell & { affinity: number } => typeof cell.affinity === "number"
+  );
   const bet = result?.programme_bet ?? null;
   const testCard = result?.test_card ?? null;
   const evidence = result?.evidence ?? null;

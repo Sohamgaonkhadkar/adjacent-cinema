@@ -1,134 +1,46 @@
-# Next: Live Qloo Integration Checklist
+# Current live-Qloo validation gate
 
-> **Status:** Pre-key preparation complete. Key now available.
->
-> This checklist bridges from "key arrived" to "ready for product implementation."
-> Each step has a clear pass/fail criterion.
+**Status as of 16 October 2026: BLOCKED / NOT VERIFIED IN THIS SESSION.** The checked shell had no `QLOO_API_KEY` and no `QLOO_BASE_URL` override; without a key, non-public mode is mock. The sandbox API preview was explicitly `public_demo`, with fixtures available and live Creator unavailable. The inspected GitHub CI run passed its backend job but skipped the conditional live-Qloo step; remote secret state was not verified. No live request was made here.
 
----
+`LIVE_QLOO_VALIDATION.md` records observations from 6 October 2026 only. It is historical evidence, not proof of current connectivity or current resolver behavior. It records `tt0089853` / Taipei Story being associated with The Purple Rose of Cairo and `tt7594358` / Perfect Days not resolving. Offline regressions now reject title/year conflicts, keep a title-search `MISMATCH` even if an external-ID lookup independently verifies a candidate, and preserve unresolved results; they do not establish what Qloo returns today.
 
-## Step 1 — Add the key locally
+## Safe procedure for an authorized operator
 
-```bash
-# Create .env in the repo root (gitignored):
-echo "QLOO_API_KEY=<your-key>" > .env
-echo "QLOO_BASE_URL=https://hackathon.api.qloo.com" >> .env
-echo "QLOO_TRUSTED_BASE_URL=https://hackathon.api.qloo.com" >> .env
-chmod 600 .env
-```
+Never paste a Qloo key into chat, an issue, a frontend variable, or a committed file. Configure it through an authorized local environment or secret manager. The test suite does not need it for fixture coverage.
 
-**Pass:** `python3 -c "import sys; sys.path.insert(0,'backend'); from app.config import Settings; s=Settings.from_env(); print(s.redacted())"` shows `"mode": "live"` and `"qloo_api_key": "***set***"`.
+1. **Configure the backend only.** Set `QLOO_API_KEY` in the backend process environment. Use the approved Qloo base URL; do not print or copy key material. Restart the backend after changing secrets.
+2. **Check mode without publishing diagnostics.** Confirm the backend reports live mode and key configured. Do not copy the key fingerprint into a report; a mode check is not a successful live query.
+3. **Run the live probe.** From `qloo_hackathon/adjacent`:
 
----
+   ```bash
+   make probe-live
+   ```
 
-## Step 2 — Official harness setup (optional, requires Node ≥22.19)
+   This sends real requests and must fail if no key is present; it never falls back to fixtures. Record the date, API host, pass/fail, and non-sensitive result counts only.
+4. **Run the live-marked contract tests.**
 
-```bash
-export QLOO_BASE_URL=https://hackathon.api.qloo.com
-export QLOO_TRUSTED_BASE_URL=https://hackathon.api.qloo.com
-npm install --global @qloo/qloo-harness
-qloo setup --qloo
-qloo setup --status
-```
+   ```bash
+   python -m pytest -m live -rs
+   ```
 
-**Pass:** `qloo setup --status` shows `Qloo data: ready`.
+   A skipped test is not a pass. Investigate any expected-resolution failure rather than weakening it to make CI green.
+5. **Verify Creator Mode manually.** Submit a bounded reference set through the live Creator path. Confirm `data_status="measured"`, inspect the actual Qloo call IDs, and verify every resolved title/year. If the provider returns a contradictory mapping (including Taipei Story → The Purple Rose of Cairo), expect `MISMATCH` and no downstream use. If Perfect Days is absent, expect `UNRESOLVED`; do not fill in an entity or score.
+6. **Save a sanitized report.** Do not include keys, key fragments, fingerprints, tokens, raw secret-bearing environment, or unreviewed upstream payloads. Distinguish live calls from fixtures and record any skipped checks as blocked/skipped.
 
-**Skip if:** Node version < 22.19. Our Python probes are the primary validation.
+## Offline regressions (always runnable)
 
----
-
-## Step 3 — Run live probes
+Run from `qloo_hackathon/adjacent`:
 
 ```bash
-make probe-live
-```
-
-**Pass:** Exit 0. Output shows `Mode: LIVE (real Qloo)` and all probes green:
-- `[A] External ID entity resolution: N result(s)` — OK
-- `[B] Programme → tag affinity (taste DNA): N result(s)` — OK
-- `[C] Programme → artist cross-domain adjacency: N result(s)` — OK
-- `[D] filter.results.entities completeness: N result(s)` — OK
-- `[E] Heatmap coverage by city: N result(s)` — OK
-- `[F] feature.explainability payload` — OK
-- `[G] Audience catalogue: N result(s)` — OK
-- `[H] Rate limit behaviour` — OK
-
----
-
-## Step 4 — Run unverified probes
-
-```bash
-make probe-live-unverified
-```
-
-**Pass:** Same as above, plus:
-- `[B2] Taste DNA with filter.parents.types` — OK
-- `[C2] Artist adjacency with signal.location.query` — OK
-- `[G2] filter.tags` — expected to fail (not supported)
-
----
-
-## Step 5 — Verify filter.results.entities
-
-**Pass (already confirmed in live testing):**
-- 50 candidates supplied → 50 returned → 50 scored
-- Verdict: **SAFE** — rank all candidate cohorts in a single query
-
----
-
-## Step 6 — Verify heatmap coverage
-
-**Pass (already confirmed):**
-
-| City | Cells | Status |
-|---|---|---|
-| London, UK | 207 | ✅ Usable |
-| New York, NY | 203 | ✅ Usable |
-| Portland, Oregon | 19 | ✅ Usable (but sparse) |
-
----
-
-## Step 7 — Verify explainability
-
-**Pass (already confirmed):**
-- `feature.explainability=true` adds `entity.query.explainability.signal.interests.entities[]`
-- Per-signal-entity attribution scores sum ≈ affinity
-- Tags do NOT receive explainability
-
----
-
-## Step 8 — Lock demo city
-
-**Recommendation:** London, UK (207 cells — highest density).
-
-Portland has only 19 cells, which is too sparse for a compelling geographic demo.
-
-**Pass:** A city is locked when:
-- Heatmap returns ≥ 10 cells
-- Cells span a meaningful geographic area
-- At least one venue/cohort in that city is identified
-
----
-
-## Step 9 — Run full test suite
-
-```bash
-python -m pytest -q
+python -m pytest backend/tests/test_resolution.py backend/tests/test_public_demo.py -q
 python -m ruff check .
 ```
 
-**Pass:** All tests green, ruff clean.
+The Taipei Story / Purple Rose of Cairo regressions use synthetic **mock** entities; the conflicting mapping remains `MISMATCH`. Additional mock regressions reject an explicitly different IMDb ID or conflicting year; a full title/year/IMDb-ID match remains verified; differing search/ID entity IDs are rejected; and a title-search `MISMATCH` is not overridden by a separately verified external-ID result. The Perfect Days absence regression verifies empty mock search and ID responses remain `UNRESOLVED`. These deterministic tests are not live observations.
 
----
+## Do not claim until verified
 
-## Step 10 — Continue to product implementation
-
-With live Qloo evidence confirmed, the next milestone is:
-- Wire the deterministic pipeline to use real Qloo (not mock)
-- Implement the Taste DNA output
-- Implement ranked adjacent cohorts
-- Implement heatmap + geographic rings
-- Build the Programme Bet from ranked cohorts
-- Build the frontend against the response contract
-
-**Do NOT proceed until steps 1–9 pass.**
+- Do not describe the October 6 probe as current live acceptance.
+- Do not call a skipped GitHub live step a pass.
+- Do not present the local fixture preview as Qloo output or as a hosted deployment.
+- Do not publish a deployment URL or live result without a recorded, authorized check.

@@ -14,9 +14,12 @@ import type {
   ProgrammeFilm,
   TestCardData,
   TasteDNA,
+  TraceRow,
 } from "@/types/adjacent";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
+// Keep the backend server-side: browser requests always stay on this origin,
+// and Next.js proxies /api using ADJACENT_API_ORIGIN.
+const API_BASE = "/api";
 
 // ─── Programme Input ────────────────────────────────────────────────────────
 
@@ -46,7 +49,7 @@ export interface RunResponse {
   stop_message: string | null;
   error: string | null;
   result: AdjacentRunResult | null;
-  trace: unknown[];
+  trace: TraceRow[];
 }
 
 export interface SSEEvent {
@@ -109,17 +112,25 @@ export function streamRun(
     error: (data) => onEvent({ event: "error", data }),
   };
 
+  let terminalReceived = false;
+  const terminalEvents = new Set(["done", "insufficiency", "error"]);
   for (const [eventType, handler] of Object.entries(handlers)) {
     eventSource.addEventListener(eventType, (e: MessageEvent) => {
+      const isTerminal = terminalEvents.has(eventType);
       try {
         handler(JSON.parse(e.data));
       } catch (err) {
         console.error(`Failed to parse ${eventType} event:`, err);
       }
+      if (isTerminal) {
+        terminalReceived = true;
+        eventSource.close();
+      }
     });
   }
 
   eventSource.onerror = () => {
+    if (terminalReceived) return;
     onError?.(new Error("SSE connection lost"));
     eventSource.close();
   };
@@ -127,13 +138,19 @@ export function streamRun(
   return () => eventSource.close();
 }
 
-export async function getHealth(): Promise<{
+export interface BackendHealth {
   status: string;
-  qloo_configured: boolean;
   mode: string;
-  mock_mode: string;
-}> {
+  qloo_configured?: boolean;
+  mock_mode?: boolean;
+  public_demo?: boolean;
+  fixture_demo_available?: boolean;
+  live_creator_available?: boolean;
+}
+
+export async function getHealth(): Promise<BackendHealth> {
   const res = await fetch(`${API_BASE}/health`);
+  if (!res.ok) throw new Error("Could not load backend status");
   return res.json();
 }
 
@@ -162,7 +179,7 @@ export function normalizeGeography(geo: GeographyData): GeographyData {
   const cells: HeatmapCell[] = rawCells.map((c) => ({
     latitude: c.latitude ?? 0,
     longitude: c.longitude ?? 0,
-    affinity: c.affinity ?? 0,
+    affinity: c.affinity ?? null,
     geohash: c.geohash ?? null,
     affinity_rank: c.affinity_rank ?? null,
     popularity: c.popularity ?? null,
@@ -332,7 +349,7 @@ export interface YouTubeStatus {
   mode: "mock" | "live" | "not_configured";
   mock_data: boolean;
   configured: boolean;
-  redirect_uri: string;
+  redirect_uri: string | null;
   requested_scopes: string[];
   single_connection_posture: boolean;
   connection: {
@@ -343,6 +360,7 @@ export interface YouTubeStatus {
     reauthorization_recommended: boolean;
   } | null;
   connected: boolean;
+  disabled_reason?: string;
 }
 
 export interface YouTubeVideo {

@@ -20,7 +20,7 @@ class HeatmapCellResult:
     latitude: float
     longitude: float
     geohash: str | None
-    affinity: float
+    affinity: float | None
     affinity_rank: float | None
     popularity: float | None
     call_id: str | None
@@ -86,16 +86,16 @@ def build_geography_result(
                     latitude=c.lat,
                     longitude=c.lng,
                     geohash=c.geohash,
-                    affinity=c.affinity or 0.0,
+                    affinity=c.affinity,
                     affinity_rank=c.affinity_rank,
                     popularity=c.popularity,
                     call_id=call_id,
                 )
             )
 
-    # Sort by affinity descending, take top cells
-    scored = sorted(cells, key=lambda c: c.affinity, reverse=True)
-    top = scored[:10] if scored else []
+    # Missing affinity is not a measured zero and cannot be ranked as evidence.
+    scored = [cell for cell in cells if cell.affinity is not None]
+    top = sorted(scored, key=lambda cell: cell.affinity, reverse=True)[:10]
 
     # Determine city display name from locality
     locality = response.locality if hasattr(response, "locality") else None
@@ -105,7 +105,7 @@ def build_geography_result(
     elif isinstance(locality, dict):
         city_display = locality.get("disambiguation") or locality.get("name") or city
 
-    sufficient = len(cells) >= 10
+    sufficient = len(scored) >= 10
 
     # Truthful provenance: the status travels with the Qloo response itself,
     # so a fixture-backed heatmap is never labelled "measured". Only the known
@@ -123,5 +123,7 @@ def build_geography_result(
         data_status=data_status,
         source="qloo",
         sufficient=sufficient,
-        note="" if sufficient else f"Only {len(cells)} cells returned (need ≥10 for geographic claims)",
+        note=""
+        if sufficient
+        else f"Only {len(scored)} cells with affinity scores returned (need ≥10 for geographic claims)",
     )

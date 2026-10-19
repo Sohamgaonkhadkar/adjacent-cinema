@@ -125,6 +125,9 @@ class ProgrammeItem:
     subtype: str | None = None
     popularity: float | None = None
     source_call_id: str | None = None
+    # Sanitized identity-verification details returned by EntityResolver.
+    # This deliberately excludes the raw Qloo response body.
+    resolution_evidence: dict[str, Any] | None = None
 
     @property
     def resolved(self) -> bool:
@@ -147,6 +150,7 @@ class ProgrammeItem:
             "popularity": self.popularity,
             "resolved": self.resolved,
             "source_call_id": self.source_call_id,
+            "resolution_evidence": self.resolution_evidence,
         }
 
 

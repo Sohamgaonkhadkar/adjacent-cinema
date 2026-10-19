@@ -19,6 +19,7 @@ from app.qloo.params import (
     EP_AUDIENCES,
     EP_ENTITIES,
     EP_INSIGHTS,
+    EP_SEARCH,
     EP_TRENDING,
     EXTERNAL_ID_FAMILIES,
     REGISTRY,
@@ -55,6 +56,17 @@ def test_parameter_documented_for_another_endpoint_raises() -> None:
                 "filter_results_entities": ["x"],  # /v2/insights only
             },
         )
+
+
+def test_documented_movie_types_filter_passes_search_allowlist() -> None:
+    built = build_params(
+        EP_SEARCH,
+        {"query": "Perfect Days", "types": ["urn:entity:movie"], "take": 5},
+    )
+
+    assert built.params["types"] == ["urn:entity:movie"]
+    assert built.as_query()["types"] == "urn:entity:movie"
+    assert built.unverified_used == []
 
 
 def test_results_entities_rejected_for_tag_filter_type() -> None:

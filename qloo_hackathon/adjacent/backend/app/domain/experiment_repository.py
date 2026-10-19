@@ -191,12 +191,7 @@ class ExperimentRepository:
                 "SELECT COUNT(*) FROM experiment_observations WHERE experiment_id=?",
                 (exp["experiment_id"],),
             ).fetchone()[0]
-            latest = self._conn.execute(
-                """SELECT outcome FROM experiment_evaluations
-                   WHERE experiment_id=? AND supersedes_id IS NULL
-                   ORDER BY created_at DESC LIMIT 1""",
-                (exp["experiment_id"],),
-            ).fetchone()
+            latest = self._latest_evaluation_row(exp["experiment_id"])
             exp["latest_evaluation"] = latest["outcome"] if latest else None
             out.append(exp)
         return out
@@ -207,6 +202,52 @@ class ExperimentRepository:
             "SELECT * FROM experiments WHERE experiment_id = ?", (experiment_id,)
         ).fetchone()
         return self._row_to_experiment(row) if row else None
+
+    def _latest_evaluation_row(self, experiment_id: str) -> sqlite3.Row | None:
+        """Return the newest leaf in this experiment's append-only history.
+
+        ``supersedes_id`` belongs to the correcting row, so a current row is
+        one that is not referenced by any later correction. Testing the row's
+        own ``supersedes_id IS NULL`` would incorrectly hide every correction.
+        """
+        return self._conn.execute(
+            """SELECT evaluation.evaluation_id, evaluation.outcome
+               FROM experiment_evaluations AS evaluation
+               WHERE evaluation.experiment_id = ?
+                 AND NOT EXISTS (
+                     SELECT 1 FROM experiment_evaluations AS correction
+                     WHERE correction.experiment_id = evaluation.experiment_id
+                       AND correction.supersedes_id = evaluation.evaluation_id
+                 )
+               ORDER BY evaluation.created_at DESC, evaluation.evaluation_id DESC
+               LIMIT 1""",
+            (experiment_id,),
+        ).fetchone()
+
+    def _validate_supersedes_target(
+        self,
+        *,
+        table: str,
+        id_column: str,
+        target_id: str,
+        experiment_id: str,
+        record_kind: str,
+    ) -> None:
+        """Require a correction target to be a current record in this experiment."""
+        target = self._conn.execute(
+            f"SELECT experiment_id FROM {table} WHERE {id_column} = ?",
+            (target_id,),
+        ).fetchone()
+        if target is None:
+            raise ValueError(f"supersedes_id does not identify an existing {record_kind}")
+        if target["experiment_id"] != experiment_id:
+            raise ValueError(f"supersedes_id must refer to a {record_kind} in this experiment")
+        already_superseded = self._conn.execute(
+            f"SELECT 1 FROM {table} WHERE supersedes_id = ? LIMIT 1",
+            (target_id,),
+        ).fetchone()
+        if already_superseded:
+            raise ValueError(f"the {record_kind} has already been superseded")
 
     # -- observations --------------------------------------------------------
     @_synchronized
@@ -239,6 +280,14 @@ class ExperimentRepository:
         ).fetchone()
         if existing:
             raise DuplicateRequest({"observation_id": existing["observation_id"]})
+        if supersedes_id is not None:
+            self._validate_supersedes_target(
+                table="experiment_observations",
+                id_column="observation_id",
+                target_id=supersedes_id,
+                experiment_id=experiment_id,
+                record_kind="observation",
+            )
 
         observation_id = str(uuid.uuid4())
         self._conn.execute(
@@ -317,15 +366,35 @@ class ExperimentRepository:
         if existing:
             raise DuplicateRequest({"evaluation_id": existing["evaluation_id"]})
 
-        # A new evaluation supersedes the previous un-superseded one, keeping it
-        # in history (append-only corrections).
-        if supersedes_id is None:
-            prior = self._conn.execute(
-                """SELECT evaluation_id FROM experiment_evaluations
-                   WHERE experiment_id = ? AND supersedes_id IS NULL""",
-                (experiment_id,),
+        # Evidence references must stay inside the experiment being evaluated;
+        # otherwise a valid-looking evaluation could silently borrow another
+        # experiment's observations as its provenance.
+        evidence_ids = list(observation_ids or [])
+        if len(evidence_ids) != len(set(evidence_ids)):
+            raise ValueError("observation_ids must not contain duplicates")
+        for observation_id in evidence_ids:
+            observation = self._conn.execute(
+                "SELECT experiment_id FROM experiment_observations WHERE observation_id = ?",
+                (observation_id,),
             ).fetchone()
+            if observation is None or observation["experiment_id"] != experiment_id:
+                raise ValueError(
+                    f"observation_id {observation_id!r} does not belong to this experiment"
+                )
+
+        # A correction points to the current history leaf. The prior row stays
+        # untouched; this new row is the only write that records the correction.
+        if supersedes_id is None:
+            prior = self._latest_evaluation_row(experiment_id)
             supersedes_id = prior["evaluation_id"] if prior else None
+        else:
+            self._validate_supersedes_target(
+                table="experiment_evaluations",
+                id_column="evaluation_id",
+                target_id=supersedes_id,
+                experiment_id=experiment_id,
+                record_kind="evaluation",
+            )
 
         evaluation_id = str(uuid.uuid4())
         self._conn.execute(
@@ -334,7 +403,7 @@ class ExperimentRepository:
                unknowns, supersedes_id) VALUES (?,?,?,?,?,?,?,?,?)""",
             (
                 evaluation_id, request_id, experiment_id, _now(), outcome,
-                rationale, json.dumps(observation_ids or []), unknowns,
+                rationale, json.dumps(evidence_ids), unknowns,
                 supersedes_id,
             ),
         )

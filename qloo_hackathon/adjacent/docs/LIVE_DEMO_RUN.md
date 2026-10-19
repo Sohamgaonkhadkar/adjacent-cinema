@@ -1,5 +1,9 @@
+# Historical live/fixture demo artifact — provenance not current
+
+> This report is retained from an earlier run; the artifact does not record a trustworthy run date, and its body mixes live-Qloo claims with fixture-replay caveats. Do not cite it as current live validation. The October 6 report is separately marked historical in [`LIVE_QLOO_VALIDATION.md`](LIVE_QLOO_VALIDATION.md); current proof requires the authorized procedure in [`NEXT_LIVE_CHECKLIST.md`](NEXT_LIVE_CHECKLIST.md).
+
 ========================================================================================
-ADJACENT — LIVE DEMO (TRUSTED RESOLUTION)
+ADJACENT — LIVE DEMO (TRUSTED RESOLUTION, HISTORICAL)
 ========================================================================================
 SCENARIO      live
 FIXTURE       None
