@@ -1,19 +1,14 @@
-"""Adjacent backend — Day 1 application surface.
+"""Adjacent FastAPI backend.
 
-Deliberately minimal. The only routes are ones needed to VERIFY the backend:
-
-    GET  /health          liveness + whether a live Qloo key is configured
-    GET  /debug/config    redacted configuration (never the key)
-    GET  /debug/params    the parameter allowlist and what is still unverified
-    GET  /debug/mock/run  executes a fixture-backed run end-to-end (no key needed)
-
-No product routes, no frontend, no map. Those come later, on top of a verified
-client contract.
+The API serves run execution, Creator analysis, experiment lifecycle, and an
+optional YouTube integration. Public-demo mode wraps this surface in an
+anonymous allowlist; provider credentials remain server-side.
 """
 
 from __future__ import annotations
 
 import asyncio
+import os
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Query
@@ -24,6 +19,7 @@ from .api.creator_routes import router as creator_router
 from .api.routes import router as run_router
 from .api.youtube_routes import router as youtube_router
 from .config import Settings
+from .public_demo import PublicDemoGuard, public_demo_enabled, public_live_available
 from .qloo import MockQlooClient, build_params, registry_summary, unverified_params
 from .qloo.errors import ParamError, QlooError
 from .qloo.params import (
@@ -38,19 +34,26 @@ app = FastAPI(
     title="Adjacent API",
     version=__version__,
     description=(
-        "Audience-development decision support for programmed cultural venues. "
-        "Day 1: Qloo client contract, strict parameter validation, typed responses, "
-        "fixture-backed mock client, call tracing."
+        "Creator-first cultural decision support with bounded typed Qloo operations, "
+        "labelled fixture runs, traceable evidence, and a testable experiment lifecycle."
     ),
 )
 
-# Local frontend during development; the deployed origin is added later.
+# The browser uses the same-origin Next.js /api proxy. Direct cross-origin
+# callers are opt-in and must name their exact origins; never use `*`.
+_configured_cors_origins = [
+    origin.strip().rstrip("/")
+    for origin in (os.getenv("ADJACENT_CORS_ORIGINS") or "").split(",")
+    if origin.strip() and origin.strip() != "*"
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "*"],
+    allow_origins=_configured_cors_origins
+    or ["http://localhost:3000", "http://127.0.0.1:3000"],
     allow_methods=["GET", "POST"],
-    allow_headers=["*"],
+    allow_headers=["Content-Type"],
 )
+app.add_middleware(PublicDemoGuard)
 
 # Register run API routes
 app.include_router(run_router)
@@ -67,6 +70,18 @@ def get_settings() -> Settings:
 @app.get("/health")
 def health() -> dict[str, Any]:
     settings = get_settings()
+    if public_demo_enabled():
+        # Keep the public liveness response useful without exposing provider
+        # hosts, key fingerprints, parameter internals, or secret presence.
+        return {
+            "status": "ok",
+            "service": "adjacent-backend",
+            "version": __version__,
+            "mode": "public_demo",
+            "public_demo": True,
+            "fixture_demo_available": True,
+            "live_creator_available": public_live_available(),
+        }
     return {
         "status": "ok",
         "service": "adjacent-backend",

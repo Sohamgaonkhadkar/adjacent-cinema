@@ -2,40 +2,35 @@
 
 ## Status
 
-FROZEN
+**PROPOSED — not deployed or revalidated.** This supersedes the earlier “FROZEN” label: the repository contains no deployment manifest or verified hosted environment as of 16 October 2026.
 
-## Date
+## Historical proposal (4 October 2026)
 
-4 October 2026
+- Next.js frontend on a managed frontend host (Vercel was the candidate).
+- FastAPI backend on a persistent service (Fly.io was the candidate).
+- No serverless backend for the SSE/run process.
 
-## Decision
+The proposal was motivated by persistent SSE connections, a small operational surface, and a server-side boundary for Qloo credentials. These provider selections and cost assumptions have **not** been implemented or confirmed.
 
-- Frontend: Vercel (Next.js App Router)
-- Backend: Fly.io (single small machine, always-on)
-- Database: Fly Postgres or Neon free tier
-- No microservices, no Kubernetes, no serverless functions for the backend
+## What the code actually does
 
-## Rationale
+- The frontend calls relative `/api` paths. Next.js rewrites them server-side using `ADJACENT_API_ORIGIN`; its local default is `http://127.0.0.1:8000`. A hosted frontend must set the backend origin in its server environment. No browser-visible `NEXT_PUBLIC_API_URL` is required.
+- Qloo credentials are read by the backend from `QLOO_API_KEY`; they must remain in a backend secret store.
+- Run records are process-local and in-memory. Experiment/observation/evaluation history and single-connection YouTube tokens use SQLite at `ADJACENT_EXPERIMENTS_DB` and `ADJACENT_YT_TOKEN_DB` (runtime files are gitignored).
+- There is no `DATABASE_URL` adapter, PostgreSQL schema, Docker/Fly/Vercel/Render configuration, deployment record, or verified public URL in this checkout.
+- The experiment store and YouTube token store are single-workspace designs, not a multi-user isolation boundary.
 
-1. **SSE requires persistent connections.** Serverless cold starts would stall an SSE stream mid-demo. A persistent process keeps the connection and the in-flight call budget intact.
-2. **Simplicity.** Single backend service is simpler, faster to build, easier to demo.
-3. **Cost.** Fly.io free tier is sufficient for hackathon workload. Neon free tier for PostgreSQL.
-4. **Next.js on Vercel.** Zero-config deployment, edge functions, automatic preview URLs.
+## Anonymous demo boundary
 
-## Alternative Considered
+Set `ADJACENT_PUBLIC_DEMO=1` before exposing the backend anonymously. This permits fixed labelled fixture runs and bounded Creator inputs; shared experiment access, YouTube, synthesis execution, debug endpoints, and API docs are blocked. Live Creator runs additionally require explicit `ADJACENT_PUBLIC_LIVE=1` and a backend Qloo key. Limits are in-process; a multi-worker or replicated service needs edge quotas or a shared limiter. The public-demo flag is a narrow demo posture, not authentication.
 
-- All on Vercel (serverless) — rejected: SSE requires persistent connections
-- All on Fly.io — rejected: Next.js benefits from Vercel's edge network
-- AWS/GCP — rejected: too much infrastructure for a hackathon
-- Docker Compose locally — rejected: not demoable to judges
+## Deployment gates before claiming readiness
 
-## Consequence
+1. Choose and configure the actual frontend/backend hosts; record their real URLs and commit/deployment identity.
+2. Set `ADJACENT_API_ORIGIN` server-side and verify the same-origin `/api` proxy and SSE path from the hosted frontend.
+3. Configure exact CORS origins only if a direct cross-origin API client is intentionally supported.
+4. Choose storage semantics. Do not mount one SQLite file concurrently across workers or present it as per-user storage.
+5. Enable `ADJACENT_PUBLIC_DEMO=1` for an anonymous demo; keep live Creator disabled until the owner approves quotas/privacy and deploys edge limits. Keep YouTube and shared experiment writes disabled without an ownership boundary.
+6. Run the live-Qloo gate using an authorized secret, and separately verify fixture labels, public write denial, request limits, and secret redaction.
 
-- Two deployment targets: Vercel (frontend) + Fly.io (backend)
-- Backend needs CORS configured for Vercel origin
-- Backend needs `QLOO_API_KEY`, `DATABASE_URL`, `LLM_API_KEY` as Fly secrets
-- Frontend needs `NEXT_PUBLIC_API_URL` pointing to Fly backend
-
-## Trigger to Revisit
-
-If Fly.io's free tier becomes insufficient, or if the hackathon requires a different deployment target.
+**Current deployment result:** none verified. See [`../FINALIZATION_STATUS.md`](../FINALIZATION_STATUS.md) for the current evidence snapshot.

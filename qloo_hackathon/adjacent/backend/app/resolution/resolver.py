@@ -20,6 +20,7 @@ Rate limiting:
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
 from typing import Any
 
 from .contract import MatchMethod, MatchStatus, ResolvedEntity
@@ -68,6 +69,26 @@ def _extract_external_ids(entity: dict[str, Any], family: str) -> list[str]:
             if isinstance(ids, list):
                 return [str(i) for i in ids]
     return []
+
+
+def _include_related_call_ids(
+    primary: ResolvedEntity, *related: ResolvedEntity
+) -> ResolvedEntity:
+    """Keep every Qloo call used for a resolution in the typed result."""
+    call_ids: list[str] = []
+    for entity in (primary, *related):
+        if entity.call_id and entity.call_id not in call_ids:
+            call_ids.append(entity.call_id)
+        for call_id in entity.related_call_ids:
+            if call_id and call_id not in call_ids:
+                call_ids.append(call_id)
+    primary_call_id = primary.call_id or (call_ids[0] if call_ids else None)
+    related_call_ids = [call_id for call_id in call_ids if call_id != primary_call_id]
+    return replace(
+        primary,
+        call_id=primary_call_id,
+        related_call_ids=related_call_ids,
+    )
 
 
 def verify_search_result(
@@ -154,70 +175,27 @@ class EntityResolver:
 
         Resolution priority:
         1. /search with title → verify name + year match
-        2. If external ID supplied, also verify via /entities:
-           - If /entities returns same entity → VERIFIED
-           - If /entities returns different entity → MISMATCH
-           - If /entities returns nothing → AMBIGUOUS (search match but ID unverified)
-        3. If search fails, try /entities with external ID
+        2. If external ID supplied, also verify via /entities. A verified result
+           cannot override a title/year MISMATCH from the other lookup; conflicting
+           endpoint evidence remains unusable for manual review.
+        3. If search has no candidate, try /entities with the supplied ID.
         """
         # Method 1: /search with title
         result = await self._resolve_by_search(title, year)
 
-        # If external ID is supplied, verify it via /entities endpoint
-        if external_id and external_family:
-            ext_result = await self._resolve_by_external_id(
-                title, year, external_id, external_family
-            )
+        if not (external_id and external_family):
+            return result
 
-            if result.match_status == MatchStatus.VERIFIED:
-                # Search found a match — now verify external ID
-                if ext_result.match_status == MatchStatus.VERIFIED:
-                    # Both search and external ID verified
-                    # Check if they agree on the entity
-                    if result.qloo_entity_id == ext_result.qloo_entity_id:
-                        # Same entity — confirmed VERIFIED
-                        return ResolvedEntity(
-                            input_title=result.input_title,
-                            input_year=result.input_year,
-                            input_external_id=external_id,
-                            input_external_family=external_family,
-                            qloo_entity_id=result.qloo_entity_id,
-                            qloo_name=result.qloo_name,
-                            qloo_entity_type=result.qloo_entity_type,
-                            qloo_year=result.qloo_year,
-                            qloo_disambiguation=result.qloo_disambiguation,
-                            qloo_popularity=result.qloo_popularity,
-                            match_status=MatchStatus.VERIFIED,
-                            match_method=MatchMethod.EXTERNAL_ID,
-                            verification_notes=[*result.verification_notes, f"external ID {external_id} confirmed — same entity"],
-                            call_id=result.call_id,
-                            search_query=result.search_query,
-                            raw_result=result.raw_result,
-                        )
-                    else:
-                        # Different entities — MISMATCH
-                        return ResolvedEntity(
-                            input_title=result.input_title,
-                            input_year=result.input_year,
-                            input_external_id=external_id,
-                            input_external_family=external_family,
-                            qloo_entity_id=result.qloo_entity_id,
-                            qloo_name=result.qloo_name,
-                            qloo_entity_type=result.qloo_entity_type,
-                            qloo_year=result.qloo_year,
-                            qloo_disambiguation=result.qloo_disambiguation,
-                            qloo_popularity=result.qloo_popularity,
-                            match_status=MatchStatus.MISMATCH,
-                            match_method=MatchMethod.EXTERNAL_ID,
-                            verification_notes=[*result.verification_notes, f"external ID conflict: search found {result.qloo_entity_id} " f"but external ID {external_id} maps to {ext_result.qloo_entity_id}"],
-                            call_id=result.call_id,
-                            search_query=result.search_query,
-                            raw_result=result.raw_result,
-                        )
-                elif ext_result.match_status == MatchStatus.UNRESOLVED:
-                    # External ID not found in Qloo — this is a MISMATCH
-                    # The supplied ID doesn't correspond to any Qloo entity
-                    return ResolvedEntity(
+        # If an external ID is supplied, verify it via /entities as well. Both
+        # calls remain addressable, including when one source finds a mismatch.
+        ext_result = await self._resolve_by_external_id(
+            title, year, external_id, external_family
+        )
+
+        if result.match_status == MatchStatus.VERIFIED:
+            if ext_result.match_status == MatchStatus.VERIFIED:
+                if result.qloo_entity_id == ext_result.qloo_entity_id:
+                    combined = ResolvedEntity(
                         input_title=result.input_title,
                         input_year=result.input_year,
                         input_external_id=external_id,
@@ -228,30 +206,117 @@ class EntityResolver:
                         qloo_year=result.qloo_year,
                         qloo_disambiguation=result.qloo_disambiguation,
                         qloo_popularity=result.qloo_popularity,
-                        match_status=MatchStatus.MISMATCH,
+                        match_status=MatchStatus.VERIFIED,
                         match_method=MatchMethod.EXTERNAL_ID,
-                        verification_notes=[*result.verification_notes, f"external ID {external_id} not found in Qloo — " f"supplied ID does not match any Qloo entity"],
+                        verification_notes=[
+                            *result.verification_notes,
+                            f"external ID {external_id} confirmed — same entity",
+                        ],
                         call_id=result.call_id,
                         search_query=result.search_query,
                         raw_result=result.raw_result,
                     )
-                else:
-                    # External ID returned different status — use search result
-                    return result
+                    return _include_related_call_ids(combined, ext_result)
 
-            elif result.match_status == MatchStatus.AMBIGUOUS:
-                # Search was ambiguous — use external ID result if available
-                if ext_result.match_status == MatchStatus.VERIFIED:
-                    return ext_result
-                return result
+                combined = ResolvedEntity(
+                    input_title=result.input_title,
+                    input_year=result.input_year,
+                    input_external_id=external_id,
+                    input_external_family=external_family,
+                    qloo_entity_id=result.qloo_entity_id,
+                    qloo_name=result.qloo_name,
+                    qloo_entity_type=result.qloo_entity_type,
+                    qloo_year=result.qloo_year,
+                    qloo_disambiguation=result.qloo_disambiguation,
+                    qloo_popularity=result.qloo_popularity,
+                    match_status=MatchStatus.MISMATCH,
+                    match_method=MatchMethod.EXTERNAL_ID,
+                    verification_notes=[
+                        *result.verification_notes,
+                        f"external ID conflict: search found {result.qloo_entity_id} "
+                        f"but external ID {external_id} maps to {ext_result.qloo_entity_id}",
+                    ],
+                    call_id=result.call_id,
+                    search_query=result.search_query,
+                    raw_result=result.raw_result,
+                )
+                return _include_related_call_ids(combined, ext_result)
 
-            elif result.match_status == MatchStatus.UNRESOLVED:
-                # Search found nothing — use external ID result
-                if ext_result.match_status != MatchStatus.UNRESOLVED:
-                    return ext_result
-                return result
+            if ext_result.match_status == MatchStatus.UNRESOLVED:
+                # Keep the existing conservative rule: a supplied external ID
+                # that Qloo cannot resolve cannot corroborate a search match.
+                combined = ResolvedEntity(
+                    input_title=result.input_title,
+                    input_year=result.input_year,
+                    input_external_id=external_id,
+                    input_external_family=external_family,
+                    qloo_entity_id=result.qloo_entity_id,
+                    qloo_name=result.qloo_name,
+                    qloo_entity_type=result.qloo_entity_type,
+                    qloo_year=result.qloo_year,
+                    qloo_disambiguation=result.qloo_disambiguation,
+                    qloo_popularity=result.qloo_popularity,
+                    match_status=MatchStatus.MISMATCH,
+                    match_method=MatchMethod.EXTERNAL_ID,
+                    verification_notes=[
+                        *result.verification_notes,
+                        f"external ID {external_id} not found in Qloo — supplied ID does not match any Qloo entity",
+                    ],
+                    call_id=result.call_id,
+                    search_query=result.search_query,
+                    raw_result=result.raw_result,
+                )
+                return _include_related_call_ids(combined, ext_result)
 
-        return result
+            if ext_result.match_status == MatchStatus.MISMATCH:
+                return _include_related_call_ids(ext_result, result)
+
+            if (
+                ext_result.qloo_entity_id
+                and result.qloo_entity_id
+                and ext_result.qloo_entity_id != result.qloo_entity_id
+            ):
+                conflict = replace(
+                    ext_result,
+                    match_status=MatchStatus.MISMATCH,
+                    verification_notes=[
+                        *ext_result.verification_notes,
+                        "external-ID result conflicts with the title-and-year verified search entity",
+                    ],
+                )
+                return _include_related_call_ids(conflict, result)
+            return _include_related_call_ids(result, ext_result)
+
+        if result.match_status == MatchStatus.AMBIGUOUS:
+            if ext_result.match_status in {MatchStatus.VERIFIED, MatchStatus.MISMATCH}:
+                return _include_related_call_ids(ext_result, result)
+            return _include_related_call_ids(result, ext_result)
+
+        if result.match_status == MatchStatus.UNRESOLVED:
+            if ext_result.match_status != MatchStatus.UNRESOLVED:
+                return _include_related_call_ids(ext_result, result)
+            return _include_related_call_ids(result, ext_result)
+
+        if result.match_status == MatchStatus.MISMATCH:
+            if ext_result.match_status == MatchStatus.VERIFIED:
+                # A positive ID lookup cannot erase contradictory title/year
+                # evidence from search. Keep the mismatch and both call IDs so
+                # a reviewer can inspect the cross-endpoint disagreement.
+                mismatch = replace(
+                    result,
+                    input_external_id=external_id,
+                    input_external_family=external_family,
+                    verification_notes=[
+                        *result.verification_notes,
+                        "external-ID lookup verified a candidate, but cannot override the title-search mismatch",
+                    ],
+                )
+                return _include_related_call_ids(mismatch, ext_result)
+            if ext_result.match_status == MatchStatus.MISMATCH:
+                return _include_related_call_ids(ext_result, result)
+            return _include_related_call_ids(result, ext_result)
+
+        return _include_related_call_ids(result, ext_result)
 
     async def resolve_programme(
         self,
@@ -418,16 +483,25 @@ class EntityResolver:
                 verification_notes=["/entities returned no results for external ID"],
             )
 
-        # Check each returned entity for the external ID
+        # Check each returned entity for the external ID. An explicitly
+        # different ID in the requested family is a contradiction; a response
+        # that omits that family remains merely unverified/ambiguous.
+        conflicting_entity = None
+        conflicting_ids: list[str] = []
         for entity in response.results:
             raw = entity.raw if entity.raw else {}
             ext_ids = _extract_external_ids(raw, external_family)
 
             if external_id in ext_ids:
-                # External ID confirmed in response — VERIFIED
+                # An external ID's presence is not enough to trust Qloo's
+                # mapping: title/year must still agree with the creator input.
+                identity_payload = {**raw, "name": raw.get("name") or entity.name or ""}
+                identity_status, identity_notes = verify_search_result(
+                    title, year, identity_payload
+                )
                 notes = [
                     f"external ID {external_id} confirmed in response",
-                    f"entity name: {entity.name!r}",
+                    *identity_notes,
                 ]
                 return ResolvedEntity(
                     input_title=title,
@@ -440,14 +514,50 @@ class EntityResolver:
                     qloo_year=_extract_year(raw),
                     qloo_disambiguation=raw.get("disambiguation"),
                     qloo_popularity=entity.popularity,
-                    match_status=MatchStatus.VERIFIED,
+                    match_status=identity_status,
                     match_method=MatchMethod.EXTERNAL_ID,
                     verification_notes=notes,
                     call_id=response.call_id,
                     raw_result=raw,
                 )
 
-        # External IDs not returned in response — cannot verify
+            if ext_ids:
+                conflicting_entity = conflicting_entity or entity
+                conflicting_ids.extend(value for value in ext_ids if value not in conflicting_ids)
+
+        if conflicting_entity is not None:
+            raw = conflicting_entity.raw if conflicting_entity.raw else {}
+            identity_payload = {
+                **raw,
+                "name": raw.get("name") or conflicting_entity.name or "",
+            }
+            _identity_status, identity_notes = verify_search_result(
+                title, year, identity_payload
+            )
+            return ResolvedEntity(
+                input_title=title,
+                input_year=year,
+                input_external_id=external_id,
+                input_external_family=external_family,
+                qloo_entity_id=conflicting_entity.entity_id,
+                qloo_name=conflicting_entity.name,
+                qloo_entity_type=conflicting_entity.type,
+                qloo_year=_extract_year(raw),
+                qloo_disambiguation=raw.get("disambiguation"),
+                qloo_popularity=conflicting_entity.popularity,
+                match_status=MatchStatus.MISMATCH,
+                match_method=MatchMethod.EXTERNAL_ID,
+                verification_notes=[
+                    f"/entities did not return supplied {external_family} ID {external_id}; "
+                    f"candidate listed conflicting ID(s): {', '.join(conflicting_ids)}",
+                    *identity_notes,
+                ],
+                call_id=response.call_id,
+                raw_result=raw,
+            )
+
+        # No candidate echoed this ID family, so the lookup cannot verify or
+        # contradict the supplied ID. Keep it ambiguous rather than guessing.
         return ResolvedEntity(
             input_title=title,
             input_year=year,

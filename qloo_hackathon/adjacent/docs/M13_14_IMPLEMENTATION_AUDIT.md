@@ -1,6 +1,8 @@
 # M13.14 — Implementation Audit (Phase 0)
 
-Date: 2026-10-11. All facts verified in this session by direct
+> **Historical snapshot (11 October 2026).** Its branch, repository, and test-state details describe that session only and are superseded by [`FINALIZATION_STATUS.md`](FINALIZATION_STATUS.md), dated 16 October 2026.
+
+Date: 2026-10-11. All facts verified in that session by direct
 inspection/execution.
 
 ## Baseline (verified)

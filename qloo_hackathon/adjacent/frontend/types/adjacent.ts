@@ -102,7 +102,7 @@ export interface CulturalField {
 export interface HeatmapCell {
   latitude: number;
   longitude: number;
-  affinity: number;
+  affinity: number | null;
   geohash: string | null;
   affinity_rank: number | null;
   popularity: number | null;

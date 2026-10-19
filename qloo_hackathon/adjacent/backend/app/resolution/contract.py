@@ -57,6 +57,7 @@ class ResolvedEntity:
 
     # --- Evidence ---
     call_id: str | None = None
+    related_call_ids: list[str] = field(default_factory=list)
     search_query: str | None = None
     raw_result: dict[str, Any] | None = None
 
@@ -86,4 +87,5 @@ class ResolvedEntity:
             "match_method": self.match_method.value if self.match_method else None,
             "verification_notes": self.verification_notes,
             "call_id": self.call_id,
+            "related_call_ids": self.related_call_ids,
         }

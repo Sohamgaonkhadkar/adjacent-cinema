@@ -48,6 +48,7 @@ from ..domain.youtube_provider import (
     YouTubeProviderError,
     retrieved_now,
 )
+from ..public_demo import public_demo_enabled
 from .creator_routes import get_repo
 
 router = APIRouter()
@@ -197,6 +198,18 @@ async def _authorized_call(coro_factory: Any) -> Any:
 @router.get("/youtube/status")
 def youtube_status() -> dict[str, Any]:
     """Honest connection state. NEVER contains tokens or secrets."""
+    if public_demo_enabled():
+        return {
+            "mode": "not_configured",
+            "mock_data": False,
+            "configured": False,
+            "redirect_uri": None,
+            "requested_scopes": list(SCOPES),
+            "single_connection_posture": True,
+            "connection": None,
+            "connected": False,
+            "disabled_reason": "YouTube access is disabled in public demo mode.",
+        }
     mode = get_mode()
     settings = get_settings()
     connection = get_store().status_view()

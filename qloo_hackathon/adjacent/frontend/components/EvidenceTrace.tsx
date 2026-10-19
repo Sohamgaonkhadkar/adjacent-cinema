@@ -1,6 +1,6 @@
 import type { TraceRow } from "@/types/adjacent";
 
-const sensitiveParameterName = /(?:api.?key|authorization|\bauth\b|token|secret|password|credential)/i;
+const sensitiveParameterName = /(?:^key$|api.?key|authorization|\bauth\b|token|secret|password|credential)/i;
 
 function safeAnchorPart(value: string): string {
   return value.replace(/[^a-zA-Z0-9_-]/g, "-");
@@ -124,6 +124,11 @@ export function EvidenceReferences({
     <span className="evidence-trace-references">
       {refs.map((callId, index) => {
         const isRecorded = traceRows.some((row) => row.call_id === callId);
+        const traceState = availability === "loading"
+          ? "trace loading"
+          : availability === "unavailable"
+            ? "trace unavailable"
+            : "trace not linked";
         return isRecorded ? (
           <a
             key={`${callId}-${index}`}
@@ -142,7 +147,7 @@ export function EvidenceReferences({
                 ? "The source run trace could not be retrieved."
                 : "No matching trace entry was included in this run response."}
           >
-            {callId} · {availability === "loading" ? "trace loading" : "trace unavailable"}
+            {callId} · {traceState}
           </span>
         );
       })}

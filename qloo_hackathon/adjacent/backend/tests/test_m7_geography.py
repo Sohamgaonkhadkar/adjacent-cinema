@@ -9,6 +9,7 @@ from backend.app.domain.geography import (
 )
 from backend.app.domain.programme_bet import ProgrammeBet, build_programme_bet
 from backend.app.domain.test_card import TestCard, build_test_card
+from backend.app.qloo.models import parse_entity_affinity, parse_heatmap, parse_tag_affinity
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -193,6 +194,74 @@ class TestBuildGeographyResult:
         assert "latitude" in d["highest_affinity_cells"][0]
         assert "longitude" in d["highest_affinity_cells"][0]
         assert "affinity" in d["highest_affinity_cells"][0]
+
+    def test_zero_and_missing_affinity_remain_distinct(self):
+        parsers = (
+            (parse_entity_affinity, "entities"),
+            (parse_tag_affinity, "tags"),
+            (parse_heatmap, "heatmap"),
+        )
+        for parser, collection in parsers:
+            common = {
+                "call_id": "affinity-test",
+                "source": "qloo",
+                "data_status": "measured",
+                "endpoint": "/v2/insights",
+            }
+            zero_payload = {
+                "results": {
+                    collection: [
+                        {
+                            "id": "item-1",
+                            "name": "Zero score",
+                            "location": {"latitude": 51.5, "longitude": -0.1},
+                            "query": {"affinity": 0.0},
+                            "affinity": 0.75,
+                        }
+                    ]
+                }
+            }
+            missing_payload = {
+                "results": {
+                    collection: [
+                        {
+                            "id": "item-2",
+                            "name": "Missing score",
+                            "location": {"latitude": 51.6, "longitude": -0.2},
+                            "query": {},
+                        }
+                    ]
+                }
+            }
+            assert parser(zero_payload, **common).results[0].affinity == 0.0
+            assert parser(missing_payload, **common).results[0].affinity is None
+
+        response = parse_heatmap(
+            {
+                "results": {
+                    "heatmap": [
+                        {
+                            "location": {"latitude": 51.5, "longitude": -0.1},
+                            "query": {"affinity": 0.0},
+                        },
+                        {
+                            "location": {"latitude": 51.6, "longitude": -0.2},
+                            "query": {},
+                        },
+                    ]
+                }
+            },
+            call_id="heatmap-affinity-test",
+            source="qloo",
+            data_status="measured",
+            endpoint="/v2/insights",
+        )
+        result = build_geography_result("London, UK", response)
+        assert [cell.affinity for cell in result.cells] == [0.0, None]
+        assert [cell.affinity for cell in result.highest_affinity_cells] == [0.0]
+        assert result.total_cells == 2
+        assert not result.sufficient
+        assert result.to_dict()["highest_affinity_cells"][0]["affinity"] == 0.0
 
     def test_to_dict_is_json_serialisable(self):
         resp = _mock_heatmap_response(12)

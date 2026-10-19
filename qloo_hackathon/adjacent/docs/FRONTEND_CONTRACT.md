@@ -1,6 +1,6 @@
 # Frontend Response Contract — Adjacent (live document)
 
-**Updated:** 2026-10-11 (M13.10 — YouTube Analytics integration). This document now describes the payload the
+**Updated:** 2026-10-16 (public-demo boundary and server-side proxy). This document describes the payload the
 backend ACTUALLY serves, matching `_build_result()` / `_record_to_response()` in
 `backend/app/api/routes.py` and the TypeScript types in
 `frontend/types/adjacent.ts`. The contract is enforced by
@@ -147,7 +147,8 @@ run; the same `GET /api/run/{id}`, `/stream`, `/trace` endpoints watch it.
 `programme_bet` and `test_card` carry the same shapes and the same invariant
 (`bet.primary.cohort_id == cohorts.ranked[0].cohort_id ==
 test_card.provenance.primary_cohort_id`). `data_status` is `"fixture"` on demo runs and
-`"live"` otherwise; creator success criteria never predict views/retention/revenue.
+`"measured"` on successful live-Qloo runs; a failed live run has no result. Creator
+success criteria never predict views/retention/revenue.
 
 ## 6. Experiment lifecycle routes (M13.9)
 
@@ -190,3 +191,16 @@ Frontend: `YouTubePanel` + `DecisionSummary` inside the Creator page's experimen
 detail; client functions in `frontend/lib/api.ts` (`youtubeStatus`,
 `beginYouTubeAuthorization`, `youtubeVideos`, `youtubeMetrics`,
 `recordYouTubeObservation`, `disconnectYouTube`).
+
+## 8. Public-demo mode (16 October 2026)
+
+Enable with `ADJACENT_PUBLIC_DEMO=1` in the backend environment. This is an anonymous-demo allowlist, **not authentication**.
+
+- Allowed requests: `GET /health`, `GET /youtube/status` (sanitized as unavailable), `GET /creator/synthesis-status` (disabled), `POST /run/demo`, `POST /creator/run/demo`, and reads for the UUID returned by those runs (`GET /run/{id}`, `/stream`, `/trace`).
+- `POST /creator/run` is denied unless the owner explicitly sets `ADJACENT_PUBLIC_LIVE=1` **and** configures the server-side `QLOO_API_KEY`. `POST /run` remains blocked in public-demo mode.
+- Public Creator inputs are bounded: body ≤16 KiB; title ≤160 chars; logline ≤2,000; genre ≤120; language ≤80; at most 5 themes of ≤120 chars and 5 references of ≤160 chars; optional city ≤120. The live agent's per-run call/time budget remains in force.
+- All public HTTP traffic is capped at 120 requests per API-observed peer IP/minute, 2,400/process/minute, and 64 in-flight requests (including open SSE streams). Run creation has separate quotas: live Creator 2/API-observed peer IP/hour and 12/process/hour, at most 2 in flight; fixtures 12/API-observed peer IP/hour and 60/process/hour, at most 4 in flight. Behind the same-origin proxy, multiple users may share one API peer-IP bucket. Fixture request bodies are capped at 1 KiB; live Creator bodies at 16 KiB. Public run results are in-memory and capped at 100 completed records per process; completed results older than 6 hours are pruned during create/read requests.
+- Experiment list/detail and all experiment writes return 403. YouTube authorization/data/write routes are blocked; the status route returns an explicit disconnected/disabled state. Synthesis execution, debug routes, `/docs`, `/redoc`, and `/openapi.json` are blocked. Public health omits provider hosts, key fingerprints, and detailed parameter metadata. Public run responses, SSE errors, and trace rows replace raw exception/upstream details with safe failure text while keeping status and call references.
+- CORS never uses `*`; direct browser origins must be explicitly configured with `ADJACENT_CORS_ORIGINS`. The supported frontend path is same-origin `/api` with a server-side Next.js rewrite to `ADJACENT_API_ORIGIN`.
+
+The rate limits are process-local. Add an edge/API-gateway quota and a shared limiter before scaling across workers or replicas. No hosted deployment is verified; see [`FINALIZATION_STATUS.md`](FINALIZATION_STATUS.md).

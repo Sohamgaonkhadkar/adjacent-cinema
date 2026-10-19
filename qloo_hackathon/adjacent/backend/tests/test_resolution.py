@@ -7,9 +7,11 @@ Tests 7-10: live-only tests (require QLOO_API_KEY)
 
 from __future__ import annotations
 
+import asyncio
 import os
 
 import pytest
+from app.qloo.models import EntitiesResponse, ScoredEntity, SearchResponse
 from app.resolution.contract import MatchMethod, MatchStatus, ResolvedEntity
 from app.resolution.resolver import EntityResolver, verify_search_result
 
@@ -141,6 +143,255 @@ class TestResolverSafety:
         )
         assert entity.resolved is False
         assert entity.usable is False
+
+
+# ---------------------------------------------------------------------------
+# Offline integration regressions for historical identity edge cases
+# ---------------------------------------------------------------------------
+
+
+class _ResolverClientStub:
+    def __init__(self, *, search_entities: list[ScoredEntity], id_entities: list[ScoredEntity]):
+        self.search_entities = search_entities
+        self.id_entities = id_entities
+
+    async def search(self, **_kwargs):
+        return SearchResponse(
+            call_id="search-call-001",
+            source="mock",
+            data_status="fixture",
+            results=self.search_entities,
+        )
+
+    async def entities(self, **_kwargs):
+        return EntitiesResponse(
+            call_id="external-call-001",
+            source="mock",
+            data_status="fixture",
+            results=self.id_entities,
+        )
+
+
+def _qloo_entity(
+    entity_id: str,
+    name: str,
+    year: int | None,
+    *,
+    imdb_id: str | None = None,
+) -> ScoredEntity:
+    raw = {"name": name, "properties": {}}
+    if year is not None:
+        raw["disambiguation"] = str(year)
+        raw["properties"]["release_year"] = year
+    if imdb_id:
+        raw["external"] = {"imdb": [imdb_id]}
+    return ScoredEntity(
+        entity_id=entity_id,
+        name=name,
+        type="urn:entity:movie",
+        raw=raw,
+    )
+
+
+class TestHistoricalEntityResolutionRegressions:
+    def test_taipei_story_imdb_id_cannot_verify_purple_rose_mapping(self) -> None:
+        """A matching IMDb string must not bless a conflicting Qloo entity name."""
+        client = _ResolverClientStub(
+            search_entities=[],
+            id_entities=[
+                _qloo_entity(
+                    "qloo-purple-rose",
+                    "The Purple Rose of Cairo",
+                    1985,
+                    imdb_id="tt0089853",
+                )
+            ],
+        )
+        result = asyncio.run(
+            EntityResolver(client, delay_s=0).resolve_item(
+                "Taipei Story",
+                year=1985,
+                external_id="tt0089853",
+                external_family="imdb",
+            )
+        )
+
+        assert result.match_status == MatchStatus.MISMATCH
+        assert result.qloo_name == "The Purple Rose of Cairo"
+        assert result.resolved is False
+        assert result.call_id == "external-call-001"
+        assert result.related_call_ids == ["search-call-001"]
+        assert {result.call_id, *result.related_call_ids} == {
+            "search-call-001",
+            "external-call-001",
+        }
+
+    def test_verified_external_id_does_not_override_title_search_mismatch(self) -> None:
+        """Conflicting search and ID endpoints stay unusable, with both traces."""
+        client = _ResolverClientStub(
+            search_entities=[
+                _qloo_entity(
+                    "qloo-purple-rose",
+                    "The Purple Rose of Cairo",
+                    1985,
+                    imdb_id="tt0089853",
+                )
+            ],
+            id_entities=[
+                _qloo_entity(
+                    "qloo-taipei-story",
+                    "Taipei Story",
+                    1985,
+                    imdb_id="tt0089853",
+                )
+            ],
+        )
+
+        result = asyncio.run(
+            EntityResolver(client, delay_s=0).resolve_item(
+                "Taipei Story",
+                year=1985,
+                external_id="tt0089853",
+                external_family="imdb",
+            )
+        )
+
+        assert result.match_status == MatchStatus.MISMATCH
+        assert result.resolved is False
+        assert result.qloo_name == "The Purple Rose of Cairo"
+        assert result.input_external_id == "tt0089853"
+        assert result.call_id == "search-call-001"
+        assert result.related_call_ids == ["external-call-001"]
+        assert any("cannot override" in note for note in result.verification_notes)
+
+    def test_perfect_days_missing_from_qloo_stays_unresolved(self) -> None:
+        client = _ResolverClientStub(search_entities=[], id_entities=[])
+        result = asyncio.run(
+            EntityResolver(client, delay_s=0).resolve_item(
+                "Perfect Days",
+                year=2023,
+                external_id="tt7594358",
+                external_family="imdb",
+            )
+        )
+
+        assert result.match_status == MatchStatus.UNRESOLVED
+        assert result.qloo_entity_id is None
+        assert result.resolved is False
+        assert result.call_id == "search-call-001"
+        assert result.related_call_ids == ["external-call-001"]
+
+    def test_exact_perfect_days_search_result_is_verified(self) -> None:
+        client = _ResolverClientStub(
+            search_entities=[_qloo_entity("qloo-perfect-days", "Perfect Days", 2023)],
+            id_entities=[],
+        )
+        result = asyncio.run(
+            EntityResolver(client, delay_s=0).resolve_item("Perfect Days", year=2023)
+        )
+
+        assert result.match_status == MatchStatus.VERIFIED
+        assert result.qloo_entity_id == "qloo-perfect-days"
+        assert result.resolved is True
+        assert result.call_id == "search-call-001"
+
+    def test_matching_external_id_keeps_both_trace_references(self) -> None:
+        entity = _qloo_entity(
+            "qloo-perfect-days", "Perfect Days", 2023, imdb_id="tt7594358"
+        )
+        client = _ResolverClientStub(search_entities=[entity], id_entities=[entity])
+        result = asyncio.run(
+            EntityResolver(client, delay_s=0).resolve_item(
+                "Perfect Days",
+                year=2023,
+                external_id="tt7594358",
+                external_family="imdb",
+            )
+        )
+
+        assert result.match_status == MatchStatus.VERIFIED
+        assert result.match_method == MatchMethod.EXTERNAL_ID
+        assert result.call_id == "search-call-001"
+        assert result.related_call_ids == ["external-call-001"]
+
+    def test_conflicting_imdb_value_is_not_accepted_as_an_external_id_match(self) -> None:
+        """A candidate that echoes another IMDb ID contradicts the supplied one."""
+        client = _ResolverClientStub(
+            search_entities=[],
+            id_entities=[
+                _qloo_entity(
+                    "qloo-perfect-days",
+                    "Perfect Days",
+                    2023,
+                    imdb_id="tt0000000",
+                )
+            ],
+        )
+        result = asyncio.run(
+            EntityResolver(client, delay_s=0).resolve_item(
+                "Perfect Days",
+                year=2023,
+                external_id="tt7594358",
+                external_family="imdb",
+            )
+        )
+
+        assert result.match_status == MatchStatus.MISMATCH
+        assert result.resolved is False
+        assert result.qloo_name == "Perfect Days"
+        assert result.qloo_year == 2023
+        assert any("conflicting ID" in note for note in result.verification_notes)
+
+    def test_matching_imdb_but_conflicting_year_is_rejected(self) -> None:
+        client = _ResolverClientStub(
+            search_entities=[],
+            id_entities=[
+                _qloo_entity(
+                    "qloo-perfect-days-2014",
+                    "Perfect Days",
+                    2014,
+                    imdb_id="tt7594358",
+                )
+            ],
+        )
+        result = asyncio.run(
+            EntityResolver(client, delay_s=0).resolve_item(
+                "Perfect Days",
+                year=2023,
+                external_id="tt7594358",
+                external_family="imdb",
+            )
+        )
+
+        assert result.match_status == MatchStatus.MISMATCH
+        assert result.qloo_year == 2014
+        assert any("year mismatch" in note for note in result.verification_notes)
+
+    def test_external_id_result_must_agree_with_verified_search_entity(self) -> None:
+        searched = _qloo_entity("qloo-search-id", "Perfect Days", 2023)
+        id_lookup = _qloo_entity(
+            "qloo-external-id", "Perfect Days", 2023, imdb_id="tt7594358"
+        )
+        client = _ResolverClientStub(
+            search_entities=[searched],
+            id_entities=[id_lookup],
+        )
+
+        result = asyncio.run(
+            EntityResolver(client, delay_s=0).resolve_item(
+                "Perfect Days",
+                year=2023,
+                external_id="tt7594358",
+                external_family="imdb",
+            )
+        )
+
+        assert result.match_status == MatchStatus.MISMATCH
+        assert result.resolved is False
+        assert result.qloo_entity_id == "qloo-search-id"
+        assert result.call_id == "search-call-001"
+        assert result.related_call_ids == ["external-call-001"]
+        assert any("external ID conflict" in note for note in result.verification_notes)
 
 
 # ---------------------------------------------------------------------------

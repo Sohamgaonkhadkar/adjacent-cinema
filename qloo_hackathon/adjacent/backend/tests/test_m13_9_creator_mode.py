@@ -11,6 +11,7 @@ from __future__ import annotations
 import time
 
 import pytest
+from app.api import creator_routes
 from app.main import app
 from fastapi.testclient import TestClient
 
@@ -68,6 +69,81 @@ class TestCreatorFixtureDemo:
             body = "".join(chunk for chunk in response.iter_text())
         for expected in ("event: resolution", "event: bet", "event: test_card", "event: done"):
             assert expected in body
+
+
+class TestCreatorExperimentJourney:
+    def test_fixture_evidence_to_planned_experiment_observation_and_evaluation(
+        self, tmp_path
+    ) -> None:
+        """Exercise the real Creator response without inventing an outcome."""
+        creator_routes.reset_repo_for_tests(tmp_path / "creator-journey.db")
+        try:
+            client = TestClient(app)
+            created = client.post("/creator/run/demo")
+            assert created.status_code == 200
+            run_id = created.json()["run_id"]
+            final = _wait(client, run_id)
+            assert final["status"] == "completed"
+
+            result = final["result"]
+            card = result["test_card"]
+            assert result["data_status"] == "fixture"
+            assert card["data_status"] == "fixture"
+            assert card["audience_hypothesis"]
+
+            saved = client.post("/experiments", json={
+                "request_id": f"journey-save-{run_id}",
+                "film_title": result["film"]["title"],
+                "hypothesis": card["audience_hypothesis"],
+                "success_criteria": card["success_criteria"],
+                "observation_window": card["observation_window"],
+                "action_plan": card["programming_direction"],
+                "data_status": card["data_status"],
+                "source_run_id": run_id,
+                "source_bet": result["programme_bet"],
+                "provenance": card["provenance"],
+                "film_context": result["film"],
+            })
+            assert saved.status_code == 201
+            experiment = saved.json()["experiment"]
+            assert experiment["status"] == "PLANNED"
+            assert experiment["source_run_id"] == run_id
+            assert experiment["data_status"] == "fixture"
+
+            observed = client.post(
+                f"/experiments/{experiment['experiment_id']}/observations",
+                json={
+                    "request_id": f"journey-observation-{run_id}",
+                    "kind": "NOTE",
+                    "measurement_status": "UNAVAILABLE",
+                    "limitations": (
+                        "Workflow verification only; no external creator outcome was collected."
+                    ),
+                },
+            )
+            assert observed.status_code == 201
+            observation = observed.json()["observation"]
+            assert observation["measurement_status"] == "UNAVAILABLE"
+            assert observation["metrics"] == {}
+
+            evaluated = client.post(
+                f"/experiments/{experiment['experiment_id']}/evaluations",
+                json={
+                    "request_id": f"journey-evaluation-{run_id}",
+                    "outcome": "INCONCLUSIVE",
+                    "rationale": (
+                        "The fixture demonstrates the workflow; no external outcome was measured."
+                    ),
+                    "unknowns": "Actual creator/audience response remains unknown.",
+                },
+            )
+            assert evaluated.status_code == 201
+            detail = client.get(f"/experiments/{experiment['experiment_id']}").json()
+            assert len(detail["observations"]) == 1
+            assert len(detail["evaluations"]) == 1
+            assert detail["evaluations"][0]["outcome"] == "INCONCLUSIVE"
+        finally:
+            creator_routes.reset_repo_for_tests(None)
 
 
 class TestCreatorLiveRunHonesty:

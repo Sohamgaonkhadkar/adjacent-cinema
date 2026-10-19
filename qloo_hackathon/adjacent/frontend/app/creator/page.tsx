@@ -10,6 +10,7 @@ import {
   createCreatorRun,
   disconnectYouTube,
   getExperiment,
+  getHealth,
   getRun,
   listExperiments,
   recordYouTubeObservation,
@@ -21,6 +22,7 @@ import {
   type SynthesisStatus,
   youtubeStatus,
   youtubeVideos,
+  type BackendHealth,
   type EvaluationRecord,
   type ExperimentRecord,
   type ObservationRecord,
@@ -76,6 +78,7 @@ export default function CreatorPage() {
   const [error, setError] = useState<string | null>(null);
   const stopStream = useRef<(() => void) | null>(null);
   const experimentDetailRequest = useRef(0);
+  const publicDemoRef = useRef(false);
 
   // ── experiment state ─────────────────────────────────────────────────────
   const [experiments, setExperiments] = useState<ExperimentRecord[]>([]);
@@ -92,14 +95,21 @@ export default function CreatorPage() {
   } | null>(null);
   const [expError, setExpError] = useState<string | null>(null);
   const [ytBanner, setYtBanner] = useState<string | null>(null);
+  const [backendHealth, setBackendHealth] = useState<BackendHealth | null>(null);
 
   const result: AdjacentRunResult | null = (run?.result as AdjacentRunResult | null) ?? null;
   const traceRows: TraceRow[] = run?.trace ?? [];
-  const resultTone = statusTone(result?.data_status ?? null);
   const insufficient = run?.status === "insufficient";
   const failed = run?.status === "failed";
+  const resultTone = statusTone(failed || insufficient ? null : result?.data_status ?? null);
 
   const refreshExperiments = useCallback(async () => {
+    if (publicDemoRef.current) {
+      setExperiments([]);
+      setExperimentsError("Shared experiment storage is disabled in public-demo mode.");
+      setExperimentsLoading(false);
+      return;
+    }
     setExperimentsLoading(true);
     setExperimentsError(null);
     try {
@@ -112,8 +122,27 @@ export default function CreatorPage() {
   }, []);
 
   useEffect(() => {
-    refreshExperiments();
-    return () => stopStream.current?.();
+    let mounted = true;
+    getHealth()
+      .then((health) => {
+        if (!mounted) return;
+        publicDemoRef.current = health.public_demo === true;
+        setBackendHealth(health);
+        if (health.public_demo) {
+          setExperiments([]);
+          setExperimentsError("Shared experiment storage is disabled in public-demo mode.");
+          setExperimentsLoading(false);
+        } else {
+          void refreshExperiments();
+        }
+      })
+      .catch(() => {
+        if (mounted) void refreshExperiments();
+      });
+    return () => {
+      mounted = false;
+      stopStream.current?.();
+    };
   }, [refreshExperiments]);
 
   const watchRun = useCallback((id: string) => {
@@ -201,6 +230,22 @@ export default function CreatorPage() {
       return;
     }
     const themes = themesText.split(",").map((t) => t.trim()).filter(Boolean);
+    if (refs.length > 5) {
+      setFormError("Use at most five reference works.");
+      return;
+    }
+    if (themes.length > 5) {
+      setFormError("Use at most five themes.");
+      return;
+    }
+    if (themes.some((theme) => theme.length > 120)) {
+      setFormError("Each theme must be 120 characters or fewer.");
+      return;
+    }
+    if (refs.some((ref) => ref.title.length > 160)) {
+      setFormError("Each reference title must be 160 characters or fewer.");
+      return;
+    }
     if (refs.length === 0 && themes.length === 0) {
       setFormError("Add at least one reference work or theme — the analysis needs cultural seeds.");
       return;
@@ -227,6 +272,10 @@ export default function CreatorPage() {
 
   async function handleSaveExperiment() {
     if (!result?.test_card || !runId) return;
+    if (backendHealth?.public_demo) {
+      setExpError("Saving shared experiments is disabled in public-demo mode. The run is temporary.");
+      return;
+    }
     setExpError(null);
     try {
       const card = result.test_card;
@@ -354,6 +403,19 @@ export default function CreatorPage() {
             <span className="mono-note">{ytBanner}</span>
           </div>
         )}
+        {backendHealth?.public_demo && (
+          <div className="evidence-panel" role="status" style={{ borderColor: "var(--amber)", marginBottom: 20 }}>
+            <strong className="mono-note" style={{ display: "block", color: "var(--amber)" }}>
+              PUBLIC DEMO MODE · FIXTURE DATA IS LABELLED
+            </strong>
+            <p style={{ color: "#b3aea4", fontSize: 12, lineHeight: 1.7, margin: "8px 0 0" }}>
+              {backendHealth.live_creator_available
+                ? "Bounded live Creator requests are enabled; upstream Qloo may still fail honestly."
+                : "Live Creator requests are disabled. Use the labelled offline fixture demo."}
+              {" Shared experiments, YouTube and synthesis are unavailable. Run records are temporary and expire."}
+            </p>
+          </div>
+        )}
         {/* ── 1. Film intake ─────────────────────────────────────────── */}
         <div className="evidence-panel" id="intake">
           <h3>Your film</h3>
@@ -363,59 +425,67 @@ export default function CreatorPage() {
           <div style={{ display: "grid", gap: 12 }}>
             <label className="micro-label" style={{ display: "grid", gap: 6 }}>
               WORKING TITLE *
-              <input className="intake-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Neon Harbour" />
+              <input className="intake-input" maxLength={160} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Neon Harbour" />
             </label>
             <label className="micro-label" style={{ display: "grid", gap: 6 }}>
               LOGLINE / DESCRIPTION
-              <textarea className="intake-input" rows={2} value={logline} onChange={(e) => setLogline(e.target.value)} placeholder="A dockside night-shift romance told in three silent vignettes." />
+              <textarea className="intake-input" rows={2} maxLength={2000} value={logline} onChange={(e) => setLogline(e.target.value)} placeholder="A dockside night-shift romance told in three silent vignettes." />
             </label>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
               <label className="micro-label" style={{ display: "grid", gap: 6 }}>
                 GENRE
-                <input className="intake-input" value={genre} onChange={(e) => setGenre(e.target.value)} placeholder="drama" />
+                <input className="intake-input" maxLength={120} value={genre} onChange={(e) => setGenre(e.target.value)} placeholder="drama" />
               </label>
               <label className="micro-label" style={{ display: "grid", gap: 6 }}>
                 LANGUAGE
-                <input className="intake-input" value={language} onChange={(e) => setLanguage(e.target.value)} placeholder="English" />
+                <input className="intake-input" maxLength={80} value={language} onChange={(e) => setLanguage(e.target.value)} placeholder="English" />
               </label>
             </div>
             <label className="micro-label" style={{ display: "grid", gap: 6 }}>
               THEMES (COMMA-SEPARATED)
-              <input className="intake-input" value={themesText} onChange={(e) => setThemesText(e.target.value)} placeholder="isolation, night workers, coastal towns" />
+              <input className="intake-input" maxLength={604} value={themesText} onChange={(e) => setThemesText(e.target.value)} placeholder="isolation, night workers, coastal towns" />
             </label>
             <fieldset style={{ border: "1px solid var(--rule)", borderRadius: 6, padding: 12, margin: 0 }}>
               <legend className="micro-label" style={{ padding: "0 6px" }}>COMPARABLE WORKS / REFERENCES</legend>
               {referenceRows.map((row, i) => (
                 <div key={i} style={{ display: "grid", gridTemplateColumns: "minmax(0, 3fr) minmax(72px, 1fr) auto", gap: 8, marginBottom: 8 }}>
-                  <input className="intake-input" value={row.title} placeholder="Film, artist, book, game…"
+                  <input className="intake-input" maxLength={160} value={row.title} placeholder="Film, artist, book, game…"
                     aria-label={`Reference work ${i + 1}`}
                     onChange={(e) => setReferenceRows((rows) => rows.map((r, ri) => (ri === i ? { ...r, title: e.target.value } : r)))} />
-                  <input className="intake-input" value={row.year} placeholder="year" inputMode="numeric"
+                  <input className="intake-input" maxLength={4} value={row.year} placeholder="year" inputMode="numeric"
                     aria-label={`Reference year ${i + 1}`}
                     onChange={(e) => setReferenceRows((rows) => rows.map((r, ri) => (ri === i ? { ...r, year: e.target.value } : r)))} />
                   <button type="button" className="intake-sample-btn" aria-label={`Remove reference ${i + 1}`}
                     onClick={() => setReferenceRows((rows) => rows.filter((_, ri) => ri !== i))}>✕</button>
                 </div>
               ))}
-              <button type="button" className="intake-sample-btn"
-                onClick={() => setReferenceRows((rows) => [...rows, { title: "", year: "" }])}>
-                + Add reference
+              <button type="button" className="intake-sample-btn" disabled={referenceRows.length >= 5}
+                onClick={() => setReferenceRows((rows) => rows.length < 5 ? [...rows, { title: "", year: "" }] : rows)}>
+                {referenceRows.length >= 5 ? "5 reference limit reached" : "+ Add reference"}
               </button>
             </fieldset>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
               <label className="micro-label" style={{ display: "grid", gap: 6 }}>
                 RELEASE GOAL
-                <input className="intake-input" value={releaseGoal} onChange={(e) => setReleaseGoal(e.target.value)} placeholder="YouTube premiere after festival window" />
+                <input className="intake-input" maxLength={300} value={releaseGoal} onChange={(e) => setReleaseGoal(e.target.value)} placeholder="YouTube premiere after festival window" />
               </label>
               <label className="micro-label" style={{ display: "grid", gap: 6 }}>
                 RELEASE LOCATION (OPTIONAL — ENABLES GEOGRAPHY)
-                <input className="intake-input" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Lisbon, Portugal" />
+                <input className="intake-input" maxLength={120} value={city} onChange={(e) => setCity(e.target.value)} placeholder="Lisbon, Portugal" />
               </label>
             </div>
             {formError && <p className="intake-form-error" role="alert">{formError}</p>}
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <button onClick={handleAnalyse} disabled={analysing} className="intake-submit">
-                {analysing ? "Analysing…" : "Analyse cultural position"}
+              <button
+                onClick={handleAnalyse}
+                disabled={analysing || Boolean(backendHealth?.public_demo && !backendHealth.live_creator_available)}
+                className="intake-submit"
+              >
+                {analysing
+                  ? "Analysing…"
+                  : backendHealth?.public_demo && !backendHealth.live_creator_available
+                    ? "Live Creator disabled in public demo"
+                    : "Analyse cultural position"}
               </button>
               <button onClick={startDemoRun} disabled={analysing} className="intake-sample-btn">
                 View labelled fixture demo (offline)
@@ -449,10 +519,11 @@ export default function CreatorPage() {
             <p>{run.stop_message || "Qloo did not return enough verified signal for these seeds. Add more comparable works or themes — a refusal is an honest result."}</p>
           </div>
         )}
-        {run && !analysing && failed && !result && (
-          <div className="insufficient-panel" style={{ marginTop: 24, borderColor: "rgba(138,80,72,0.45)", background: "rgba(138,80,72,0.08)" }}>
+        {run && !analysing && failed && (
+          <div className="insufficient-panel" role="alert" style={{ marginTop: 24, borderColor: "rgba(138,80,72,0.45)", background: "rgba(138,80,72,0.08)" }}>
             <h3 style={{ color: "#d4a89e" }}>The analysis could not complete</h3>
-            <p>{run.error || run.stop_message || "Unknown failure."}</p>
+            <p>{run.error || run.stop_message || result?.evidence?.stop_message || "Unknown failure."}</p>
+            {result && <p>Any partial evidence below is not a completed positioning result.</p>}
           </div>
         )}
 
@@ -463,7 +534,11 @@ export default function CreatorPage() {
               background: resultTone.background,
               border: `1px solid ${resultTone.border}` }}>
               <span style={{ ...mono, fontSize: 9, letterSpacing: "0.1em", color: resultTone.color }}>
-                {statusLabel(result.data_status ?? null)}
+                {failed
+                  ? `ANALYSIS FAILED · ${statusLabel(result.data_status ?? null)} · PARTIAL OUTPUT ONLY`
+                  : insufficient
+                    ? `INSUFFICIENT EVIDENCE · ${statusLabel(result.data_status ?? null)}`
+                    : statusLabel(result.data_status ?? null)}
                 {requestMode === "fixture" ? " · FIXTURE DEMO REQUESTED" : ""}
               </span>
             </div>
@@ -685,7 +760,9 @@ export default function CreatorPage() {
                   </div>
                 </div>
                 <div style={{ marginTop: 24, paddingTop: 18, borderTop: "1px solid var(--rule)", display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-                  <button onClick={handleSaveExperiment} className="intake-submit">Save as planned experiment</button>
+                  <button onClick={handleSaveExperiment} className="intake-submit" disabled={backendHealth?.public_demo}>
+                    {backendHealth?.public_demo ? "Saving disabled in public demo" : "Save as planned experiment"}
+                  </button>
                   {saveState && <span className="mono-note" role="status" aria-live="polite">{saveState}</span>}
                   {expError && <span className="intake-form-error" role="alert">{expError}</span>}
                 </div>
@@ -700,7 +777,11 @@ export default function CreatorPage() {
           <span className="mono-note" style={{ display: "block", marginBottom: 14 }}>
             PLANNED DECISIONS · SAVING DOES NOT EXECUTE · REAL OBSERVATIONS · HONEST EVALUATIONS · HISTORY IS NEVER REWRITTEN
           </span>
-          {experimentsError && (
+          {backendHealth?.public_demo ? (
+            <p role="status" style={{ color: "#88837a", fontSize: 13, lineHeight: 1.8 }}>
+              Shared experiment history is intentionally unavailable in this public demo; no shared records are read or written.
+            </p>
+          ) : experimentsError && (
             <div role="alert" className="intake-form-error" style={{ marginBottom: 12 }}>
               <p style={{ margin: 0 }}>
                 The Research Log could not be loaded. {experiments.length > 0
@@ -1359,13 +1440,19 @@ function YouTubePanel({ experimentId, onChanged }: { experimentId: string; onCha
 
       {!statusLoading && !statusError && status && !status.connected && status.mode !== "mock" && (
         <>
-          <p style={{ color: "#b3aea4", fontSize: 12, lineHeight: 1.6, margin: "6px 0 8px" }}>
-            Connect your own YouTube channel (read-only: youtube.readonly +
-            yt-analytics.readonly) to attach real per-video analytics to this
-            experiment. Nothing is accessed without your explicit consent, and
-            disconnecting deletes the stored data.
-          </p>
-          {status.mode === "not_configured" ? (
+          {!status.disabled_reason && (
+            <p style={{ color: "#b3aea4", fontSize: 12, lineHeight: 1.6, margin: "6px 0 8px" }}>
+              Connect your own YouTube channel (read-only: youtube.readonly +
+              yt-analytics.readonly) to attach real per-video analytics to this
+              experiment. Nothing is accessed without your explicit consent, and
+              disconnecting deletes the stored data.
+            </p>
+          )}
+          {status.disabled_reason ? (
+            <p role="status" className="mono-note" style={{ color: "#8a847a" }}>
+              {status.disabled_reason}
+            </p>
+          ) : status.mode === "not_configured" ? (
             <p className="mono-note" style={{ color: "#8a847a" }}>
               OAUTH NOT CONFIGURED ON THIS DEPLOYMENT — SEE
               DOCS/M13_10_YOUTUBE_ANALYTICS_INTEGRATION.MD
