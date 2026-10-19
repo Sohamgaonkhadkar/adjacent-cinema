@@ -566,6 +566,7 @@ def _emit_state_events(record: RunRecord, state: AdjacentState) -> None:
                 "resolved": item.resolved,
                 "qloo_entity_id": item.resolved_entity_id,
                 "qloo_name": item.resolved_name,
+                "resolution_evidence": item.resolution_evidence,
             }
             for item in state.programme
         ],
@@ -629,6 +630,7 @@ def _build_result(
                     "resolved": item.resolved,
                     "qloo_entity_id": item.resolved_entity_id,
                     "qloo_name": item.resolved_name,
+                    "resolution_evidence": item.resolution_evidence,
                 }
                 for item in state.programme
             ],

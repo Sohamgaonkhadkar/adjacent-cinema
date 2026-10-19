@@ -112,6 +112,8 @@ class TestFixtureDemoRun:
         assert programme["total_count"] >= 3
         assert programme["resolved_count"] == programme["total_count"]
         assert any(item["title"] == "Perfect Days" for item in programme["items"])
+        # Fixture identity rows are not live resolver verification evidence.
+        assert all(item["resolution_evidence"] is None for item in programme["items"])
 
         assert result["taste_dna"]["tag_count"] > 0
         assert len(result["cohorts"]["ranked"]) >= 1

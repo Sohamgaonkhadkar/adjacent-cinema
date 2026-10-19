@@ -13,6 +13,24 @@ export interface CinemaIdentity {
 
 // ─── Programme (frontend normalized) ────────────────────────────────────────
 
+export interface ResolutionEvidence {
+  input_title: string;
+  input_year: number | null;
+  input_external_id: string | null;
+  input_external_family: string | null;
+  qloo_entity_id: string | null;
+  qloo_name: string | null;
+  qloo_entity_type: string | null;
+  qloo_year: number | null;
+  qloo_disambiguation: string | null;
+  qloo_popularity: number | null;
+  match_status: "VERIFIED" | "AMBIGUOUS" | "UNRESOLVED" | "MISMATCH";
+  match_method: string | null;
+  verification_notes: string[];
+  call_id: string | null;
+  related_call_ids: string[];
+}
+
 export interface ProgrammeFilm {
   title: string;
   year: number | null;
@@ -20,6 +38,8 @@ export interface ProgrammeFilm {
   resolved: boolean;
   qloo_entity_id: string | null;
   qloo_name: string | null;
+  /** Sanitized resolver evidence; absent for fixture-only seed records. */
+  resolution_evidence?: ResolutionEvidence | null;
   /** Present on some payloads (demo/normalised); the /run result omits it. */
   popularity?: number | null;
 }

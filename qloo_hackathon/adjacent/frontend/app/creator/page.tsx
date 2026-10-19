@@ -31,7 +31,7 @@ import {
   type YouTubeStatus,
   type YouTubeVideo,
 } from "@/lib/api";
-import type { AdjacentRunResult, InvestigationData, TraceRow } from "@/types/adjacent";
+import type { AdjacentRunResult, InvestigationData, ProgrammeFilm, TraceRow } from "@/types/adjacent";
 import AdjacencyGraph from "@/components/AdjacencyGraph";
 import { EvidenceReferences, EvidenceTraceLog } from "@/components/EvidenceTrace";
 
@@ -52,6 +52,15 @@ function statusTone(status: string | null) {
     return { color: "#c29a6e", background: "rgba(194,154,110,0.12)", border: "rgba(194,154,110,0.3)" };
   }
   return { color: "#a7a39b", background: "rgba(232,226,213,0.04)", border: "rgba(232,226,213,0.18)" };
+}
+
+function resolutionCallLabel(evidence: NonNullable<ProgrammeFilm["resolution_evidence"]>): string {
+  const callIds = [evidence.call_id, ...evidence.related_call_ids].filter(
+    (callId): callId is string => Boolean(callId),
+  );
+  return callIds.length
+    ? ` · CALL${callIds.length === 1 ? "" : "S"} ${callIds.join(", ")}`
+    : "";
 }
 
 export default function CreatorPage() {
@@ -555,6 +564,21 @@ export default function CreatorPage() {
                     <span>{item.title}</span>
                     {item.year != null && <span style={{ color: "#88837a" }}>({item.year})</span>}
                     {!item.resolved && <span className="mono-note">UNRESOLVED — EXCLUDED FROM EVIDENCE</span>}
+                    {item.resolution_evidence && (
+                      <span className="mono-note" style={{ color: item.resolved ? "#7aba8a" : "#c29a6e" }}>
+                        {item.resolution_evidence.match_status}
+                        {item.resolution_evidence.match_method ? ` · VIA ${item.resolution_evidence.match_method.toUpperCase()}` : ""}
+                        {item.resolution_evidence.qloo_name ? ` · QLOO ${item.resolution_evidence.qloo_name}` : ""}
+                        {item.resolution_evidence.qloo_year != null ? ` (${item.resolution_evidence.qloo_year})` : ""}
+                        {item.resolution_evidence.qloo_entity_id ? ` · ENTITY ${item.resolution_evidence.qloo_entity_id}` : ""}
+                        {resolutionCallLabel(item.resolution_evidence)}
+                      </span>
+                    )}
+                    {(item.resolution_evidence?.verification_notes.length ?? 0) > 0 && (
+                      <span className="mono-note" style={{ color: "#a7a39b" }}>
+                        {item.resolution_evidence?.verification_notes.join(" · ")}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>

@@ -11,6 +11,10 @@ import asyncio
 import os
 
 import pytest
+from app.agent.budget import Budget
+from app.agent.state import AdjacentState, ProgrammeItem
+from app.api.routes import _build_result
+from app.live_runner import LivePipeline
 from app.qloo.models import EntitiesResponse, ScoredEntity, SearchResponse
 from app.resolution.contract import MatchMethod, MatchStatus, ResolvedEntity
 from app.resolution.resolver import EntityResolver, verify_search_result
@@ -106,6 +110,60 @@ class TestResolvedEntity:
         assert d["match_status"] == "VERIFIED"
         assert d["match_method"] == "search_with_year"
         assert d["qloo_entity_id"] == "abc-123"
+
+    def test_live_pipeline_preserves_sanitized_resolution_evidence(self):
+        class FixedResolver:
+            async def resolve_programme(self, _items):
+                return [
+                    ResolvedEntity(
+                        input_title="Perfect Days",
+                        input_year=2023,
+                        qloo_entity_id="qloo-film-2023",
+                        qloo_name="Perfect Days",
+                        qloo_entity_type="urn:entity:movie",
+                        qloo_year=2023,
+                        match_status=MatchStatus.VERIFIED,
+                        match_method=MatchMethod.SEARCH_WITH_YEAR,
+                        verification_notes=["year matches: 2023"],
+                        call_id="resolution-run-c001",
+                        related_call_ids=["resolution-run-c002"],
+                        raw_result={"private_test_payload": "not exposed"},
+                    )
+                ]
+
+        state = AdjacentState(
+            run_id="resolution-run",
+            data_status="measured",
+            programme=[
+                ProgrammeItem(
+                    title="Perfect Days",
+                    year=2023,
+                    imdb_id=None,
+                    declared_entity_id=None,
+                )
+            ],
+        )
+        pipeline = LivePipeline(
+            object(), FixedResolver(), [{"title": "Perfect Days", "year": 2023}]
+        )
+
+        resolved = asyncio.run(pipeline.resolve_programme(state, Budget()))
+        payload = _build_result(state, "")
+        item = payload["programme"]["items"][0]
+        evidence = item["resolution_evidence"]
+
+        assert resolved.resolved == 1
+        assert item["resolved"] is True
+        assert item["qloo_entity_id"] == "qloo-film-2023"
+        assert evidence["match_status"] == "VERIFIED"
+        assert evidence["match_method"] == "search_with_year"
+        assert evidence["qloo_year"] == 2023
+        assert evidence["verification_notes"] == ["year matches: 2023"]
+        assert evidence["call_id"] == "resolution-run-c001"
+        assert evidence["related_call_ids"] == ["resolution-run-c002"]
+        assert state.resolution_call_ids == ["resolution-run-c001", "resolution-run-c002"]
+        assert "raw_result" not in evidence
+        assert "private_test_payload" not in str(evidence)
 
 
 # ---------------------------------------------------------------------------

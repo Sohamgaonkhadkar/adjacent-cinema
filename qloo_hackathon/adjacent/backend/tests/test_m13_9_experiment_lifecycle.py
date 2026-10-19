@@ -121,6 +121,48 @@ class TestObservations:
         assert again.json()["duplicate"] is True
         assert len(client.get(f"/experiments/{eid}").json()["observations"]) == 1
 
+    def test_observation_correction_must_target_a_current_local_record(
+        self, client: TestClient
+    ) -> None:
+        first_id = _save(client, request_id="req-obscorr-1", run_id="run-obscorr-1")[
+            "experiment"
+        ]["experiment_id"]
+        second_id = _save(client, request_id="req-obscorr-2", run_id="run-obscorr-2")[
+            "experiment"
+        ]["experiment_id"]
+        original = client.post(f"/experiments/{first_id}/observations", json={
+            "request_id": "obs-obscorr-1",
+            "kind": "ANALYTICS",
+            "measurement_status": "OBSERVED",
+            "metrics": {"views": 0},
+        }).json()["observation"]
+        correction = client.post(f"/experiments/{first_id}/observations", json={
+            "request_id": "obs-obscorr-2",
+            "kind": "ANALYTICS",
+            "measurement_status": "PARTIAL",
+            "metrics": {"views": 0},
+            "supersedes_id": original["observation_id"],
+        })
+        foreign = client.post(f"/experiments/{second_id}/observations", json={
+            "request_id": "obs-obscorr-3",
+            "kind": "ANALYTICS",
+            "measurement_status": "PARTIAL",
+            "supersedes_id": original["observation_id"],
+        })
+        stale = client.post(f"/experiments/{first_id}/observations", json={
+            "request_id": "obs-obscorr-4",
+            "kind": "ANALYTICS",
+            "measurement_status": "PARTIAL",
+            "supersedes_id": original["observation_id"],
+        })
+
+        assert correction.status_code == 201
+        assert correction.json()["observation"]["supersedes_id"] == original["observation_id"]
+        assert foreign.status_code == stale.status_code == 422
+        history = client.get(f"/experiments/{first_id}").json()["observations"]
+        assert len(history) == 2
+        assert history[0]["metrics"]["views"] == 0
+
     def test_invalid_status_rejected(self, client: TestClient) -> None:
         eid = _save(client)["experiment"]["experiment_id"]
         response = client.post(f"/experiments/{eid}/observations", json={
@@ -140,7 +182,9 @@ class TestObservations:
 
 
 class TestEvaluations:
-    def test_evaluate_and_supersede_keeps_history(self, client: TestClient) -> None:
+    def test_evaluate_and_repeatedly_supersede_keeps_history_and_current_outcome(
+        self, client: TestClient
+    ) -> None:
         eid = _save(client)["experiment"]["experiment_id"]
         first = client.post(f"/experiments/{eid}/evaluations", json={
             "request_id": "eval-00000001",
@@ -154,12 +198,106 @@ class TestEvaluations:
             "rationale": "Two weeks in, responses repeatedly referenced the artist framing.",
             "unknowns": "Retention never observed — analytics not connected.",
         }).json()["evaluation"]
+        third = client.post(f"/experiments/{eid}/evaluations", json={
+            "request_id": "eval-00000003",
+            "outcome": "CONTRADICTED",
+            "rationale": "The later release window did not reproduce the framing response.",
+        }).json()["evaluation"]
 
         assert second["supersedes_id"] == first["evaluation_id"]
+        assert third["supersedes_id"] == second["evaluation_id"]
         history = client.get(f"/experiments/{eid}").json()["evaluations"]
-        assert len(history) == 2  # append-only: the first evaluation survives
-        assert history[0]["outcome"] == "INCONCLUSIVE"
-        assert history[1]["outcome"] == "SUPPORTED"
+        assert len(history) == 3  # append-only: every earlier evaluation survives
+        assert [item["outcome"] for item in history] == [
+            "INCONCLUSIVE", "SUPPORTED", "CONTRADICTED"
+        ]
+
+        listed = client.get("/experiments").json()["experiments"]
+        experiment = next(item for item in listed if item["experiment_id"] == eid)
+        assert experiment["latest_evaluation"] == "CONTRADICTED"
+
+    def test_evaluation_rejects_observations_outside_its_experiment(
+        self, client: TestClient
+    ) -> None:
+        first_id = _save(client, request_id="req-evidence-1", run_id="run-evidence-1")[
+            "experiment"
+        ]["experiment_id"]
+        second_id = _save(client, request_id="req-evidence-2", run_id="run-evidence-2")[
+            "experiment"
+        ]["experiment_id"]
+        observation = client.post(f"/experiments/{first_id}/observations", json={
+            "request_id": "obs-evidence-1",
+            "kind": "ANALYTICS",
+            "measurement_status": "OBSERVED",
+            "metrics": {"views": 0},
+        }).json()["observation"]
+
+        foreign = client.post(f"/experiments/{second_id}/evaluations", json={
+            "request_id": "eval-foreign-observation",
+            "outcome": "SUPPORTED",
+            "rationale": "This must not cite another experiment's observation.",
+            "observation_ids": [observation["observation_id"]],
+        })
+        missing = client.post(f"/experiments/{second_id}/evaluations", json={
+            "request_id": "eval-missing-observation",
+            "outcome": "SUPPORTED",
+            "rationale": "This must not cite a nonexistent observation.",
+            "observation_ids": ["missing-observation-id"],
+        })
+
+        assert foreign.status_code == 422
+        assert missing.status_code == 422
+        assert client.get(f"/experiments/{second_id}").json()["evaluations"] == []
+
+    def test_evaluation_correction_must_target_a_current_local_record(
+        self, client: TestClient
+    ) -> None:
+        eid = _save(client, request_id="req-correction-1", run_id="run-correction-1")[
+            "experiment"
+        ]["experiment_id"]
+        other_id = _save(client, request_id="req-correction-2", run_id="run-correction-2")[
+            "experiment"
+        ]["experiment_id"]
+        first = client.post(f"/experiments/{eid}/evaluations", json={
+            "request_id": "eval-correction-1",
+            "outcome": "INCONCLUSIVE",
+            "rationale": "Initial evidence is incomplete.",
+        }).json()["evaluation"]
+        second = client.post(f"/experiments/{eid}/evaluations", json={
+            "request_id": "eval-correction-2",
+            "outcome": "SUPPORTED",
+            "rationale": "A later observation supports the hypothesis.",
+        }).json()["evaluation"]
+        foreign = client.post(f"/experiments/{other_id}/evaluations", json={
+            "request_id": "eval-correction-3",
+            "outcome": "CONTRADICTED",
+            "rationale": "Separate experiment.",
+        }).json()["evaluation"]
+
+        stale = client.post(f"/experiments/{eid}/evaluations", json={
+            "request_id": "eval-correction-stale",
+            "outcome": "CONTRADICTED",
+            "rationale": "Cannot branch from an already superseded evaluation.",
+            "supersedes_id": first["evaluation_id"],
+        })
+        foreign_parent = client.post(f"/experiments/{eid}/evaluations", json={
+            "request_id": "eval-correction-foreign",
+            "outcome": "CONTRADICTED",
+            "rationale": "Cannot supersede a different experiment's evaluation.",
+            "supersedes_id": foreign["evaluation_id"],
+        })
+        unknown_parent = client.post(f"/experiments/{eid}/evaluations", json={
+            "request_id": "eval-correction-unknown",
+            "outcome": "CONTRADICTED",
+            "rationale": "Cannot supersede a missing evaluation.",
+            "supersedes_id": "missing-evaluation-id",
+        })
+
+        assert stale.status_code == foreign_parent.status_code == unknown_parent.status_code == 422
+        history = client.get(f"/experiments/{eid}").json()["evaluations"]
+        assert [item["evaluation_id"] for item in history] == [
+            first["evaluation_id"], second["evaluation_id"]
+        ]
 
     def test_invalid_outcome_rejected(self, client: TestClient) -> None:
         eid = _save(client)["experiment"]["experiment_id"]
