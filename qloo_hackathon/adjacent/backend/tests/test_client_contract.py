@@ -252,6 +252,28 @@ def test_request_is_get_with_header_auth_and_no_key_in_the_query() -> None:
     assert "filter.type=urn%3Atag" in seen["query"] or "filter.type=urn:tag" in seen["query"]
 
 
+def test_search_sends_documented_movie_types_filter_in_outgoing_request() -> None:
+    seen: dict[str, str | None] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["types"] = request.url.params.get("types")
+        seen["query"] = request.url.params.get("query")
+        seen["take"] = request.url.params.get("take")
+        return httpx.Response(200, json={"results": {"entities": []}})
+
+    client = client_with(handler, settings_with())
+    asyncio.run(
+        client.search(
+            query="Perfect Days",
+            types=["urn:entity:movie"],
+            take=5,
+            tool="resolve:search",
+        )
+    )
+
+    assert seen == {"types": "urn:entity:movie", "query": "Perfect Days", "take": "5"}
+
+
 # --- 9. tracing -------------------------------------------------------------
 
 

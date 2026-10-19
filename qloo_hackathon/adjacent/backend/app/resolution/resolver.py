@@ -1,16 +1,17 @@
 """Trusted entity resolver — converts programme items into verified Qloo entities.
 
 Resolution strategy (priority order):
-    1. /search with title → verify name + year match
-    2. /entities with external ID → only if external ID is returned in response
+    1. /search with the documented movie type filter → verify title + year + type
+    2. /entities with external ID → corroborate the echoed ID, title, year, type,
+       and entity ID against any verified search result
 
 Key safety rules:
     - NEVER assume returned order matches input order
     - NEVER trust a mapping without verification evidence
-    - VERIFIED only when title + year match (or year is unavailable and title is unique)
-    - AMBIGUOUS when title matches but year conflicts or is missing
-    - MISMATCH when a clear conflict exists (same title, wrong year)
-    - UNRESOLVED when no entity is found
+    - VERIFIED only with exact title/year agreement and explicit movie-type evidence
+    - AMBIGUOUS for multiple exact movie candidates or insufficient title/year evidence
+    - MISMATCH when title/year or explicit entity-type evidence conflicts
+    - UNRESOLVED when the candidate or its movie type cannot be established
 
 Rate limiting:
     - /search is rate-limited; the resolver adds delays between calls
@@ -24,6 +25,8 @@ from dataclasses import replace
 from typing import Any
 
 from .contract import MatchMethod, MatchStatus, ResolvedEntity
+
+_MOVIE_ENTITY_TYPE = "urn:entity:movie"
 
 
 def _normalise_title(title: str) -> str:
@@ -45,12 +48,53 @@ def _extract_year(entity: dict[str, Any]) -> int | None:
 
 
 def _extract_types(entity: dict[str, Any]) -> list[str]:
-    """Extract entity types from a Qloo entity response."""
-    types = entity.get("types", [])
-    if isinstance(types, list):
-        return [str(t) for t in types]
-    t = entity.get("type")
-    return [str(t)] if t else []
+    """Extract explicit type evidence from Qloo's type, subtype, and types fields."""
+    values: list[str] = []
+    raw_types = entity.get("types")
+    if isinstance(raw_types, str):
+        values.append(raw_types)
+    elif isinstance(raw_types, (list, tuple, set)):
+        values.extend(str(value) for value in raw_types if value)
+
+    for key in ("type", "subtype"):
+        value = entity.get(key)
+        if isinstance(value, str) and value:
+            values.append(value)
+
+    return list(dict.fromkeys(value.strip() for value in values if value.strip()))
+
+
+def _entity_payload(entity: Any) -> dict[str, Any]:
+    """Copy an entity's raw response and fill parsed fields from the same payload."""
+    raw = entity.raw if isinstance(entity.raw, dict) else {}
+    payload = dict(raw)
+    if not payload.get("name"):
+        payload["name"] = entity.name or ""
+    for key in ("type", "subtype", "types"):
+        value = getattr(entity, key, None)
+        if not payload.get(key) and value:
+            payload[key] = value
+    return payload
+
+
+def _movie_type_state(entity: dict[str, Any]) -> str:
+    """Return movie, non-movie, conflicting, or missing based on explicit Qloo types."""
+    entity_types = {value for value in _extract_types(entity) if value.startswith("urn:entity:")}
+    if _MOVIE_ENTITY_TYPE in entity_types:
+        return "conflicting" if entity_types - {_MOVIE_ENTITY_TYPE} else "movie"
+    return "non_movie" if entity_types else "missing"
+
+
+def _movie_type_note(state: str, entity: dict[str, Any]) -> str:
+    """Describe why explicit Qloo type evidence does or does not establish a movie."""
+    entity_types = sorted(value for value in _extract_types(entity) if value.startswith("urn:entity:"))
+    if state == "missing":
+        return f"Qloo response lacks explicit {_MOVIE_ENTITY_TYPE} type evidence"
+    if state == "conflicting":
+        return f"conflicting Qloo entity-type evidence: {', '.join(entity_types)}"
+    if state == "non_movie":
+        return f"Qloo response identifies a non-movie entity type: {', '.join(entity_types)}"
+    return f"Qloo response confirms movie type: {_MOVIE_ENTITY_TYPE}"
 
 
 def _extract_external_ids(entity: dict[str, Any], family: str) -> list[str]:
@@ -174,13 +218,11 @@ class EntityResolver:
         """Resolve a single programme item.
 
         Resolution priority:
-        1. /search with title → verify name + year match
-        2. If external ID supplied, also verify via /entities. A verified result
-           cannot override a title/year MISMATCH from the other lookup; conflicting
-           endpoint evidence remains unusable for manual review.
-        3. If search has no candidate, try /entities with the supplied ID.
+        1. /search with the documented movie type filter → verify exact title + year + type
+        2. If external ID supplied, verify its echoed value, Qloo entity ID, title/year, and type
+        3. A verified result cannot override a title/year or type MISMATCH from the other lookup
         """
-        # Method 1: /search with title
+        # Method 1: typed /search with title
         result = await self._resolve_by_search(title, year)
 
         if not (external_id and external_family):
@@ -346,13 +388,12 @@ class EntityResolver:
 
         return results
 
-    async def _resolve_by_search(
-        self, title: str, year: int | None
-    ) -> ResolvedEntity:
-        """Resolve by searching Qloo's /search endpoint."""
+    async def _resolve_by_search(self, title: str, year: int | None) -> ResolvedEntity:
+        """Resolve by searching only for movies, then verify every candidate."""
         try:
             response = await self.client.search(
                 query=title,
+                types=[_MOVIE_ENTITY_TYPE],
                 take=5,
                 tool="resolve:search",
             )
@@ -375,66 +416,140 @@ class EntityResolver:
                 verification_notes=["/search returned no results"],
             )
 
-        # Try each result in order (Qloo ranks by relevance)
-        best_status = MatchStatus.UNRESOLVED
-        best_notes: list[str] = []
-        best_entity = None
+        search_method = MatchMethod.SEARCH_WITH_YEAR if year is not None else MatchMethod.SEARCH
 
-        for entity_raw in results:
-            raw_dict = entity_raw.raw if entity_raw.raw else {}
-            status, notes = verify_search_result(title, year, raw_dict)
-
-            if status == MatchStatus.VERIFIED:
-                # Perfect match — use it
-                return ResolvedEntity(
-                    input_title=title,
-                    input_year=year,
-                    qloo_entity_id=entity_raw.entity_id,
-                    qloo_name=entity_raw.name,
-                    qloo_entity_type=entity_raw.type,
-                    qloo_year=_extract_year(raw_dict),
-                    qloo_disambiguation=raw_dict.get("disambiguation"),
-                    qloo_popularity=entity_raw.popularity,
-                    match_status=MatchStatus.VERIFIED,
-                    match_method=(
-                        MatchMethod.SEARCH_WITH_YEAR if year else MatchMethod.SEARCH
-                    ),
-                    verification_notes=notes,
-                    call_id=response.call_id,
-                    search_query=title,
-                    raw_result=raw_dict,
-                )
-
-            if status == MatchStatus.AMBIGUOUS and best_status == MatchStatus.UNRESOLVED:
-                best_status = status
-                best_notes = notes
-                best_entity = entity_raw
-
-            if status == MatchStatus.MISMATCH and best_status == MatchStatus.UNRESOLVED:
-                # First result mismatches — this is still useful info
-                best_status = status
-                best_notes = notes
-                best_entity = entity_raw
-
-        # No VERIFIED match found — return the best candidate
-        if best_entity:
-            raw_dict = best_entity.raw if best_entity.raw else {}
+        def candidate_result(
+            entity: Any,
+            payload: dict[str, Any],
+            status: MatchStatus,
+            notes: list[str],
+        ) -> ResolvedEntity:
+            type_state = _movie_type_state(payload)
             return ResolvedEntity(
                 input_title=title,
                 input_year=year,
-                qloo_entity_id=best_entity.entity_id,
-                qloo_name=best_entity.name,
-                qloo_entity_type=best_entity.type,
-                qloo_year=_extract_year(raw_dict),
-                qloo_disambiguation=raw_dict.get("disambiguation"),
-                qloo_popularity=best_entity.popularity,
-                match_status=best_status,
-                match_method=MatchMethod.SEARCH,
-                verification_notes=best_notes,
+                qloo_entity_id=entity.entity_id or None,
+                qloo_name=entity.name or payload.get("name"),
+                qloo_entity_type=(
+                    _MOVIE_ENTITY_TYPE if type_state == "movie" else entity.type or entity.subtype
+                ),
+                qloo_year=_extract_year(payload),
+                qloo_disambiguation=payload.get("disambiguation"),
+                qloo_popularity=entity.popularity,
+                match_status=status,
+                match_method=search_method,
+                verification_notes=notes,
                 call_id=response.call_id,
                 search_query=title,
-                raw_result=raw_dict,
+                raw_result=payload,
             )
+
+        # Keep all exact typed-movie matches before choosing. Qloo's relevance
+        # order cannot safely distinguish duplicate title/year identities.
+        movie_candidates: list[tuple[Any, dict[str, Any], list[str]]] = []
+        movie_entity_ids: set[str] = set()
+        missing_type_candidate: tuple[Any, dict[str, Any], list[str]] | None = None
+        non_movie_candidate: tuple[Any, dict[str, Any], list[str]] | None = None
+        conflicting_type_candidate: tuple[Any, dict[str, Any], list[str]] | None = None
+        ambiguous_movie_candidate: tuple[Any, dict[str, Any], list[str]] | None = None
+        identity_mismatch_candidate: tuple[Any, dict[str, Any], list[str]] | None = None
+
+        for entity in results:
+            payload = _entity_payload(entity)
+            identity_status, identity_notes = verify_search_result(title, year, payload)
+            type_state = _movie_type_state(payload)
+
+            if identity_status == MatchStatus.MISMATCH:
+                if identity_mismatch_candidate is None:
+                    identity_mismatch_candidate = (entity, payload, identity_notes)
+                continue
+
+            if type_state == "non_movie":
+                if non_movie_candidate is None:
+                    non_movie_candidate = (
+                        entity,
+                        payload,
+                        [*identity_notes, _movie_type_note(type_state, payload)],
+                    )
+                continue
+
+            if type_state == "conflicting":
+                if conflicting_type_candidate is None:
+                    conflicting_type_candidate = (
+                        entity,
+                        payload,
+                        [*identity_notes, _movie_type_note(type_state, payload)],
+                    )
+                continue
+
+            if type_state == "missing":
+                if missing_type_candidate is None:
+                    missing_type_candidate = (
+                        entity,
+                        payload,
+                        [*identity_notes, _movie_type_note(type_state, payload)],
+                    )
+                continue
+
+            if identity_status == MatchStatus.VERIFIED:
+                entity_id = entity.entity_id or ""
+                if not entity_id or entity_id not in movie_entity_ids:
+                    movie_candidates.append(
+                        (entity, payload, [*identity_notes, _movie_type_note(type_state, payload)])
+                    )
+                    if entity_id:
+                        movie_entity_ids.add(entity_id)
+            elif ambiguous_movie_candidate is None:
+                ambiguous_movie_candidate = (
+                    entity,
+                    payload,
+                    [*identity_notes, _movie_type_note(type_state, payload)],
+                )
+
+        if len(movie_candidates) > 1:
+            return ResolvedEntity(
+                input_title=title,
+                input_year=year,
+                match_status=MatchStatus.AMBIGUOUS,
+                match_method=search_method,
+                verification_notes=[
+                    f"{len(movie_candidates)} exact typed movie candidates match title and year; "
+                    "no entity selected",
+                ],
+                call_id=response.call_id,
+                search_query=title,
+            )
+
+        if len(movie_candidates) == 1:
+            entity, payload, notes = movie_candidates[0]
+            if not entity.entity_id:
+                return candidate_result(
+                    entity,
+                    payload,
+                    MatchStatus.UNRESOLVED,
+                    [*notes, "typed movie candidate has no Qloo entity ID"],
+                )
+            return candidate_result(entity, payload, MatchStatus.VERIFIED, notes)
+
+        if conflicting_type_candidate is not None:
+            entity, payload, notes = conflicting_type_candidate
+            return candidate_result(entity, payload, MatchStatus.MISMATCH, notes)
+
+        if non_movie_candidate is not None:
+            entity, payload, notes = non_movie_candidate
+            return candidate_result(entity, payload, MatchStatus.MISMATCH, notes)
+
+        if missing_type_candidate is not None:
+            entity, payload, notes = missing_type_candidate
+            return candidate_result(entity, payload, MatchStatus.UNRESOLVED, notes)
+
+        if ambiguous_movie_candidate is not None:
+            entity, payload, notes = ambiguous_movie_candidate
+            return candidate_result(entity, payload, MatchStatus.AMBIGUOUS, notes)
+
+        if identity_mismatch_candidate is not None:
+            entity, payload, notes = identity_mismatch_candidate
+            return candidate_result(entity, payload, MatchStatus.MISMATCH, notes)
 
         return ResolvedEntity(
             input_title=title,
@@ -493,32 +608,48 @@ class EntityResolver:
             ext_ids = _extract_external_ids(raw, external_family)
 
             if external_id in ext_ids:
-                # An external ID's presence is not enough to trust Qloo's
-                # mapping: title/year must still agree with the creator input.
-                identity_payload = {**raw, "name": raw.get("name") or entity.name or ""}
-                identity_status, identity_notes = verify_search_result(
-                    title, year, identity_payload
-                )
+                # The echoed external ID is necessary but not sufficient:
+                # the entity ID, title/year, and explicit movie type must agree.
+                identity_payload = _entity_payload(entity)
+                identity_status, identity_notes = verify_search_result(title, year, identity_payload)
+                type_state = _movie_type_state(identity_payload)
+                status = identity_status
                 notes = [
                     f"external ID {external_id} confirmed in response",
                     *identity_notes,
                 ]
+
+                if identity_status != MatchStatus.MISMATCH:
+                    if type_state == "missing":
+                        status = MatchStatus.UNRESOLVED
+                        notes.append(_movie_type_note(type_state, identity_payload))
+                    elif type_state in {"non_movie", "conflicting"}:
+                        status = MatchStatus.MISMATCH
+                        notes.append(_movie_type_note(type_state, identity_payload))
+                    elif not entity.entity_id:
+                        status = MatchStatus.UNRESOLVED
+                        notes.append("external-ID response has no Qloo entity ID to corroborate")
+                    else:
+                        notes.append(_movie_type_note(type_state, identity_payload))
+
                 return ResolvedEntity(
                     input_title=title,
                     input_year=year,
                     input_external_id=external_id,
                     input_external_family=external_family,
-                    qloo_entity_id=entity.entity_id,
-                    qloo_name=entity.name,
-                    qloo_entity_type=entity.type,
-                    qloo_year=_extract_year(raw),
-                    qloo_disambiguation=raw.get("disambiguation"),
+                    qloo_entity_id=entity.entity_id or None,
+                    qloo_name=entity.name or identity_payload.get("name"),
+                    qloo_entity_type=(
+                        _MOVIE_ENTITY_TYPE if type_state == "movie" else entity.type or entity.subtype
+                    ),
+                    qloo_year=_extract_year(identity_payload),
+                    qloo_disambiguation=identity_payload.get("disambiguation"),
                     qloo_popularity=entity.popularity,
-                    match_status=identity_status,
+                    match_status=status,
                     match_method=MatchMethod.EXTERNAL_ID,
                     verification_notes=notes,
                     call_id=response.call_id,
-                    raw_result=raw,
+                    raw_result=identity_payload,
                 )
 
             if ext_ids:

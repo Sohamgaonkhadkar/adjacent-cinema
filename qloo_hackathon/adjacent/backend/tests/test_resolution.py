@@ -202,6 +202,64 @@ class TestResolverSafety:
         assert entity.resolved is False
         assert entity.usable is False
 
+    def test_nonverified_resolution_statuses_never_feed_downstream_calls(self):
+        """Mismatched/unresolved/ambiguous IDs stay out of affinity and positioning."""
+        statuses = [MatchStatus.UNRESOLVED, MatchStatus.AMBIGUOUS, MatchStatus.MISMATCH]
+
+        class FixedResolver:
+            async def resolve_programme(self, _items):
+                return [
+                    ResolvedEntity(
+                        input_title=f"Film {index}",
+                        input_year=2000 + index,
+                        qloo_entity_id=f"unsafe-qloo-id-{index}",
+                        qloo_name=f"Film {index}",
+                        match_status=status,
+                        verification_notes=[f"fixture status: {status.value}"],
+                    )
+                    for index, status in enumerate(statuses)
+                ]
+
+        class NoCallClient:
+            def __init__(self):
+                self.calls = 0
+
+            async def insights(self, **_kwargs):
+                self.calls += 1
+                raise AssertionError("non-verified entities must not reach Qloo calculations")
+
+        state = AdjacentState(
+            run_id="nonverified-resolution",
+            data_status="measured",
+            programme=[
+                ProgrammeItem(
+                    title=f"Film {index}",
+                    year=2000 + index,
+                    imdb_id=None,
+                    declared_entity_id=None,
+                )
+                for index in range(len(statuses))
+            ],
+        )
+        client = NoCallClient()
+        pipeline = LivePipeline(
+            client,
+            FixedResolver(),
+            [{"title": f"Film {index}", "year": 2000 + index} for index in range(len(statuses))],
+        )
+
+        async def run_downstream_gates():
+            await pipeline.resolve_programme(state, Budget())
+            await pipeline.get_taste_profile(state, Budget())
+            await pipeline.expand_candidates(state, Budget())
+            await pipeline.rank_cohorts(state, Budget())
+
+        asyncio.run(run_downstream_gates())
+
+        assert state.resolved_ids == []
+        assert all(item.resolved_entity_id is None for item in state.programme)
+        assert client.calls == 0
+
 
 # ---------------------------------------------------------------------------
 # Offline integration regressions for historical identity edge cases
@@ -209,11 +267,15 @@ class TestResolverSafety:
 
 
 class _ResolverClientStub:
+    """Offline fixture client; these responses are not live Qloo observations."""
+
     def __init__(self, *, search_entities: list[ScoredEntity], id_entities: list[ScoredEntity]):
         self.search_entities = search_entities
         self.id_entities = id_entities
+        self.search_calls: list[dict[str, object]] = []
 
-    async def search(self, **_kwargs):
+    async def search(self, **kwargs):
+        self.search_calls.append(kwargs)
         return SearchResponse(
             call_id="search-call-001",
             source="mock",
@@ -236,8 +298,19 @@ def _qloo_entity(
     year: int | None,
     *,
     imdb_id: str | None = None,
+    type_evidence: tuple[str, ...] | None = ("urn:entity:movie",),
 ) -> ScoredEntity:
+    """Build an explicitly labelled synthetic Qloo-shaped entity fixture."""
     raw = {"name": name, "properties": {}}
+    entity_type = None
+    subtype = None
+    if type_evidence is not None:
+        raw["types"] = list(type_evidence)
+        entity_type = "urn:entity"
+        raw["type"] = entity_type
+        if type_evidence:
+            subtype = type_evidence[0]
+            raw["subtype"] = subtype
     if year is not None:
         raw["disambiguation"] = str(year)
         raw["properties"]["release_year"] = year
@@ -246,7 +319,8 @@ def _qloo_entity(
     return ScoredEntity(
         entity_id=entity_id,
         name=name,
-        type="urn:entity:movie",
+        type=entity_type,
+        subtype=subtype,
         raw=raw,
     )
 
@@ -340,18 +414,205 @@ class TestHistoricalEntityResolutionRegressions:
         assert result.related_call_ids == ["external-call-001"]
 
     def test_exact_perfect_days_search_result_is_verified(self) -> None:
+        """Fixture: one explicitly typed movie with an exact title/year match."""
         client = _ResolverClientStub(
             search_entities=[_qloo_entity("qloo-perfect-days", "Perfect Days", 2023)],
             id_entities=[],
         )
-        result = asyncio.run(
-            EntityResolver(client, delay_s=0).resolve_item("Perfect Days", year=2023)
-        )
+        result = asyncio.run(EntityResolver(client, delay_s=0).resolve_item("Perfect Days", year=2023))
 
         assert result.match_status == MatchStatus.VERIFIED
         assert result.qloo_entity_id == "qloo-perfect-days"
+        assert result.qloo_entity_type == "urn:entity:movie"
         assert result.resolved is True
         assert result.call_id == "search-call-001"
+        assert client.search_calls[0]["types"] == ["urn:entity:movie"]
+
+    def test_search_result_with_explicit_non_movie_type_is_rejected(self) -> None:
+        """Fixture: exact title/year is not enough when Qloo says it is a book."""
+        client = _ResolverClientStub(
+            search_entities=[
+                _qloo_entity(
+                    "qloo-book",
+                    "Perfect Days",
+                    2023,
+                    type_evidence=("urn:entity:book",),
+                )
+            ],
+            id_entities=[],
+        )
+
+        result = asyncio.run(EntityResolver(client, delay_s=0).resolve_item("Perfect Days", year=2023))
+
+        assert result.match_status == MatchStatus.MISMATCH
+        assert result.resolved is False
+        assert result.qloo_entity_type == "urn:entity"
+        assert any("non-movie entity type" in note for note in result.verification_notes)
+
+    def test_multiple_exact_typed_movies_are_ambiguous_without_an_external_id(self) -> None:
+        """Fixture: relevance order alone cannot choose between two exact films."""
+        client = _ResolverClientStub(
+            search_entities=[
+                _qloo_entity("qloo-perfect-days-a", "Perfect Days", 2023),
+                _qloo_entity("qloo-perfect-days-b", "Perfect Days", 2023),
+            ],
+            id_entities=[],
+        )
+
+        result = asyncio.run(EntityResolver(client, delay_s=0).resolve_item("Perfect Days", year=2023))
+
+        assert result.match_status == MatchStatus.AMBIGUOUS
+        assert result.qloo_entity_id is None
+        assert result.resolved is False
+        assert any("2 exact typed movie candidates" in note for note in result.verification_notes)
+
+    def test_matching_title_year_without_type_evidence_stays_unresolved(self) -> None:
+        """Fixture: an untyped Perfect Days result cannot be assumed to be a film."""
+        client = _ResolverClientStub(
+            search_entities=[
+                _qloo_entity("qloo-untyped-perfect-days", "Perfect Days", 2023, type_evidence=None)
+            ],
+            id_entities=[],
+        )
+
+        result = asyncio.run(EntityResolver(client, delay_s=0).resolve_item("Perfect Days", year=2023))
+
+        assert result.match_status == MatchStatus.UNRESOLVED
+        assert result.resolved is False
+        assert any("lacks explicit urn:entity:movie" in note for note in result.verification_notes)
+
+    def test_conflicting_type_evidence_is_not_verified(self) -> None:
+        """Fixture: movie plus book evidence for one entity is a type conflict."""
+        client = _ResolverClientStub(
+            search_entities=[
+                _qloo_entity(
+                    "qloo-conflicting-perfect-days",
+                    "Perfect Days",
+                    2023,
+                    type_evidence=("urn:entity:movie", "urn:entity:book"),
+                )
+            ],
+            id_entities=[],
+        )
+
+        result = asyncio.run(EntityResolver(client, delay_s=0).resolve_item("Perfect Days", year=2023))
+
+        assert result.match_status == MatchStatus.MISMATCH
+        assert result.resolved is False
+        assert any("conflicting Qloo entity-type evidence" in note for note in result.verification_notes)
+
+    def test_matching_imdb_does_not_verify_external_result_without_movie_type(self) -> None:
+        """Fixture: echoed IMDb plus title/year still needs explicit movie type evidence."""
+        client = _ResolverClientStub(
+            search_entities=[],
+            id_entities=[
+                _qloo_entity(
+                    "qloo-untyped-perfect-days",
+                    "Perfect Days",
+                    2023,
+                    imdb_id="tt7594358",
+                    type_evidence=None,
+                )
+            ],
+        )
+
+        result = asyncio.run(
+            EntityResolver(client, delay_s=0)._resolve_by_external_id(
+                "Perfect Days", 2023, "tt7594358", "imdb"
+            )
+        )
+
+        assert result.match_status == MatchStatus.UNRESOLVED
+        assert result.qloo_entity_id == "qloo-untyped-perfect-days"
+        assert any("lacks explicit urn:entity:movie" in note for note in result.verification_notes)
+
+    def test_matching_imdb_with_non_movie_type_is_a_mismatch(self) -> None:
+        """Fixture: an echoed IMDb ID cannot turn an explicitly typed book into a film."""
+        client = _ResolverClientStub(
+            search_entities=[],
+            id_entities=[
+                _qloo_entity(
+                    "qloo-book",
+                    "Perfect Days",
+                    2023,
+                    imdb_id="tt7594358",
+                    type_evidence=("urn:entity:book",),
+                )
+            ],
+        )
+
+        result = asyncio.run(
+            EntityResolver(client, delay_s=0)._resolve_by_external_id(
+                "Perfect Days", 2023, "tt7594358", "imdb"
+            )
+        )
+
+        assert result.match_status == MatchStatus.MISMATCH
+        assert result.resolved is False
+        assert any("non-movie entity type" in note for note in result.verification_notes)
+
+    def test_external_id_match_without_qloo_entity_id_is_unresolved(self) -> None:
+        """Fixture: the echoed ID cannot be corroborated without a Qloo entity ID."""
+        client = _ResolverClientStub(
+            search_entities=[],
+            id_entities=[
+                _qloo_entity(
+                    "",
+                    "Perfect Days",
+                    2023,
+                    imdb_id="tt7594358",
+                )
+            ],
+        )
+
+        result = asyncio.run(
+            EntityResolver(client, delay_s=0)._resolve_by_external_id(
+                "Perfect Days", 2023, "tt7594358", "imdb"
+            )
+        )
+
+        assert result.match_status == MatchStatus.UNRESOLVED
+        assert result.qloo_entity_id is None
+        assert any("no Qloo entity ID" in note for note in result.verification_notes)
+
+    def test_external_id_can_safely_disambiguate_exact_typed_movies(self) -> None:
+        """Fixture: one corroborated, typed IMDb mapping may break a search tie."""
+        selected = _qloo_entity("qloo-perfect-days-a", "Perfect Days", 2023, imdb_id="tt7594358")
+        client = _ResolverClientStub(
+            search_entities=[
+                selected,
+                _qloo_entity("qloo-perfect-days-b", "Perfect Days", 2023),
+            ],
+            id_entities=[selected],
+        )
+
+        result = asyncio.run(
+            EntityResolver(client, delay_s=0).resolve_item(
+                "Perfect Days",
+                year=2023,
+                external_id="tt7594358",
+                external_family="imdb",
+            )
+        )
+
+        assert result.match_status == MatchStatus.VERIFIED
+        assert result.match_method == MatchMethod.EXTERNAL_ID
+        assert result.qloo_entity_id == "qloo-perfect-days-a"
+        assert result.call_id == "external-call-001"
+        assert result.related_call_ids == ["search-call-001"]
+
+    def test_search_year_conflict_is_not_overridden_by_an_exact_movie_type(self) -> None:
+        """Fixture: explicit movie type cannot override a wrong release year."""
+        client = _ResolverClientStub(
+            search_entities=[_qloo_entity("qloo-perfect-days-old", "Perfect Days", 2014)],
+            id_entities=[],
+        )
+
+        result = asyncio.run(EntityResolver(client, delay_s=0).resolve_item("Perfect Days", year=2023))
+
+        assert result.match_status == MatchStatus.MISMATCH
+        assert result.qloo_year == 2014
+        assert any("year mismatch" in note for note in result.verification_notes)
 
     def test_matching_external_id_keeps_both_trace_references(self) -> None:
         entity = _qloo_entity(
