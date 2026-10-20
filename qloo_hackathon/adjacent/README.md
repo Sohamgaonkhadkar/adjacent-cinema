@@ -1,67 +1,230 @@
-# Adjacent — application and backend guide
+# Adjacent Cinema — developer guide
 
-See the [repository README](../../README.md) for the judge-facing overview, full local setup, public-demo posture, and current deployment status. This folder contains the Python API, Next.js frontend, fixtures, and detailed product/architecture documentation.
+For the judge-facing product story, architecture diagram and feature overview,
+start at the [root README](../../README.md). This guide focuses on running and
+validating the application. It reflects the checked implementation; there is
+**no verified public deployment URL**.
 
-## Current product path
+## Prerequisites and repository layout
 
-Creator Mode is the primary product surface: a bounded agent uses typed Qloo operations to resolve cultural references, inspect cultural-affinity signals, rank adjacent clusters, produce a positioning hypothesis/Test Card, and preserve traceable evidence. Cinema Mode remains available separately. Fixture data is a labelled offline demonstration; it is never substituted for a failed live request.
+- Python **3.12 or newer** for the backend (`pyproject.toml`); Python 3.12 is
+  used by CI.
+- Node.js **22** and npm for the frontend (Node 22 is used by CI).
+- A Qloo key is optional for local fixtures and offline tests. Live Qloo
+  workflows require `QLOO_API_KEY` in the backend process.
 
-## Backend commands
+Important paths:
 
-Requires Python 3.12 or newer:
+- `backend/app/api/` — FastAPI routes for run/SSE, Creator and experiment
+  records, FilmSponsor, and YouTube.
+- `backend/app/agent/`, `backend/app/domain/`, `backend/app/resolution/` —
+  bounded agent flow, deterministic domain logic, experiment and FilmSponsor
+  persistence, and film identity verification.
+- `backend/app/qloo/` — Qloo client, typed response models, call tracing, and
+  request parameter registry/validation.
+- `backend/tests/` — fixture-backed tests, including guest-session isolation and
+  public-demo boundaries.
+- `frontend/app/` and `frontend/lib/` — Next.js pages and the browser API
+  adapter.
+- `scripts/` — Qloo probe and FilmSponsor live gate.
+- `docs/` — contracts, Qloo setup, deployment proposal and validation notes.
+
+Runtime databases, virtual environments and `.env` files are local data. See
+`.gitignore`; never commit credentials or runtime campaign/experiment data.
+
+## Local setup and start
+
+From the repository root, start the backend in Terminal 1:
 
 ```bash
+cd qloo_hackathon/adjacent
 python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e '.[dev]'
-make test
-make lint
+cp .env.example .env
+# Optional: edit .env locally, keeping secrets out of Git.
+set -a && . ./.env && set +a
 make run
 ```
 
-The API listens on port 8000. With no `QLOO_API_KEY`, the health response reports mock mode; a live Creator request fails honestly. The labelled fixture path remains available:
+`make run` starts Uvicorn on `0.0.0.0:8000`. The backend reads its environment;
+it does not automatically load `.env`. Without a key, health reports mock mode.
+The live client refuses construction without a key. Fixture routes are separate,
+explicitly labelled endpoints.
+
+Start the frontend in Terminal 2:
 
 ```bash
-make mock-run
-```
-
-## Frontend
-
-```bash
-cd frontend
+cd qloo_hackathon/adjacent/frontend
 npm ci
-ADJACENT_API_ORIGIN=http://127.0.0.1:8000 npm run dev
+ADJACENT_API_ORIGIN=http://127.0.0.1:8000 npm run dev -- --hostname 0.0.0.0
 ```
 
-Browser requests use relative `/api` URLs. Next.js rewrites these on the server using `ADJACENT_API_ORIGIN`; a production frontend must configure that server-side value. Do not use a browser-visible `NEXT_PUBLIC_*` backend URL or place a Qloo key in frontend configuration.
+Open `http://localhost:3000`. Browser code uses same-origin `/api/*`;
+`next.config.ts` performs the server-side rewrite. The local default backend
+destination is `http://127.0.0.1:8000`. For a hosted frontend, set
+`ADJACENT_API_ORIGIN` in the Next.js server/build environment. Never use
+`NEXT_PUBLIC_*` for the backend URL or provider keys.
 
-## Live Qloo and provenance
+## Fixture and live Qloo modes
 
-Configure `QLOO_API_KEY` only in the authorized backend runtime. Creator Mode's live path uses `EntityResolver`; title/year conflicts and ambiguous mappings are not usable. A supplied external ID must also agree with the input identity. Every trace reference remains addressable, and the run reports measured versus fixture status explicitly.
+- **Offline fixture:** Creator Mode has `/creator/run/demo`; Cinema has
+  `/run/demo`. Both are explicitly labelled and report `data_status: "fixture"`.
+  Use `/creator?demo=fixture` or the in-page fixture buttons. No Qloo key is
+  required.
+- **Live:** `QLOO_API_KEY` must be set in the backend environment. Use the
+  authorized hackathon API host (`QLOO_BASE_URL` defaults to
+  `https://hackathon.api.qloo.com`). Never place a key in the frontend, commit
+  it, or paste it into an issue/chat.
+- **No silent fallback:** if live Qloo is unavailable, the request reports an
+  honest failure; it does not switch to fixtures. FilmSponsor brand discovery
+  returns 503 without a configured Qloo key and stores no substitute discovery.
 
-The October 6 live report in `docs/LIVE_QLOO_VALIDATION.md` is a historical observation, not proof of current connectivity. It recorded Taipei Story (`tt0089853`) mapping to The Purple Rose of Cairo and no Perfect Days resolution. Offline regressions now enforce safe mismatch/insufficiency behavior; rerun the live gate before claiming a current Qloo result.
+To explicitly configure a key, use an approved secret manager or a local-only
+`.env`, then export the file into the backend shell before starting Uvicorn. The
+checked-in [`.env.example`](.env.example) documents Qloo host/timeouts,
+public-demo flags, guest-mode flags, the Next.js proxy destination and optional
+YouTube settings. Qloo's own setup notes are in
+[`docs/QLOO_SETUP.md`](docs/QLOO_SETUP.md).
 
-## Storage and integrations
+Useful no-key checks from this directory (with `ADJACENT_PUBLIC_DEMO` unset;
+`make mock-run` uses a local debug route that public mode hides):
 
-- Run records are held in an in-memory store. Public-demo mode retains a bounded, temporary recent window; it does not create durable run history.
-- Experiments, observations, and evaluations use the existing append-only SQLite repository. Runtime databases are gitignored. Public-demo mode disables shared experiment reads and writes.
-- YouTube Analytics is a single-connection integration with creator consent and stored tokens. It is not exposed in public-demo mode and must not be deployed as a public multi-user connection.
-- Optional grounded synthesis is provider-gated; it is disabled in public-demo mode. No generic chatbot or locally trained model is claimed.
+```bash
+make probe       # dry-run/mock Qloo probe; no network call to live Qloo
+make mock-run    # local fixture response
+```
 
-## Anonymous public-demo configuration
+A measured live result must be verified from the run/report and its trace; a
+configured key or healthy backend is not proof of a successful Qloo request.
+After the authorized key is set, the commands for real calls are:
 
-For an anonymous demo, set `ADJACENT_PUBLIC_DEMO=1` in the backend environment. Fixture runs remain available with body, rate, concurrency, and cache-retention bounds. Live Creator runs are off unless the owner explicitly sets `ADJACENT_PUBLIC_LIVE=1` and configures the server-side Qloo key. Shared experiments, YouTube, synthesis execution, debug endpoints, and OpenAPI/docs are blocked. Apply an edge/gateway quota too: the in-process limits do not coordinate across workers or replicas.
+```bash
+make probe-live
+python scripts/filmsponsor_live_gate.py
+```
 
-### Optional isolated FilmSponsor judge workspaces
+Both commands make real Qloo requests and should only be run intentionally with
+an authorized backend key. **They were not run for this README update.** The
+live gate's status/output is not a pass if it says blocked or if a test was
+skipped. See [`docs/NEXT_LIVE_CHECKLIST.md`](docs/NEXT_LIVE_CHECKLIST.md).
 
-FilmSponsor remains blocked in ordinary public-demo mode. To opt in to isolated anonymous FilmSponsor campaigns, configure **all** of the following on the backend:
+## Test and quality commands
 
-- `ADJACENT_PUBLIC_DEMO=1`
-- `ADJACENT_FILMSPONSOR_GUEST_DEMO=1`
-- `ADJACENT_FILMSPONSOR_GUEST_ORIGINS=https://<exact-frontend-origin>` (comma-separated exact origins; wildcard, paths, and untrusted origins are rejected)
-- `ADJACENT_FILMSPONSOR_GUEST_COOKIE_SECURE=1` (default; HTTPS required)
-- `ADJACENT_EXPERIMENTS_DB` on a durable local filesystem volume shared by backend workers on one host; never use an ephemeral disk, network filesystem, or separate host-mounted copies for SQLite WAL.
+Backend, from this directory with the Python environment active:
 
-The supported browser path is the same-origin Next.js `/api` proxy (`ADJACENT_API_ORIGIN` remains server-side). Backend requests must receive the browser `Origin` unchanged. The server issues an eight-hour HttpOnly/SameSite=Strict bearer cookie and a same-site CSRF helper cookie; state-changing calls carry the CSRF token in a custom header. Guest mode requires a persistent SQLite DB; it does not open Creator experiments or any other protected endpoint. Insecure cookies are accepted only for explicitly configured localhost development origins with `ADJACENT_FILMSPONSOR_GUEST_COOKIE_SECURE=0`. This is an opt-in mechanism, not a deployment claim; configure TLS, encrypted-at-rest durable storage, restrict SQLite/backup access, redact Cookie/CSRF headers and request bodies from ingress logs, and add an edge/gateway quota before exposing it publicly. Do not use the database on a network filesystem or replicate it to separate hosts. Without the full configuration the original public 403 boundary remains.
+```bash
+make test
+make lint
+make ci
+```
 
-See `.env.example`, `docs/adr/006-deployment-topology.md`, and [`docs/FINALIZATION_STATUS.md`](docs/FINALIZATION_STATUS.md). No hosted deployment URL or manifest is currently verified.
+Equivalent direct commands are `python -m pytest -rs` and
+`python -m ruff check .`. The CI backend job uses Python 3.12 and runs lint,
+fixture-backed tests and a dry-run probe. Its live-Qloo step is conditional on
+the CI secret and can be skipped.
+
+Frontend, from `frontend/`:
+
+```bash
+npm ci
+npx tsc --noEmit
+npm run build
+```
+
+The CI frontend job runs `npm ci` and `npm run build` on Node 22; Next's
+production build includes TypeScript validation.
+
+**Last checked main CI:** commit `48f36bb` passed the backend and frontend jobs.
+The live-Qloo job was skipped without a configured secret, not passed. This does
+not verify a live service, real browser or deployed system. Check the
+[latest Actions run](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions)
+for changes after that snapshot.
+
+## Storage and data flow
+
+- Run/SSE records live in an in-memory store and are not durable history.
+- Creator experiments, observations and evaluations use SQLite. The default is
+  `data/processed/experiments.db`; set `ADJACENT_EXPERIMENTS_DB` to override it.
+- FilmSponsor stores campaigns, Qloo discovery reports, versioned drafts, source
+  reviews and outreach records in the same SQLite workspace. Discovery evidence
+  includes source/call identifiers and interpretation limits. Drafts and
+  outcomes are creator-entered; affinity is not a sponsorship or commercial
+  prediction.
+- Optional LLM synthesis uses `ADJACENT_LLM_API_KEY` (and optional
+  `ADJACENT_LLM_BASE_URL` / `ADJACENT_LLM_MODEL`) in the backend environment. It
+  renders a completed investigation; deterministic investigation and Qloo
+  execution do not depend on it. It is disabled in public-demo mode.
+
+See [`docs/FRONTEND_CONTRACT.md`](docs/FRONTEND_CONTRACT.md) for API shapes and
+page contracts.
+
+## Public-demo and FilmSponsor guest security
+
+Keep `ADJACENT_PUBLIC_DEMO` unset for ordinary local single-user development. Do
+not expose that unauthenticated local mode directly to the internet. Public mode
+is enabled only by `ADJACENT_PUBLIC_DEMO=1`; it blocks shared experiment access,
+YouTube data/write routes, synthesis, debug endpoints and API docs, and allows
+only bounded routes/labelled fixtures. Public live Creator analysis additionally
+requires `ADJACENT_PUBLIC_LIVE=1` and a backend Qloo key. Rate limits are partly
+process-local; a public host requires an external edge/API-gateway quota.
+
+Public FilmSponsor guest workspaces are a separate opt-in and remain **off by
+default**. Required backend settings:
+
+```text
+ADJACENT_PUBLIC_DEMO=1
+ADJACENT_FILMSPONSOR_GUEST_DEMO=1
+ADJACENT_FILMSPONSOR_GUEST_ORIGINS=https://exact-frontend.example
+ADJACENT_FILMSPONSOR_GUEST_COOKIE_SECURE=1
+ADJACENT_EXPERIMENTS_DB=/durable/local/path/experiments.db
+```
+
+Configure `ADJACENT_API_ORIGIN` server-side on Next.js so browser traffic goes
+through the same-origin proxy and the API receives the expected Origin. Origins
+must be exact; wildcard and URL paths are not accepted. Insecure cookies are
+allowed only for explicitly configured localhost HTTP development, using
+`ADJACENT_FILMSPONSOR_GUEST_COOKIE_SECURE=0` locally—not on a public host.
+
+The server issues an eight-hour HttpOnly/SameSite=Strict bearer cookie and a
+CSRF helper cookie. Writes require the CSRF header and an exact allowed Origin.
+Campaigns and their discoveries, drafts, reviews, approvals, exports and
+outreach are owner-scoped; legacy rows without a guest owner are not
+guest-visible. Limits include 500 active sessions, 120 API
+requests/minute/session, 10 campaigns/session, global/per-campaign record caps
+and a 16 KiB request-body limit. The guest feature does not grant access to
+Creator experiments or other protected route families.
+
+**Retention limitation:** expiry immediately prevents authentication, but
+cleanup is opportunistic during guest-session activity; there is no scheduled
+sweeper or guaranteed deletion deadline for an inactive workspace. Revocation
+deletes the session's campaign tree. Do not promise a fixed retention/deletion
+period until scheduled cleanup is implemented and verified.
+
+SQLite runs in WAL mode and is intended for a durable **single-host local
+filesystem**. Do not put the database/WAL on network storage or use independent
+replica copies. A single backend process is the conservative baseline; global
+HTTP limiter state is process-local. Before any public exposure, separately
+configure HTTPS, durable storage, restrictive database/backup permissions,
+appropriate encryption at rest, ingress-log redaction and external quotas. None
+of those OCI/host controls has been verified in this repository. No deployment
+manifest, OCI deployment or public URL is verified.
+
+For the complete public route rules and current limits, see
+[`docs/FRONTEND_CONTRACT.md`](docs/FRONTEND_CONTRACT.md) and
+[ADR-006](docs/adr/006-deployment-topology.md) (a proposal, not a deployment
+record).
+
+## Architecture and status references
+
+- [Qloo setup](docs/QLOO_SETUP.md)
+- [Frontend/API contract](docs/FRONTEND_CONTRACT.md)
+- [Deployment topology proposal](docs/adr/006-deployment-topology.md)
+- [Live-Qloo checklist](docs/NEXT_LIVE_CHECKLIST.md)
+- [Historical live-Qloo report](docs/LIVE_QLOO_VALIDATION.md) — historical only;
+  not current connectivity proof
+- [MIT license](../../LICENSE)
+
+There is no separate contribution guide. Use GitHub issues/pull requests, and
+never include credentials, confidential film material or personal data in a
+commit.
