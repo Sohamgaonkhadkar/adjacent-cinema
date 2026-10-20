@@ -97,22 +97,39 @@ def _movie_type_note(state: str, entity: dict[str, Any]) -> str:
     return f"Qloo response confirms movie type: {_MOVIE_ENTITY_TYPE}"
 
 
+def _extract_ids_from_family_value(val: Any) -> list[str]:
+    if isinstance(val, str) and val.strip():
+        return [val.strip()]
+    if isinstance(val, (list, tuple, set)):
+        return [str(i).strip() for i in val if i and str(i).strip()]
+    if isinstance(val, dict):
+        extracted: list[str] = []
+        val_id = val.get("id")
+        if val_id:
+            extracted.append(str(val_id).strip())
+        ids_field = val.get("ids")
+        if isinstance(ids_field, (list, tuple, set)):
+            extracted.extend(str(i).strip() for i in ids_field if i and str(i).strip())
+        elif isinstance(ids_field, str) and ids_field.strip():
+            extracted.append(ids_field.strip())
+        return extracted
+    return []
+
+
 def _extract_external_ids(entity: dict[str, Any], family: str) -> list[str]:
     """Extract external IDs of a given family from a Qloo entity."""
+    out: list[str] = []
     ext = entity.get("external", {})
-    if isinstance(ext, dict):
-        ids = ext.get(family, [])
-        if isinstance(ids, list):
-            return [str(i) for i in ids]
-    # Also check properties.external
+    if isinstance(ext, dict) and family in ext:
+        out.extend(_extract_ids_from_family_value(ext[family]))
+
     props = entity.get("properties", {})
     if isinstance(props, dict):
         pext = props.get("external", {})
-        if isinstance(pext, dict):
-            ids = pext.get(family, [])
-            if isinstance(ids, list):
-                return [str(i) for i in ids]
-    return []
+        if isinstance(pext, dict) and family in pext:
+            out.extend(_extract_ids_from_family_value(pext[family]))
+
+    return list(dict.fromkeys(out))
 
 
 def _include_related_call_ids(

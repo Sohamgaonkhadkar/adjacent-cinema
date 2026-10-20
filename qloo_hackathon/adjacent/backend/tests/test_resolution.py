@@ -885,5 +885,68 @@ def test_live_explainability_provenance():
             for attr in sig:
                 assert "entity_id" in attr
                 assert "score" in attr
-
     asyncio.run(_run())
+
+
+class TestExtractExternalIds:
+    def test_extracts_list_of_ids_from_external(self) -> None:
+        from app.resolution.resolver import _extract_external_ids
+
+        raw = {"external": {"imdb": ["tt001", "tt002"]}}
+        assert _extract_external_ids(raw, "imdb") == ["tt001", "tt002"]
+
+    def test_extracts_dict_with_id_from_properties_external(self) -> None:
+        from app.resolution.resolver import _extract_external_ids
+
+        raw = {
+            "properties": {
+                "external": {
+                    "imdb": {"id": "tt0468569", "user_rating": 9.1},
+                }
+            }
+        }
+        assert _extract_external_ids(raw, "imdb") == ["tt0468569"]
+
+    def test_extracts_dict_with_ids_list(self) -> None:
+        from app.resolution.resolver import _extract_external_ids
+
+        raw = {
+            "properties": {
+                "external": {
+                    "imdb": {"ids": ["tt123", "tt456"]},
+                }
+            }
+        }
+        assert _extract_external_ids(raw, "imdb") == ["tt123", "tt456"]
+
+    def test_extracts_plain_string_external_id(self) -> None:
+        from app.resolution.resolver import _extract_external_ids
+
+        raw = {"external": {"imdb": "tt789"}}
+        assert _extract_external_ids(raw, "imdb") == ["tt789"]
+
+    def test_deduplicates_across_external_and_properties_external(self) -> None:
+        from app.resolution.resolver import _extract_external_ids
+
+        raw = {
+            "external": {"imdb": ["tt001"]},
+            "properties": {
+                "external": {
+                    "imdb": {"id": "tt001"},
+                }
+            },
+        }
+        assert _extract_external_ids(raw, "imdb") == ["tt001"]
+
+    def test_returns_empty_when_family_missing_or_empty(self) -> None:
+        from app.resolution.resolver import _extract_external_ids
+
+        raw = {
+            "properties": {
+                "external": {
+                    "facebook": {"id": "movie_page"},
+                }
+            }
+        }
+        assert _extract_external_ids(raw, "imdb") == []
+        assert _extract_external_ids({}, "imdb") == []

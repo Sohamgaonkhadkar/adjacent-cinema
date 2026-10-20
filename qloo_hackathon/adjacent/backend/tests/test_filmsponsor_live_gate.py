@@ -10,6 +10,7 @@ import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 from app.resolution.resolver import EntityResolver
@@ -29,6 +30,7 @@ def _entity(
     year: int = 2023,
     entity_types: tuple[str, ...] = ("urn:entity:movie",),
     imdb_ids: tuple[str, ...] = (),
+    properties_external: dict[str, Any] | None = None,
 ) -> SimpleNamespace:
     raw = {
         "name": name,
@@ -36,6 +38,8 @@ def _entity(
         "properties": {"release_year": year},
         "external": {"imdb": list(imdb_ids)},
     }
+    if properties_external is not None:
+        raw["properties"]["external"] = properties_external
     if entity_types:
         raw["type"] = entity_types[0]
     return SimpleNamespace(
@@ -45,6 +49,15 @@ def _entity(
         subtype=None,
         popularity=None,
         raw=raw,
+    )
+
+
+def _tag(tag_id: str, name: str, subtype: str | None = None) -> SimpleNamespace:
+    return SimpleNamespace(
+        tag_id=tag_id,
+        name=name,
+        subtype=subtype,
+        raw={"id": tag_id, "name": name, "subtype": subtype, "type": subtype},
     )
 
 
@@ -162,3 +175,122 @@ def test_gate_client_enforces_twelve_logical_get_limit() -> None:
     assert client.logical_gets == _gate.MAX_LOGICAL_GETS
     assert client.halted is True
     assert client.halt_reason["error_type"] == "LogicalGetBudgetExceeded"
+
+
+def test_tag_record_verifies_unique_matching_name_and_subtype() -> None:
+    film = {
+        "title": "The Dark Knight",
+        "theme": "superhero",
+        "tag_type": "urn:tag:subgenre:qloo",
+    }
+    response = SimpleNamespace(
+        results=[
+            _tag("urn:tag:subgenre:qloo:superhero", "Superhero", "urn:tag:subgenre:qloo"),
+            _tag("urn:tag:subgenre:qloo:superheroes", "Superheroes", "urn:tag:subgenre:qloo"),
+        ],
+        call_id="tag-call-1",
+        observed_shape=["_list"],
+    )
+    record = _gate._tag_record(response, None, film)
+    assert record["verdict"] == "VERIFIED"
+    assert record["canonical_tag"] == {
+        "tag_id": "urn:tag:subgenre:qloo:superhero",
+        "name": "Superhero",
+        "subtype": "urn:tag:subgenre:qloo",
+    }
+
+
+def test_tag_record_rejects_matching_name_with_mismatched_subtype() -> None:
+    film = {
+        "title": "The Dark Knight",
+        "theme": "superhero",
+        "tag_type": "urn:tag:subgenre:qloo",
+    }
+    response = SimpleNamespace(
+        results=[
+            _tag("urn:tag:genre:music:superhero", "Superhero", "urn:tag:genre:music"),
+        ],
+        call_id="tag-call-2",
+        observed_shape=["_list"],
+    )
+    record = _gate._tag_record(response, None, film)
+    assert record["verdict"] == "NO_EXACT_CANONICAL_MATCH"
+    assert record["canonical_tag"] is None
+
+
+def test_tag_record_preserves_ambiguity_for_multiple_subtype_matches() -> None:
+    film = {
+        "title": "The Dark Knight",
+        "theme": "superhero",
+        "tag_type": "urn:tag:subgenre:qloo",
+    }
+    response = SimpleNamespace(
+        results=[
+            _tag("urn:tag:subgenre:qloo:superhero_1", "Superhero", "urn:tag:subgenre:qloo"),
+            _tag("urn:tag:subgenre:qloo:superhero_2", "Superhero", "urn:tag:subgenre:qloo"),
+        ],
+        call_id="tag-call-3",
+        observed_shape=["_list"],
+    )
+    record = _gate._tag_record(response, None, film)
+    assert record["verdict"] == "AMBIGUOUS"
+    assert record["canonical_tag"] is None
+
+
+def test_film_gate_corroborates_live_qloo_dict_properties_external() -> None:
+    """Live Qloo returns external ids inside properties.external.<family>.id."""
+    imdb_id = "tt0468569"
+    search_entity = _entity(
+        "dark-knight-1",
+        name="The Dark Knight",
+        year=2008,
+        properties_external={"imdb": {"id": imdb_id, "user_rating": 9.1}},
+    )
+    ext_entity = _entity(
+        "dark-knight-1",
+        name="The Dark Knight",
+        year=2008,
+        properties_external={"imdb": {"id": imdb_id, "user_rating": 9.1}},
+    )
+    client = _ResolverClient([search_entity], [ext_entity])
+    resolver = EntityResolver(client, delay_s=0.0)
+    film = {
+        "title": "The Dark Knight",
+        "year": 2008,
+        "imdb_id": imdb_id,
+        "theme": "superhero",
+        "tag_type": "urn:tag:subgenre:qloo",
+    }
+
+    record = asyncio.run(_gate._resolve_film(resolver, film))
+    assert record["verdict"] == "PASS"
+    assert record["resolution"]["status"] == "VERIFIED"
+    assert record["resolution"]["method"] == "external_id"
+    assert record["resolution"]["external_id_corroborated"] is True
+    assert record["resolution"]["candidate"]["entity_id"] == "dark-knight-1"
+
+
+def test_film_gate_reports_mismatch_when_live_qloo_external_id_conflicts() -> None:
+    search_entity = _entity(
+        "dark-knight-1",
+        name="The Dark Knight",
+        year=2008,
+    )
+    ext_entity = _entity(
+        "dark-knight-1",
+        name="The Dark Knight",
+        year=2008,
+        properties_external={"imdb": {"id": "tt9999999"}},
+    )
+    client = _ResolverClient([search_entity], [ext_entity])
+    resolver = EntityResolver(client, delay_s=0.0)
+    film = {
+        "title": "The Dark Knight",
+        "year": 2008,
+        "imdb_id": "tt0468569",
+    }
+
+    record = asyncio.run(_gate._resolve_film(resolver, film))
+    assert record["resolution"]["status"] == "MISMATCH"
+    assert record["resolution"]["external_id_corroborated"] is False
+    assert record["verdict"] == "MISMATCH"

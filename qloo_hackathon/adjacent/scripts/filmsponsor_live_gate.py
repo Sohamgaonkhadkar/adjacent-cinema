@@ -30,10 +30,32 @@ MAX_LOGICAL_GETS = 12
 
 # Three input rows from data/processed/qloo_modern_benchmark.csv. Historical
 # Qloo IDs/statuses are not treated as current truth; all mappings are rechecked.
+# Each theme query defines an explicit, justified media taxonomy tag type:
+# - superhero: urn:tag:subgenre:qloo (subgenre within narrative film/fiction)
+# - science fiction: urn:tag:genre:media (primary media genre)
+# - psychological thriller: urn:tag:genre:media (compound media genre)
 FILMS: tuple[dict[str, Any], ...] = (
-    {"title": "The Dark Knight", "year": 2008, "imdb_id": "tt0468569", "theme": "superhero"},
-    {"title": "Inception", "year": 2010, "imdb_id": "tt1375666", "theme": "science fiction"},
-    {"title": "Black Swan", "year": 2010, "imdb_id": "tt0947798", "theme": "psychological thriller"},
+    {
+        "title": "The Dark Knight",
+        "year": 2008,
+        "imdb_id": "tt0468569",
+        "theme": "superhero",
+        "tag_type": "urn:tag:subgenre:qloo",
+    },
+    {
+        "title": "Inception",
+        "year": 2010,
+        "imdb_id": "tt1375666",
+        "theme": "science fiction",
+        "tag_type": "urn:tag:genre:media",
+    },
+    {
+        "title": "Black Swan",
+        "year": 2010,
+        "imdb_id": "tt0947798",
+        "theme": "psychological thriller",
+        "tag_type": "urn:tag:genre:media",
+    },
 )
 
 
@@ -224,16 +246,32 @@ def _trace_rows(recorder: Any) -> list[dict[str, Any]]:
 def _tag_record(response: Any, error: dict[str, Any] | None, film: dict[str, Any]) -> dict[str, Any]:
     results = list(getattr(response, "results", []) or []) if response is not None else []
     query = film["theme"]
+    intended_subtype = film.get("tag_type")
     normal_query = " ".join(unicodedata.normalize("NFKC", query).casefold().split())
     exact: dict[str, Any] = {}
     for tag in results:
         name = getattr(tag, "name", None)
         tag_id = getattr(tag, "tag_id", None)
-        if (
+        tag_subtype = getattr(tag, "subtype", None) or getattr(tag, "type", None)
+        if not tag_subtype and isinstance(getattr(tag, "raw", None), dict):
+            tag_subtype = tag.raw.get("subtype") or tag.raw.get("type")
+
+        name_match = (
             isinstance(name, str)
-            and tag_id
             and " ".join(unicodedata.normalize("NFKC", name).casefold().split()) == normal_query
-        ):
+        )
+        subtype_match = True
+        if intended_subtype:
+            subtype_match = bool(
+                tag_subtype
+                and (
+                    tag_subtype == intended_subtype
+                    or tag_subtype == intended_subtype.removeprefix("urn:tag:")
+                    or str(tag_id).startswith(f"{intended_subtype}:")
+                )
+            )
+
+        if name_match and subtype_match and tag_id:
             exact[str(tag_id)] = tag
     if error:
         verdict = "NO_EXACT_CANONICAL_MATCH" if error.get("status") == 404 else "ERROR"
@@ -247,6 +285,7 @@ def _tag_record(response: Any, error: dict[str, Any] | None, film: dict[str, Any
     return {
         "film_title": film["title"],
         "query": query,
+        "intended_subtype": intended_subtype,
         "verdict": verdict,
         "call_id": getattr(response, "call_id", None) or (error or {}).get("call_id"),
         "observed_shape": list(getattr(response, "observed_shape", []) or []),
@@ -439,9 +478,11 @@ async def _run_gate(
         for film in FILMS:
             if halted:
                 break
+            tag_type = film.get("tag_type")
             response, error = await call(
                 client.tags(
                     filter_query=film["theme"],
+                    filter_tag_types=[tag_type] if tag_type else None,
                     take=TAG_TAKE,
                     tool="filmsponsor_gate:tag_search",
                 )
@@ -463,7 +504,7 @@ async def _run_gate(
             "verdict": tag_verdict,
             "exact_unique_tags": len(canonical),
             "expected_minimum": MIN_CANONICAL_TAGS,
-            "contract": "GET /v2/tags using documented filter.query and take only",
+            "contract": "GET /v2/tags using documented filter.query, filter.tag.types, and take only",
         }
 
         entity_brand = None
@@ -573,7 +614,8 @@ def main() -> int:
     from app.resolution.resolver import EntityResolver
 
     # Bound this validation run: no retries and at most one Qloo call/second.
-    settings = Settings.from_env(max_retries=0, rate_limit_rps=1.0)
+    read_timeout_s = float(os.environ.get("QLOO_READ_TIMEOUT_S") or 15.0)
+    settings = Settings.from_env(max_retries=0, rate_limit_rps=1.0, read_timeout_s=read_timeout_s)
     try:
         report = asyncio.run(
             _run_gate(

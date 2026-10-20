@@ -92,6 +92,28 @@ def _add_fixtures_parser(subparsers: argparse._SubParsersAction) -> None:
     )
 
 
+def _add_cleanup_guest_sessions_parser(subparsers: argparse._SubParsersAction) -> None:
+    parser = subparsers.add_parser(
+        "cleanup-guest-sessions",
+        help="delete expired guest sessions and their campaign data",
+        description=(
+            "Sweep the FilmSponsor database for expired or revoked guest sessions "
+            "and delete them together with all associated campaign data. Safe to run "
+            "repeatedly (idempotent) and concurrently with a live server. Intended "
+            "for cron or a systemd timer on the OCI host."
+        ),
+    )
+    parser.add_argument(
+        "--db",
+        default=None,
+        help=(
+            "SQLite database path. Defaults to ADJACENT_EXPERIMENTS_DB or "
+            "the built-in data/processed/experiments.db."
+        ),
+    )
+    parser.add_argument("--quiet", action="store_true", help="suppress output when zero sessions are cleaned")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="app.cli", description="Adjacent — audience adjacency engine")
     parser.add_argument("--version", action="version", version="adjacent 0.1.0-milestone1")
@@ -100,6 +122,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_demo_live_parser(subparsers)
     _add_params_parser(subparsers)
     _add_fixtures_parser(subparsers)
+    _add_cleanup_guest_sessions_parser(subparsers)
     return parser
 
 
@@ -203,6 +226,35 @@ def _cmd_list_fixtures(settings: Settings) -> int:
     return EXIT_OK
 
 
+def _cmd_cleanup_guest_sessions(args: argparse.Namespace) -> int:
+    """Sweep expired guest sessions and their campaign trees."""
+    from .api.creator_routes import EXPERIMENTS_DB_PATH
+    from .domain.filmsponsor_guest_sessions import GuestSessionStore
+    from .domain.filmsponsor_repository import FilmSponsorRepository
+
+    db_path = Path(args.db) if args.db else EXPERIMENTS_DB_PATH
+    if not db_path.exists():
+        if not args.quiet:
+            print(f"Database does not exist yet: {db_path}", file=sys.stderr)
+        return EXIT_OK
+
+    # Open the repository first so session-table triggers can reference the
+    # campaign tables (mirrors the server startup order).
+    repo = FilmSponsorRepository(db_path)
+    try:
+        store = GuestSessionStore(db_path)
+        try:
+            count = store.cleanup()
+        finally:
+            store.close()
+    finally:
+        repo.close()
+
+    if count or not args.quiet:
+        print(f"Cleaned {count} expired guest session(s) from {db_path}")
+    return EXIT_OK
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -219,6 +271,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_params(settings)
     if args.command == "list-fixtures":
         return _cmd_list_fixtures(settings)
+    if args.command == "cleanup-guest-sessions":
+        return _cmd_cleanup_guest_sessions(args)
 
     parser.print_help()
     return EXIT_CANNOT_RUN

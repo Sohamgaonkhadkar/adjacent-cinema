@@ -195,11 +195,53 @@ requests/minute/session, 10 campaigns/session, global/per-campaign record caps
 and a 16 KiB request-body limit. The guest feature does not grant access to
 Creator experiments or other protected route families.
 
-**Retention limitation:** expiry immediately prevents authentication, but
-cleanup is opportunistic during guest-session activity; there is no scheduled
-sweeper or guaranteed deletion deadline for an inactive workspace. Revocation
-deletes the session's campaign tree. Do not promise a fixed retention/deletion
-period until scheduled cleanup is implemented and verified.
+**Data retention and cleanup:** expiry immediately prevents authentication
+and blocks further writes (SQLite triggers refuse inserts against an expired
+session). Cleanup of expired session rows and their entire campaign tree
+(campaigns, discoveries, drafts, source-reviews and outreach) is handled by:
+
+1. **Opportunistic sweep** — every `issue_or_rotate` and `authenticate` call
+   deletes any expired sessions it finds in the same transaction.
+2. **Scheduled CLI command** — for the planned single-host OCI deployment, run
+   the following on a regular schedule so cleanup happens even when no guest
+   visits the app:
+
+   ```bash
+   # From the Adjacent root with the Python environment active:
+   python -m app.cli cleanup-guest-sessions
+   # Or with an explicit database path:
+   python -m app.cli cleanup-guest-sessions --db /durable/path/experiments.db
+   # Suppress output when nothing was cleaned (useful for cron):
+   python -m app.cli cleanup-guest-sessions --quiet
+   ```
+
+   **Recommended cron entry** (run hourly; adjust for your retention posture):
+
+   ```cron
+   0 * * * *  cd /opt/adjacent && .venv/bin/python -m app.cli cleanup-guest-sessions --quiet
+   ```
+
+   Or as a **systemd timer** (`adjacent-guest-cleanup.timer`):
+
+   ```ini
+   [Unit]
+   Description=Sweep expired Adjacent guest sessions
+
+   [Timer]
+   OnCalendar=hourly
+   Persistent=true
+
+   [Install]
+   WantedBy=timers.target
+   ```
+
+   The command is idempotent, transaction-safe (uses `BEGIN IMMEDIATE` +
+   rollback on error), and safe to run concurrently with a live Uvicorn
+   server. It opens its own short-lived connection and exits immediately.
+
+   Session revocation (`DELETE /filmsponsor/guest-session`) deletes the
+   campaign tree synchronously inside the request. The scheduled command
+   catches sessions that expired without an explicit revoke.
 
 SQLite runs in WAL mode and is intended for a durable **single-host local
 filesystem**. Do not put the database/WAL on network storage or use independent
