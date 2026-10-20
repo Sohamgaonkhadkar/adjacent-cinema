@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { CulturalField, ProgrammeBetData } from "@/types/adjacent";
+import type { CulturalField, ProgrammeBetData, TraceRow } from "@/types/adjacent";
+import { traceAnchorId } from "@/components/EvidenceTrace";
 
 // ─── Cultural adjacency graph (M13.15) ─────────────────────────────────────
 // Renders ONLY what the run actually established: ranked adjacent worlds from
@@ -32,36 +33,44 @@ function domainLabel(domain: string): string {
   return domain.replace("urn:entity:", "").replace(/_/g, " ");
 }
 
+function comparableName(value: string | null | undefined): string {
+  return value?.trim().toLowerCase() ?? "";
+}
+
 export default function AdjacencyGraph({
   filmTitle,
   cohorts,
   bet,
   dataStatus,
+  traceRows,
 }: {
   filmTitle: string;
   cohorts: CulturalField;
   bet: ProgrammeBetData | null;
   dataStatus: string;
+  traceRows: TraceRow[];
 }) {
   const [selected, setSelected] = useState<string | null>(null);
 
   const nodes: NodeDatum[] = useMemo(() => {
     return cohorts.ranked.map((c, i) => {
-      const role: NodeDatum["role"] =
-        bet?.primary && c.domain === bet.primary.domain
-          ? "primary"
-          : bet?.runner_up && c.domain === bet.runner_up.domain
-            ? "runner-up"
-            : "ranked";
+      const label = c.members?.find((m) => m.name)?.name ?? domainLabel(c.domain);
+      const isPrimary = bet?.primary
+        ? bet.primary.cohort_id
+          ? bet.primary.cohort_id === c.cohort_id
+          : bet.primary.domain === c.domain && comparableName(bet.primary.cohort_name) === comparableName(label)
+        : false;
+      const isRunnerUp = bet?.runner_up
+        ? bet.runner_up.domain === c.domain && comparableName(bet.runner_up.cohort_name) === comparableName(label)
+        : false;
+      const role: NodeDatum["role"] = isPrimary ? "primary" : isRunnerUp ? "runner-up" : "ranked";
+      const contextCallId = traceRows.find((row) => row.tool === `score_context:${c.domain}`)?.call_id ?? null;
       const callId =
-        role === "primary"
-          ? bet?.primary.call_id ?? null
-          : role === "runner-up"
-            ? bet?.runner_up?.call_id ?? null
-            : null;
+        (role === "primary" ? bet?.primary?.call_id : role === "runner-up" ? bet?.runner_up?.call_id : null) ??
+        contextCallId;
       return {
         key: c.cohort_id || `${c.domain}-${i}`,
-        label: c.members?.find((m) => m.name)?.name ?? domainLabel(c.domain),
+        label,
         domain: c.domain,
         rank: c.rank,
         memberCount: c.member_count,
@@ -73,7 +82,7 @@ export default function AdjacencyGraph({
         role,
       };
     });
-  }, [cohorts, bet]);
+  }, [cohorts, bet, traceRows]);
 
   const maxMembers = Math.max(1, ...nodes.map((n) => n.memberCount));
   const placed = nodes.map((n, i) => {
@@ -89,6 +98,9 @@ export default function AdjacencyGraph({
 
   const rejected = cohorts.rejected ?? [];
   const active = placed.find((p) => p.node.key === selected) ?? null;
+  const activeTrace = active?.node.callId
+    ? traceRows.find((row) => row.call_id === active.node.callId) ?? null
+    : null;
 
   if (nodes.length === 0) {
     return (
@@ -106,7 +118,12 @@ export default function AdjacencyGraph({
   return (
     <div className="agraph">
       <div className="agraph-canvas-wrap">
-        <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Adjacent cultural worlds around your film">
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          role="group"
+          aria-label={`Interactive cultural fingerprint for ${filmTitle}. Use Tab to select a ranked cultural world.`}
+        >
+          <title>Adjacent cultural worlds around {filmTitle}</title>
           {/* rejected worlds — visible on the outer edge, with reason codes */}
           {rejected.map((r, i) => {
             const angle = (i / Math.max(1, rejected.length)) * Math.PI * 2 + 0.4;
@@ -165,9 +182,13 @@ export default function AdjacencyGraph({
               tabIndex={0}
               onClick={() => setSelected(selected === p.node.key ? null : p.node.key)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") setSelected(selected === p.node.key ? null : p.node.key);
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setSelected(selected === p.node.key ? null : p.node.key);
+                }
               }}
-              aria-label={`${p.node.label}, rank ${p.node.rank}`}
+              aria-pressed={selected === p.node.key}
+              aria-label={`${p.node.label}, ${p.node.role === "primary" ? "primary positioning target" : p.node.role === "runner-up" ? "runner-up world" : "ranked world"}, rank ${p.node.rank}`}
             >
               <circle cx={p.x} cy={p.y} r={p.r} />
               <text x={p.x} y={p.y - p.r - 10} textAnchor="middle" className="agraph-node-label">
@@ -184,17 +205,20 @@ export default function AdjacencyGraph({
             </g>
           ))}
         </svg>
-        {dataStatus !== "measured" && (
+        {dataStatus === "fixture" && (
           <span className="agraph-stamp">FIXTURE DEMONSTRATION — NOT LIVE QLOO DATA</span>
+        )}
+        {dataStatus !== "measured" && dataStatus !== "fixture" && (
+          <span className="agraph-stamp is-unknown">DATA STATUS UNKNOWN</span>
         )}
       </div>
 
       <aside className="agraph-inspector" aria-live="polite">
         {!active && (
           <p className="agraph-inspector-hint">
-            Select a world to inspect its evidence. Node size reflects member count; edge
-            weight reflects measured mean affinity. Rejected worlds remain visible with their
-            reason codes — exclusions are annotations, not deletions.
+          Select a world to inspect its cohort and recorded call reference. Node size reflects
+          member count; edge weight reflects the run&apos;s mean affinity. Rejected worlds remain
+          visible with their reason codes — exclusions are annotations, not deletions.
           </p>
         )}
         {active && (
@@ -220,7 +244,21 @@ export default function AdjacencyGraph({
                 <div><dt>Excluded (visible)</dt><dd>{active.node.excludedCount}</dd></div>
               )}
               {active.node.callId && (
-                <div><dt>Evidence call</dt><dd className="mono-tiny">{active.node.callId}</dd></div>
+                <div>
+                  <dt>Evidence call</dt>
+                  <dd className="mono-tiny">
+                    {activeTrace ? (
+                      <a href={`#${traceAnchorId(active.node.callId)}`}>
+                        {active.node.callId} · inspect trace
+                      </a>
+                    ) : (
+                      <span>{active.node.callId} · no matching trace entry</span>
+                    )}
+                  </dd>
+                </div>
+              )}
+              {!active.node.callId && (
+                <div><dt>Evidence call</dt><dd>Not linked in this response</dd></div>
               )}
             </dl>
             {active.node.members.length > 0 && (
@@ -237,7 +275,7 @@ export default function AdjacencyGraph({
               </>
             )}
             <p className="agraph-guard">
-              Affinity is cultural similarity — not evidence this audience will watch the film.
+              Affinity is cultural similarity — not evidence this audience will watch the film. A fixture is not a live Qloo result.
             </p>
           </>
         )}

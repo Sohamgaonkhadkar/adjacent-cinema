@@ -16,9 +16,9 @@ from __future__ import annotations
 import asyncio
 import os
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from ..domain.creator_analysis import (
@@ -37,6 +37,13 @@ from ..domain.llm_provider import (
     OpenAICompatibleProvider,
 )
 from ..domain.synthesis import synthesize_investigation
+from ..public_demo import (
+    acquire_public_demo_run,
+    prune_public_run_cache,
+    public_demo_enabled,
+    safe_run_error,
+    sanitize_public_stop,
+)
 from .routes import (
     DEMO_FIXTURE,
     RunResponse,
@@ -77,20 +84,22 @@ def reset_repo_for_tests(db_path: str | Path | None = None) -> None:
 
 
 class ReferenceInput(BaseModel):
-    title: str = Field(..., min_length=1)
-    year: int | None = None
+    title: str = Field(..., min_length=1, max_length=160)
+    year: int | None = Field(default=None, ge=1888, le=2100)
 
 
 class CreatorRunRequest(BaseModel):
-    title: str = Field(..., min_length=1)
-    logline: str = ""
-    genre: str = ""
-    language: str = ""
-    themes: list[str] = Field(default_factory=list)
-    references: list[ReferenceInput] = Field(default_factory=list)
-    release_goal: str = ""
+    title: str = Field(..., min_length=1, max_length=160)
+    logline: str = Field(default="", max_length=2000)
+    genre: str = Field(default="", max_length=120)
+    language: str = Field(default="", max_length=80)
+    themes: list[Annotated[str, Field(min_length=1, max_length=120)]] = Field(
+        default_factory=list, max_length=5
+    )
+    references: list[ReferenceInput] = Field(default_factory=list, max_length=5)
+    release_goal: str = Field(default="", max_length=300)
     #: Optional release-location context; geography is only analysed when set.
-    city: str = ""
+    city: str = Field(default="", max_length=120)
 
     def seeds(self) -> list[dict[str, Any]]:
         """Analysis seeds = comparable works + themes, in user order."""
@@ -108,49 +117,51 @@ class CreatorRunRequest(BaseModel):
 
 
 class SaveExperimentRequest(BaseModel):
-    request_id: str = Field(..., min_length=8)
-    film_title: str = Field(..., min_length=1)
-    hypothesis: str = Field(..., min_length=1)
-    film_context: dict[str, Any] = Field(default_factory=dict)
-    success_criteria: str = ""
-    observation_window: str = ""
-    action_plan: str = ""
-    data_status: str = "unknown"
-    source_run_id: str | None = None
-    source_bet: dict[str, Any] = Field(default_factory=dict)
-    provenance: dict[str, Any] = Field(default_factory=dict)
+    request_id: str = Field(..., min_length=8, max_length=120)
+    film_title: str = Field(..., min_length=1, max_length=200)
+    hypothesis: str = Field(..., min_length=1, max_length=3000)
+    film_context: dict[str, Any] = Field(default_factory=dict, max_length=64)
+    success_criteria: str = Field(default="", max_length=2000)
+    observation_window: str = Field(default="", max_length=300)
+    action_plan: str = Field(default="", max_length=3000)
+    data_status: str = Field(default="unknown", max_length=32)
+    source_run_id: str | None = Field(default=None, max_length=64)
+    source_bet: dict[str, Any] = Field(default_factory=dict, max_length=64)
+    provenance: dict[str, Any] = Field(default_factory=dict, max_length=64)
     # M13.12 (additive): carry the investigation's own record into provenance
     # so a saved experiment can be traced back to what justified it.
-    investigation_summary: dict[str, Any] | None = None
-    evidence_refs: list[str] = Field(default_factory=list)
+    investigation_summary: dict[str, Any] | None = Field(default=None, max_length=32)
+    evidence_refs: list[str] = Field(default_factory=list, max_length=64)
     # M13.14 (additive): when the creator explicitly adopts a Decision Brief
     # proposal, an immutable sanitised snapshot of the synthesis and the
     # ORIGINAL proposal are stored in provenance — so a reviewer can always
     # tell what the model proposed from what the creator actually saved.
-    synthesis_snapshot: dict[str, Any] | None = None
-    adopted_proposal: dict[str, Any] | None = None
+    synthesis_snapshot: dict[str, Any] | None = Field(default=None, max_length=64)
+    adopted_proposal: dict[str, Any] | None = Field(default=None, max_length=32)
 
 
 class ObservationRequest(BaseModel):
-    request_id: str = Field(..., min_length=8)
-    kind: str = "ANALYTICS"
-    measurement_status: str = Field(..., description="OBSERVED|PARTIAL|MISSING|UNAVAILABLE|FAILED")
-    observed_on: str | None = None
-    metrics: dict[str, Any] = Field(default_factory=dict)
-    interpretation: str | None = None
-    source: str | None = None
-    evidence_ref: str | None = None
-    limitations: str | None = None
-    supersedes_id: str | None = None
+    request_id: str = Field(..., min_length=8, max_length=120)
+    kind: str = Field(default="ANALYTICS", max_length=32)
+    measurement_status: str = Field(
+        ..., max_length=16, description="OBSERVED|PARTIAL|MISSING|UNAVAILABLE|FAILED"
+    )
+    observed_on: str | None = Field(default=None, max_length=32)
+    metrics: dict[str, Any] = Field(default_factory=dict, max_length=64)
+    interpretation: str | None = Field(default=None, max_length=2000)
+    source: str | None = Field(default=None, max_length=120)
+    evidence_ref: str | None = Field(default=None, max_length=4096)
+    limitations: str | None = Field(default=None, max_length=2000)
+    supersedes_id: str | None = Field(default=None, max_length=64)
 
 
 class EvaluationRequest(BaseModel):
-    request_id: str = Field(..., min_length=8)
-    outcome: str = Field(..., description="SUPPORTED|CONTRADICTED|INCONCLUSIVE")
-    rationale: str = Field(..., min_length=1)
-    observation_ids: list[str] = Field(default_factory=list)
-    unknowns: str | None = None
-    supersedes_id: str | None = None
+    request_id: str = Field(..., min_length=8, max_length=120)
+    outcome: str = Field(..., max_length=32, description="SUPPORTED|CONTRADICTED|INCONCLUSIVE")
+    rationale: str = Field(..., min_length=1, max_length=3000)
+    observation_ids: list[str] = Field(default_factory=list, max_length=64)
+    unknowns: str | None = Field(default=None, max_length=2000)
+    supersedes_id: str | None = Field(default=None, max_length=64)
 
 
 # ---------------------------------------------------------------------------
@@ -159,7 +170,7 @@ class EvaluationRequest(BaseModel):
 
 
 @router.post("/creator/run", response_model=RunResponse)
-async def create_creator_run(request: CreatorRunRequest) -> RunResponse:
+async def create_creator_run(request: CreatorRunRequest, http_request: Request) -> RunResponse:
     seeds = request.seeds()
     if not seeds:
         raise HTTPException(
@@ -167,33 +178,59 @@ async def create_creator_run(request: CreatorRunRequest) -> RunResponse:
             detail="Add at least one reference work or theme to analyse.",
         )
 
-    record = run_store.create(
-        city=request.city.strip(),
-        venue_name=f"Creator: {request.title}",
-        programme=seeds,
-    )
-    record.creator_context = request.model_dump()  # type: ignore[attr-defined]
+    permit = acquire_public_demo_run(http_request, live=True)
+    try:
+        prune_public_run_cache(max_records=99)
+        record = run_store.create(
+            city=request.city.strip(),
+            venue_name=f"Creator: {request.title}",
+            programme=seeds,
+        )
+        record.creator_context = request.model_dump()  # type: ignore[attr-defined]
 
-    _tasks: set[asyncio.Task[None]] = set()
-    task = asyncio.create_task(_execute_creator_run(record, request))
-    _tasks.add(task)
-    task.add_done_callback(_tasks.discard)
-    return _record_to_response(record)
+        _tasks: set[asyncio.Task[None]] = set()
+        task = asyncio.create_task(_execute_creator_run(record, request))
+        _tasks.add(task)
+
+        def finish_live(completed: asyncio.Task[None]) -> None:
+            _tasks.discard(completed)
+            if permit is not None:
+                permit.release()
+
+        task.add_done_callback(finish_live)
+        return _record_to_response(record)
+    except Exception:
+        if permit is not None:
+            permit.release()
+        raise
 
 
 @router.post("/creator/run/demo", response_model=RunResponse)
-async def create_creator_demo_run() -> RunResponse:
+async def create_creator_demo_run(http_request: Request) -> RunResponse:
     """Fixture-backed creator demo — labelled `fixture` in every artefact."""
-    record = run_store.create(
-        city="",
-        venue_name="Creator Fixture Demo (offline)",
-        programme=[],
-    )
-    _tasks: set[asyncio.Task[None]] = set()
-    task = asyncio.create_task(_execute_creator_demo_run(record))
-    _tasks.add(task)
-    task.add_done_callback(_tasks.discard)
-    return _record_to_response(record)
+    permit = acquire_public_demo_run(http_request, live=False)
+    try:
+        prune_public_run_cache(max_records=99)
+        record = run_store.create(
+            city="",
+            venue_name="Creator Fixture Demo (offline)",
+            programme=[],
+        )
+        _tasks: set[asyncio.Task[None]] = set()
+        task = asyncio.create_task(_execute_creator_demo_run(record))
+        _tasks.add(task)
+
+        def finish_fixture(completed: asyncio.Task[None]) -> None:
+            _tasks.discard(completed)
+            if permit is not None:
+                permit.release()
+
+        task.add_done_callback(finish_fixture)
+        return _record_to_response(record)
+    except Exception:
+        if permit is not None:
+            permit.release()
+        raise
 
 
 # ---------------------------------------------------------------------------
@@ -219,9 +256,14 @@ async def _execute_creator_run(record: Any, request: CreatorRunRequest) -> None:
 
     settings = Settings.from_env()
     if not settings.has_api_key:
+        message = (
+            "Live Qloo is not configured for this public demo. Try the labelled fixture."
+            if public_demo_enabled()
+            else "QLOO_API_KEY not configured"
+        )
         record.status = RunStatus.FAILED
-        record.error = "QLOO_API_KEY not configured"
-        record.emit(RunEvent("error", {"message": "QLOO_API_KEY not configured"}))
+        record.error = message
+        record.emit(RunEvent("error", {"message": message}))
         return
 
     try:
@@ -251,6 +293,7 @@ async def _execute_creator_run(record: Any, request: CreatorRunRequest) -> None:
 
         pipeline = LivePipeline(client, resolver, record.programme)
         state = await AgentOrchestrator(pipeline).run(state)
+        sanitize_public_stop(state)
 
         geography_result, bet, test_card, investigation = await _post_pipeline_creator(
             record, state, client, request
@@ -261,9 +304,10 @@ async def _execute_creator_run(record: Any, request: CreatorRunRequest) -> None:
         )
         await client.aclose()
     except Exception as exc:
+        message = safe_run_error(exc)
         record.status = RunStatus.FAILED
-        record.error = str(exc)
-        record.emit(RunEvent("error", {"message": str(exc)}))
+        record.error = message
+        record.emit(RunEvent("error", {"message": message}))
 
 
 async def _execute_creator_demo_run(record: Any) -> None:
@@ -298,7 +342,7 @@ async def _execute_creator_demo_run(record: Any) -> None:
             logline="A dockside night-shift romance told in three silent vignettes.",
             genre="drama",
             language="English",
-            themes=[t["title"] for t in record.programme if t.get("title")],
+            themes=[t["title"] for t in record.programme if t.get("title")][:5],
             release_goal="YouTube premiere after festival window",
         )
 
@@ -316,6 +360,7 @@ async def _execute_creator_demo_run(record: Any) -> None:
         state.ledger = ProvenanceLedger(recorder=client.recorder, data_status="fixture")
 
         state = await AgentOrchestrator(FixturePipeline(client, fx)).run(state)
+        sanitize_public_stop(state)
 
         geography_result, bet, test_card, investigation = await _post_pipeline_creator(
             record, state, client, demo_request
@@ -325,9 +370,10 @@ async def _execute_creator_demo_run(record: Any) -> None:
             record, state, demo_request, geography_result, bet, test_card, investigation
         )
     except Exception as exc:
+        message = safe_run_error(exc)
         record.status = RunStatus.FAILED
-        record.error = str(exc)
-        record.emit(RunEvent("error", {"message": str(exc)}))
+        record.error = message
+        record.emit(RunEvent("error", {"message": message}))
 
 
 async def _post_pipeline_creator(
@@ -356,7 +402,10 @@ async def _post_pipeline_creator(
             )
             record.emit(RunEvent("heatmap", geography_result.to_dict()))
         except Exception as exc:
-            record.emit(RunEvent("trace", {"phase": "LOCATE", "message": f"Geography failed: {exc}"}))
+            record.emit(RunEvent("trace", {
+                "phase": "LOCATE",
+                "message": f"Geography failed: {safe_run_error(exc)}",
+            }))
 
     bet = None
     test_card = None
@@ -387,7 +436,10 @@ async def _post_pipeline_creator(
                 )
                 record.emit(RunEvent("test_card", test_card.to_dict()))
         except Exception as exc:
-            record.emit(RunEvent("trace", {"phase": "DECIDE", "message": f"Positioning Bet failed: {exc}"}))
+            record.emit(RunEvent("trace", {
+                "phase": "DECIDE",
+                "message": f"Positioning Bet failed: {safe_run_error(exc)}",
+            }))
 
     # M13.11: the structured investigation account — built from the SAME state
     # the orchestrator filled, citing the call_ids that actually ran.
@@ -430,6 +482,7 @@ def _finalize_creator(
 ) -> None:
     from .routes import RunEvent, RunStatus
 
+    sanitize_public_stop(state)
     record.state_json = state.to_json()
     record.stop_reason = state.stop_reason
     record.stop_message = state.stop_message
@@ -677,6 +730,13 @@ class SynthesizeRequest(BaseModel):
 @router.get("/creator/synthesis-status")
 def synthesis_status() -> dict[str, Any]:
     """Provider status WITHOUT secrets. BLOCKED is an honest state."""
+    if public_demo_enabled():
+        return {
+            "available": False,
+            "provider": "none",
+            "model": None,
+            "blocked_reason": "Optional synthesis is disabled in public demo mode.",
+        }
     if _synthesis_provider_override is not None:
         return {
             "available": True,

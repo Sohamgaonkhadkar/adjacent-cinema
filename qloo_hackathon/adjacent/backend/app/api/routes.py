@@ -12,10 +12,20 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from ..public_demo import (
+    acquire_public_demo_run,
+    prune_public_run_cache,
+    public_demo_enabled,
+    public_failure_message,
+    safe_public_event,
+    safe_public_trace,
+    safe_run_error,
+    sanitize_public_stop,
+)
 from .store import RunEvent, RunRecord, RunStatus, run_store
 
 if TYPE_CHECKING:
@@ -30,15 +40,15 @@ router = APIRouter()
 
 
 class ProgrammeItemInput(BaseModel):
-    title: str
-    year: int | None = None
-    imdb_id: str | None = None
+    title: str = Field(..., min_length=1, max_length=160)
+    year: int | None = Field(default=None, ge=1888, le=2100)
+    imdb_id: str | None = Field(default=None, max_length=32)
 
 
 class RunRequest(BaseModel):
-    city: str
-    venue_name: str = ""
-    programme: list[ProgrammeItemInput] = Field(..., min_length=1)
+    city: str = Field(..., min_length=1, max_length=120)
+    venue_name: str = Field(default="", max_length=120)
+    programme: list[ProgrammeItemInput] = Field(..., min_length=1, max_length=12)
 
 
 class RunResponse(BaseModel):
@@ -91,25 +101,37 @@ DEMO_FIXTURE = "portland_strong"
 
 
 @router.post("/run/demo", response_model=RunResponse)
-async def create_demo_run() -> RunResponse:
+async def create_demo_run(request: Request) -> RunResponse:
     """Start a fixture-backed demo run.
 
     This route exists so the whole product journey is explorable without a Qloo
     key — but it never pretends to be live: `data_status` is "fixture" in the
     result, in every sub-artefact and in the stop notice.
     """
-    record = run_store.create(
-        city="",  # filled from the fixture once the run starts
-        venue_name="Fixture Demo Cinema (offline)",
-        programme=[],
-    )
+    permit = acquire_public_demo_run(request, live=False)
+    try:
+        prune_public_run_cache(max_records=99)
+        record = run_store.create(
+            city="",  # filled from the fixture once the run starts
+            venue_name="Fixture Demo Cinema (offline)",
+            programme=[],
+        )
 
-    _demo_tasks = set()
-    task = asyncio.create_task(_execute_demo_run(record))
-    _demo_tasks.add(task)
-    task.add_done_callback(_demo_tasks.discard)
+        _demo_tasks: set[asyncio.Task[None]] = set()
+        task = asyncio.create_task(_execute_demo_run(record))
+        _demo_tasks.add(task)
 
-    return _record_to_response(record)
+        def finish_demo(completed: asyncio.Task[None]) -> None:
+            _demo_tasks.discard(completed)
+            if permit is not None:
+                permit.release()
+
+        task.add_done_callback(finish_demo)
+        return _record_to_response(record)
+    except Exception:
+        if permit is not None:
+            permit.release()
+        raise
 
 
 # ---------------------------------------------------------------------------
@@ -120,6 +142,7 @@ async def create_demo_run() -> RunResponse:
 @router.get("/run/{run_id}", response_model=RunResponse)
 async def get_run(run_id: str) -> RunResponse:
     """Get the current state of a run."""
+    prune_public_run_cache()
     record = run_store.get(run_id)
     if not record:
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
@@ -134,6 +157,7 @@ async def get_run(run_id: str) -> RunResponse:
 @router.get("/run/{run_id}/stream")
 async def stream_run(run_id: str) -> StreamingResponse:
     """Server-Sent Events stream for a run."""
+    prune_public_run_cache()
     record = run_store.get(run_id)
     if not record:
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
@@ -143,7 +167,8 @@ async def stream_run(run_id: str) -> StreamingResponse:
         try:
             while True:
                 event = await queue.get()
-                yield event.sse_format()
+                safe_event = safe_public_event(event)
+                yield safe_event.sse_format()
                 if event.event in ("done", "insufficiency", "error"):
                     break
         finally:
@@ -168,10 +193,11 @@ async def stream_run(run_id: str) -> StreamingResponse:
 @router.get("/run/{run_id}/trace")
 async def get_trace(run_id: str) -> dict[str, Any]:
     """Get the trace rows for a completed or in-progress run."""
+    prune_public_run_cache()
     record = run_store.get(run_id)
     if not record:
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
-    return {"run_id": run_id, "trace": record.trace}
+    return {"run_id": run_id, "trace": safe_public_trace(record.trace)}
 
 
 # ---------------------------------------------------------------------------
@@ -237,6 +263,7 @@ async def _execute_run(record: RunRecord) -> None:
 
         # Run the core pipeline
         state = await orchestrator.run(state)
+        sanitize_public_stop(state)
 
         # --- Post-pipeline: Geography, Programme Bet, Test Card ---
         geography_result, programme_bet, test_card = await _post_pipeline_artifacts(
@@ -286,9 +313,10 @@ async def _execute_run(record: RunRecord) -> None:
         await client.aclose()
 
     except Exception as exc:
+        message = safe_run_error(exc)
         record.status = RunStatus.FAILED
-        record.error = str(exc)
-        record.emit(RunEvent("error", {"message": str(exc)}))
+        record.error = message
+        record.emit(RunEvent("error", {"message": message}))
 
 
 async def _post_pipeline_artifacts(
@@ -334,7 +362,7 @@ async def _post_pipeline_artifacts(
         except Exception as exc:
             record.emit(RunEvent("trace", {
                 "phase": "LOCATE",
-                "message": f"Geography failed: {exc}",
+                "message": f"Geography failed: {safe_run_error(exc)}",
             }))
 
         # Programme Bet (M11.2: Two-sided with real Qloo evidence)
@@ -402,7 +430,7 @@ async def _post_pipeline_artifacts(
         except Exception as exc:
             record.emit(RunEvent("trace", {
                 "phase": "DECIDE",
-                "message": f"Programme Bet failed: {exc}",
+                "message": f"Programme Bet failed: {safe_run_error(exc)}",
             }))
 
         # Test Card
@@ -418,7 +446,7 @@ async def _post_pipeline_artifacts(
             except Exception as exc:
                 record.emit(RunEvent("trace", {
                     "phase": "DECIDE",
-                    "message": f"Test Card failed: {exc}",
+                    "message": f"Test Card failed: {safe_run_error(exc)}",
                 }))
 
     return geography_result, programme_bet, test_card
@@ -475,6 +503,7 @@ async def _execute_demo_run(record: RunRecord) -> None:
 
         orchestrator = AgentOrchestrator(FixturePipeline(client, fx))
         state = await orchestrator.run(state)
+        sanitize_public_stop(state)
 
         geography_result, programme_bet, test_card = await _post_pipeline_artifacts(
             record, state, client
@@ -517,9 +546,10 @@ async def _execute_demo_run(record: RunRecord) -> None:
             }))
 
     except Exception as exc:
+        message = safe_run_error(exc)
         record.status = RunStatus.FAILED
-        record.error = str(exc)
-        record.emit(RunEvent("error", {"message": str(exc)}))
+        record.error = message
+        record.emit(RunEvent("error", {"message": message}))
 
 
 def _emit_state_events(record: RunRecord, state: AdjacentState) -> None:
@@ -536,6 +566,7 @@ def _emit_state_events(record: RunRecord, state: AdjacentState) -> None:
                 "resolved": item.resolved,
                 "qloo_entity_id": item.resolved_entity_id,
                 "qloo_name": item.resolved_name,
+                "resolution_evidence": item.resolution_evidence,
             }
             for item in state.programme
         ],
@@ -599,6 +630,7 @@ def _build_result(
                     "resolved": item.resolved,
                     "qloo_entity_id": item.resolved_entity_id,
                     "qloo_name": item.resolved_name,
+                    "resolution_evidence": item.resolution_evidence,
                 }
                 for item in state.programme
             ],
@@ -691,6 +723,22 @@ def _build_result(
 
 
 def _record_to_response(record: RunRecord) -> RunResponse:
+    stop_message = record.stop_message
+    error = record.error
+    result = record.result
+    if public_demo_enabled():
+        if record.stop_reason == "error":
+            stop_message = public_failure_message()
+        if error:
+            error = public_failure_message()
+        if result is not None:
+            result = dict(result)
+            evidence = result.get("evidence")
+            if isinstance(evidence, dict) and evidence.get("stop_reason") == "error":
+                result["evidence"] = {
+                    **evidence,
+                    "stop_message": public_failure_message(),
+                }
     return RunResponse(
         run_id=record.run_id,
         status=record.status.value,
@@ -700,8 +748,8 @@ def _record_to_response(record: RunRecord) -> RunResponse:
         programme=record.programme,
         current_phase=record.current_phase,
         stop_reason=record.stop_reason,
-        stop_message=record.stop_message,
-        error=record.error,
-        result=record.result,
-        trace=record.trace,
+        stop_message=stop_message,
+        error=error,
+        result=result,
+        trace=safe_public_trace(record.trace),
     )

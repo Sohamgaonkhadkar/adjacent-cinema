@@ -13,6 +13,24 @@ export interface CinemaIdentity {
 
 // ─── Programme (frontend normalized) ────────────────────────────────────────
 
+export interface ResolutionEvidence {
+  input_title: string;
+  input_year: number | null;
+  input_external_id: string | null;
+  input_external_family: string | null;
+  qloo_entity_id: string | null;
+  qloo_name: string | null;
+  qloo_entity_type: string | null;
+  qloo_year: number | null;
+  qloo_disambiguation: string | null;
+  qloo_popularity: number | null;
+  match_status: "VERIFIED" | "AMBIGUOUS" | "UNRESOLVED" | "MISMATCH";
+  match_method: string | null;
+  verification_notes: string[];
+  call_id: string | null;
+  related_call_ids: string[];
+}
+
 export interface ProgrammeFilm {
   title: string;
   year: number | null;
@@ -20,6 +38,8 @@ export interface ProgrammeFilm {
   resolved: boolean;
   qloo_entity_id: string | null;
   qloo_name: string | null;
+  /** Sanitized resolver evidence; absent for fixture-only seed records. */
+  resolution_evidence?: ResolutionEvidence | null;
   /** Present on some payloads (demo/normalised); the /run result omits it. */
   popularity?: number | null;
 }
@@ -102,7 +122,7 @@ export interface CulturalField {
 export interface HeatmapCell {
   latitude: number;
   longitude: number;
-  affinity: number;
+  affinity: number | null;
   geohash: string | null;
   affinity_rank: number | null;
   popularity: number | null;
@@ -190,6 +210,27 @@ export interface EvidenceData {
   trace_rows: number;
   stop_reason: string;
   stop_message: string | null;
+}
+
+/** A redacted provenance row returned with a run; it may represent a call or logical operation. */
+export interface TraceRow {
+  call_id: string;
+  seq?: number;
+  tool?: string;
+  endpoint?: string;
+  method?: string;
+  params?: Record<string, unknown>;
+  started_at?: string;
+  duration_ms?: number | null;
+  status?: number | null;
+  result_count?: number | null;
+  cache?: string;
+  source?: string;
+  data_status?: string;
+  attempt?: number;
+  backfill_detected?: boolean;
+  error?: Record<string, unknown> | null;
+  notes?: string[];
 }
 
 // ─── Prediction Lifecycle (M13.6.1) ────────────────────────────────────────
@@ -334,4 +375,150 @@ export interface InvestigationData {
   open_questions: string[];
   data_status: string;
   provenance: { call_ids: string[]; qloo_calls_used: number; run_data_status: string };
+}
+
+// ─── FilmSponsor campaigns (Creator Mode) ──────────────────────────────────
+// Mirror of the /filmsponsor/* API. Brand candidates and affinity values only
+// ever come from a live, measured discovery report — never fabricated.
+
+export interface SponsorCampaign {
+  campaign_id: string;
+  request_id: string;
+  created_at: string;
+  film_title: string;
+  film_year: number | null;
+  imdb_id: string | null;
+  themes: string[];
+  goals: string;
+  provenance: Record<string, unknown>;
+  discovery_count?: number;
+  draft_count?: number;
+  outreach_count?: number;
+}
+
+export interface SponsorBrandObservation {
+  source: string;
+  affinity: number | null;
+  band: string | null;
+  call_id: string | null;
+}
+
+export interface SponsorBrand {
+  entity_id: string | null;
+  name: string | null;
+  popularity: number | null;
+  type_evidence: string[];
+  observations: SponsorBrandObservation[];
+}
+
+export interface SponsorNonBrandResult {
+  entity_id: string | null;
+  name: string | null;
+  reason_code: string;
+  type_evidence: string[];
+  call_ids: string[];
+}
+
+export interface SponsorFilmResolution {
+  input_title: string;
+  input_year: number | null;
+  input_external_id?: string | null;
+  match_status: "VERIFIED" | "AMBIGUOUS" | "MISMATCH" | "UNRESOLVED";
+  match_method?: string | null;
+  usable: boolean;
+  candidate: { entity_id: string; name: string | null; year: number | null; type: string | null } | null;
+  verification_notes: string[];
+  call_id?: string | null;
+  related_call_ids?: string[];
+  error?: Record<string, unknown> | null;
+}
+
+export interface SponsorDiscoveryReport {
+  data_status?: string;
+  source?: string;
+  films: SponsorFilmResolution[];
+  theme_canonicalization: Array<Record<string, unknown>>;
+  stages: Record<string, Record<string, unknown>>;
+  brands: SponsorBrand[];
+  non_brand_results: SponsorNonBrandResult[];
+  interpretation_limits: string[];
+  call_ids: string[];
+  empty?: boolean;
+  logical_gets?: number;
+  halt_reason?: Record<string, unknown> | null;
+  brand_domain?: string;
+}
+
+export interface SponsorDiscovery {
+  discovery_id: string;
+  request_id: string;
+  campaign_id: string;
+  created_at: string;
+  data_status: string;
+  report: SponsorDiscoveryReport;
+  supersedes_id: string | null;
+}
+
+export interface SponsorDraft {
+  draft_id: string;
+  request_id: string;
+  campaign_id: string;
+  created_at: string;
+  version: number;
+  brand_name: string;
+  pitch: string;
+  status: "DRAFT" | "APPROVED";
+  approved_at: string | null;
+  supersedes_id: string | null;
+}
+
+export type SponsorReviewStatus =
+  | "SUPPORTED_BY_OFFICIAL_SOURCE"
+  | "CONTRADICTED"
+  | "UNVERIFIED";
+
+export interface SponsorSourceReview {
+  review_id: string;
+  request_id: string;
+  campaign_id: string;
+  draft_id: string;
+  created_at: string;
+  source_url: string;
+  claim_checked: string;
+  verification_status: SponsorReviewStatus;
+  notes: string | null;
+  supersedes_id: string | null;
+}
+
+export interface SponsorOutreachRecord {
+  outreach_id: string;
+  request_id: string;
+  campaign_id: string;
+  draft_id: string | null;
+  created_at: string;
+  observed_on: string | null;
+  contact_status: "CONTACTED" | "RESPONDED" | "PASSED" | "DECLINED" | "COLLABORATED";
+  measurement_status: "OBSERVED" | "PARTIAL" | "MISSING" | "UNAVAILABLE" | "FAILED";
+  metrics: Record<string, number | null>;
+  outcome: string | null;
+  notes: string | null;
+  evidence_ref: string | null;
+  supersedes_id: string | null;
+}
+
+export interface SponsorCampaignDetail {
+  campaign: SponsorCampaign;
+  discoveries: SponsorDiscovery[];
+  drafts: SponsorDraft[];
+  source_reviews: SponsorSourceReview[];
+  outreach: SponsorOutreachRecord[];
+}
+
+export interface SponsorExportPackage {
+  campaign: SponsorCampaign;
+  export_ready: boolean;
+  approved_drafts: Array<SponsorDraft & { source_reviews: SponsorSourceReview[] }>;
+  excluded_drafts: Array<{ draft_id: string; brand_name: string; reason: string }>;
+  outreach_records: SponsorOutreachRecord[];
+  interpretation_limits: string[];
 }

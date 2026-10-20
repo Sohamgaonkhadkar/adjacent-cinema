@@ -1,178 +1,67 @@
-# Adjacent — backend
+# Adjacent — application and backend guide
 
-Audience-development decision support for programmed cultural venues (starting
-with independent / arthouse cinemas).
+See the [repository README](../../README.md) for the judge-facing overview, full local setup, public-demo posture, and current deployment status. This folder contains the Python API, Next.js frontend, fixtures, and detailed product/architecture documentation.
 
-A venue supplies its recent programme and its city. Adjacent characterises the
-programme's cultural taste using the Qloo taste graph, discovers adjacent
-audience cohorts it does not currently reach, locates where those cohorts
-concentrate geographically, and proposes a testable programming/outreach
-hypothesis — with every number traceable to a Qloo response.
+## Current product path
 
-**Design constraints that are not negotiable:**
-programme-level analysis only · no PII · no invented Qloo scores · no claim that
-Qloo predicts attendance or conversion · every rendered number has provenance ·
-"insufficient evidence" is a first-class output, not an error state.
+Creator Mode is the primary product surface: a bounded agent uses typed Qloo operations to resolve cultural references, inspect cultural-affinity signals, rank adjacent clusters, produce a positioning hypothesis/Test Card, and preserve traceable evidence. Cinema Mode remains available separately. Fixture data is a labelled offline demonstration; it is never substituted for a failed live request.
 
-> **Status (4 Oct 2026).** Day 1 (backend foundation), **Milestone 1 (the fixture
-> spine)** and **Milestone 2 (the explicit agent orchestrator)** are done. A run is
-> driven by a state machine — INIT → PLAN → RESOLVE → ANALYSE → EXPAND → RANK →
-> EVALUATE → STOP — over typed tools, with a budget, canonical stop reasons, and an
-> orchestration trace separate from the Qloo trace. All of it on fixtures: no API
-> key, no network call, no LLM. **Still absent by design:** the map/geography step,
-> the programme bet, the audience layer, live Qloo mode, any LLM. See
-> `FEATURES_NOT_BUILDING.md`.
+## Backend commands
 
----
-
-## Everything works without an API key
-
-The test suite, the probe (dry-run) and the whole fixture-backed chain run with
-`QLOO_API_KEY` unset. That is deliberate: 5½ days of the plan are key-independent.
+Requires Python 3.12 or newer:
 
 ```bash
-make setup              # pip install -e ".[dev]"
-make test               # 128 tests, no key needed
-make lint               # ruff
-make probe              # writes docs/API_NOTES.md + docs/api_probe_results.json
-make run                # uvicorn on :8000
-make mock-run           # end-to-end fixture run through the API surface
-make milestone-1        # fixture spine (now agent-driven), strong scenario
-make milestone-1-sparse # fixture spine (now agent-driven), insufficiency scenario
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[dev]'
+make test
+make lint
+make run
 ```
 
-The Milestone 1 commands are the same as:
+The API listens on port 8000. With no `QLOO_API_KEY`, the health response reports mock mode; a live Creator request fails honestly. The labelled fixture path remains available:
 
 ```bash
-cd backend
-python -m app.cli run --fixture fixtures/portland_strong.json --mock
-python -m app.cli run --fixture fixtures/insufficient_evidence.json --mock
+make mock-run
 ```
 
-`make milestone-1` ends `stop_reason = complete`; `make milestone-1-sparse` ends
-`stop_reason = insufficiency` and prints *"I do not have enough Qloo evidence to
-name an adjacent audience for this programme."* Both exit 0 — a refusal is the
-product working, not a failure. Captured output for both runs lives in
-`docs/milestone_1_strong.txt` and `docs/milestone_1_sparse.txt`.
-
-## With a key
+## Frontend
 
 ```bash
-cp .env.example .env         # then put the key in it; .env is gitignored
-export QLOO_API_KEY=...
-make probe-live              # the same suite against the real API
+cd frontend
+npm ci
+ADJACENT_API_ORIGIN=http://127.0.0.1:8000 npm run dev
 ```
 
-The client sends `X-Api-Key` as a **header** to
-`https://hackathon.api.qloo.com`. Staging and production both return 401 for a
-hackathon key — that is not a symptom of a bad key. The key is never placed in a
-query string and is redacted from every trace row.
+Browser requests use relative `/api` URLs. Next.js rewrites these on the server using `ADJACENT_API_ORIGIN`; a production frontend must configure that server-side value. Do not use a browser-visible `NEXT_PUBLIC_*` backend URL or place a Qloo key in frontend configuration.
 
-## Layout
+## Live Qloo and provenance
 
-```
-backend/app/config.py          settings from env; redacted view; never logs the key
-backend/app/agent/             the explicit state machine (state, orchestrator, budget, stop, tools)
-backend/app/cli.py             python -m app.cli run --fixture … --mock
-backend/app/domain/cohorts.py  candidate construction (shared tag → subtype → domain)
-backend/app/domain/ledger.py   the provenance ledger: no number without a source
-backend/app/domain/reasons.py  machine-readable rejection / exclusion codes
-backend/app/domain/scoring.py  the single logical build_and_rank_cohorts operation
-backend/app/evidence.py        the evidence gate + the exact insufficiency messages
-backend/app/runner.py          the Milestone 1 pipeline + its rendered output
-backend/app/main.py            /health and /debug/* only (no product routes yet)
-backend/app/qloo/client.py     the ONLY place an HTTP request to Qloo is built
-backend/app/qloo/params.py     strict allowlist; UNVERIFIED params cannot be sent silently
-backend/app/qloo/models.py     typed responses (tags, entities, heatmap) + provision 
-backend/app/qloo/mock.py       fixture-backed client, same interface
-backend/app/qloo/trace.py      provenance for every call, with redaction
-backend/tests/fixtures/        two synthetic scenarios (strong / insufficient evidence)
-docs/milestone_1_*.txt         captured output of both Milestone 1 commands
-scripts/qloo_probe.py          probes A–H (+B2/C2/G2) → docs/API_NOTES.md
-docs/API_NOTES.md              what we OBSERVED, vs what the docs imply
-FEATURES_NOT_BUILDING.md       the frozen scope guard
-```
+Configure `QLOO_API_KEY` only in the authorized backend runtime. Creator Mode's live path uses `EntityResolver`; title/year conflicts and ambiguous mappings are not usable. A supplied external ID must also agree with the input identity. Every trace reference remains addressable, and the run reports measured versus fixture status explicitly.
 
-## The agent (Milestone 2) — control flow you can read
+The October 6 live report in `docs/LIVE_QLOO_VALIDATION.md` is a historical observation, not proof of current connectivity. It recorded Taipei Story (`tt0089853`) mapping to The Purple Rose of Cairo and no Perfect Days resolution. Offline regressions now enforce safe mismatch/insufficiency behavior; rerun the live gate before claiming a current Qloo result.
 
-`backend/app/agent/` is an explicit state machine, not a framework and not an LLM.
-One loop, five named steps, every transition recorded:
+## Storage and integrations
 
-```
-INIT → PLAN → RESOLVE → EVALUATE → PLAN → ANALYSE → EVALUATE → PLAN → EXPAND
-     → EVALUATE → PLAN → RANK → EVALUATE → PLAN → STOP
-```
+- Run records are held in an in-memory store. Public-demo mode retains a bounded, temporary recent window; it does not create durable run history.
+- Experiments, observations, and evaluations use the existing append-only SQLite repository. Runtime databases are gitignored. Public-demo mode disables shared experiment reads and writes.
+- YouTube Analytics is a single-connection integration with creator consent and stored tokens. It is not exposed in public-demo mode and must not be deployed as a public multi-user connection.
+- Optional grounded synthesis is provider-gated; it is disabled in public-demo mode. No generic chatbot or locally trained model is claimed.
 
-| Piece | File | What it decides |
-|---|---|---|
-| `AdjacentState` | `agent/state.py` | the one record of a run: input, artefacts, control state, transitions |
-| `AgentOrchestrator` | `agent/orchestrator.py` | PLAN (which phase) → SELECT (which tool) → ACT (one bounded action) → EVALUATE (gate + ceilings) → STOP |
-| `Budget` | `agent/budget.py` | 14 steps, 24 Qloo calls, 90 s wall clock; refuses *before* an action it cannot afford |
-| `StopReason` | `agent/stop.py` | `complete`, `insufficiency`, `budget_exhausted`, `invalid_input`, `error`, `timeout` |
-| Tools | `agent/tools.py` | `resolve_programme`, `get_taste_profile`, `expand_candidates`, `rank_cohorts`, `assess_evidence` |
+## Anonymous public-demo configuration
 
-Two distinctions the machine exists to preserve:
+For an anonymous demo, set `ADJACENT_PUBLIC_DEMO=1` in the backend environment. Fixture runs remain available with body, rate, concurrency, and cache-retention bounds. Live Creator runs are off unless the owner explicitly sets `ADJACENT_PUBLIC_LIVE=1` and configures the server-side Qloo key. Shared experiments, YouTube, synthesis execution, debug endpoints, and OpenAPI/docs are blocked. Apply an edge/gateway quota too: the in-process limits do not coordinate across workers or replicas.
 
-* **insufficiency ≠ error.** "Qloo has nothing on this programme" is a finding and
-  ends in `insufficiency` with the product's exact sentence. "Qloo returned a 503"
-  ends in `error`. They are never reported as each other.
-* **budget_exhausted ≠ insufficiency.** Running out of steps or calls is an
-  operational limit; the run says so (`budget_exhausted`) instead of quietly
-  presenting a partial answer as a complete one.
+### Optional isolated FilmSponsor judge workspaces
 
-The orchestrator owns no domain logic and no HTTP. It holds five tools and a
-runtime; `runner.FixturePipeline` implements those tools over the Milestone-1 step
-functions *unchanged*, which is what keeps `run_fixture()` and the CLI identical.
-A run leaves three separate records: the **orchestration trace**, the **Qloo
-trace**, and the **provenance ledger**.
+FilmSponsor remains blocked in ordinary public-demo mode. To opt in to isolated anonymous FilmSponsor campaigns, configure **all** of the following on the backend:
 
-```bash
-python -m app.cli run --fixture fixtures/portland_strong.json --mock --show-agent-trace
-```
+- `ADJACENT_PUBLIC_DEMO=1`
+- `ADJACENT_FILMSPONSOR_GUEST_DEMO=1`
+- `ADJACENT_FILMSPONSOR_GUEST_ORIGINS=https://<exact-frontend-origin>` (comma-separated exact origins; wildcard, paths, and untrusted origins are rejected)
+- `ADJACENT_FILMSPONSOR_GUEST_COOKIE_SECURE=1` (default; HTTPS required)
+- `ADJACENT_EXPERIMENTS_DB` on a durable local filesystem volume shared by backend workers on one host; never use an ephemeral disk, network filesystem, or separate host-mounted copies for SQLite WAL.
 
-## Milestone 1 — what the fixture spine guarantees
+The supported browser path is the same-origin Next.js `/api` proxy (`ADJACENT_API_ORIGIN` remains server-side). Backend requests must receive the browser `Origin` unchanged. The server issues an eight-hour HttpOnly/SameSite=Strict bearer cookie and a same-site CSRF helper cookie; state-changing calls carry the CSRF token in a custom header. Guest mode requires a persistent SQLite DB; it does not open Creator experiments or any other protected endpoint. Insecure cookies are accepted only for explicitly configured localhost development origins with `ADJACENT_FILMSPONSOR_GUEST_COOKIE_SECURE=0`. This is an opt-in mechanism, not a deployment claim; configure TLS, encrypted-at-rest durable storage, restrict SQLite/backup access, redact Cookie/CSRF headers and request bodies from ingress logs, and add an edge/gateway quota before exposing it publicly. Do not use the database on a network filesystem or replicate it to separate hosts. Without the full configuration the original public 403 boundary remains.
 
-**One normalisation context per comparison.** Qloo affinity is normalised per
-query, so scores from two queries are not comparable. The ranker therefore scores
-every candidate cohort in a domain from **one** call
-(`filter.results.entities` = every candidate in that domain), and records the whole
-thing as **one** logical trace operation, `build_and_rank_cohorts`. Ordering uses
-band strength → novelty proxy → qualifying-member count; mean affinity is only ever
-a within-context tiebreaker, and a guard sets `cross_context_tiebreak_used` if two
-normalisations would ever have to be compared. Tests:
-`backend/tests/test_cohort_ranking_single_normalisation.py`.
-
-**Every displayed number has a declared source.** The renderer cannot format a
-number on its own: it must go through `app/domain/ledger.py` with either a Qloo
-`call_id`, `file:<fixture>`, or `input:`. A number citing a call with no trace row
-is reported as unverified rather than printed quietly. The strong run reports 129
-numbers — 100 backed by a Qloo-call trace row, 29 derived from the fixture file or
-the run's own bookkeeping — and 0 unverified.
-
-**Rejections are codes, not prose.** `app/domain/reasons.py` defines the
-machine-readable rejection codes (`insufficient_members` → `insufficient_affinity`
-→ `weak_evidence`) and exclusion codes (`below_medium`, `oversaturated`,
-`no_affinity_returned`, `not_returned_by_context`). A rejected cohort is printed
-with its members and its evidence, never hidden.
-
-**What the fixture run does not prove** is printed with every run: the mock does
-not apply `filter.popularity.*`, it returns every id present in the fixture branch,
-and it contains no backfill results. Real behaviour is probe D in
-`docs/API_NOTES.md`.
-
-## Two files worth reading first
-
-* **`docs/API_NOTES.md`** — the probe report. It states plainly whether it has
-  been executed against the real API, and every unresolved parameter question
-  with the work it blocks.
-* **`FEATURES_NOT_BUILDING.md`** — the refusal list, committed on day one.
-
-## Data status
-
-Fixture files declare in-band that they are synthetic. Every response object
-carries `source` (`qloo` | `mock`) and `data_status` (`measured` | `fixture`), so
-fixture data cannot be mistaken for measured Qloo output in a log, a payload or a
-UI.
-
-No personal data is stored anywhere. No CRM, ticketing or mailing-list
-integration exists or is planned.
+See `.env.example`, `docs/adr/006-deployment-topology.md`, and [`docs/FINALIZATION_STATUS.md`](docs/FINALIZATION_STATUS.md). No hosted deployment URL or manifest is currently verified.

@@ -85,7 +85,7 @@ export default function Landing() {
       </header>
 
       <section className="landing-hero">
-        <div className="landing-hero-media" aria-hidden>
+        <div className="landing-hero-media">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={HERO_IMAGE.src} alt="" />
           <a
@@ -112,6 +112,9 @@ export default function Landing() {
           </p>
           <div className="landing-cta-row">
             <Link href="/creator" className="landing-cta">Start a film investigation</Link>
+            <Link href="/creator?demo=fixture" className="landing-cta is-ghost">
+              Explore the labelled fixture
+            </Link>
             <Link href="/cinema" className="landing-cta is-ghost">Enter Cinema Mode</Link>
           </div>
           <p className="landing-hero-note">

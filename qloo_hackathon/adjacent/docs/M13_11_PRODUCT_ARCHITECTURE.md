@@ -1,8 +1,9 @@
 # M13.11 — Product Architecture (post-pivot)
 
-Date: 2026-10-11. This records the architecture as it now exists in code, why the
-creator positioning workflow is the primary product, and what is live-verified vs
-environment-blocked.
+Date: 2026-10-11, with a current-code reference. This records the architecture as it
+exists in code, why the creator positioning workflow is primary, and what was live-
+verified vs environment-blocked in that session. No current live-Qloo request or hosted
+deployment was verified on 16 October 2026; see [`FINALIZATION_STATUS.md`](FINALIZATION_STATUS.md).
 
 ## 1. Product thesis
 

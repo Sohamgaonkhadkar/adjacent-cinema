@@ -1106,3 +1106,222 @@ button { color: inherit; background: none; border: 0; cursor: pointer; font-fami
     grid-template-columns: 1fr;
   }
 }
+
+/* Evidence trace: expandable, redacted provenance linked from each claim. */
+.evidence-trace-log {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid var(--rule);
+  background: rgba(232, 226, 213, 0.015);
+}
+
+.evidence-trace-log-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.evidence-trace-log-heading h4 {
+  margin: 4px 0 0;
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 400;
+}
+
+.evidence-trace-intro,
+.evidence-trace-empty {
+  max-width: 76ch;
+  margin: 8px 0 12px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.evidence-trace-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.evidence-trace-row {
+  scroll-margin-top: 88px;
+  border: 1px solid rgba(232, 226, 213, 0.12);
+  background: rgba(9, 9, 9, 0.45);
+}
+
+.evidence-trace-row > summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 9px 11px;
+  cursor: pointer;
+  color: var(--paper);
+  font-size: 11px;
+  list-style-position: inside;
+}
+
+.evidence-trace-row[open] > summary {
+  border-bottom: 1px solid var(--rule);
+}
+
+.evidence-trace-id,
+.evidence-trace-status,
+.evidence-trace-count {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+.evidence-trace-id { color: var(--amber); }
+.evidence-trace-tool { color: #cfc9bd; }
+.evidence-trace-status { color: var(--muted); }
+.evidence-trace-count { color: #b3aea4; }
+
+.evidence-trace-body {
+  display: grid;
+  gap: 10px;
+  padding: 10px 12px 12px;
+}
+
+.evidence-trace-body > dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px 14px;
+  margin: 0;
+}
+
+.evidence-trace-body dt {
+  color: var(--quiet);
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.evidence-trace-body dd {
+  margin: 3px 0 0;
+  color: #cfc9bd;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.evidence-trace-params,
+.evidence-trace-notes {
+  border-top: 1px solid rgba(232, 226, 213, 0.1);
+  padding-top: 8px;
+}
+
+.evidence-trace-params > summary,
+.evidence-trace-notes > summary {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.evidence-trace-params pre {
+  max-height: 280px;
+  overflow: auto;
+  margin: 8px 0 0;
+  padding: 10px;
+  border: 1px solid rgba(232, 226, 213, 0.08);
+  background: rgba(0, 0, 0, 0.25);
+  color: #b3aea4;
+  font-family: var(--mono);
+  font-size: 9px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.evidence-trace-notes ul {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.evidence-trace-error {
+  margin: 0;
+  color: #d4a89e;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.evidence-trace-references {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  font-family: var(--mono);
+  font-size: 9px;
+  overflow-wrap: anywhere;
+}
+
+.evidence-trace-references a {
+  color: var(--amber);
+  text-decoration: underline;
+  text-decoration-color: rgba(194, 154, 110, 0.45);
+  text-underline-offset: 3px;
+}
+
+.evidence-trace-references a:hover { color: var(--paper); }
+.evidence-trace-unresolved { color: var(--quiet); }
+
+.agraph-stamp.is-unknown {
+  color: #b3aea4;
+  border-color: rgba(232, 226, 213, 0.35);
+}
+
+.step-nav .is-disabled {
+  color: var(--quiet);
+  opacity: 0.55;
+}
+
+.step-nav span.is-disabled {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 12px;
+  border: 1px solid transparent;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Keep keyboard focus visible across the cinematic, dark UI. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+summary:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 3px;
+}
+
+.intake-input:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

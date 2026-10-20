@@ -3,7 +3,11 @@
 import { useEffect, useRef } from "react";
 import { Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import type { GeographyData } from "@/types/adjacent";
+import type { GeographyData, HeatmapCell } from "@/types/adjacent";
+
+function hasAffinity(cell: HeatmapCell): cell is HeatmapCell & { affinity: number } {
+  return cell.affinity !== null && cell.affinity !== undefined;
+}
 
 interface Props {
   geography: GeographyData;
@@ -12,11 +16,11 @@ interface Props {
 export default function GeographyMap({ geography }: Props) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<InstanceType<typeof MapLibreMap> | null>(null);
+  const allCells = geography.cells ?? geography.highest_affinity_cells ?? [];
+  const cells = allCells.filter(hasAffinity);
 
   useEffect(() => {
-    if (!mapContainer.current || mapRef.current) return;
-    const cells = geography.cells ?? geography.highest_affinity_cells ?? [];
-    if (cells.length === 0) return;
+    if (!mapContainer.current || mapRef.current || cells.length === 0) return;
 
     const lats = cells.map((c) => c.latitude);
     const lngs = cells.map((c) => c.longitude);
@@ -143,11 +147,11 @@ export default function GeographyMap({ geography }: Props) {
     };
   }, [geography]);
 
-  if (!geography.cells || geography.cells.length === 0) {
+  if (cells.length === 0) {
     return (
       <div className="map-container flex items-center justify-center">
         <span className="mono" style={{ color: "var(--muted)", fontSize: "0.75rem" }}>
-          Geographic data insufficient for visualisation
+          No affinity scores available to map; missing values are not shown as zero.
         </span>
       </div>
     );

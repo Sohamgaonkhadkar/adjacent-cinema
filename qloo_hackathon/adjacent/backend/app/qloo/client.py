@@ -17,8 +17,10 @@ Contract (all of it deliberate):
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import random
+import threading
 import time
 from collections.abc import Mapping, Sequence
 from typing import Any, Protocol, runtime_checkable
@@ -74,24 +76,65 @@ def _count_results(payload: dict[str, Any]) -> int:
 
 
 class _RateLimiter:
-    """Minimal token-bucket-ish pacer. `rps <= 0` disables pacing (tests only)."""
+    """Async request pacer; state is shared by live clients in one process.
+
+    ``rps <= 0`` disables pacing for isolated tests. Reservations are protected
+    by a thread lock rather than an asyncio lock so one key's limiter can be
+    used safely by tasks belonging to different event loops in the same worker.
+    """
 
     def __init__(self, rps: float) -> None:
-        self.enabled = rps and rps > 0
+        self.enabled = bool(rps and rps > 0)
         self._interval = (1.0 / rps) if self.enabled else 0.0
         self._next_at = 0.0
-        self._lock = asyncio.Lock()
+        self._lock = threading.Lock()
+
+    def tighten(self, rps: float) -> None:
+        """Use the strictest configured pacing rate seen for this key."""
+        if rps <= 0:
+            return
+        with self._lock:
+            self._interval = max(self._interval, 1.0 / rps)
 
     async def acquire(self) -> None:
         if not self.enabled:
             return
-        async with self._lock:
+        with self._lock:
             now = time.monotonic()
-            wait = self._next_at - now
-            if wait > 0:
-                await asyncio.sleep(wait)
-                now = time.monotonic()
-            self._next_at = max(now, self._next_at) + self._interval
+            slot_at = max(now, self._next_at)
+            wait = slot_at - now
+            self._next_at = slot_at + self._interval
+        if wait > 0:
+            await asyncio.sleep(wait)
+
+
+_RATE_LIMITER_REGISTRY: dict[tuple[str, str], _RateLimiter] = {}
+_RATE_LIMITER_REGISTRY_LOCK = threading.Lock()
+
+
+def _rate_limiter_for(settings: Settings) -> _RateLimiter:
+    """Return a per-Qloo-key limiter shared by this backend process.
+
+    The registry key contains a one-way SHA-256 digest, never the API key.
+    Non-positive rates and unkeyed test clients are deliberately not registered.
+    A shared/distributed limiter is still needed across multiple workers/hosts.
+    """
+    rps = float(settings.rate_limit_rps or 0.0)
+    if rps <= 0 or not settings.qloo_api_key:
+        return _RateLimiter(rps)
+
+    key_digest = hashlib.sha256(settings.qloo_api_key.encode("utf-8")).hexdigest()
+    registry_key = (settings.qloo_base_url.rstrip("/"), key_digest)
+    with _RATE_LIMITER_REGISTRY_LOCK:
+        limiter = _RATE_LIMITER_REGISTRY.get(registry_key)
+        if limiter is None:
+            limiter = _RateLimiter(rps)
+            _RATE_LIMITER_REGISTRY[registry_key] = limiter
+        else:
+            # Multiple clients/runs in a process must not bypass the slowest
+            # configured rate by constructing a new client per run.
+            limiter.tighten(rps)
+        return limiter
 
 
 @runtime_checkable
@@ -132,7 +175,7 @@ class QlooClient:
                 "or export the key before constructing QlooClient."
             )
         self.recorder = recorder or TraceRecorder(run_id=run_id, secret=self.settings.qloo_api_key)
-        self._limiter = _RateLimiter(self.settings.rate_limit_rps)
+        self._limiter = _rate_limiter_for(self.settings)
         self._transport = transport
         self._http: httpx.AsyncClient | None = None
 

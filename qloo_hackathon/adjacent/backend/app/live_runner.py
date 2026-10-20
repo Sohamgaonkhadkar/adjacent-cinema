@@ -83,8 +83,12 @@ class LivePipeline:
         results = await self.resolver.resolve_programme(self._programme)
 
         for item, resolution in zip(state.programme, results, strict=False):
-            if resolution.call_id:
-                state.resolution_call_ids.append(resolution.call_id)
+            # Keep the decision-grade identity verification visible to the API
+            # and UI without exposing the raw Qloo response body.
+            item.resolution_evidence = resolution.to_dict()
+            for call_id in (resolution.call_id, *resolution.related_call_ids):
+                if call_id and call_id not in state.resolution_call_ids:
+                    state.resolution_call_ids.append(call_id)
 
             if resolution.match_status == MatchStatus.VERIFIED:
                 item.resolved_entity_id = resolution.qloo_entity_id

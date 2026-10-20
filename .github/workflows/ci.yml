@@ -40,3 +40,20 @@ jobs:
         run: |
           test -f docs/API_NOTES.md
           test -f docs/api_probe_results.json
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: qloo_hackathon/adjacent/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: qloo_hackathon/adjacent/frontend/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Build frontend
+        run: npm run build

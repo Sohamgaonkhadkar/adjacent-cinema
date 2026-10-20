@@ -1,6 +1,8 @@
 # M13.14 — Deployment Readiness Checklist
 
-Delta over `M13_13_DEPLOYMENT_READINESS.md` (all items there remain valid).
+> **Historical snapshot (11 October 2026).** The repository/branch and access claims below are not current. Current verification and blockers are in [`FINALIZATION_STATUS.md`](FINALIZATION_STATUS.md), dated 16 October 2026.
+
+Delta over `M13_13_DEPLOYMENT_READINESS.md` as of that earlier session.
 
 | # | Item | State | Notes |
 |---|------|-------|-------|
