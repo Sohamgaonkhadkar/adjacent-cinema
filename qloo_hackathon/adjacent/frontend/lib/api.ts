@@ -521,3 +521,127 @@ export async function getSynthesisStatus(): Promise<SynthesisStatus> {
 export function synthesizeRun(runId: string): Promise<SynthesisResponse> {
   return postJson<SynthesisResponse>("/creator/synthesize", { run_id: runId }, "Decision brief");
 }
+
+// ─── FilmSponsor campaigns (Creator Mode) ─────────────────────────────────
+// Campaign intake → live brand discovery → editable drafts → official-source
+// review → approval → export → outreach outcomes. Brand candidates come only
+// from a live, measured discovery; a missing key is an honest 503, never a
+// fixture substitution.
+
+import type {
+  SponsorCampaign,
+  SponsorCampaignDetail,
+  SponsorDiscovery,
+  SponsorDraft,
+  SponsorExportPackage,
+  SponsorOutreachRecord,
+  SponsorSourceReview,
+} from "@/types/adjacent";
+
+export interface SponsorCampaignInput {
+  request_id: string;
+  film_title: string;
+  film_year?: number | null;
+  imdb_id?: string | null;
+  themes?: string[];
+  goals?: string;
+}
+
+export function createSponsorCampaign(
+  body: SponsorCampaignInput
+): Promise<{ duplicate: boolean; campaign: SponsorCampaign }> {
+  return postJson("/filmsponsor/campaigns", body, "Create campaign");
+}
+
+export async function listSponsorCampaigns(): Promise<SponsorCampaign[]> {
+  const res = await fetch(`${API_BASE}/filmsponsor/campaigns`);
+  if (!res.ok) throw new Error("Failed to load campaigns");
+  const data = await res.json();
+  return data.campaigns ?? [];
+}
+
+export async function getSponsorCampaign(campaignId: string): Promise<SponsorCampaignDetail> {
+  const res = await fetch(`${API_BASE}/filmsponsor/campaigns/${campaignId}`);
+  if (!res.ok) throw new Error("Campaign not found");
+  return res.json();
+}
+
+/**
+ * Runs live Qloo brand discovery. Fails honestly (503) when the backend key
+ * is not configured; the response detail is surfaced verbatim — no fixture
+ * brands are ever substituted.
+ */
+export function runSponsorDiscovery(
+  campaignId: string,
+  request_id: string
+): Promise<{ duplicate: boolean; discovery: SponsorDiscovery }> {
+  return postJson(
+    `/filmsponsor/campaigns/${campaignId}/discover`,
+    { request_id },
+    "Brand discovery"
+  );
+}
+
+export function saveSponsorDraft(
+  campaignId: string,
+  body: { request_id: string; brand_name: string; pitch?: string; supersedes_id?: string | null }
+): Promise<{ duplicate: boolean; draft: SponsorDraft }> {
+  return postJson(`/filmsponsor/campaigns/${campaignId}/drafts`, body, "Save draft");
+}
+
+export function addSponsorSourceReview(
+  campaignId: string,
+  draftId: string,
+  body: {
+    request_id: string;
+    source_url?: string;
+    claim_checked?: string;
+    verification_status: string;
+    notes?: string | null;
+    supersedes_id?: string | null;
+  }
+): Promise<{ duplicate: boolean; review: SponsorSourceReview }> {
+  return postJson(
+    `/filmsponsor/campaigns/${campaignId}/drafts/${draftId}/source-reviews`,
+    body,
+    "Record source review"
+  );
+}
+
+export function approveSponsorDraft(
+  campaignId: string,
+  draftId: string
+): Promise<{ draft: SponsorDraft }> {
+  return postJson(
+    `/filmsponsor/campaigns/${campaignId}/drafts/${draftId}/approve`,
+    {},
+    "Approve draft"
+  );
+}
+
+export function addSponsorOutreach(
+  campaignId: string,
+  body: {
+    request_id: string;
+    contact_status: string;
+    measurement_status: string;
+    draft_id?: string | null;
+    observed_on?: string | null;
+    metrics?: Record<string, number | null>;
+    outcome?: string | null;
+    notes?: string | null;
+    evidence_ref?: string | null;
+    supersedes_id?: string | null;
+  }
+): Promise<{ duplicate: boolean; outreach: SponsorOutreachRecord }> {
+  return postJson(`/filmsponsor/campaigns/${campaignId}/outreach`, body, "Record outreach");
+}
+
+export async function exportSponsorCampaign(campaignId: string): Promise<SponsorExportPackage> {
+  const res = await fetch(`${API_BASE}/filmsponsor/campaigns/${campaignId}/export`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(typeof body.detail === "string" ? body.detail : "Export failed");
+  }
+  return res.json();
+}

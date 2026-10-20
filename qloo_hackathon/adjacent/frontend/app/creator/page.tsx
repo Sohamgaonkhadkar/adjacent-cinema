@@ -376,6 +376,9 @@ export default function CreatorPage() {
           </h1>
         </div>
         <span style={{ display: "flex", gap: 8 }}>
+          <Link href="/creator/sponsor" className="intake-sample-btn" style={{ textDecoration: "none" }}>
+            Sponsor workflow
+          </Link>
           <Link href="/" className="intake-sample-btn" style={{ textDecoration: "none" }}>
             ← Home
           </Link>

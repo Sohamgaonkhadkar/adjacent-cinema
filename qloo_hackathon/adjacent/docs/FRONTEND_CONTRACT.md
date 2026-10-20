@@ -204,3 +204,35 @@ Enable with `ADJACENT_PUBLIC_DEMO=1` in the backend environment. This is an anon
 - CORS never uses `*`; direct browser origins must be explicitly configured with `ADJACENT_CORS_ORIGINS`. The supported frontend path is same-origin `/api` with a server-side Next.js rewrite to `ADJACENT_API_ORIGIN`.
 
 The rate limits are process-local. Add an edge/API-gateway quota and a shared limiter before scaling across workers or replicas. No hosted deployment is verified; see [`FINALIZATION_STATUS.md`](FINALIZATION_STATUS.md).
+
+## 8. FilmSponsor campaign routes (Creator Mode)
+
+Campaign intake → live brand discovery → creator-editable sponsorship drafts →
+official-source review → approval → export → manual outreach/outcome
+recording. All writes take `request_id` (min 8 chars) and are idempotent: a
+retry returns the original record with `duplicate: true` (same convention as
+the experiment routes). Persistence: the same SQLite workspace store as
+experiments (`ADJACENT_EXPERIMENTS_DB`), append-only; draft **edits create a
+new version** via `supersedes_id`, and an APPROVED version is immutable.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/api/filmsponsor/campaigns` | Intake. Body: `{request_id, film_title, film_year?, imdb_id?, themes?[≤5], goals?}`. |
+| `GET` | `/api/filmsponsor/campaigns` | `{campaigns:[…]}` with discovery/draft/outreach counts. |
+| `GET` | `/api/filmsponsor/campaigns/{id}` | `{campaign, discoveries, drafts, source_reviews, outreach}`; 404 unknown id. |
+| `POST` | `/api/filmsponsor/campaigns/{id}/discover` | **Live-only** Qloo brand discovery (film identity resolution → theme canonicalisation → typed-brand queries). Without `QLOO_API_KEY` → **503** ("Nothing was substituted") and nothing is stored; provider failure before any successful call → **502**, also nothing stored. Otherwise stores a `data_status:"measured"` snapshot report: per-film `match_status` (AMBIGUOUS/MISMATCH/UNRESOLVED preserved, never promoted), brand candidates with per-query `{source, affinity, band, call_id}` observations, non-brand results kept visible with reason codes, `interpretation_limits`, and `call_ids`. |
+| `POST` | `/api/filmsponsor/campaigns/{id}/drafts` | Creator-written draft version: `{request_id, brand_name, pitch?, supersedes_id?}`. Never auto-generated text. |
+| `POST` | `/api/filmsponsor/campaigns/{id}/drafts/{draft_id}/source-reviews` | Creator's official-source review of a commercial claim: `verification_status` ∈ `SUPPORTED_BY_OFFICIAL_SOURCE\|CONTRADICTED\|UNVERIFIED`. The product records the review; it never asserts the claim. |
+| `POST` | `/api/filmsponsor/campaigns/{id}/drafts/{draft_id}/approve` | Sets the immutable version to `APPROVED` (idempotent). **409** when no completed source review exists — approval before official-source review is refused. |
+| `POST` | `/api/filmsponsor/campaigns/{id}/outreach` | Manual outreach outcome: `contact_status` ∈ `CONTACTED\|RESPONDED\|PASSED\|DECLINED\|COLLABORATED`, `measurement_status` ∈ `OBSERVED\|PARTIAL\|MISSING\|UNAVAILABLE\|FAILED`. Observed zeros go in `metrics` as `0`; missing values stay out entirely. Corrections use `supersedes_id`. |
+| `GET` | `/api/filmsponsor/campaigns/{id}/export` | Approval-gated export: `approved_drafts` (with their source reviews) only; unapproved drafts appear in `excluded_drafts` with `reason:"not_approved"`; carries `interpretation_limits`. |
+
+Frontend: `frontend/app/creator/sponsor/page.tsx` (linked from the Creator
+header as "Sponsor workflow"); types in `frontend/types/adjacent.ts`
+(`Sponsor*`); client functions in `frontend/lib/api.ts`
+(`createSponsorCampaign`, `listSponsorCampaigns`, `getSponsorCampaign`,
+`runSponsorDiscovery`, `saveSponsorDraft`, `addSponsorSourceReview`,
+`approveSponsorDraft`, `addSponsorOutreach`, `exportSponsorCampaign`).
+
+Public-demo mode blocks the entire surface (403) — shared campaign storage is
+not exposed anonymously. Tests: `backend/tests/test_filmsponsor_campaigns.py`.

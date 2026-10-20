@@ -1,8 +1,9 @@
 """Adjacent FastAPI backend.
 
-The API serves run execution, Creator analysis, experiment lifecycle, and an
-optional YouTube integration. Public-demo mode wraps this surface in an
-anonymous allowlist; provider credentials remain server-side.
+The API serves run execution, Creator analysis, experiment lifecycle,
+FilmSponsor campaigns, and an optional YouTube integration. Public-demo mode
+wraps this surface in an anonymous allowlist; provider credentials remain
+server-side.
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import __version__, evidence
 from .api.creator_routes import router as creator_router
+from .api.filmsponsor_routes import router as filmsponsor_router
 from .api.routes import router as run_router
 from .api.youtube_routes import router as youtube_router
 from .config import Settings
@@ -59,6 +61,8 @@ app.add_middleware(PublicDemoGuard)
 app.include_router(run_router)
 # Creator Mode + experiment lifecycle (M13.9)
 app.include_router(creator_router)
+# FilmSponsor campaigns: discovery, drafts, source review, approval, outreach
+app.include_router(filmsponsor_router)
 # YouTube authorization + analytics bridge (M13.10)
 app.include_router(youtube_router)
 

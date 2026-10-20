@@ -330,7 +330,8 @@ class PublicDemoGuard:
                 {
                     "detail": (
                         "This public demo does not expose shared experiments, "
-                        "YouTube, synthesis, debug, or live Cinema writes."
+                        "sponsorship campaigns, YouTube, synthesis, debug, or "
+                        "live Cinema writes."
                     )
                 },
                 status_code=403,
