@@ -257,6 +257,18 @@ def _is_run_read(path: str) -> bool:
     return len(parts) == 2 or parts[2] in {"stream", "trace"}
 
 
+def _guest_filmsponsor_request(method: str, path: str) -> bool:
+    if not path.startswith("/filmsponsor/"):
+        return False
+    from .domain.filmsponsor_guest_sessions import guest_demo_enabled
+
+    if not guest_demo_enabled():
+        return False
+    if path == "/filmsponsor/guest-session":
+        return method in {"POST", "DELETE"}
+    return method in {"GET", "POST"}
+
+
 class PublicDemoGuard:
     """ASGI boundary for public-demo requests, with a small body ceiling."""
 
@@ -311,6 +323,10 @@ class PublicDemoGuard:
 
         if method == "POST" and path in self._FIXTURE_POSTS:
             body_limit = 1024
+        elif _guest_filmsponsor_request(method, path):
+            # Strictly opt-in. Route dependencies enforce the server-issued
+            # session, ownership, CSRF token, and allowed Origin for every call.
+            body_limit = 16_384
         elif method == "POST" and path == "/creator/run":
             if not public_live_requested():
                 await JSONResponse(

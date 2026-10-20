@@ -52,4 +52,16 @@ The October 6 live report in `docs/LIVE_QLOO_VALIDATION.md` is a historical obse
 
 For an anonymous demo, set `ADJACENT_PUBLIC_DEMO=1` in the backend environment. Fixture runs remain available with body, rate, concurrency, and cache-retention bounds. Live Creator runs are off unless the owner explicitly sets `ADJACENT_PUBLIC_LIVE=1` and configures the server-side Qloo key. Shared experiments, YouTube, synthesis execution, debug endpoints, and OpenAPI/docs are blocked. Apply an edge/gateway quota too: the in-process limits do not coordinate across workers or replicas.
 
+### Optional isolated FilmSponsor judge workspaces
+
+FilmSponsor remains blocked in ordinary public-demo mode. To opt in to isolated anonymous FilmSponsor campaigns, configure **all** of the following on the backend:
+
+- `ADJACENT_PUBLIC_DEMO=1`
+- `ADJACENT_FILMSPONSOR_GUEST_DEMO=1`
+- `ADJACENT_FILMSPONSOR_GUEST_ORIGINS=https://<exact-frontend-origin>` (comma-separated exact origins; wildcard, paths, and untrusted origins are rejected)
+- `ADJACENT_FILMSPONSOR_GUEST_COOKIE_SECURE=1` (default; HTTPS required)
+- `ADJACENT_EXPERIMENTS_DB` on a durable local filesystem volume shared by backend workers on one host; never use an ephemeral disk, network filesystem, or separate host-mounted copies for SQLite WAL.
+
+The supported browser path is the same-origin Next.js `/api` proxy (`ADJACENT_API_ORIGIN` remains server-side). Backend requests must receive the browser `Origin` unchanged. The server issues an eight-hour HttpOnly/SameSite=Strict bearer cookie and a same-site CSRF helper cookie; state-changing calls carry the CSRF token in a custom header. Guest mode requires a persistent SQLite DB; it does not open Creator experiments or any other protected endpoint. Insecure cookies are accepted only for explicitly configured localhost development origins with `ADJACENT_FILMSPONSOR_GUEST_COOKIE_SECURE=0`. This is an opt-in mechanism, not a deployment claim; configure TLS, encrypted-at-rest durable storage, restrict SQLite/backup access, redact Cookie/CSRF headers and request bodies from ingress logs, and add an edge/gateway quota before exposing it publicly. Do not use the database on a network filesystem or replicate it to separate hosts. Without the full configuration the original public 403 boundary remains.
+
 See `.env.example`, `docs/adr/006-deployment-topology.md`, and [`docs/FINALIZATION_STATUS.md`](docs/FINALIZATION_STATUS.md). No hosted deployment URL or manifest is currently verified.

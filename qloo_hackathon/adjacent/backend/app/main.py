@@ -21,6 +21,7 @@ from .api.filmsponsor_routes import router as filmsponsor_router
 from .api.routes import router as run_router
 from .api.youtube_routes import router as youtube_router
 from .config import Settings
+from .domain.filmsponsor_guest_sessions import guest_demo_enabled
 from .public_demo import PublicDemoGuard, public_demo_enabled, public_live_available
 from .qloo import MockQlooClient, build_params, registry_summary, unverified_params
 from .qloo.errors import ParamError, QlooError
@@ -85,12 +86,14 @@ def health() -> dict[str, Any]:
             "public_demo": True,
             "fixture_demo_available": True,
             "live_creator_available": public_live_available(),
+            "filmsponsor_guest_enabled": guest_demo_enabled(),
         }
     return {
         "status": "ok",
         "service": "adjacent-backend",
         "version": __version__,
         "qloo_configured": settings.has_api_key,
+        "filmsponsor_guest_enabled": guest_demo_enabled(),
         "mode": settings.mode,  # "live" | "mock" — never ambiguous
         "mock_mode": settings.mock_mode,
         "qloo_base_url": settings.qloo_base_url,

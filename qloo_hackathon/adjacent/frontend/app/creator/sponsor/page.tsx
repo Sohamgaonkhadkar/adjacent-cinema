@@ -18,6 +18,7 @@ import {
   createSponsorCampaign,
   exportSponsorCampaign,
   getHealth,
+  initializeSponsorGuestSession,
   getSponsorCampaign,
   listSponsorCampaigns,
   runSponsorDiscovery,
@@ -55,6 +56,9 @@ const READING_LIMITS = [
 
 export default function SponsorPage() {
   const [health, setHealth] = useState<BackendHealth | null>(null);
+  const [guestAccess, setGuestAccess] = useState<"checking" | "ready" | "blocked" | "expired" | "error">("checking");
+  const [guestAccessError, setGuestAccessError] = useState<string | null>(null);
+  const [restartingGuest, setRestartingGuest] = useState(false);
   const [campaigns, setCampaigns] = useState<SponsorCampaign[]>([]);
   const [campaignsLoading, setCampaignsLoading] = useState(true);
   const [campaignsError, setCampaignsError] = useState<string | null>(null);
@@ -136,10 +140,72 @@ export default function SponsorPage() {
     }
   }, []);
 
-  useEffect(() => {
-    getHealth().then(setHealth).catch(() => setHealth(null));
-    void reloadCampaigns();
+  const startGuestWorkspace = useCallback(async () => {
+    setGuestAccess("checking");
+    setGuestAccessError(null);
+    setCampaignsLoading(true);
+    try {
+      const backend = await getHealth();
+      setHealth(backend);
+      if (backend.public_demo && !backend.filmsponsor_guest_enabled) {
+        setGuestAccess("blocked");
+        setCampaignsLoading(false);
+        return;
+      }
+      if (backend.filmsponsor_guest_enabled) await initializeSponsorGuestSession();
+      setGuestAccess("ready");
+      await reloadCampaigns();
+    } catch (err) {
+      setGuestAccess("error");
+      setGuestAccessError(err instanceof Error ? err.message : "Guest workspace is unavailable.");
+      setCampaignsLoading(false);
+    }
   }, [reloadCampaigns]);
+
+  useEffect(() => {
+    void startGuestWorkspace();
+    const expired = () => setGuestAccess("expired");
+    window.addEventListener("filmsponsor-session-expired", expired);
+    return () => window.removeEventListener("filmsponsor-session-expired", expired);
+  }, [startGuestWorkspace]);
+
+  async function handleGuestRecovery() {
+    setRestartingGuest(true);
+    try {
+      await startGuestWorkspace();
+      setDetail(null);
+      setExportPkg(null);
+    } finally {
+      setRestartingGuest(false);
+    }
+  }
+
+  if (guestAccess !== "ready") {
+    const message = guestAccess === "checking"
+      ? "Initializing an isolated workspace…"
+      : guestAccess === "blocked"
+        ? "This public demo has not enabled isolated FilmSponsor guest workspaces. Shared campaigns remain protected."
+        : guestAccess === "expired"
+          ? "This guest workspace expired or was revoked. Start a new isolated workspace to continue."
+          : guestAccessError || "FilmSponsor could not initialize. Please retry.";
+    return (
+      <main style={{ background: "var(--void)", minHeight: "100vh", color: "var(--paper)" }}>
+        <header style={{ padding: "20px 32px", borderBottom: "1px solid var(--rule)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <span className="micro-label">ADJACENT · CREATOR MODE · SPONSOR</span>
+            <h1 style={{ fontFamily: "var(--display)", fontSize: 28, fontWeight: 400, margin: "4px 0 0" }}>Sponsorship campaigns with <em style={{ color: "#bcb4a7" }}>receipts.</em></h1>
+          </div>
+          <Link href="/creator" className="intake-sample-btn" style={{ textDecoration: "none" }}>← Creator</Link>
+        </header>
+        <section role="status" aria-live="polite" className="evidence-panel" style={{ maxWidth: 760, margin: "48px auto", padding: 24, borderColor: guestAccess === "blocked" ? "var(--amber)" : "var(--rule)" }}>
+          <strong className="mono-note">{guestAccess === "blocked" ? "GUEST WORKSPACE UNAVAILABLE" : guestAccess === "expired" ? "SESSION ENDED" : guestAccess === "checking" ? "SECURE WORKSPACE" : "WORKSPACE ERROR"}</strong>
+          <p style={{ color: "#b3aea4", lineHeight: 1.7 }}>{message}</p>
+          {(guestAccess === "expired" || guestAccess === "error") && <button type="button" className="intake-sample-btn" disabled={restartingGuest} onClick={() => void handleGuestRecovery()}>{restartingGuest ? "Starting…" : "Start or retry workspace"}</button>}
+          <p style={{ color: "#8c877e", fontSize: 12, lineHeight: 1.6 }}>Each guest workspace is private to this browser session, expires after eight hours, and does not contain sample brands or fabricated sponsorship claims.</p>
+        </section>
+      </main>
+    );
+  }
 
   async function handleCreate() {
     if (!filmTitle.trim()) {

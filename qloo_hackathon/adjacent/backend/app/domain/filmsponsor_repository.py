@@ -56,7 +56,8 @@ CREATE TABLE IF NOT EXISTS filmsponsor_campaigns (
     imdb_id         TEXT,
     themes          TEXT NOT NULL DEFAULT '[]',
     goals           TEXT NOT NULL DEFAULT '',
-    provenance      TEXT NOT NULL DEFAULT '{}'
+    provenance      TEXT NOT NULL DEFAULT '{}',
+    guest_owner_id  TEXT
 );
 
 CREATE TABLE IF NOT EXISTS filmsponsor_discoveries (
@@ -123,7 +124,13 @@ def _synchronized(method):
     @functools.wraps(method)
     def wrapper(self, *args, **kwargs):
         with self._lock:
-            return method(self, *args, **kwargs)
+            try:
+                return method(self, *args, **kwargs)
+            except sqlite3.Error:
+                # A failed SQLite trigger/constraint must not leave a write
+                # transaction open and lock other workers' session checks.
+                self._conn.rollback()
+                raise
 
     return wrapper
 
@@ -148,7 +155,56 @@ class FilmSponsorRepository:
         with self._lock:
             self._conn.execute("PRAGMA busy_timeout=5000")
             self._conn.execute("PRAGMA journal_mode=WAL")
+            self._conn.execute("PRAGMA foreign_keys=ON")
+            self._conn.execute("PRAGMA secure_delete=ON")
             self._conn.executescript(_SCHEMA)
+            columns = {row["name"] for row in self._conn.execute("PRAGMA table_info(filmsponsor_campaigns)")}
+            if "guest_owner_id" not in columns:
+                try:
+                    self._conn.execute("ALTER TABLE filmsponsor_campaigns ADD COLUMN guest_owner_id TEXT")
+                except sqlite3.OperationalError as exc:
+                    # Another worker may have completed the idempotent migration
+                    # after this connection inspected the older schema.
+                    if "duplicate column name" not in str(exc).lower():
+                        raise
+            self._conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_filmsponsor_campaign_owner "
+                "ON filmsponsor_campaigns(guest_owner_id, created_at)"
+            )
+            self._conn.executescript(
+                """
+                CREATE TRIGGER IF NOT EXISTS filmsponsor_guest_campaign_cap
+                BEFORE INSERT ON filmsponsor_campaigns
+                WHEN NEW.guest_owner_id IS NOT NULL AND (
+                    (SELECT COUNT(*) FROM filmsponsor_campaigns WHERE guest_owner_id=NEW.guest_owner_id) >= 10 OR
+                    (SELECT COUNT(*) FROM filmsponsor_campaigns WHERE guest_owner_id IS NOT NULL) >= 2000
+                ) BEGIN SELECT RAISE(ABORT, 'guest campaign storage limit reached'); END;
+                CREATE TRIGGER IF NOT EXISTS filmsponsor_guest_discovery_cap
+                BEFORE INSERT ON filmsponsor_discoveries
+                WHEN (SELECT guest_owner_id FROM filmsponsor_campaigns WHERE campaign_id=NEW.campaign_id) IS NOT NULL
+                 AND ((SELECT COUNT(*) FROM filmsponsor_discoveries WHERE campaign_id=NEW.campaign_id) >= 10 OR
+                      (SELECT COUNT(*) FROM filmsponsor_discoveries d JOIN filmsponsor_campaigns c USING(campaign_id) WHERE c.guest_owner_id IS NOT NULL) >= 1000)
+                BEGIN SELECT RAISE(ABORT, 'guest discovery storage limit reached'); END;
+                CREATE TRIGGER IF NOT EXISTS filmsponsor_guest_draft_cap
+                BEFORE INSERT ON filmsponsor_drafts
+                WHEN (SELECT guest_owner_id FROM filmsponsor_campaigns WHERE campaign_id=NEW.campaign_id) IS NOT NULL
+                 AND ((SELECT COUNT(*) FROM filmsponsor_drafts WHERE campaign_id=NEW.campaign_id) >= 50 OR
+                      (SELECT COUNT(*) FROM filmsponsor_drafts d JOIN filmsponsor_campaigns c USING(campaign_id) WHERE c.guest_owner_id IS NOT NULL) >= 5000)
+                BEGIN SELECT RAISE(ABORT, 'guest draft storage limit reached'); END;
+                CREATE TRIGGER IF NOT EXISTS filmsponsor_guest_review_cap
+                BEFORE INSERT ON filmsponsor_source_reviews
+                WHEN (SELECT guest_owner_id FROM filmsponsor_campaigns WHERE campaign_id=NEW.campaign_id) IS NOT NULL
+                 AND ((SELECT COUNT(*) FROM filmsponsor_source_reviews WHERE campaign_id=NEW.campaign_id) >= 100 OR
+                      (SELECT COUNT(*) FROM filmsponsor_source_reviews r JOIN filmsponsor_campaigns c USING(campaign_id) WHERE c.guest_owner_id IS NOT NULL) >= 5000)
+                BEGIN SELECT RAISE(ABORT, 'guest review storage limit reached'); END;
+                CREATE TRIGGER IF NOT EXISTS filmsponsor_guest_outreach_cap
+                BEFORE INSERT ON filmsponsor_outreach
+                WHEN (SELECT guest_owner_id FROM filmsponsor_campaigns WHERE campaign_id=NEW.campaign_id) IS NOT NULL
+                 AND ((SELECT COUNT(*) FROM filmsponsor_outreach WHERE campaign_id=NEW.campaign_id) >= 100 OR
+                      (SELECT COUNT(*) FROM filmsponsor_outreach o JOIN filmsponsor_campaigns c USING(campaign_id) WHERE c.guest_owner_id IS NOT NULL) >= 5000)
+                BEGIN SELECT RAISE(ABORT, 'guest outreach storage limit reached'); END;
+                """
+            )
             self._conn.commit()
 
     def close(self) -> None:
@@ -167,18 +223,31 @@ class FilmSponsorRepository:
         themes: list[str] | None = None,
         goals: str = "",
         provenance: dict[str, Any] | None = None,
+        owner_id: str | None = None,
     ) -> dict[str, Any]:
         existing = self._conn.execute(
             "SELECT * FROM filmsponsor_campaigns WHERE request_id = ?", (request_id,)
         ).fetchone()
         if existing:
+            # Never disclose another session's existing row on request-id collision.
+            if owner_id is not None and existing["guest_owner_id"] != owner_id:
+                raise ValueError("request_id collision")
             raise DuplicateRequest(self._row_to_campaign(existing))
+        if owner_id is not None:
+            owned_count = self._conn.execute(
+                "SELECT COUNT(*) FROM filmsponsor_campaigns WHERE guest_owner_id=?", (owner_id,)
+            ).fetchone()[0]
+            total_guest = self._conn.execute(
+                "SELECT COUNT(*) FROM filmsponsor_campaigns WHERE guest_owner_id IS NOT NULL"
+            ).fetchone()[0]
+            if owned_count >= 10 or total_guest >= 2000:
+                raise OverflowError("Guest campaign storage limit reached.")
         campaign_id = str(uuid.uuid4())
         self._conn.execute(
             """INSERT INTO filmsponsor_campaigns
                (campaign_id, request_id, created_at, film_title, film_year,
-                imdb_id, themes, goals, provenance)
-               VALUES (?,?,?,?,?,?,?,?,?)""",
+                imdb_id, themes, goals, provenance, guest_owner_id)
+               VALUES (?,?,?,?,?,?,?,?,?,?)""",
             (
                 campaign_id,
                 request_id,
@@ -189,23 +258,36 @@ class FilmSponsorRepository:
                 json.dumps([t for t in (themes or []) if t]),
                 goals,
                 json.dumps(provenance or {}),
+                owner_id,
             ),
         )
         self._conn.commit()
         return self.get_campaign(campaign_id)  # type: ignore[return-value]
 
     @_synchronized
-    def get_campaign(self, campaign_id: str) -> dict[str, Any] | None:
-        row = self._conn.execute(
-            "SELECT * FROM filmsponsor_campaigns WHERE campaign_id = ?", (campaign_id,)
-        ).fetchone()
+    def get_campaign(self, campaign_id: str, owner_id: str | None = None) -> dict[str, Any] | None:
+        if owner_id is None:
+            row = self._conn.execute(
+                "SELECT * FROM filmsponsor_campaigns WHERE campaign_id = ?", (campaign_id,)
+            ).fetchone()
+        else:
+            row = self._conn.execute(
+                "SELECT * FROM filmsponsor_campaigns WHERE campaign_id = ? AND guest_owner_id = ?",
+                (campaign_id, owner_id),
+            ).fetchone()
         return self._row_to_campaign(row) if row else None
 
     @_synchronized
-    def list_campaigns(self) -> list[dict[str, Any]]:
-        rows = self._conn.execute(
-            "SELECT * FROM filmsponsor_campaigns ORDER BY created_at DESC"
-        ).fetchall()
+    def list_campaigns(self, owner_id: str | None = None) -> list[dict[str, Any]]:
+        if owner_id is None:
+            rows = self._conn.execute(
+                "SELECT * FROM filmsponsor_campaigns ORDER BY created_at DESC"
+            ).fetchall()
+        else:
+            rows = self._conn.execute(
+                "SELECT * FROM filmsponsor_campaigns WHERE guest_owner_id=? ORDER BY created_at DESC",
+                (owner_id,),
+            ).fetchall()
         out = []
         for row in rows:
             campaign = self._row_to_campaign(row)
@@ -236,8 +318,9 @@ class FilmSponsorRepository:
         data_status: str,
         report: dict[str, Any],
         supersedes_id: str | None = None,
+        owner_id: str | None = None,
     ) -> dict[str, Any]:
-        if self.get_campaign(campaign_id) is None:
+        if self.get_campaign(campaign_id, owner_id) is None:
             raise KeyError(f"campaign {campaign_id} not found")
         existing = self._conn.execute(
             "SELECT discovery_id FROM filmsponsor_discoveries WHERE request_id = ?",
@@ -253,30 +336,39 @@ class FilmSponsorRepository:
                 campaign_id=campaign_id,
                 record_kind="discovery",
             )
+        report_json = json.dumps(report)
+        if owner_id is not None and len(report_json.encode("utf-8")) > 131_072:
+            raise ValueError("guest discovery report exceeds the 128 KiB limit")
         discovery_id = str(uuid.uuid4())
         self._conn.execute(
             """INSERT INTO filmsponsor_discoveries
                (discovery_id, request_id, campaign_id, created_at, data_status,
                 report, supersedes_id) VALUES (?,?,?,?,?,?,?)""",
             (discovery_id, request_id, campaign_id, _now(), data_status,
-             json.dumps(report), supersedes_id),
+             report_json, supersedes_id),
         )
         self._conn.commit()
         return self.get_discovery(discovery_id)  # type: ignore[return-value]
 
     @_synchronized
-    def get_discovery(self, discovery_id: str) -> dict[str, Any] | None:
-        row = self._conn.execute(
-            "SELECT * FROM filmsponsor_discoveries WHERE discovery_id = ?",
-            (discovery_id,),
-        ).fetchone()
+    def get_discovery(self, discovery_id: str, owner_id: str | None = None) -> dict[str, Any] | None:
+        if owner_id is None:
+            row = self._conn.execute(
+                "SELECT * FROM filmsponsor_discoveries WHERE discovery_id = ?", (discovery_id,)
+            ).fetchone()
+        else:
+            row = self._conn.execute(
+                "SELECT d.* FROM filmsponsor_discoveries d JOIN filmsponsor_campaigns c USING(campaign_id) "
+                "WHERE d.discovery_id=? AND c.guest_owner_id=?", (discovery_id, owner_id)
+            ).fetchone()
         return self._row_to_discovery(row) if row else None
 
     @_synchronized
-    def list_discoveries(self, campaign_id: str) -> list[dict[str, Any]]:
+    def list_discoveries(self, campaign_id: str, owner_id: str | None = None) -> list[dict[str, Any]]:
+        if self.get_campaign(campaign_id, owner_id) is None:
+            return []
         rows = self._conn.execute(
-            "SELECT discovery_id FROM filmsponsor_discoveries WHERE campaign_id = ? "
-            "ORDER BY created_at",
+            "SELECT discovery_id FROM filmsponsor_discoveries WHERE campaign_id = ? ORDER BY created_at",
             (campaign_id,),
         ).fetchall()
         return [self._row_to_discovery(self._one("filmsponsor_discoveries", "discovery_id", r["discovery_id"])) for r in rows]
@@ -292,8 +384,9 @@ class FilmSponsorRepository:
         brand_name: str,
         pitch: str = "",
         supersedes_id: str | None = None,
+        owner_id: str | None = None,
     ) -> dict[str, Any]:
-        if self.get_campaign(campaign_id) is None:
+        if self.get_campaign(campaign_id, owner_id) is None:
             raise KeyError(f"campaign {campaign_id} not found")
         existing = self._conn.execute(
             "SELECT draft_id FROM filmsponsor_drafts WHERE request_id = ?",
@@ -324,14 +417,22 @@ class FilmSponsorRepository:
         return self.get_draft(draft_id)  # type: ignore[return-value]
 
     @_synchronized
-    def get_draft(self, draft_id: str) -> dict[str, Any] | None:
-        row = self._conn.execute(
-            "SELECT * FROM filmsponsor_drafts WHERE draft_id = ?", (draft_id,)
-        ).fetchone()
+    def get_draft(self, draft_id: str, owner_id: str | None = None) -> dict[str, Any] | None:
+        if owner_id is None:
+            row = self._conn.execute(
+                "SELECT * FROM filmsponsor_drafts WHERE draft_id = ?", (draft_id,)
+            ).fetchone()
+        else:
+            row = self._conn.execute(
+                "SELECT d.* FROM filmsponsor_drafts d JOIN filmsponsor_campaigns c USING(campaign_id) "
+                "WHERE d.draft_id=? AND c.guest_owner_id=?", (draft_id, owner_id)
+            ).fetchone()
         return self._row_to_draft(row) if row else None
 
     @_synchronized
-    def list_drafts(self, campaign_id: str) -> list[dict[str, Any]]:
+    def list_drafts(self, campaign_id: str, owner_id: str | None = None) -> list[dict[str, Any]]:
+        if self.get_campaign(campaign_id, owner_id) is None:
+            return []
         rows = self._conn.execute(
             "SELECT * FROM filmsponsor_drafts WHERE campaign_id = ? "
             "ORDER BY created_at, version",
@@ -340,29 +441,42 @@ class FilmSponsorRepository:
         return [self._row_to_draft(r) for r in rows]
 
     @_synchronized
-    def approve_draft(self, draft_id: str) -> dict[str, Any]:
+    def approve_draft(self, draft_id: str, owner_id: str | None = None) -> dict[str, Any]:
         """Mark a draft version APPROVED. Requires a completed source review.
 
         Approval is recorded on the immutable draft version. Editing after
         approval creates a new (DRAFT) version via ``save_draft``.
         """
-        draft = self.get_draft(draft_id)
-        if draft is None:
-            raise KeyError(f"draft {draft_id} not found")
-        if draft["status"] == "APPROVED":
-            return draft
-        review = self._current_review_for(draft_id)
-        if review is None:
-            raise ValueError(
-                "a source review must be recorded before approval "
-                "(official-source review is required)"
+        self._conn.execute("BEGIN IMMEDIATE")
+        try:
+            if owner_id is not None:
+                active = self._conn.execute(
+                    "SELECT 1 FROM filmsponsor_guest_sessions WHERE session_id=? AND revoked_at IS NULL AND julianday(expires_at)>julianday('now')",
+                    (owner_id,),
+                ).fetchone()
+                if active is None:
+                    raise KeyError("guest session is no longer active")
+            draft = self.get_draft(draft_id, owner_id)
+            if draft is None:
+                raise KeyError(f"draft {draft_id} not found")
+            if draft["status"] == "APPROVED":
+                self._conn.commit()
+                return draft
+            review = self._current_review_for(draft_id)
+            if review is None:
+                raise ValueError(
+                    "a source review must be recorded before approval "
+                    "(official-source review is required)"
+                )
+            self._conn.execute(
+                "UPDATE filmsponsor_drafts SET status='APPROVED', approved_at=? WHERE draft_id=?",
+                (_now(), draft_id),
             )
-        self._conn.execute(
-            "UPDATE filmsponsor_drafts SET status='APPROVED', approved_at=? WHERE draft_id=?",
-            (_now(), draft_id),
-        )
-        self._conn.commit()
-        return self.get_draft(draft_id)  # type: ignore[return-value]
+            self._conn.commit()
+            return self.get_draft(draft_id, owner_id)  # type: ignore[return-value]
+        except Exception:
+            self._conn.rollback()
+            raise
 
     # -- source reviews ------------------------------------------------------
 
@@ -378,12 +492,15 @@ class FilmSponsorRepository:
         verification_status: str,
         notes: str | None = None,
         supersedes_id: str | None = None,
+        owner_id: str | None = None,
     ) -> dict[str, Any]:
         if verification_status not in VALID_REVIEW_STATUSES:
             raise ValueError(
                 f"verification_status must be one of {sorted(VALID_REVIEW_STATUSES)}"
             )
-        draft = self.get_draft(draft_id)
+        if self.get_campaign(campaign_id, owner_id) is None:
+            raise KeyError(f"campaign {campaign_id} not found")
+        draft = self.get_draft(draft_id, owner_id)
         if draft is None or draft["campaign_id"] != campaign_id:
             raise KeyError(f"draft {draft_id} not found in campaign {campaign_id}")
         existing = self._conn.execute(
@@ -413,12 +530,20 @@ class FilmSponsorRepository:
         return self.get_source_review(review_id)  # type: ignore[return-value]
 
     @_synchronized
-    def get_source_review(self, review_id: str) -> dict[str, Any] | None:
-        row = self._one("filmsponsor_source_reviews", "review_id", review_id)
+    def get_source_review(self, review_id: str, owner_id: str | None = None) -> dict[str, Any] | None:
+        if owner_id is None:
+            row = self._one("filmsponsor_source_reviews", "review_id", review_id)
+        else:
+            row = self._conn.execute(
+                "SELECT r.* FROM filmsponsor_source_reviews r JOIN filmsponsor_campaigns c USING(campaign_id) "
+                "WHERE r.review_id=? AND c.guest_owner_id=?", (review_id, owner_id)
+            ).fetchone()
         return self._row_to_source_review(row) if row else None
 
     @_synchronized
-    def list_source_reviews(self, campaign_id: str) -> list[dict[str, Any]]:
+    def list_source_reviews(self, campaign_id: str, owner_id: str | None = None) -> list[dict[str, Any]]:
+        if self.get_campaign(campaign_id, owner_id) is None:
+            return []
         rows = self._conn.execute(
             "SELECT * FROM filmsponsor_source_reviews WHERE campaign_id = ? "
             "ORDER BY created_at",
@@ -457,6 +582,7 @@ class FilmSponsorRepository:
         notes: str | None = None,
         evidence_ref: str | None = None,
         supersedes_id: str | None = None,
+        owner_id: str | None = None,
     ) -> dict[str, Any]:
         if contact_status not in VALID_CONTACT_STATUSES:
             raise ValueError(
@@ -466,8 +592,12 @@ class FilmSponsorRepository:
             raise ValueError(
                 f"measurement_status must be one of {sorted(VALID_MEASUREMENT_STATUS)}"
             )
-        if self.get_campaign(campaign_id) is None:
+        if self.get_campaign(campaign_id, owner_id) is None:
             raise KeyError(f"campaign {campaign_id} not found")
+        if draft_id is not None:
+            draft = self.get_draft(draft_id, owner_id)
+            if draft is None or draft["campaign_id"] != campaign_id:
+                raise KeyError(f"draft {draft_id} not found in campaign {campaign_id}")
         existing = self._conn.execute(
             "SELECT outreach_id FROM filmsponsor_outreach WHERE request_id = ?",
             (request_id,),
@@ -497,12 +627,20 @@ class FilmSponsorRepository:
         return self.get_outreach(outreach_id)  # type: ignore[return-value]
 
     @_synchronized
-    def get_outreach(self, outreach_id: str) -> dict[str, Any] | None:
-        row = self._one("filmsponsor_outreach", "outreach_id", outreach_id)
+    def get_outreach(self, outreach_id: str, owner_id: str | None = None) -> dict[str, Any] | None:
+        if owner_id is None:
+            row = self._one("filmsponsor_outreach", "outreach_id", outreach_id)
+        else:
+            row = self._conn.execute(
+                "SELECT o.* FROM filmsponsor_outreach o JOIN filmsponsor_campaigns c USING(campaign_id) "
+                "WHERE o.outreach_id=? AND c.guest_owner_id=?", (outreach_id, owner_id)
+            ).fetchone()
         return self._row_to_outreach(row) if row else None
 
     @_synchronized
-    def list_outreach(self, campaign_id: str) -> list[dict[str, Any]]:
+    def list_outreach(self, campaign_id: str, owner_id: str | None = None) -> list[dict[str, Any]]:
+        if self.get_campaign(campaign_id, owner_id) is None:
+            return []
         rows = self._conn.execute(
             "SELECT outreach_id FROM filmsponsor_outreach WHERE campaign_id = ? "
             "ORDER BY created_at",
@@ -513,17 +651,17 @@ class FilmSponsorRepository:
     # -- export ------------------------------------------------------------
 
     @_synchronized
-    def export_package(self, campaign_id: str) -> dict[str, Any]:
+    def export_package(self, campaign_id: str, owner_id: str | None = None) -> dict[str, Any]:
         """Export approved content only; unapproved drafts are excluded with reasons.
 
         The export records source reviews and outreach OUTCOMES as the creator
         recorded them. It contains no invented brands, affinity values,
         programmes, or outcomes.
         """
-        campaign = self.get_campaign(campaign_id)
+        campaign = self.get_campaign(campaign_id, owner_id)
         if campaign is None:
             raise KeyError(f"campaign {campaign_id} not found")
-        drafts = [d for d in self.list_drafts(campaign_id) if d["supersedes_id"] is None]
+        drafts = [d for d in self.list_drafts(campaign_id, owner_id) if d["supersedes_id"] is None]
         approved = [d for d in drafts if d["status"] == "APPROVED"]
         excluded = [
             {
@@ -534,9 +672,9 @@ class FilmSponsorRepository:
             for d in drafts
             if d["status"] != "APPROVED"
         ]
-        reviews = self.list_source_reviews(campaign_id)
+        reviews = self.list_source_reviews(campaign_id, owner_id)
         outreach = [
-            o for o in self.list_outreach(campaign_id) if o["supersedes_id"] is None
+            o for o in self.list_outreach(campaign_id, owner_id) if o["supersedes_id"] is None
         ]
         return {
             "campaign": campaign,

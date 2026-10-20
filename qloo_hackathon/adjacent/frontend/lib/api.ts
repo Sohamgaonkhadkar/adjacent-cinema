@@ -146,6 +146,7 @@ export interface BackendHealth {
   public_demo?: boolean;
   fixture_demo_available?: boolean;
   live_creator_available?: boolean;
+  filmsponsor_guest_enabled?: boolean;
 }
 
 export async function getHealth(): Promise<BackendHealth> {
@@ -279,12 +280,80 @@ export interface EvaluationRecord {
   supersedes_id: string | null;
 }
 
+let filmSponsorCsrfToken: string | null = null;
+let sponsorSessionInitialization: Promise<{ expires_at: string }> | null = null;
+
+function noteGuestSessionExpiry(path: string, response: Response) {
+  if (path.startsWith("/filmsponsor/") && response.status === 401 && typeof window !== "undefined") {
+    filmSponsorCsrfToken = null;
+    window.dispatchEvent(new Event("filmsponsor-session-expired"));
+  }
+}
+
+export async function initializeSponsorGuestSession(): Promise<{ expires_at: string }> {
+  if (sponsorSessionInitialization) return sponsorSessionInitialization;
+  const initialize = async (): Promise<{ expires_at: string }> => {
+    const res = await fetch(`${API_BASE}/filmsponsor/guest-session`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(typeof err.detail === "string" ? err.detail : "Could not initialize guest session.");
+    }
+    const data = (await res.json()) as { csrf_token: string; expires_at: string };
+    filmSponsorCsrfToken = data.csrf_token;
+    return { expires_at: data.expires_at };
+  };
+  const pending: Promise<{ expires_at: string }> = typeof navigator !== "undefined" && "locks" in navigator
+    ? navigator.locks.request("adjacent-filmsponsor-guest-session", initialize).then(async (value) => await value)
+    : initialize();
+  sponsorSessionInitialization = pending;
+  try {
+    return await pending;
+  } finally {
+    if (sponsorSessionInitialization === pending) sponsorSessionInitialization = null;
+  }
+}
+
+export async function revokeSponsorGuestSession(): Promise<void> {
+  const res = await fetch(`${API_BASE}/filmsponsor/guest-session`, {
+    method: "DELETE",
+    credentials: "same-origin",
+    headers: { "X-FilmSponsor-CSRF": filmSponsorCsrfToken ?? "" },
+  });
+  if (!res.ok) throw new Error("Could not end guest session.");
+  filmSponsorCsrfToken = null;
+}
+
+async function sponsorFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const headers = new Headers(init.headers);
+  if (filmSponsorCsrfToken && path !== "/filmsponsor/guest-session") {
+    headers.set("X-FilmSponsor-CSRF", filmSponsorCsrfToken);
+  }
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    credentials: "same-origin",
+    headers,
+  });
+  noteGuestSessionExpiry(path, res);
+  return res;
+}
+
 async function postJson<T>(path: string, body: unknown, label: string): Promise<T> {
+  const headers = new Headers({ "Content-Type": "application/json" });
+  if (path.startsWith("/filmsponsor/") && filmSponsorCsrfToken) {
+    headers.set("X-FilmSponsor-CSRF", filmSponsorCsrfToken);
+  }
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    headers,
     body: JSON.stringify(body),
   });
+  noteGuestSessionExpiry(path, res);
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(
@@ -554,15 +623,21 @@ export function createSponsorCampaign(
 }
 
 export async function listSponsorCampaigns(): Promise<SponsorCampaign[]> {
-  const res = await fetch(`${API_BASE}/filmsponsor/campaigns`);
-  if (!res.ok) throw new Error("Failed to load campaigns");
+  const res = await sponsorFetch("/filmsponsor/campaigns");
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(typeof body.detail === "string" ? body.detail : "Failed to load campaigns");
+  }
   const data = await res.json();
   return data.campaigns ?? [];
 }
 
 export async function getSponsorCampaign(campaignId: string): Promise<SponsorCampaignDetail> {
-  const res = await fetch(`${API_BASE}/filmsponsor/campaigns/${campaignId}`);
-  if (!res.ok) throw new Error("Campaign not found");
+  const res = await sponsorFetch(`/filmsponsor/campaigns/${campaignId}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(typeof body.detail === "string" ? body.detail : "Campaign not found");
+  }
   return res.json();
 }
 
@@ -638,7 +713,7 @@ export function addSponsorOutreach(
 }
 
 export async function exportSponsorCampaign(campaignId: string): Promise<SponsorExportPackage> {
-  const res = await fetch(`${API_BASE}/filmsponsor/campaigns/${campaignId}/export`);
+  const res = await sponsorFetch(`/filmsponsor/campaigns/${campaignId}/export`);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(typeof body.detail === "string" ? body.detail : "Export failed");

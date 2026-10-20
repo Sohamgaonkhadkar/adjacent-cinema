@@ -200,12 +200,20 @@ Enable with `ADJACENT_PUBLIC_DEMO=1` in the backend environment. This is an anon
 - `POST /creator/run` is denied unless the owner explicitly sets `ADJACENT_PUBLIC_LIVE=1` **and** configures the server-side `QLOO_API_KEY`. `POST /run` remains blocked in public-demo mode.
 - Public Creator inputs are bounded: body ≤16 KiB; title ≤160 chars; logline ≤2,000; genre ≤120; language ≤80; at most 5 themes of ≤120 chars and 5 references of ≤160 chars; optional city ≤120. The live agent's per-run call/time budget remains in force.
 - All public HTTP traffic is capped at 120 requests per API-observed peer IP/minute, 2,400/process/minute, and 64 in-flight requests (including open SSE streams). Run creation has separate quotas: live Creator 2/API-observed peer IP/hour and 12/process/hour, at most 2 in flight; fixtures 12/API-observed peer IP/hour and 60/process/hour, at most 4 in flight. Behind the same-origin proxy, multiple users may share one API peer-IP bucket. Fixture request bodies are capped at 1 KiB; live Creator bodies at 16 KiB. Public run results are in-memory and capped at 100 completed records per process; completed results older than 6 hours are pruned during create/read requests.
-- Experiment list/detail and all experiment writes return 403. YouTube authorization/data/write routes are blocked; the status route returns an explicit disconnected/disabled state. Synthesis execution, debug routes, `/docs`, `/redoc`, and `/openapi.json` are blocked. Public health omits provider hosts, key fingerprints, and detailed parameter metadata. Public run responses, SSE errors, and trace rows replace raw exception/upstream details with safe failure text while keeping status and call references.
+- Experiment list/detail and all experiment writes return 403. YouTube authorization/data/write routes are blocked; the status route returns an explicit disconnected/disabled state. Synthesis execution, debug routes, `/docs`, `/redoc`, and `/openapi.json` are blocked. FilmSponsor routes also return 403 unless the separate isolated guest configuration below is fully enabled. Public health omits provider hosts, key fingerprints, and detailed parameter metadata. Public run responses, SSE errors, and trace rows replace raw exception/upstream details with safe failure text while keeping status and call references.
 - CORS never uses `*`; direct browser origins must be explicitly configured with `ADJACENT_CORS_ORIGINS`. The supported frontend path is same-origin `/api` with a server-side Next.js rewrite to `ADJACENT_API_ORIGIN`.
 
-The rate limits are process-local. Add an edge/API-gateway quota and a shared limiter before scaling across workers or replicas. No hosted deployment is verified; see [`FINALIZATION_STATUS.md`](FINALIZATION_STATUS.md).
+### Isolated FilmSponsor guest mode (separately opt-in)
 
-## 8. FilmSponsor campaign routes (Creator Mode)
+This remains **off by default** and activates only when `ADJACENT_PUBLIC_DEMO=1`, `ADJACENT_FILMSPONSOR_GUEST_DEMO=1`, and at least one exact origin is configured in `ADJACENT_FILMSPONSOR_GUEST_ORIGINS`. Wildcards and non-local HTTP origins are rejected. `ADJACENT_FILMSPONSOR_GUEST_COOKIE_SECURE` defaults to `1`; use `0` only for local HTTP localhost testing. Without all these conditions, the public guard keeps the prior FilmSponsor 403 behavior.
+
+`POST /filmsponsor/guest-session` issues or resumes a server-owned workspace. It requires an allowed `Origin`, returns a CSRF token in JSON, sets a random bearer cookie (`HttpOnly; SameSite=Strict; Secure` in production; `Path=/api/filmsponsor`; eight-hour max age), and sets a matching same-site CSRF helper cookie so separate tabs reuse the same token. The raw bearer and CSRF tokens are not stored: only SHA-256 digests are persisted in the same SQLite file. All guest FilmSponsor API calls require the bearer cookie; POST/DELETE calls additionally require `X-FilmSponsor-CSRF` and an exact allowed `Origin`. `DELETE /filmsponsor/guest-session` revokes the session and deletes its campaigns/children. Expired sessions are rejected and their records are removed during session activity/cleanup.
+
+Campaign rows carry an internal server-created session owner association. Every campaign read/write and every child path (discovery, draft, review, approval, outreach, export) is owner-filtered; legacy rows with no guest owner are not visible to guests. Request IDs are hashed with the internal owner scope before persistence to prevent global unique-key replay leaks. Limits: 500 active sessions, 8-hour lifetime, 120 API requests/minute/session, 10 campaigns/session, 2,000 guest campaigns total; global caps of 1,000 discoveries and 5,000 each of drafts, reviews, and outreach; per-campaign caps of 10 discoveries, 50 drafts, 100 reviews, and 100 outreach records; discovery report ≤128 KiB; request bodies ≤16 KiB. Never place SQLite WAL on a network filesystem or use separate database copies; deploy on one backend host with durable local storage and add an edge quota. This opt-in does not enable experiment, Creator, Cinema, YouTube, synthesis, or debug writes.
+
+The existing request limiter is process-local; add an edge/API-gateway quota before public exposure or scaling replicas. No hosted deployment is verified; see [`FINALIZATION_STATUS.md`](FINALIZATION_STATUS.md).
+
+## 9. FilmSponsor campaign routes (Creator Mode)
 
 Campaign intake → live brand discovery → creator-editable sponsorship drafts →
 official-source review → approval → export → manual outreach/outcome
@@ -214,6 +222,16 @@ retry returns the original record with `duplicate: true` (same convention as
 the experiment routes). Persistence: the same SQLite workspace store as
 experiments (`ADJACENT_EXPERIMENTS_DB`), append-only; draft **edits create a
 new version** via `supersedes_id`, and an APPROVED version is immutable.
+
+Guest mode is a separate opt-in under §8. In that mode the frontend first calls
+`POST /api/filmsponsor/guest-session` with same-origin `Origin`; the Next.js
+rewrite forwards it to the backend, which sets an HttpOnly cookie and returns a
+CSRF token kept only in page memory. The cookie is scoped to `/api/filmsponsor`.
+Every subsequent write sends `X-FilmSponsor-CSRF`; all operations use the
+server-issued session owner. Missing/expired/revoked credentials return 401;
+CSRF/Origin failures return 403. `DELETE /api/filmsponsor/guest-session`
+revokes the current session and removes its campaign tree. Ordinary public mode
+without this explicit configuration continues to return 403 for the surface.
 
 | Method | Path | Purpose |
 |---|---|---|

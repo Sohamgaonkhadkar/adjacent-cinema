@@ -67,6 +67,7 @@ There is no verified public deployment at the time of this update. Before exposi
 - caps total HTTP traffic at 120 requests per API-observed peer IP/minute, 2,400 requests/process/minute, and 64 in-flight requests (including SSE streams); run creation is additionally capped at 2 live or 12 fixture runs per peer IP/hour, 12 live or 60 fixture runs/process/hour, and 2 live or 4 fixture runs in flight;
 - caps POST body sizes and keeps at most 100 completed volatile run records; completed records older than six hours are pruned on create/read. Behind a same-origin proxy, several users may share the API's peer-IP bucket;
 - blocks shared experiment reads/writes, YouTube authorization/data/write routes, synthesis execution, debug endpoints, and API documentation; the YouTube status route reports disabled;
+- keeps FilmSponsor blocked by default; it can be opened only through the separately opt-in, session-isolated guest workspace configuration documented in [`qloo_hackathon/adjacent/README.md`](qloo_hackathon/adjacent/README.md);
 - redacts raw provider/internal failure details from public run responses, SSE error events, and trace rows while keeping safe status and call provenance;
 - disables live Creator runs unless the owner separately sets `ADJACENT_PUBLIC_LIVE=1` **and** configures the backend Qloo key;
 - uses exact-origin CORS configuration when direct cross-origin use is needed; the supported browser flow is the same-origin Next.js proxy.
