@@ -12,10 +12,17 @@ These tests exercise the same routes the frontend calls through the Next.js
 
 from __future__ import annotations
 
+import asyncio
+import json
 import time
 
 import pytest
+from app.agent.stop import StopDecision, StopReason
+from app.api import routes
+from app.api.store import RunStatus
 from app.main import app
+from app.qloo.errors import UpstreamError
+from app.qloo.trace import TraceRecorder
 from fastapi.testclient import TestClient
 
 TERMINAL = {"completed", "failed", "insufficient"}
@@ -86,6 +93,157 @@ class TestLiveRunWithoutKey:
     def test_get_unknown_run_is_404(self) -> None:
         client = TestClient(app)
         assert client.get("/run/does-not-exist").status_code == 404
+
+
+def _run_with_fake_live_stop(
+    monkeypatch: pytest.MonkeyPatch,
+    stop: StopDecision,
+) -> routes.RunRecord:
+    """Exercise terminal-state serialization without constructing a live Qloo client."""
+    import app.agent.orchestrator as orchestrator_module
+    import app.live_runner as live_runner_module
+    import app.qloo.client as qloo_client_module
+    import app.resolution.resolver as resolver_module
+
+    monkeypatch.delenv("ADJACENT_PUBLIC_DEMO", raising=False)
+    monkeypatch.setenv("QLOO_API_KEY", "SYNTHETIC-TEST-KEY-NOT-A-REAL-CREDENTIAL")
+
+    class FakeClient:
+        def __init__(self, settings: object) -> None:
+            del settings
+            self.recorder = TraceRecorder(run_id="synthetic-run")
+            trace = self.recorder.record(
+                tool="resolve_programme",
+                endpoint="/search",
+                params={"query": "Synthetic Film"},
+            )
+            trace.set_error(
+                UpstreamError(
+                    "Qloo returned an upstream error",
+                    endpoint="/search",
+                    status=502,
+                    detail={
+                        "message": "UPSTREAM-RESPONSE-CANARY",
+                        "Authorization": "Bearer HEADER-CANARY",
+                    },
+                    call_id="synthetic-run-c001",
+                )
+            )
+            trace.finish()
+
+        async def aclose(self) -> None:
+            return None
+
+    class FakeResolver:
+        def __init__(self, client: object, *, delay_s: float) -> None:
+            del client, delay_s
+
+    class FakePipeline:
+        def __init__(self, client: object, resolver: object, programme: object) -> None:
+            del client, resolver, programme
+
+    class FakeOrchestrator:
+        def __init__(self, pipeline: object) -> None:
+            del pipeline
+
+        async def run(self, state: object) -> object:
+            state.programme[0].resolved_entity_id = "synthetic-verified-id"
+            state.programme[0].resolved_name = "Synthetic Film"
+            state.stop = stop
+            return state
+
+    monkeypatch.setattr(qloo_client_module, "QlooClient", FakeClient)
+    monkeypatch.setattr(resolver_module, "EntityResolver", FakeResolver)
+    monkeypatch.setattr(live_runner_module, "LivePipeline", FakePipeline)
+    monkeypatch.setattr(orchestrator_module, "AgentOrchestrator", FakeOrchestrator)
+
+    record = routes.run_store.create(
+        city="Test City",
+        venue_name="Test Cinema",
+        programme=[{"title": "Synthetic Film", "year": 2020, "imdb_id": None}],
+    )
+    asyncio.run(routes._execute_run(record))
+    return record
+
+
+class TestFailedRunSemantics:
+    def test_failure_after_partial_pipeline_state_has_no_result_or_raw_diagnostics(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Partial measured state is retained diagnostically, never returned as a result."""
+        stop = StopDecision(
+            reason=StopReason.ERROR,
+            message="raw upstream response must not be returned",
+            detail_code="qloo_error",
+            stats={
+                "calls_made": 1,
+                "error": {
+                    "error_type": "AuthenticationError",
+                    "kind": "authentication",
+                    "status": 401,
+                    "call_id": "synthetic-run-c001",
+                    "message": "UPSTREAM-RESPONSE-CANARY",
+                    "detail": "HEADER-CANARY",
+                },
+            },
+        )
+        record = _run_with_fake_live_stop(monkeypatch, stop)
+
+        assert record.status == RunStatus.FAILED
+        assert record.result is None
+        assert record.state_json is None  # avoid retaining raw exception details from the state
+        assert record.trace and record.trace[0]["call_id"] == "synthetic-run-c001"
+
+        client = TestClient(app)
+        response = client.get(f"/run/{record.run_id}")
+        trace = client.get(f"/run/{record.run_id}/trace")
+        stream = client.get(f"/run/{record.run_id}/stream")
+        assert response.status_code == trace.status_code == stream.status_code == 200
+        body = response.json()
+        assert body["status"] == "failed"
+        assert body["result"] is None
+        assert body["error"].startswith("Qloo rejected the request (HTTP 401)")
+        trace_json = json.dumps(trace.json())
+        stream_text = stream.text
+        for canary in ("UPSTREAM-RESPONSE-CANARY", "HEADER-CANARY", "SYNTHETIC-TEST-KEY"):
+            assert canary not in json.dumps(body)
+            assert canary not in trace_json
+            assert canary not in stream_text
+        assert trace.json()["trace"][0]["call_id"] == "synthetic-run-c001"
+        assert trace.json()["trace"][0]["error"]["status"] == 502
+        assert "Qloo rejected the request" in stream_text
+
+    def test_insufficient_remains_distinct_and_keeps_its_partial_evidence(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        record = _run_with_fake_live_stop(
+            monkeypatch,
+            StopDecision(
+                reason=StopReason.INSUFFICIENCY,
+                message="Not enough verified evidence to proceed.",
+                detail_code="insufficient_cohorts",
+                findings=["insufficient_cohorts"],
+            ),
+        )
+
+        assert record.status == RunStatus.INSUFFICIENT
+        assert record.result is not None
+        assert record.result["data_status"] == "measured"
+        assert record.result["evidence"]["stop_reason"] == "insufficiency"
+
+    def test_failed_response_hides_a_preexisting_partial_result(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("ADJACENT_PUBLIC_DEMO", raising=False)
+        record = routes.run_store.create(city="Test City", programme=[])
+        record.status = RunStatus.FAILED
+        record.result = {"data_status": "measured", "programme": {"resolved_count": 0}}
+
+        response = TestClient(app).get(f"/run/{record.run_id}")
+
+        assert response.status_code == 200
+        assert response.json()["status"] == "failed"
+        assert response.json()["result"] is None
 
 
 class TestFixtureDemoRun:

@@ -61,11 +61,56 @@ def public_failure_message() -> str:
     return _PUBLIC_FAILURE_MESSAGE
 
 
-def safe_run_error(exc: Exception) -> str:
-    """Hide implementation/upstream details from anonymous public run readers."""
+def safe_error_diagnostic(
+    *,
+    error_type: str | None = None,
+    kind: str | None = None,
+    status: int | None = None,
+    call_id: str | None = None,
+) -> str:
+    """Build useful failure text without echoing exception or response bodies."""
     if public_demo_enabled():
         return public_failure_message()
-    return str(exc)
+
+    suffix = f" Call ID: {call_id}." if call_id else ""
+    if kind == "authentication":
+        status_text = f" (HTTP {status})" if status else ""
+        return f"Qloo rejected the request{status_text}. Check backend key and host configuration.{suffix}"
+    if kind == "rate_limited":
+        return f"Qloo rate-limited this request. Retry after a short delay.{suffix}"
+    if kind == "timeout":
+        return f"The Qloo request timed out. Check connectivity and retry.{suffix}"
+    if kind == "transport":
+        return f"Could not connect to Qloo. Check backend connectivity and retry.{suffix}"
+    if kind == "upstream":
+        status_text = f" (HTTP {status})" if status else ""
+        return f"Qloo returned an upstream error{status_text}. Retry later.{suffix}"
+    if kind == "invalid_response":
+        return f"Qloo returned a response the analysis could not interpret.{suffix}"
+    if kind == "missing_api_key":
+        return "QLOO_API_KEY is not configured for this live analysis."
+    if kind == "not_found":
+        return f"Qloo could not find a required entity. Check the submitted film identity.{suffix}"
+
+    label = error_type or "pipeline error"
+    return f"Analysis failed during {label}. Review the sanitized trace and retry.{suffix}"
+
+
+def safe_run_error(exc: Exception) -> str:
+    """Return actionable diagnostics without exposing raw exception contents."""
+    if public_demo_enabled():
+        return public_failure_message()
+
+    from .qloo.errors import QlooError
+
+    if isinstance(exc, QlooError):
+        return safe_error_diagnostic(
+            error_type=type(exc).__name__,
+            kind=exc.kind,
+            status=exc.status,
+            call_id=exc.call_id,
+        )
+    return safe_error_diagnostic(error_type=type(exc).__name__)
 
 
 def sanitize_public_stop(state: object) -> None:
@@ -89,20 +134,23 @@ def sanitize_public_stop(state: object) -> None:
 
 
 def safe_public_trace(trace_rows: list[dict[str, object]]) -> list[dict[str, object]]:
-    """Keep trace provenance while omitting raw provider exception detail."""
-    if not public_demo_enabled():
-        return trace_rows
+    """Keep call provenance but omit exception text and raw upstream response bodies."""
     safe_rows: list[dict[str, object]] = []
-    safe_error_fields = ("kind", "status", "retryable", "call_id")
+    safe_error_fields = ("error_type", "kind", "status", "retryable", "call_id")
+    safe_message = (
+        _PUBLIC_TRACE_FAILURE_MESSAGE
+        if public_demo_enabled()
+        else "Detailed error omitted; use the call ID and status for diagnosis."
+    )
     for source in trace_rows:
         row = dict(source)
         error = row.get("error")
         if isinstance(error, dict):
             safe_error = {key: error[key] for key in safe_error_fields if key in error}
-            safe_error["message"] = _PUBLIC_TRACE_FAILURE_MESSAGE
+            safe_error["message"] = safe_message
             row["error"] = safe_error
         elif error:
-            row["error"] = {"message": _PUBLIC_TRACE_FAILURE_MESSAGE}
+            row["error"] = {"message": safe_message}
         safe_rows.append(row)
     return safe_rows
 
