@@ -9,7 +9,7 @@
 // section reports the unavailable-service state honestly. Nothing on this page
 // fabricates brands, affinity values, programmes, or outcomes.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   addSponsorOutreach,
@@ -59,6 +59,7 @@ export default function SponsorPage() {
   const [guestAccess, setGuestAccess] = useState<"checking" | "ready" | "blocked" | "expired" | "error">("checking");
   const [guestAccessError, setGuestAccessError] = useState<string | null>(null);
   const [restartingGuest, setRestartingGuest] = useState(false);
+  const workspaceInitializationRequest = useRef(0);
   const [campaigns, setCampaigns] = useState<SponsorCampaign[]>([]);
   const [campaignsLoading, setCampaignsLoading] = useState(true);
   const [campaignsError, setCampaignsError] = useState<string | null>(null);
@@ -133,29 +134,37 @@ export default function SponsorPage() {
     setCampaignsError(null);
     try {
       setCampaigns(await listSponsorCampaigns());
-    } catch {
-      setCampaignsError("Could not load campaigns.");
+    } catch (err) {
+      setCampaignsError(err instanceof Error ? err.message : "Could not load campaigns.");
     } finally {
       setCampaignsLoading(false);
     }
   }, []);
 
   const startGuestWorkspace = useCallback(async () => {
+    const requestId = ++workspaceInitializationRequest.current;
     setGuestAccess("checking");
     setGuestAccessError(null);
     setCampaignsLoading(true);
     try {
       const backend = await getHealth();
+      if (requestId !== workspaceInitializationRequest.current) return;
       setHealth(backend);
       if (backend.public_demo && !backend.filmsponsor_guest_enabled) {
         setGuestAccess("blocked");
         setCampaignsLoading(false);
         return;
       }
-      if (backend.filmsponsor_guest_enabled) await initializeSponsorGuestSession();
+      if (backend.filmsponsor_guest_enabled) {
+        await initializeSponsorGuestSession();
+        if (requestId !== workspaceInitializationRequest.current) return;
+      }
+      // Workspace access is independent from loading the campaign list. Mount
+      // the local/guest UI now; reloadCampaigns reports its own loading/error.
       setGuestAccess("ready");
-      await reloadCampaigns();
+      void reloadCampaigns();
     } catch (err) {
+      if (requestId !== workspaceInitializationRequest.current) return;
       setGuestAccess("error");
       setGuestAccessError(err instanceof Error ? err.message : "Guest workspace is unavailable.");
       setCampaignsLoading(false);
@@ -166,7 +175,10 @@ export default function SponsorPage() {
     void startGuestWorkspace();
     const expired = () => setGuestAccess("expired");
     window.addEventListener("filmsponsor-session-expired", expired);
-    return () => window.removeEventListener("filmsponsor-session-expired", expired);
+    return () => {
+      workspaceInitializationRequest.current += 1;
+      window.removeEventListener("filmsponsor-session-expired", expired);
+    };
   }, [startGuestWorkspace]);
 
   async function handleGuestRecovery() {

@@ -87,7 +87,7 @@ export default function CreatorPage() {
   const [error, setError] = useState<string | null>(null);
   const stopStream = useRef<(() => void) | null>(null);
   const experimentDetailRequest = useRef(0);
-  const publicDemoRef = useRef(false);
+  const experimentListRequest = useRef(0);
 
   // ── experiment state ─────────────────────────────────────────────────────
   const [experiments, setExperiments] = useState<ExperimentRecord[]>([]);
@@ -113,43 +113,35 @@ export default function CreatorPage() {
   const resultTone = statusTone(failed || insufficient ? null : result?.data_status ?? null);
 
   const refreshExperiments = useCallback(async () => {
-    if (publicDemoRef.current) {
-      setExperiments([]);
-      setExperimentsError("Shared experiment storage is disabled in public-demo mode.");
-      setExperimentsLoading(false);
-      return;
-    }
+    const requestId = ++experimentListRequest.current;
     setExperimentsLoading(true);
     setExperimentsError(null);
     try {
-      setExperiments(await listExperiments());
+      // Check the public boundary before ever requesting shared experiment rows.
+      const health = await getHealth();
+      if (requestId !== experimentListRequest.current) return;
+      setBackendHealth(health);
+      if (health.public_demo) {
+        setExperiments([]);
+        setExperimentsError("Shared experiment storage is disabled in public-demo mode.");
+        return;
+      }
+
+      const saved = await listExperiments();
+      if (requestId === experimentListRequest.current) setExperiments(saved);
     } catch (err) {
-      setExperimentsError(err instanceof Error ? err.message : "Could not load saved experiments");
+      if (requestId === experimentListRequest.current) {
+        setExperimentsError(err instanceof Error ? err.message : "Could not load saved experiments");
+      }
     } finally {
-      setExperimentsLoading(false);
+      if (requestId === experimentListRequest.current) setExperimentsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    let mounted = true;
-    getHealth()
-      .then((health) => {
-        if (!mounted) return;
-        publicDemoRef.current = health.public_demo === true;
-        setBackendHealth(health);
-        if (health.public_demo) {
-          setExperiments([]);
-          setExperimentsError("Shared experiment storage is disabled in public-demo mode.");
-          setExperimentsLoading(false);
-        } else {
-          void refreshExperiments();
-        }
-      })
-      .catch(() => {
-        if (mounted) void refreshExperiments();
-      });
+    void refreshExperiments();
     return () => {
-      mounted = false;
+      experimentListRequest.current += 1;
       stopStream.current?.();
     };
   }, [refreshExperiments]);

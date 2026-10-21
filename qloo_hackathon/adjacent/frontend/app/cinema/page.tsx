@@ -74,6 +74,7 @@ export default function Home() {
   const [request, setRequest] = useState<{ city: string; venue: string; programme: ProgrammeItemInput[] } | null>(null);
   const [requestMode, setRequestMode] = useState<"live" | "fixture" | null>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
+  const runPollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestGenerationRef = useRef(0);
   const activeRunIdRef = useRef<string | null>(null);
 
@@ -93,12 +94,19 @@ export default function Home() {
     return () => observer.disconnect();
   }, []);
 
+  function stopRunTracking() {
+    if (runPollTimerRef.current !== null) clearTimeout(runPollTimerRef.current);
+    runPollTimerRef.current = null;
+    cleanupRef.current?.();
+    cleanupRef.current = null;
+  }
+
   // Cleanup and invalidate all pending requests/SSE callbacks on unmount.
   useEffect(() => {
     return () => {
       requestGenerationRef.current += 1;
       activeRunIdRef.current = null;
-      cleanupRef.current?.();
+      stopRunTracking();
     };
   }, []);
 
@@ -133,8 +141,7 @@ export default function Home() {
   const failed = run?.status === "failed";
 
   function beginRunRequest(): number {
-    cleanupRef.current?.();
-    cleanupRef.current = null;
+    stopRunTracking();
     activeRunIdRef.current = null;
     requestGenerationRef.current += 1;
     setRunId(null);
@@ -144,28 +151,49 @@ export default function Home() {
   function startStream(id: string, generation: number) {
     const isCurrentRun = () =>
       generation === requestGenerationRef.current && activeRunIdRef.current === id;
+    let terminalReconciled = false;
+    let pollScheduled = false;
+    let pollDelayMs = 1_500;
 
-    const loadTerminalResponse = async (eventMessage?: string) => {
+    const reconcileRun = async (eventMessage?: string): Promise<boolean> => {
       try {
         const finalRun = await getRun(id);
-        if (!isCurrentRun()) return;
-        setRun(finalRun);
-        const finalStatus = ["completed", "insufficient", "failed"].includes(finalRun.status);
-        setError(
-          finalRun.status === "failed" && !finalRun.error && !finalRun.stop_message
-            ? eventMessage || "The analysis could not complete."
-            : !finalStatus
-              ? eventMessage || "The event stream ended before the run reached a terminal status."
+        if (!isCurrentRun()) return true;
+        const terminal = ["completed", "insufficient", "failed"].includes(finalRun.status);
+        if (terminal && !terminalReconciled) {
+          terminalReconciled = true;
+          setRun(finalRun);
+          setError(
+            finalRun.status === "failed" && !finalRun.error && !finalRun.stop_message
+              ? eventMessage || "The analysis could not complete."
               : null
-        );
-        setAnalysing(false);
+          );
+          setAnalysing(false);
+          stopRunTracking();
+        } else if (eventMessage && !terminal) {
+          setError(eventMessage);
+        }
+        return terminal;
       } catch (err: unknown) {
-        if (!isCurrentRun()) return;
-        setError(
-          eventMessage || (err instanceof Error ? err.message : "Could not load the final run status.")
-        );
-        setAnalysing(false);
+        if (!isCurrentRun()) return true;
+        setError(eventMessage || (err instanceof Error ? err.message : "Could not load the final run status."));
+        return false;
       }
+    };
+
+    const schedulePoll = () => {
+      if (!isCurrentRun() || pollScheduled || terminalReconciled) return;
+      pollScheduled = true;
+      runPollTimerRef.current = setTimeout(() => {
+        pollScheduled = false;
+        runPollTimerRef.current = null;
+        void reconcileRun().then((terminal) => {
+          if (!terminal && isCurrentRun()) {
+            pollDelayMs = Math.min(pollDelayMs + 1_000, 5_000);
+            schedulePoll();
+          }
+        });
+      }, pollDelayMs);
     };
 
     const cleanup = streamRun(
@@ -174,18 +202,23 @@ export default function Home() {
         if (!isCurrentRun()) return;
         setEvents((prev) => [...prev, event]);
         if (["done", "insufficiency", "error"].includes(event.event)) {
-          cleanupRef.current?.();
           cleanupRef.current = null;
           const eventMessage = String(event.data?.message || event.data?.stop_message || "");
-          void loadTerminalResponse(event.event === "error" ? eventMessage : undefined);
+          void reconcileRun(event.event === "error" ? eventMessage : undefined).then((terminal) => {
+            if (!terminal) schedulePoll();
+          });
         }
       },
       (err) => {
         if (!isCurrentRun()) return;
-        void loadTerminalResponse(err.message);
+        cleanupRef.current = null;
+        void reconcileRun(err.message).then((terminal) => {
+          if (!terminal) schedulePoll();
+        });
       }
     );
     cleanupRef.current = cleanup;
+    schedulePoll();
   }
 
   // The live path: exactly the values entered in the intake form are submitted.
@@ -241,8 +274,7 @@ export default function Home() {
   function resetAnalysis() {
     requestGenerationRef.current += 1;
     activeRunIdRef.current = null;
-    cleanupRef.current?.();
-    cleanupRef.current = null;
+    stopRunTracking();
     setRunId(null);
     setRun(null);
     setEvents([]);
