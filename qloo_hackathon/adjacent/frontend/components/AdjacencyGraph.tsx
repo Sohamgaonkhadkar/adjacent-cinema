@@ -49,18 +49,24 @@ function cohortKindLabel(kind: string | undefined, subtype: string | undefined, 
 
 export default function AdjacencyGraph({
   filmTitle,
+  anchorLabel,
+  anchorSubLabel,
   cohorts,
   bet,
   dataStatus,
-  traceRows,
+  traceRows = [],
 }: {
   filmTitle: string;
+  anchorLabel?: string;
+  anchorSubLabel?: string;
   cohorts: CulturalField;
   bet: ProgrammeBetData | null;
   dataStatus: string;
-  traceRows: TraceRow[];
+  traceRows?: TraceRow[];
 }) {
   const [selected, setSelected] = useState<string | null>(null);
+  const displayTitle = anchorLabel?.trim() || filmTitle;
+  const displaySubLabel = anchorSubLabel?.trim() || "YOUR FILM";
 
   const nodes: NodeDatum[] = useMemo(() => {
     return cohorts.ranked.map((c, i) => {
@@ -157,9 +163,9 @@ export default function AdjacencyGraph({
         <svg
           viewBox={`0 0 ${W} ${H}`}
           role="group"
-          aria-label={`Interactive cultural fingerprint for ${filmTitle}. Use Tab to select a ranked cultural world.`}
+          aria-label={`Interactive cultural fingerprint for ${displayTitle}. Use Tab to select a ranked cultural world.`}
         >
-          <title>Adjacent cultural worlds around {filmTitle}</title>
+          <title>Adjacent cultural worlds around {displayTitle}</title>
           {/* rejected worlds — visible on the outer edge, with reason codes */}
           {rejected.map((r, i) => {
             const angle = (i / Math.max(1, rejected.length)) * Math.PI * 2 + 0.4;
@@ -214,10 +220,10 @@ export default function AdjacencyGraph({
           <g className="agraph-center">
             <circle cx={CX} cy={CY} r={38} />
             <text x={CX} y={CY - 3} textAnchor="middle" className="agraph-center-title">
-              {filmTitle.length > 22 ? `${filmTitle.slice(0, 21)}…` : filmTitle}
+              {displayTitle.length > 22 ? `${displayTitle.slice(0, 21)}…` : displayTitle}
             </text>
             <text x={CX} y={CY + 13} textAnchor="middle" className="agraph-center-sub">
-              YOUR FILM
+              {displaySubLabel.length > 30 ? `${displaySubLabel.slice(0, 29)}…` : displaySubLabel}
             </text>
           </g>
 
