@@ -429,9 +429,22 @@ class TestDisconnect:
         assert "mock_youtube_analytics" not in sources  # deleted
         assert "policy_deletion" in sources  # tombstone
         assert any(o["kind"] == "FEEDBACK" for o in observations)  # manual kept
-        assert all(
-            "128" not in json.dumps(o) for o in observations if o["kind"] == "NOTE"
-        )  # tombstone contains no API data values
+        tombstones = [o for o in observations if o["kind"] == "NOTE"]
+        assert tombstones
+        # Inspect data-bearing fields, not random IDs/timestamps whose digits can
+        # coincidentally contain "128". The deleted value and video ID must not
+        # survive in the tombstone's content.
+        for note in tombstones:
+            safe_content = {
+                key: note.get(key)
+                for key in (
+                    "kind", "measurement_status", "metrics", "interpretation",
+                    "source", "evidence_ref", "limitations",
+                )
+            }
+            assert "128" not in json.dumps(safe_content)
+            assert "mockVideoId001" not in json.dumps(safe_content)
+            assert safe_content["metrics"] in (None, {})
 
 
 # ---------------------------------------------------------------------------
