@@ -5,6 +5,10 @@ start at the [root README](../../README.md). This guide focuses on running and
 validating the application. It reflects the checked implementation; there is
 **no verified public deployment URL**.
 
+The single-host Docker Compose deployment path is documented in
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md); it needs a real host/domain and is
+not a hosted deployment by itself.
+
 ## Prerequisites and repository layout
 
 - Python **3.12 or newer** for the backend (`pyproject.toml`); Python 3.12 is

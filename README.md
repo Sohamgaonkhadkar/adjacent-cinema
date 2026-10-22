@@ -149,6 +149,7 @@ zero.
   decisions and validation notes.
 
 Useful references: [Developer guide](qloo_hackathon/adjacent/README.md) ·
+[Single-host deployment runbook](qloo_hackathon/adjacent/docs/DEPLOYMENT.md) ·
 [Frontend/API contract](qloo_hackathon/adjacent/docs/FRONTEND_CONTRACT.md) ·
 [Qloo setup](qloo_hackathon/adjacent/docs/QLOO_SETUP.md) ·
 [Deployment topology proposal (not deployed)](qloo_hackathon/adjacent/docs/adr/006-deployment-topology.md)

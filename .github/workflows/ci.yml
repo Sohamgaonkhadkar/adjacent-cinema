@@ -34,6 +34,11 @@ jobs:
       - name: Live-Qloo tests (only when QLOO_API_KEY secret is configured)
         if: env.QLOO_API_KEY != ''
         run: python -m pytest -m live -rs
+      - name: Verify installed backend package includes API modules
+        run: |
+          python -m pip install --no-deps --target "$RUNNER_TEMP/adjacent-installed" .
+          cd "$RUNNER_TEMP"
+          PYTHONPATH="$RUNNER_TEMP/adjacent-installed" python -c "import app.main; import app.api.creator_routes; import app.resolution.resolver"
       - name: Probe (dry-run — must never require a key)
         run: python scripts/qloo_probe.py
       - name: Fail if the dry-run probe files were not produced
@@ -61,3 +66,19 @@ jobs:
         run: npm run test:layout
       - name: Build frontend
         run: npm run build
+      - name: Render primary routes from the production build
+        run: npm run test:render
+
+  container-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate deployment Compose configuration
+        working-directory: qloo_hackathon/adjacent
+        run: |
+          cp deploy.env.example .env
+          docker compose config --quiet
+      - name: Build backend container
+        run: docker build -f qloo_hackathon/adjacent/backend/Dockerfile -t adjacent-backend:ci qloo_hackathon/adjacent
+      - name: Build frontend container
+        run: docker build --build-arg ADJACENT_API_ORIGIN=http://backend:8000 -f qloo_hackathon/adjacent/frontend/Dockerfile -t adjacent-frontend:ci qloo_hackathon/adjacent/frontend

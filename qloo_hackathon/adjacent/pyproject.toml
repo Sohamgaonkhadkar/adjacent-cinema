@@ -28,7 +28,10 @@ dev = [
 
 [tool.setuptools]
 package-dir = { "" = "backend" }
-packages = ["app", "app.agent", "app.domain", "app.qloo"]
+
+[tool.setuptools.packages.find]
+where = ["backend"]
+include = ["app*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["backend"]
