@@ -206,14 +206,9 @@ export default function AdjacencyGraph({
               <text x={p.x} y={p.y - p.r - 10} textAnchor="middle" className="agraph-node-label">
                 {p.node.label.length > 22 ? `${p.node.label.slice(0, 21)}…` : p.node.label}
               </text>
-              <text x={p.x} y={p.y - p.r + 2} textAnchor="middle" className="agraph-node-meta">
-                #{p.node.rank} · {p.node.kindLabel}
+              <text x={p.x} y={p.y + 4} textAnchor="middle" className="agraph-node-meta">
+                #{p.node.rank}
               </text>
-              {p.node.meanAffinity != null && (
-                <text x={p.x} y={p.y + 14} textAnchor="middle" className="agraph-node-meta">
-                  affinity {p.node.meanAffinity.toFixed(2)}
-                </text>
-              )}
             </g>
           ))}
         </svg>
