@@ -8,7 +8,8 @@ from backend.app.domain.geography import (
     build_geography_result,
 )
 from backend.app.domain.programme_bet import ProgrammeBet, build_programme_bet
-from backend.app.domain.test_card import TestCard as CardResult, build_test_card
+from backend.app.domain.test_card import TestCard as CardResult
+from backend.app.domain.test_card import build_test_card
 from backend.app.qloo.models import parse_entity_affinity, parse_heatmap, parse_tag_affinity
 
 # ---------------------------------------------------------------------------
