@@ -28,6 +28,7 @@ The orchestrator knows nothing about Qloo: it holds five tools and a runtime nam
 
 from __future__ import annotations
 
+import logging
 import time
 import traceback
 from dataclasses import dataclass
@@ -74,6 +75,8 @@ ACTION_LABEL: dict[str, str] = {
 #: should never fire — it exists so a future planning bug cannot spin the loop.
 MAX_ITERATIONS = 24
 
+logger = logging.getLogger(__name__)
+
 
 class OrchestratorFinished(RuntimeError):
     """Raised when a state is asked to execute after the run has stopped."""
@@ -109,6 +112,18 @@ def _error_decision_with_frames(exc: Exception, state: AdjacentState) -> StopDec
             f"{Path(frame.filename).name}:{frame.name}:{frame.lineno}"
             for frame in traceback.extract_tb(exc.__traceback__)[-16:]
         ]
+    # This boundary actually observes tool-level exceptions: the outer Creator
+    # route receives only the terminal state, not the original exception.
+    safe_error = decision.stats.get("error", {})
+    safe_error = safe_error if isinstance(safe_error, dict) else {}
+    frames = safe_error.get("frames", [])
+    safe_frames = [frame for frame in frames if isinstance(frame, str)] if isinstance(frames, list) else []
+    logger.error(
+        "Orchestrator tool failure: error_type=%s call_id=%s frames=%s",
+        safe_error.get("error_type") or type(exc).__name__,
+        safe_error.get("call_id") or "none",
+        " > ".join(safe_frames) or "<traceback unavailable>",
+    )
     return decision
 
 
