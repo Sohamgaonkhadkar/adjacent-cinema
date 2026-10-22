@@ -29,8 +29,8 @@ jobs:
         run: |
           echo "Tracked in docs/LINT_DEBT.md; not a merge gate."
           ruff check $(find research scripts -name '*.py' | sort) --statistics || true
-      - name: Tests (fixture-backed; live tests self-skip without a key)
-        run: python -m pytest -rs
+      - name: Offline and fixture-backed tests (live tests run in the dedicated step)
+        run: python -m pytest -m "not live" -rs
       - name: Live-Qloo tests (only when QLOO_API_KEY secret is configured)
         if: env.QLOO_API_KEY != ''
         run: python -m pytest -m live -rs
