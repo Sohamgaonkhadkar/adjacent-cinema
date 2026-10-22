@@ -139,12 +139,7 @@ npm run build
 The CI frontend job runs `npm ci` and `npm run build` on Node 22; Next's
 production build includes TypeScript validation.
 
-**Last checked main CI:** commit `48f36bb` passed the backend and frontend jobs.
-The live-Qloo job was skipped without a configured secret, not passed. This does
-not verify a live service, real browser or deployed system. Check the
-[latest Actions run](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions)
-for changes after that snapshot.
-
+**CI status is commit-specific.** See the [latest GitHub Actions runs](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions) for the current commit. The CI workflow runs the Python 3.12 backend gates, frontend regression/build/route-smoke gates, and both container builds. The live-Qloo step runs only when the repository secret is configured; check whether it passed or was skipped. A passing workflow validates that commit's checks, not a hosted deployment, production browser behavior or long-term service health.
 ## Storage and data flow
 
 - Run/SSE records live in an in-memory store and are not durable history.
