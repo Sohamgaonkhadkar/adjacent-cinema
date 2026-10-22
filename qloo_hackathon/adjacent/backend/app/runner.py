@@ -348,7 +348,8 @@ async def _taste_profile(client: Any, run: AdjacentState, budget: Budget) -> Non
         return
     response = await client.insights(
         filter_type="urn:tag",
-        signal_interests_entities=ids,
+        signal_interests_entities=ids or None,
+        signal_interests_tags=tag_ids or None,
         take=50,
         tool="taste_profile",
     )
