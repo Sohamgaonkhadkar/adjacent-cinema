@@ -48,6 +48,9 @@ jobs:
 
   frontend:
     runs-on: ubuntu-latest
+    env:
+      # Bake an isolated local origin into the production rewrite for the API-proxy smoke test.
+      ADJACENT_API_ORIGIN: http://127.0.0.1:43129
     defaults:
       run:
         working-directory: qloo_hackathon/adjacent/frontend
