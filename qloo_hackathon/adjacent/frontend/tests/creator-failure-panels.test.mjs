@@ -68,3 +68,12 @@ test("cultural fingerprint renders orbit guides and inspectable member nodes", (
   assert.match(graphSource, /Entity affinity/);
   assert.match(graphSource, /agraph-center-halo/);
 });
+
+
+test("cultural fingerprint includes the reading key beneath the graph", () => {
+  assert.match(graphSource, /agraph-legend/);
+  assert.match(graphSource, /Programme anchor/);
+  assert.match(graphSource, /Cultural connection/);
+  assert.match(graphSource, /agraph-footnote/);
+  assert.match(graphSource, /parent cohorts/);
+});

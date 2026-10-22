@@ -160,11 +160,12 @@ export default function AdjacencyGraph({
 
   return (
     <div className="agraph">
+      <div className="agraph-visual">
       <div className="agraph-canvas-wrap">
         <svg
           viewBox={`0 0 ${W} ${H}`}
           role="group"
-          aria-label={`Interactive cultural fingerprint for ${displayTitle}. Use Tab to select a ranked cultural world.`}
+          aria-label={`Interactive cultural fingerprint for ${displayTitle}. Use Tab to select a cultural world or related entity.`}
         >
           <title>Adjacent cultural worlds around {displayTitle}</title>
           <defs>
@@ -324,6 +325,16 @@ export default function AdjacencyGraph({
         {dataStatus !== "measured" && dataStatus !== "fixture" && (
           <span className="agraph-stamp is-unknown">DATA STATUS UNKNOWN</span>
         )}
+      </div>
+      <div className="agraph-legend" aria-label="Cultural fingerprint legend">
+        <span><i className="agraph-legend-anchor" /> Programme anchor</span>
+        <span><i className="agraph-legend-node" /> Cultural connection</span>
+        <span className="agraph-legend-hint">Select a node to inspect</span>
+      </div>
+      <p className="agraph-footnote">
+        Showing {nodes.length} ranked cultural world{nodes.length === 1 ? "" : "s"}. Outer labels are entities returned inside their parent cohorts; the full member lists and exclusions remain available below.
+        {rejected.length > 0 ? " " + rejected.length + " rejected world(s) remain annotated separately." : ""}
+      </p>
       </div>
 
       <aside className="agraph-inspector" aria-live="polite">
