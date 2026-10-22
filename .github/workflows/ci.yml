@@ -64,6 +64,8 @@ jobs:
         run: npm run test:recovery
       - name: Test responsive intake layout
         run: npm run test:layout
+      - name: Test Creator failure-stage visibility
+        run: npm run test:creator-ui
       - name: Build frontend
         run: npm run build
       - name: Render primary routes from the production build
