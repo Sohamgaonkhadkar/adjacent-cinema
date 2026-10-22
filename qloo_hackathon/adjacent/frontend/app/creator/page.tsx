@@ -129,7 +129,7 @@ export default function CreatorPage() {
     );
     targets.forEach((target) => observer.observe(target));
     return () => observer.disconnect();
-  }, [result, failed, insufficient]);
+  }, [result, run?.status]);
   const traceRows: TraceRow[] = run?.trace ?? [];
   const insufficient = run?.status === "insufficient";
   const failed = run?.status === "failed";
