@@ -74,9 +74,18 @@ def build_investigation(
 
     # -- Q0 (context framing, M13.12): asked only when the creator supplied
     # context beyond a title. Makes NO API call and says so.
+    theme_values = film.get("themes") if isinstance(film.get("themes"), list) else []
+    theme_text = ", ".join(str(value).strip() for value in theme_values if str(value).strip())
+    theme_rows = list(getattr(state, "theme_resolution", []) or [])
+    theme_call_ids = [
+        str(row.get("call_id"))
+        for row in theme_rows
+        if isinstance(row, dict) and row.get("call_id")
+    ]
     context_pairs = [
         ("genre", film.get("genre")),
-        ("themes/seed references", ", ".join(seeds[1:4]) if len(seeds) > 1 else None),
+        ("reference works", ", ".join(seeds) if seeds else None),
+        ("themes", theme_text),
         ("language", film.get("language")),
         ("release goal", film.get("release_goal")),
         ("logline", "supplied" if film.get("logline") else None),
@@ -88,9 +97,9 @@ def build_investigation(
             "q0",
             "What did the creator tell us, and what did they leave out?",
             "context_framing",
-            "no API call — input validation only",
+            "input validation; theme strings use exact-name /v2/tags lookups when supplied",
             "answered",
-            [],
+            theme_call_ids,
             "Context used to frame this investigation: " + "; ".join(provided)
             + (
                 ". Not supplied (weakens the questions that follow): "
@@ -111,7 +120,7 @@ def build_investigation(
             "q1",
             "Which cultural interests does this film's expressed profile carry?",
             "get_taste_profile",
-            "/v2/insights?filter.type=urn:tag (signal: resolved seeds)",
+            "/v2/insights?filter.type=urn:tag (signal: verified reference entities + exact-matched theme tags)",
             "answered",
             [taste_call or ""],
             f"{len(tags)} interest tags returned; strongest: {', '.join(top[:3]) or '—'}.",
@@ -120,7 +129,7 @@ def build_investigation(
             "kind": "FACT",
             "claim_type": "FACT",
             "statement": (
-                f"Qloo's taste profile for the resolved seed entities returned "
+                f"Qloo's taste profile for the verified reference entities and matched theme tags returned "
                 f"{len(tags)} interest tags (top: {', '.join(top[:3]) or '—'})."
             ),
             "evidence_refs": [taste_call or ""],
@@ -143,10 +152,20 @@ def build_investigation(
 
     if unresolved:
         limitations.append(
-            f"{len(unresolved)} of {len(resolved) + len(unresolved)} seed "
-            f"reference(s) could not be resolved to Qloo entities "
+            f"{len(unresolved)} of {len(resolved) + len(unresolved)} reference "
+            f"film(s) could not be resolved to Qloo entities "
             f"({', '.join(u.title for u in unresolved[:3] if getattr(u, 'title', None)) or 'unnamed'}) "
             "— they contributed no evidence."
+        )
+    unmatched_themes = [
+        row for row in theme_rows
+        if isinstance(row, dict) and row.get("status") != "matched"
+    ]
+    if unmatched_themes:
+        labels = ", ".join(str(row.get("input") or "unnamed theme") for row in unmatched_themes[:3])
+        limitations.append(
+            f"{len(unmatched_themes)} of {len(theme_rows)} theme input(s) did not resolve "
+            f"to one exact Qloo tag ({labels}) and were excluded from the signal."
         )
 
     # -- Q2: adjacent cultural worlds (expand_candidates, one call per domain)
@@ -426,6 +445,12 @@ def build_investigation(
         "limitations": limitations,
         "open_questions": open_questions,
         "data_status": data_status,
+        "theme_inputs": theme_rows,
+        "seed_signals": {
+            "verified_reference_works": len(resolved),
+            "unresolved_reference_works": len(unresolved),
+            "matched_theme_tags": len(getattr(state, "theme_tag_ids", []) or []),
+        },
         "provenance": {
             "call_ids": sorted(set(all_call_ids)),
             "qloo_calls_used": getattr(state, "calls_made", 0),
