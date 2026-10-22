@@ -70,7 +70,7 @@ class TestContextAwareQuestions:
     def test_q0_absent_when_creator_supplied_only_a_title(self) -> None:
         inv = build_investigation(
             _empty_state(),
-            film={"title": "Untitled"}, seeds=["solo theme"],
+            film={"title": "Untitled"}, seeds=[],
             bet=None, test_card=None, data_status="measured",
         )
         assert all(q["id"] != "q0" for q in inv["questions"])
