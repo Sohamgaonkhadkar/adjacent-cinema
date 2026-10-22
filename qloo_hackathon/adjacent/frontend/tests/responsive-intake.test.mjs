@@ -4,24 +4,38 @@ import test from "node:test";
 
 const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
-function mediaBlock(source, header) {
-  const start = source.indexOf(header);
-  assert.notEqual(start, -1, `missing media rule: ${header}`);
-  const open = source.indexOf("{", start);
-  assert.notEqual(open, -1, `missing opening brace for ${header}`);
-  let depth = 0;
-  for (let i = open; i < source.length; i += 1) {
-    if (source[i] === "{") depth += 1;
-    if (source[i] === "}") {
-      depth -= 1;
-      if (depth === 0) return source.slice(open + 1, i);
+function mediaBlocks(source, header) {
+  const blocks = [];
+  let cursor = 0;
+  while (true) {
+    const start = source.indexOf(header, cursor);
+    if (start === -1) break;
+    const open = source.indexOf("{", start);
+    assert.notEqual(open, -1, `missing opening brace for ${header}`);
+    let depth = 0;
+    let closed = false;
+    for (let i = open; i < source.length; i += 1) {
+      if (source[i] === "{") depth += 1;
+      if (source[i] === "}") {
+        depth -= 1;
+        if (depth === 0) {
+          blocks.push(source.slice(open + 1, i));
+          cursor = i + 1;
+          closed = true;
+          break;
+        }
+      }
     }
+    assert.ok(closed, `unterminated media rule: ${header}`);
   }
-  assert.fail(`unterminated media rule: ${header}`);
+  return blocks;
 }
 
 test("responsive intake gives title, year, IMDb and remove control usable grid areas", () => {
-  const mobile = mediaBlock(css, "@media (max-width: 900px)");
+  const mobile = mediaBlocks(css, "@media (max-width: 900px)").find((block) =>
+    block.includes(".intake-row"),
+  );
+  assert.ok(mobile, "missing responsive intake grid rule");
   assert.match(
     mobile,
     /\.intake-row\s*\{[^}]*grid-template-columns:\s*22px\s+minmax\(0,\s*1fr\)\s+minmax\(0,\s*1fr\)\s+28px;/s,
