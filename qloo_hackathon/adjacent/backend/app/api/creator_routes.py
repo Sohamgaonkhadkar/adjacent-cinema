@@ -461,10 +461,12 @@ async def _execute_creator_demo_run(record: Any) -> None:
             budget=Budget(),
         )
         state.ledger = ProvenanceLedger(recorder=client.recorder, data_status="fixture")
+        record.current_phase = getattr(getattr(state, "phase", None), "value", "INIT")
 
         state = await AgentOrchestrator(
             FixturePipeline(client, fx), allow_title_search=True
         ).run(state)
+        record.current_phase = getattr(getattr(state, "phase", None), "value", record.current_phase)
         _log_creator_stop_diagnostic(record, state)
         sanitize_public_stop(state)
         if state.stop_reason not in ("complete", "insufficiency"):
