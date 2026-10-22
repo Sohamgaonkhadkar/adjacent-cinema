@@ -386,7 +386,8 @@ async def _expand_candidates(client: Any, run: AdjacentState, budget: Budget, *,
         try:
             response = await client.insights(
                 filter_type=domain,
-                signal_interests_entities=ids,
+                signal_interests_entities=ids or None,
+                signal_interests_tags=tag_ids or None,
                 filter_popularity_min=0.05,
                 filter_popularity_max=0.90,
                 take=50,
