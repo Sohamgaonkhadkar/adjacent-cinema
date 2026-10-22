@@ -73,6 +73,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Validate Render Blueprint YAML
+        run: ruby -e 'require "yaml"; YAML.load_file("render.yaml")'
       - name: Validate deployment Compose configuration
         working-directory: qloo_hackathon/adjacent
         run: |

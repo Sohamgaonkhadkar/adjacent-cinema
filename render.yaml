@@ -4,6 +4,7 @@ services:
     runtime: python
     region: oregon
     plan: 0.5c-512mb
+    autoDeployTrigger: checksPass
     rootDir: qloo_hackathon/adjacent
     buildCommand: python -m pip install --upgrade pip && python -m pip install -e .
     startCommand: PYTHONPATH=backend uvicorn app.main:app --host 0.0.0.0 --port 10000 --workers 1
