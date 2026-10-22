@@ -31,7 +31,10 @@ async function startMockApiFromBuiltRewrite() {
     .find((rule) => rule.source === "/api/:path*" && typeof rule.destination === "string");
 
   assert.ok(rewrite, "production routes manifest is missing the same-origin /api rewrite");
-  const destination = rewrite.destination.replace(/\\/:path\\*$/, "");
+  const wildcardSuffix = "/:path*";
+  const destination = rewrite.destination.endsWith(wildcardSuffix)
+    ? rewrite.destination.slice(0, -wildcardSuffix.length)
+    : rewrite.destination;
   const target = new URL(destination);
   assert.ok(
     ["127.0.0.1", "localhost", "::1"].includes(target.hostname),
@@ -95,7 +98,7 @@ test("production build renders every primary web surface", async () => {
         ...process.env,
         NODE_ENV: "production",
         NEXT_TELEMETRY_DISABLED: "1",
-        ADJACENT_API_ORIGIN: "http://127.0.0.1:8000",
+        ADJACENT_API_ORIGIN: process.env.ADJACENT_API_ORIGIN ?? "http://127.0.0.1:8000",
       },
       stdio: ["ignore", "pipe", "pipe"],
     },
