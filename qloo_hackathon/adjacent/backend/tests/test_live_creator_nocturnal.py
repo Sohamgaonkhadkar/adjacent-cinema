@@ -36,6 +36,7 @@ def test_nocturnal_drifter_creator_all_intake_fields_and_outputs() -> None:
         "references": [
             {"title": "Nightcrawler", "year": 2014},
             {"title": "After Hours", "year": 1985},
+            {"title": "Taxi Driver", "year": 1976},
         ],
         "release_goal": "Independent film release",
         "city": "Portland, Oregon",
@@ -51,6 +52,7 @@ def test_nocturnal_drifter_creator_all_intake_fields_and_outputs() -> None:
         assert [item["title"] for item in start["programme"]] == [
             "Nightcrawler",
             "After Hours",
+            "Taxi Driver",
         ]
 
         deadline = time.monotonic() + 90
@@ -109,15 +111,13 @@ def test_nocturnal_drifter_creator_all_intake_fields_and_outputs() -> None:
     assert investigation["questions"]
     assert investigation["film"]["themes"] == request["themes"]
     q0 = next(question for question in investigation["questions"] if question["id"] == "q0")
-    assert "reference works: Nightcrawler, After Hours" in q0["summary"]
+    assert "reference works: Nightcrawler, After Hours, Taxi Driver" in q0["summary"]
     assert "themes: Thriller, Urban" in q0["summary"]
     for question in investigation["questions"]:
         assert set(question.get("evidence_refs", [])) <= trace_ids
     for finding in investigation["findings"]:
         assert set(finding.get("evidence_refs", [])) <= trace_ids
-    assert investigation["provenance"]["call_ids"] <= trace_ids if isinstance(
-        investigation["provenance"]["call_ids"], set
-    ) else set(investigation["provenance"]["call_ids"]) <= trace_ids
+    assert set(investigation["provenance"]["call_ids"]) <= trace_ids
 
     # Section 03 — ranked and rejected worlds are structured and rank ordered.
     cohorts = result["cohorts"]
