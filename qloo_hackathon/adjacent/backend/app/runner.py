@@ -333,7 +333,8 @@ async def _resolve_programme(client: Any, fixture: Any, run: AdjacentState, budg
 
 async def _taste_profile(client: Any, run: AdjacentState, budget: Budget) -> None:
     ids = run.resolved_ids
-    if not ids:
+    tag_ids = run.theme_tag_ids
+    if not ids and not tag_ids:
         run.taste_verdict = evidence.evaluate_tags([])
         run.findings.append(
             Finding(
