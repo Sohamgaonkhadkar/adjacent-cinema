@@ -243,6 +243,27 @@ async def create_creator_demo_run(http_request: Request) -> RunResponse:
 # ---------------------------------------------------------------------------
 
 
+def _record_creator_stopped(record: Any, state: Any) -> None:
+    """Record a non-exception terminal failure without exposing partial artefacts."""
+    from .routes import RunEvent, RunStatus, _safe_state_failure_message
+
+    message = _safe_state_failure_message(state)
+    phase = getattr(getattr(state, "phase", None), "value", "")
+    record.status = RunStatus.FAILED
+    record.stop_reason = getattr(state, "stop_reason", "error")
+    record.stop_message = message
+    record.error = message
+    record.result = None
+    record.state_json = None
+    record.current_phase = phase
+    trace_rows = getattr(state, "trace_rows", None)
+    record.trace = safe_public_trace(trace_rows) if isinstance(trace_rows, list) else []
+    record.emit(RunEvent("error", {
+        "message": message,
+        "stop_reason": record.stop_reason,
+    }))
+
+
 def _record_creator_failure(record: Any, state: Any, exc: Exception) -> None:
     """Fail a Creator run without discarding the trace needed to diagnose it.
 
@@ -338,6 +359,9 @@ async def _execute_creator_run(record: Any, request: CreatorRunRequest) -> None:
         pipeline = LivePipeline(client, resolver, record.programme)
         state = await AgentOrchestrator(pipeline).run(state)
         sanitize_public_stop(state)
+        if state.stop_reason not in ("complete", "insufficiency"):
+            _record_creator_stopped(record, state)
+            return
 
         geography_result, bet, test_card, investigation = await _post_pipeline_creator(
             record, state, client, request
@@ -405,6 +429,9 @@ async def _execute_creator_demo_run(record: Any) -> None:
 
         state = await AgentOrchestrator(FixturePipeline(client, fx)).run(state)
         sanitize_public_stop(state)
+        if state.stop_reason not in ("complete", "insufficiency"):
+            _record_creator_stopped(record, state)
+            return
 
         geography_result, bet, test_card, investigation = await _post_pipeline_creator(
             record, state, client, demo_request
@@ -814,6 +841,11 @@ def creator_synthesize(request: SynthesizeRequest) -> dict[str, Any]:
     record = run_store.get(request.run_id)
     if record is None:
         raise HTTPException(status_code=404, detail=f"run {request.run_id} not found")
+    if record.status.value == "failed":
+        raise HTTPException(
+            status_code=409,
+            detail="Failed runs cannot be synthesized; start from a completed or insufficient run.",
+        )
     result = record.result or {}
     investigation = result.get("investigation")
     if not investigation:

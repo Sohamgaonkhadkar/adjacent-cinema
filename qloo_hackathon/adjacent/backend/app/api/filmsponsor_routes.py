@@ -338,11 +338,20 @@ async def discover_campaign(
     ]
     themes = list(campaign["themes"])[:MAX_THEMES]
 
-    async with QlooClient(settings) as client:
-        resolver = EntityResolver(client, delay_s=0.0)
-        outcome = await discover_brand_evidence(
-            client=client, resolver=resolver, films=films, themes=themes
-        )
+    try:
+        async with QlooClient(settings) as client:
+            resolver = EntityResolver(client, delay_s=0.0)
+            outcome = await discover_brand_evidence(
+                client=client, resolver=resolver, films=films, themes=themes
+            )
+    except Exception as exc:
+        # Expected provider failures are represented by the discovery report.
+        # This boundary covers unexpected transport/response-schema errors so
+        # they cannot escape as an unclassified HTTP 500 or persist partial data.
+        raise HTTPException(
+            status_code=502,
+            detail="Live brand discovery could not complete. No results were stored.",
+        ) from exc
 
     report = outcome.report
     if report.get("halt_reason") is not None and not report.get("call_ids"):

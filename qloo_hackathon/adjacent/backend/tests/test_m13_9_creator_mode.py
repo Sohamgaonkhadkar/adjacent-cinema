@@ -14,7 +14,7 @@ from types import SimpleNamespace
 
 import pytest
 from app.api import creator_routes
-from app.api.routes import run_store
+from app.api.routes import RunStatus, run_store
 from app.main import app
 from fastapi.testclient import TestClient
 
@@ -225,3 +225,36 @@ class TestCreatorLiveRunHonesty:
         assert payload["result"] is None
         assert payload["trace"][0]["call_id"] == "synthetic-c001"
         assert "SENSITIVE-CANARY" not in response.text
+
+    def test_failed_run_with_stale_investigation_cannot_be_synthesized(self) -> None:
+        record = run_store.create(city="", programme=[])
+        record.status = RunStatus.FAILED
+        record.result = {"investigation": {"investigation_id": "stale"}}
+        response = TestClient(app).post(
+            "/creator/synthesize",
+            json={"run_id": record.run_id},
+        )
+        assert response.status_code == 409
+        assert "failed runs cannot be synthesized" in response.json()["detail"].lower()
+
+    def test_nonexception_orchestrator_failure_discards_partial_creator_result(self) -> None:
+        record = run_store.create(city="", programme=[])
+        record.result = {"data_status": "measured", "partial": "must not escape"}
+        record.state_json = '{"partial": true}'
+        state = SimpleNamespace(
+            stop_reason="error",
+            phase=SimpleNamespace(value="RANK"),
+            trace_rows=[{"tool": "rank_cohorts", "call_id": "safe-c001"}],
+        )
+
+        creator_routes._record_creator_stopped(record, state)
+
+        assert record.status.value == "failed"
+        assert record.result is None
+        assert record.state_json is None
+        assert record.stop_reason == "error"
+        assert record.current_phase == "RANK"
+        response = TestClient(app).get(f"/run/{record.run_id}")
+        assert response.status_code == 200
+        assert response.json()["status"] == "failed"
+        assert response.json()["result"] is None

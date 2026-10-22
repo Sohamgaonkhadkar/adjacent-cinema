@@ -191,6 +191,21 @@ class TestBrandDiscoverySemantics:
         insights_calls = [c for c in client.calls if c[0] == "insights"]
         assert insights_calls == []
 
+    def test_malformed_optional_tag_fields_are_ignored_safely(self):
+        client = _FakeClient(tags=[
+            SimpleNamespace(tag_id="urn:tag:bad", name=17),
+            SimpleNamespace(tag_id=None, name="superhero"),
+        ])
+        resolver = _FakeResolver([_resolved("The Dark Knight")])
+        outcome = asyncio.run(discover_brand_evidence(
+            client=client,
+            resolver=resolver,
+            films=[FilmInput(title="The Dark Knight", year=2008)],
+            themes=["superhero"],
+        ))
+        assert outcome.report["theme_canonicalization"][0]["canonical_tag"] is None
+        assert outcome.report["stages"]["theme_canonicalization"]["exact_unique_tags"] == 0
+
     def test_empty_results_are_an_empty_state_not_an_error(self):
         client = _FakeClient(tags=[], insights=[])
         resolver = _FakeResolver([_resolved("The Dark Knight")])
@@ -302,6 +317,36 @@ class TestCampaignLifecycle:
         assert "substituted" in response.json()["detail"].lower()
         detail = client.get(f"/filmsponsor/campaigns/{campaign['campaign_id']}").json()
         assert detail["discoveries"] == []  # nothing fabricated, nothing stored
+
+    def test_unexpected_discovery_typeerror_maps_to_sanitized_502(self, client: TestClient, monkeypatch):
+        from app.config import Settings
+        from app.qloo import client as qloo_client_module
+
+        campaign = _create_campaign(client)
+        monkeypatch.setattr(Settings, "from_env", classmethod(lambda cls: SimpleNamespace(has_api_key=True)))
+
+        class FakeQlooClient:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *_args):
+                return None
+
+        monkeypatch.setattr(qloo_client_module, "QlooClient", FakeQlooClient)
+
+        async def _malformed(**_kwargs):
+            raise TypeError("provider payload private canary")
+
+        monkeypatch.setattr(filmsponsor_routes, "discover_brand_evidence", _malformed)
+        response = client.post(
+            f"/filmsponsor/campaigns/{campaign['campaign_id']}/discover",
+            json={"request_id": "discover-malformed-0001"},
+        )
+        assert response.status_code == 502
+        assert "could not complete" in response.json()["detail"]
+        assert "private canary" not in response.text
+        detail = client.get(f"/filmsponsor/campaigns/{campaign['campaign_id']}").json()
+        assert detail["discoveries"] == []
 
     def test_discover_provider_failure_returns_502_and_stores_nothing(
         self, client: TestClient, monkeypatch
@@ -464,6 +509,37 @@ class TestCampaignLifecycle:
         assert [e["draft_id"] for e in excluded] == [unapproved["draft_id"]]
         assert excluded[0]["reason"] == "not_approved"
         assert package["interpretation_limits"]
+
+    def test_campaigns_for_same_film_with_distinct_request_ids_remain_separate(self, client: TestClient):
+        first = client.post("/filmsponsor/campaigns", json={
+            "request_id": "campaign-inception-01",
+            "film_title": "Inception",
+            "film_year": 2010,
+            "imdb_id": "tt1375666",
+            "goals": "Festival outreach",
+        }).json()["campaign"]
+        second = client.post("/filmsponsor/campaigns", json={
+            "request_id": "campaign-inception-02",
+            "film_title": "Inception",
+            "film_year": 2010,
+            "imdb_id": "tt1375666",
+            "goals": "Streaming launch",
+        }).json()["campaign"]
+        assert second["campaign_id"] != first["campaign_id"]
+        assert len(client.get("/filmsponsor/campaigns").json()["campaigns"]) == 2
+
+    def test_outreach_requires_explicit_statuses(self, client: TestClient):
+        campaign = _create_campaign(client)
+        response = client.post(
+            f"/filmsponsor/campaigns/{campaign['campaign_id']}/outreach",
+            json={
+                "request_id": "outreach-empty-status",
+                "contact_status": "",
+                "measurement_status": "",
+            },
+        )
+        assert response.status_code == 422
+        assert client.get(f"/filmsponsor/campaigns/{campaign['campaign_id']}").json()["outreach"] == []
 
     def test_outreach_records_zero_not_missing_and_supports_corrections(self, client: TestClient):
         campaign = _create_campaign(client)
