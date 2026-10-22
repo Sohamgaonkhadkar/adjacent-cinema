@@ -11,10 +11,10 @@ import os
 import time
 
 import pytest
-from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.main import app
+from fastapi.testclient import TestClient
 
 _HAS_KEY = bool((os.environ.get("QLOO_API_KEY") or "").strip())
 
