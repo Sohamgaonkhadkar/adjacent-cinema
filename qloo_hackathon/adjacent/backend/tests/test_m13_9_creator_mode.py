@@ -206,11 +206,11 @@ class TestCreatorExperimentJourney:
         self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
     ) -> None:
         from app import runner
-        from app.config import Settings
-        from app.qloo import mock as mock_module
-        from app.agent.state import AdjacentState, ProgrammeItem
         from app.agent.budget import Budget
+        from app.agent.state import AdjacentState, ProgrammeItem
+        from app.config import Settings
         from app.domain.ledger import ProvenanceLedger
+        from app.qloo import mock as mock_module
 
         record = run_store.create(city="", venue_name="Creator fixture failure", programme=[])
         record.result = {"data_status": "fixture", "partial": "must be cleared"}
