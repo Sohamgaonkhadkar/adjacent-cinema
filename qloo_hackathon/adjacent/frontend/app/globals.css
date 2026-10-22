@@ -886,6 +886,20 @@ button { color: inherit; background: none; border: 0; cursor: pointer; font-fami
   border-color: var(--rule);
 }
 
+.step-nav a.is-active {
+  color: var(--amber);
+  border-color: var(--amber);
+  background: rgba(194, 154, 110, 0.08);
+}
+
+#intake,
+#analysis,
+#fingerprint,
+#brief,
+#experiments {
+  scroll-margin-top: 64px;
+}
+
 .step-nav a.is-disabled {
   color: var(--quiet);
   opacity: 0.55;

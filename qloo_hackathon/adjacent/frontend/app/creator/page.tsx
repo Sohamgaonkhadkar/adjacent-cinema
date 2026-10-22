@@ -107,6 +107,26 @@ export default function CreatorPage() {
   const [backendHealth, setBackendHealth] = useState<BackendHealth | null>(null);
 
   const result: AdjacentRunResult | null = (run?.result as AdjacentRunResult | null) ?? null;
+  const [activeStage, setActiveStage] = useState("intake");
+  useEffect(() => {
+    const stageIds = ["intake", "analysis", "fingerprint", "brief", "experiments"];
+    const targets = stageIds
+      .map((id) => document.getElementById(id))
+      .filter((target): target is HTMLElement => target instanceof HTMLElement);
+    if (!targets.length || !("IntersectionObserver" in window)) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target instanceof HTMLElement) setActiveStage(visible.target.id);
+      },
+      { rootMargin: "-12% 0px -65% 0px", threshold: [0, 0.2, 0.5] },
+    );
+    targets.forEach((target) => observer.observe(target));
+    return () => observer.disconnect();
+  }, [result]);
   const traceRows: TraceRow[] = run?.trace ?? [];
   const insufficient = run?.status === "insufficient";
   const failed = run?.status === "failed";
@@ -382,23 +402,23 @@ export default function CreatorPage() {
 
       {/* ── Step navigation (M13.15): the creator journey at a glance ────── */}
       <nav className="step-nav" aria-label="Creator journey">
-        <a href="#intake">01 · Your film</a>
+        <a href="#intake" className={activeStage === "intake" ? "is-active" : undefined} aria-current={activeStage === "intake" ? "step" : undefined}>01 · Your film</a>
         {result ? (
-          <a href="#analysis">02 · Investigation</a>
+          <a href="#analysis" className={activeStage === "analysis" ? "is-active" : undefined} aria-current={activeStage === "analysis" ? "step" : undefined}>02 · Investigation</a>
         ) : (
           <span className="is-disabled" aria-disabled="true">02 · Investigation</span>
         )}
         {result?.cohorts ? (
-          <a href="#fingerprint">03 · Fingerprint</a>
+          <a href="#fingerprint" className={activeStage === "fingerprint" ? "is-active" : undefined} aria-current={activeStage === "fingerprint" ? "step" : undefined}>03 · Fingerprint</a>
         ) : (
           <span className="is-disabled" aria-disabled="true">03 · Fingerprint</span>
         )}
         {result?.investigation ? (
-          <a href="#brief">04 · Decision brief</a>
+          <a href="#brief" className={activeStage === "brief" ? "is-active" : undefined} aria-current={activeStage === "brief" ? "step" : undefined}>04 · Decision brief</a>
         ) : (
           <span className="is-disabled" aria-disabled="true">04 · Decision brief</span>
         )}
-        <a href="#experiments" className="is-soft">05 · Experiments</a>
+        <a href="#experiments" className={`is-soft${activeStage === "experiments" ? " is-active" : ""}`} aria-current={activeStage === "experiments" ? "step" : undefined}>05 · Experiments</a>
       </nav>
 
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "40px 24px 80px" }}>
