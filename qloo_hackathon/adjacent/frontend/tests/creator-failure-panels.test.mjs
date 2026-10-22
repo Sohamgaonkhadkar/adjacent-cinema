@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { formatTestCardText, safeTextFilename } from "../lib/testCardExport.ts";
+
+const cinemaSource = readFileSync(new URL("../app/cinema/page.tsx", import.meta.url), "utf8");
 
 const source = readFileSync(new URL("../app/creator/page.tsx", import.meta.url), "utf8");
 
@@ -25,4 +28,31 @@ test("creator mode supports end-to-end fixture mode submission and honest live m
   assert.match(source, /createCreatorRun\(payload\)/);
   assert.match(source, /FIXTURE DEMO MODE ACTIVE/);
   assert.match(source, /Analyse cultural position \(fixture demo\)/);
+});
+
+
+test("Creator and Cinema offer a plain-text test card export", () => {
+  assert.match(source, /className="test-card-export"/);
+  assert.match(source, /PLAIN TEXT · \\.TXT/);
+  assert.match(cinemaSource, /className="test-card-export"/);
+
+  const text = formatTestCardText({
+    title: "Cinema × Contemporary Classical",
+    context: "CINEMA: Sample House · London",
+    dataStatus: "fixture",
+    sections: [
+      { label: "Audience hypothesis", value: "A composer-led event may invite a new conversation." },
+      { label: "Empty field", value: "" },
+    ],
+    provenance: { call_id: "call-123", missing_value: null },
+    footerNote: "Illustrative fixture, not live data.",
+  });
+  assert.match(text, /EXPERIMENT TEST CARD/);
+  assert.match(text, /DATA STATUS: FIXTURE/);
+  assert.match(text, /AUDIENCE HYPOTHESIS/);
+  assert.match(text, /CALL ID: call-123/);
+  assert.match(text, /Illustrative fixture, not live data\\./);
+  assert.doesNotMatch(text, /\\{\\s*"title"|\\[object Object\\]/);
+  assert.equal(safeTextFilename("Cinema × Contemporary Classical"), "cinema-contemporary-classical");
+  assert.equal(safeTextFilename("!!!"), "adjacent-test-card");
 });

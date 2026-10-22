@@ -36,6 +36,7 @@ import type { AdjacentRunResult, InvestigationData, ProgrammeFilm, TraceRow } fr
 import AdjacencyGraph from "@/components/AdjacencyGraph";
 import { EvidenceReferences, EvidenceTraceLog } from "@/components/EvidenceTrace";
 import { watchRunWithRecovery } from "@/lib/runRecovery";
+import { downloadTextFile, formatTestCardText, safeTextFilename } from "@/lib/testCardExport";
 
 // Small helpers shared with the cinema page's visual language.
 const mono = { fontFamily: "var(--mono)" } as const;
@@ -449,6 +450,31 @@ export default function CreatorPage() {
   const progItems = result?.programme?.items ?? [];
   const themeInputs = result?.theme_inputs ?? [];
 
+  function handleExportTestCard() {
+    if (!card) return;
+    const filmName = (result?.film as { title?: string } | undefined)?.title ?? title ?? "Your film";
+    const text = formatTestCardText({
+      title: card.title,
+      context: "FILM: " + filmName,
+      dataStatus: card.data_status,
+      sections: [
+        { label: "Programme context", value: card.programme_context },
+        { label: "Audience hypothesis", value: card.audience_hypothesis },
+        { label: "Cultural bridge", value: card.cultural_bridge },
+        { label: "Geographic signal", value: card.geographic_signal },
+        { label: "Positioning direction", value: card.programming_direction },
+        { label: "Primary evidence", value: card.primary_evidence },
+        { label: "Runner-up direction", value: card.runner_up },
+        { label: "Observable success criteria", value: card.success_criteria },
+        { label: "Observation window", value: card.observation_window },
+        { label: "Falsification condition", value: card.falsification_condition },
+      ],
+      provenance: card.provenance,
+      footerNote: "Cultural affinity is not a forecast of views, attendance, revenue, or audience demand.",
+    });
+    downloadTextFile(safeTextFilename(card.title) + ".txt", text);
+  }
+
   return (
     <main style={{ background: "var(--void)", minHeight: "100vh", color: "var(--paper)" }}>
       <header style={{ padding: "20px 32px", borderBottom: "1px solid var(--rule)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
@@ -492,7 +518,7 @@ export default function CreatorPage() {
         <a href="#experiments" className={`is-soft${activeStage === "experiments" ? " is-active" : ""}`} aria-current={activeStage === "experiments" ? "step" : undefined}>05 · Experiments</a>
       </nav>
 
-      <div style={{ maxWidth: 980, margin: "0 auto", padding: "40px 24px 80px" }}>
+      <div className="creator-content-shell">
         {ytBanner && (
           <div className="evidence-panel" style={{ borderColor: "var(--amber)", marginBottom: 20 }}>
             <span className="mono-note">{ytBanner}</span>
@@ -776,9 +802,17 @@ export default function CreatorPage() {
 
             {result.cohorts && (
               <div className="evidence-panel" id="fingerprint">
-                <h3>Cultural fingerprint</h3>
+                <div className="fingerprint-heading">
+                  <div>
+                    <p className="eyebrow"><span>03</span> CULTURAL FIELD / {result.data_status === "fixture" ? "MOCK DATA" : result.data_status === "measured" ? "LIVE QLOO DATA" : "DATA STATUS UNKNOWN"}</p>
+                    <h3 id="fingerprint-title" className="fingerprint-title">A programme is<br /><em>a cultural fingerprint.</em></h3>
+                  </div>
+                  <p className="fingerprint-intro">
+                    Follow the relationships outward. The useful signal is not a recommendation; it is a cultural territory your film could choose to enter.
+                  </p>
+                </div>
                 <span className="mono-note" style={{ display: "block", marginBottom: 12 }}>
-                  ADJACENT CULTURAL WORLDS AROUND YOUR FILM · DRAWN ONLY FROM THIS RUN&rsquo;S QLOO EVIDENCE
+                  RANKED CULTURAL WORLDS AND RELATED ENTITIES · DRAWN ONLY FROM THIS RUN’S EVIDENCE
                 </span>
                 <AdjacencyGraph
                   filmTitle={(result.film as { title?: string } | undefined)?.title ?? title ?? "Your film"}
@@ -912,7 +946,7 @@ export default function CreatorPage() {
 
             {/* ── Test Card → experiment ─────────────────────────────── */}
             {card && (
-              <article style={{ padding: 28, border: "1px solid var(--rule)", borderRadius: 8, background: "rgba(232,226,213,0.02)" }}>
+              <article className="test-card-sheet" style={{ padding: 28, border: "1px solid var(--rule)", borderRadius: 8, background: "rgba(232,226,213,0.02)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
                   <span className="micro-label">EXPERIMENT · TEST CARD</span>
                   <span className="mono-note">DATA STATUS: {String(card.data_status ?? "unknown").toUpperCase()}</span>
@@ -937,7 +971,7 @@ export default function CreatorPage() {
                   {card.falsification_condition && (
                     <div style={{ padding: "12px 14px", background: "rgba(138,80,72,0.1)", border: "1px solid rgba(138,80,72,0.25)", borderRadius: 6 }}>
                       <span className="micro-label" style={{ color: "#c97a6a", marginBottom: 6, display: "block" }}>&#9888; FALSIFICATION CONDITION</span>
-                      <p style={{ color: "#d4a89e", fontSize: 12, lineHeight: 1.7, margin: 0 }}>{card.falsification_condition}</p>
+                      <p className="test-card-caution" style={{ color: "#d4a89e", fontSize: 12, lineHeight: 1.7, margin: 0 }}>{card.falsification_condition}</p>
                     </div>
                   )}
                   <div>
@@ -953,8 +987,11 @@ export default function CreatorPage() {
                     </div>
                   </div>
                 </div>
-                <div style={{ marginTop: 24, paddingTop: 18, borderTop: "1px solid var(--rule)", display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-                  <button onClick={handleSaveExperiment} className="intake-submit" disabled={backendHealth?.public_demo}>
+                <div className="test-card-footer-actions">
+                  <button type="button" className="test-card-export" onClick={handleExportTestCard}>
+                    <span>Export test card</span><small>PLAIN TEXT · .TXT</small><span aria-hidden="true">↓</span>
+                  </button>
+                  <button onClick={handleSaveExperiment className="intake-submit" disabled={backendHealth?.public_demo}>
                     {backendHealth?.public_demo ? "Saving disabled in public demo" : "Save as planned experiment"}
                   </button>
                   {saveState && <span className="mono-note" role="status" aria-live="polite">{saveState}</span>}
