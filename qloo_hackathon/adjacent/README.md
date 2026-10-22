@@ -5,9 +5,9 @@ start at the [root README](../../README.md). This guide focuses on running and
 validating the application. It reflects the checked implementation; there is
 **no verified public deployment URL**.
 
-The single-host Docker Compose deployment path is documented in
-[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md); it needs a real host/domain and is
-not a hosted deployment by itself.
+The Docker Compose and Render Blueprint deployment paths are documented in
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md); either requires a connected host or
+hosting account and is not a hosted deployment by itself.
 
 ## Prerequisites and repository layout
 

@@ -5,6 +5,33 @@ on one host. Caddy terminates HTTPS; the FastAPI backend has no public host
 port; Next.js proxies same-origin `/api/*` requests to the private backend
 network. The SQLite workspace uses a persistent Docker volume.
 
+## Render Blueprint option
+
+The repository also contains a root-level `render.yaml` for a managed-host
+deployment: a public Next.js frontend plus a private FastAPI service, both in
+the same region. The backend has one worker and a persistent disk for SQLite;
+the browser reaches it only through the same-origin Next.js proxy.
+
+1. Connect this GitHub repository in Render and create a Blueprint from
+   `render.yaml`. Select the branch containing the changes you want to deploy;
+   the current implementation is on the open PR branch until it is merged.
+2. When prompted for `ADJACENT_FILMSPONSOR_GUEST_ORIGINS`, enter the exact
+   frontend origin assigned by Render (for example, its actual
+   `https://…onrender.com` URL). Do not use a wildcard or the backend origin.
+3. Leave `QLOO_API_KEY` unset for the first public rollout. The fixture
+   experiences and pages work without it. Do not add the key to a public
+   service until an upstream quota/access policy has been installed and live
+   spend is explicitly approved.
+4. Wait for the frontend and private API health checks, then open all four
+   routes: `/`, `/creator`, `/cinema`, and `/creator/sponsor`. Check
+   `/api/health` through the frontend URL and test a fixture run in a browser.
+5. Review the selected Render compute plans and disk charges before confirming
+   the Blueprint; this repository cannot approve billing for your account.
+
+The Node.js build uses Node 22. The Render service-to-service origin is read at
+build time and normalized in `frontend/next.config.ts`; it is not exposed to
+browser JavaScript.
+
 ## Important boundaries
 
 - This configuration is a **public fixture/demo profile**, not multi-user
