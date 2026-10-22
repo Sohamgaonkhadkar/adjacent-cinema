@@ -419,6 +419,9 @@ async def _execute_creator_demo_run(record: Any) -> None:
     from .routes import RunEvent, RunStatus
 
     record.status = RunStatus.RUNNING
+    record.current_phase = "INIT"
+    record.result = None
+    record.state_json = None
     record.emit(RunEvent("trace", {
         "phase": "INIT",
         "message": f"Creator FIXTURE demo ({DEMO_FIXTURE}) — offline, no Qloo calls",
