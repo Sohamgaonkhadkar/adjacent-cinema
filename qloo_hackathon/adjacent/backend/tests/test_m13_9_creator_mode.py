@@ -391,6 +391,58 @@ class TestCreatorLiveRunHonesty:
         assert "QLOO_API_KEY not configured" in (final["error"] or "")
         assert final["result"] is None  # never a fabricated payload
 
+    def test_fixture_mode_form_submission_without_api_key_via_demo_endpoint(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Form submission to /creator/run/demo without an API key completes cleanly with fixture data."""
+        monkeypatch.delenv("QLOO_API_KEY", raising=False)
+        client = TestClient(app)
+        created = client.post("/creator/run/demo", json={
+            "title": "Custom Indie Film",
+            "logline": "A late-night journey across neon bridges.",
+            "genre": "sci-fi",
+            "language": "English",
+            "themes": ["isolation", "night workers"],
+            "references": [{"title": "Chungking Express", "year": 1994}],
+            "release_goal": "Film festival premiere",
+            "city": "Portland, Oregon",
+        })
+        assert created.status_code == 200
+        final = _wait(client, created.json()["run_id"])
+        assert final["status"] == "completed"
+        result = final["result"]
+        assert result["mode"] == "creator"
+        assert result["data_status"] == "fixture"
+        assert result["film"]["title"] == "Custom Indie Film"
+        assert result["film"]["logline"] == "A late-night journey across neon bridges."
+        assert result["film"]["release_goal"] == "Film festival premiere"
+        assert result["programme_bet"]["data_status"] == "fixture"
+        assert result["test_card"]["data_status"] == "fixture"
+        assert result["investigation"]["data_status"] == "fixture"
+        assert "Custom Indie Film" in result["test_card"]["title"]
+
+    def test_fixture_mode_form_submission_without_api_key_via_creator_run_demo_query(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Form submission to /creator/run?demo=fixture without an API key completes cleanly with fixture data."""
+        monkeypatch.delenv("QLOO_API_KEY", raising=False)
+        client = TestClient(app)
+        created = client.post("/creator/run?demo=fixture", json={
+            "title": "Query Param Film",
+            "logline": "A story tested via query param.",
+            "themes": ["mystery"],
+            "references": [{"title": "Blade Runner", "year": 1982}],
+        })
+        assert created.status_code == 200
+        final = _wait(client, created.json()["run_id"])
+        assert final["status"] == "completed"
+        result = final["result"]
+        assert result["mode"] == "creator"
+        assert result["data_status"] == "fixture"
+        assert result["film"]["title"] == "Query Param Film"
+        assert result["test_card"]["data_status"] == "fixture"
+        assert result["investigation"]["data_status"] == "fixture"
+
     def test_empty_seeds_rejected_422(self) -> None:
         client = TestClient(app)
         response = client.post("/creator/run", json={"title": "Untitled"})

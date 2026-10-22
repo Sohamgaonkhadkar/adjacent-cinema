@@ -18,3 +18,11 @@ test("failed Creator runs keep investigation, fingerprint, and decision-brief st
   assert.match(source, /The decision brief depends on the structured investigation above/);
   assert.match(source, /no substitute or fixture fingerprint is shown/);
 });
+
+test("creator mode supports end-to-end fixture mode submission and honest live mode error", () => {
+  assert.match(source, /isFixtureMode/);
+  assert.match(source, /createCreatorDemoRun\(payload\)/);
+  assert.match(source, /createCreatorRun\(payload\)/);
+  assert.match(source, /FIXTURE DEMO MODE ACTIVE/);
+  assert.match(source, /Analyse cultural position \(fixture demo\)/);
+});

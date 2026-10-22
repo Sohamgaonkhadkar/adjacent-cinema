@@ -277,6 +277,7 @@ export interface CreatorRunRequest {
   references?: { title: string; year?: number | null }[];
   release_goal?: string;
   city?: string;
+  demo?: string | boolean;
 }
 
 export interface ExperimentRecord {
@@ -417,12 +418,19 @@ async function postJson<T>(path: string, body: unknown, label: string): Promise<
   return res.json();
 }
 
-export function createCreatorRun(req: CreatorRunRequest): Promise<RunResponse> {
-  return postJson<RunResponse>("/creator/run", req, "Creator analysis");
+export function createCreatorRun(
+  req: CreatorRunRequest,
+  options?: { demo?: boolean }
+): Promise<RunResponse> {
+  const isDemo = options?.demo || req.demo === "fixture" || req.demo === true;
+  const path = isDemo ? "/creator/run?demo=fixture" : "/creator/run";
+  return postJson<RunResponse>(path, req, isDemo ? "Creator fixture demo" : "Creator analysis");
 }
 
-export function createCreatorDemoRun(): Promise<RunResponse> {
-  return postJson<RunResponse>("/creator/run/demo", {}, "Creator fixture demo");
+export function createCreatorDemoRun(
+  req?: Partial<CreatorRunRequest>
+): Promise<RunResponse> {
+  return postJson<RunResponse>("/creator/run/demo", req ?? {}, "Creator fixture demo");
 }
 
 export function saveExperiment(

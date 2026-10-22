@@ -30,6 +30,7 @@ import {
   type SSEEvent,
   type YouTubeStatus,
   type YouTubeVideo,
+  type CreatorRunRequest,
 } from "@/lib/api";
 import type { AdjacentRunResult, InvestigationData, ProgrammeFilm, TraceRow } from "@/types/adjacent";
 import AdjacencyGraph from "@/components/AdjacencyGraph";
@@ -78,6 +79,7 @@ export default function CreatorPage() {
   const [releaseGoal, setReleaseGoal] = useState("");
   const [city, setCity] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+  const [isFixtureMode, setIsFixtureMode] = useState<boolean>(false);
 
   // ── run state ────────────────────────────────────────────────────────────
   const [runId, setRunId] = useState<string | null>(null);
@@ -212,15 +214,41 @@ export default function CreatorPage() {
     });
   }, []);
 
-  const startDemoRun = useCallback(() => {
+  const exitFixtureMode = useCallback(() => {
+    setIsFixtureMode(false);
+    setRequestMode(null);
+    const params = new URLSearchParams(window.location.search);
+    params.delete("demo");
+    const query = params.toString();
+    window.history.replaceState(
+      {},
+      "",
+      `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`
+    );
+  }, []);
+
+  const startDemoRun = useCallback((customPayload?: CreatorRunRequest) => {
     cancelRunWatch();
     setError(null);
     setRun(null);
     setSaveState(null);
     setFormError(null);
+    setIsFixtureMode(true);
     setRequestMode("fixture");
     setAnalysing(true);
-    createCreatorDemoRun()
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("demo") !== "fixture") {
+      params.set("demo", "fixture");
+      const query = params.toString();
+      window.history.replaceState(
+        {},
+        "",
+        `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`
+      );
+    }
+
+    createCreatorDemoRun(customPayload)
       .then((r) => watchRun(r.run_id))
       .catch((err) => {
         setError(err instanceof Error ? err.message : "Failed to start the fixture demo");
@@ -237,10 +265,9 @@ export default function CreatorPage() {
     else if (yt === "denied") setYtBanner("Authorization was declined — no data was accessed. You can reconnect any time.");
     else if (yt === "error") setYtBanner(`YouTube authorization failed (${params.get("reason") ?? "unknown reason"}). No connection was stored.`);
 
-    if (yt || startFixture) {
+    if (yt) {
       params.delete("yt");
-      params.delete("demo");
-      if (yt) params.delete("reason");
+      params.delete("reason");
       const query = params.toString();
       window.history.replaceState(
         {},
@@ -248,7 +275,23 @@ export default function CreatorPage() {
         `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`
       );
     }
-    if (startFixture) startDemoRun();
+
+    if (startFixture) {
+      setIsFixtureMode(true);
+      setRequestMode("fixture");
+      setTitle((t) => t || "Sample Short — 'Neon Harbour'");
+      setLogline((l) => l || "A dockside night-shift romance told in three silent vignettes.");
+      setGenre((g) => g || "drama");
+      setLanguage((lang) => lang || "English");
+      setThemesText((th) => th || "isolation, night workers, coastal towns");
+      setReferenceRows((refs) => (refs.some((r) => r.title.trim()) ? refs : [
+        { title: "Chungking Express", year: "1994" },
+        { title: "In the Mood for Love", year: "2000" },
+      ]));
+      setReleaseGoal((rg) => rg || "YouTube premiere after festival window");
+      setCity((c) => c || "Portland, Oregon");
+      startDemoRun();
+    }
   }, [startDemoRun]);
 
   function handleAnalyse() {
@@ -287,14 +330,15 @@ export default function CreatorPage() {
       setFormError("Each reference title must be 160 characters or fewer.");
       return;
     }
-    if (refs.length === 0 && themes.length === 0) {
+    if (!isFixtureMode && refs.length === 0 && themes.length === 0) {
       setFormError("Add at least one reference work or theme — the analysis needs cultural seeds.");
       return;
     }
     setFormError(null);
-    setRequestMode("live");
+    setRequestMode(isFixtureMode ? "fixture" : "live");
     setAnalysing(true);
-    createCreatorRun({
+
+    const payload: CreatorRunRequest = {
       title: title.trim(),
       logline: logline.trim(),
       genre: genre.trim(),
@@ -303,7 +347,13 @@ export default function CreatorPage() {
       references: refs,
       release_goal: releaseGoal.trim(),
       city: city.trim(),
-    })
+    };
+
+    const runCall = isFixtureMode
+      ? createCreatorDemoRun(payload)
+      : createCreatorRun(payload);
+
+    runCall
       .then((r) => watchRun(r.run_id))
       .catch((err) => {
         setError(err instanceof Error ? err.message : "Failed to start analysis");
@@ -463,6 +513,25 @@ export default function CreatorPage() {
         )}
         {/* ── 1. Film intake ─────────────────────────────────────────── */}
         <div className="evidence-panel" id="intake">
+          {isFixtureMode && (
+            <div
+              className="evidence-panel"
+              role="status"
+              style={{
+                borderColor: "#c29a6e",
+                background: "rgba(194,154,110,0.08)",
+                marginBottom: 16,
+                padding: "10px 14px",
+              }}
+            >
+              <strong className="mono-note" style={{ display: "block", color: "#c29a6e", letterSpacing: "0.08em" }}>
+                FIXTURE DEMO MODE ACTIVE · OFFLINE DETERMINISTIC ANALYSIS
+              </strong>
+              <p style={{ color: "#d5cfc5", fontSize: 12, lineHeight: 1.6, margin: "6px 0 0" }}>
+                Form submissions run against labelled fixture evidence without calling upstream Qloo. Results are never presented as live data.
+              </p>
+            </div>
+          )}
           <h3>Your film</h3>
           <span className="mono-note" style={{ display: "block", marginBottom: 16 }}>
             ONLY THE TITLE IS REQUIRED · EVERYTHING ELSE STRENGTHENS THE EVIDENCE
@@ -523,18 +592,31 @@ export default function CreatorPage() {
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <button
                 onClick={handleAnalyse}
-                disabled={analysing || Boolean(backendHealth?.public_demo && !backendHealth.live_creator_available)}
+                disabled={analysing || Boolean(!isFixtureMode && backendHealth?.public_demo && !backendHealth.live_creator_available)}
                 className="intake-submit"
               >
                 {analysing
                   ? "Analysing…"
-                  : backendHealth?.public_demo && !backendHealth.live_creator_available
-                    ? "Live Creator disabled in public demo"
-                    : "Analyse cultural position"}
+                  : isFixtureMode
+                    ? "Analyse cultural position (fixture demo)"
+                    : backendHealth?.public_demo && !backendHealth.live_creator_available
+                      ? "Live Creator disabled in public demo"
+                      : "Analyse cultural position"}
               </button>
-              <button onClick={startDemoRun} disabled={analysing} className="intake-sample-btn">
-                View labelled fixture demo (offline)
-              </button>
+              {isFixtureMode ? (
+                <button
+                  type="button"
+                  onClick={exitFixtureMode}
+                  disabled={analysing}
+                  className="intake-sample-btn"
+                >
+                  Switch to live analysis
+                </button>
+              ) : (
+                <button onClick={() => startDemoRun()} disabled={analysing} className="intake-sample-btn">
+                  View labelled fixture demo (offline)
+                </button>
+              )}
             </div>
             {error && (
               <div className="intake-form-error" role="alert" style={{ padding: 12, border: "1px solid rgba(138,80,72,0.4)", borderRadius: 6 }}>

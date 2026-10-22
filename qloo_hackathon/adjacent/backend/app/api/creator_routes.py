@@ -107,6 +107,7 @@ class CreatorRunRequest(BaseModel):
     release_goal: str = Field(default="", max_length=300)
     #: Optional release-location context; geography is only analysed when set.
     city: str = Field(default="", max_length=120)
+    demo: str | bool | None = Field(default=None)
 
     def seeds(self) -> list[dict[str, Any]]:
         """Return comparable film references only; theme text is resolved as Qloo tags."""
@@ -165,13 +166,62 @@ class EvaluationRequest(BaseModel):
     supersedes_id: str | None = Field(default=None, max_length=64)
 
 
+class CreatorDemoRunRequest(BaseModel):
+    title: str | None = Field(default=None, max_length=160)
+    logline: str = Field(default="", max_length=2000)
+    genre: str = Field(default="", max_length=120)
+    language: str = Field(default="", max_length=80)
+    themes: list[Annotated[str, Field(min_length=1, max_length=120)]] = Field(
+        default_factory=list, max_length=5
+    )
+    references: list[ReferenceInput] = Field(default_factory=list, max_length=5)
+    release_goal: str = Field(default="", max_length=300)
+    city: str = Field(default="", max_length=120)
+    demo: str | bool | None = Field(default=None)
+
+
 # ---------------------------------------------------------------------------
 # POST /creator/run — live creator analysis (fails honestly without a key)
 # ---------------------------------------------------------------------------
 
 
 @router.post("/creator/run", response_model=RunResponse)
-async def create_creator_run(request: CreatorRunRequest, http_request: Request) -> RunResponse:
+async def create_creator_run(
+    request: CreatorRunRequest,
+    http_request: Request,
+    demo: str | None = None,
+) -> RunResponse:
+    is_fixture = (
+        demo == "fixture"
+        or getattr(request, "demo", None) == "fixture"
+        or getattr(request, "demo", None) is True
+    )
+    if is_fixture:
+        permit = acquire_public_demo_run(http_request, live=False)
+        try:
+            prune_public_run_cache(max_records=99)
+            record = run_store.create(
+                city=request.city.strip(),
+                venue_name=f"Creator Fixture Demo: {request.title}",
+                programme=[],
+            )
+            record.creator_context = request.model_dump()
+            _tasks: set[asyncio.Task[None]] = set()
+            task = asyncio.create_task(_execute_creator_demo_run(record, request=request))
+            _tasks.add(task)
+
+            def finish_fixture(completed: asyncio.Task[None]) -> None:
+                _tasks.discard(completed)
+                if permit is not None:
+                    permit.release()
+
+            task.add_done_callback(finish_fixture)
+            return _record_to_response(record)
+        except Exception:
+            if permit is not None:
+                permit.release()
+            raise
+
     seeds = request.seeds()
     themes = [theme.strip() for theme in request.themes if theme.strip()]
     if not seeds and not themes:
@@ -208,18 +258,42 @@ async def create_creator_run(request: CreatorRunRequest, http_request: Request) 
 
 
 @router.post("/creator/run/demo", response_model=RunResponse)
-async def create_creator_demo_run(http_request: Request) -> RunResponse:
+async def create_creator_demo_run(
+    http_request: Request,
+    request: CreatorDemoRunRequest | None = None,
+) -> RunResponse:
     """Fixture-backed creator demo — labelled `fixture` in every artefact."""
     permit = acquire_public_demo_run(http_request, live=False)
     try:
         prune_public_run_cache(max_records=99)
+        run_req: CreatorRunRequest | None = None
+        if request is not None and request.title:
+            run_req = CreatorRunRequest(
+                title=request.title,
+                logline=request.logline,
+                genre=request.genre,
+                language=request.language,
+                themes=request.themes,
+                references=request.references,
+                release_goal=request.release_goal,
+                city=request.city,
+                demo="fixture",
+            )
+        venue = (
+            f"Creator Fixture Demo: {run_req.title}"
+            if run_req and run_req.title
+            else "Creator Fixture Demo (offline)"
+        )
+        city = run_req.city.strip() if run_req else ""
         record = run_store.create(
-            city="",
-            venue_name="Creator Fixture Demo (offline)",
+            city=city,
+            venue_name=venue,
             programme=[],
         )
+        if run_req is not None:
+            record.creator_context = run_req.model_dump()
         _tasks: set[asyncio.Task[None]] = set()
-        task = asyncio.create_task(_execute_creator_demo_run(record))
+        task = asyncio.create_task(_execute_creator_demo_run(record, request=run_req))
         _tasks.add(task)
 
         def finish_fixture(completed: asyncio.Task[None]) -> None:
@@ -404,7 +478,9 @@ async def _execute_creator_run(record: Any, request: CreatorRunRequest) -> None:
                 await client.aclose()
 
 
-async def _execute_creator_demo_run(record: Any) -> None:
+async def _execute_creator_demo_run(
+    record: Any, request: CreatorRunRequest | None = None
+) -> None:
     from ..agent.budget import Budget
     from ..agent.orchestrator import AgentOrchestrator
     from ..agent.state import AdjacentState
@@ -436,7 +512,7 @@ async def _execute_creator_demo_run(record: Any) -> None:
             {"title": str(p.get("title", "(unnamed)")), "year": p.get("year"), "imdb_id": p.get("imdb_id")}
             for p in fx.programme
         ]
-        demo_request = CreatorRunRequest(
+        demo_request = request or CreatorRunRequest(
             title="Sample Short — 'Neon Harbour'",
             logline="A dockside night-shift romance told in three silent vignettes.",
             genre="drama",
@@ -444,6 +520,10 @@ async def _execute_creator_demo_run(record: Any) -> None:
             themes=[],  # Fixture demo does not claim to resolve creator-entered themes.
             release_goal="YouTube premiere after festival window",
         )
+        if request is not None:
+            record.creator_context = request.model_dump()
+            if request.city.strip():
+                record.city = request.city.strip()
 
         state = AdjacentState(
             run_id=record.run_id,

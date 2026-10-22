@@ -369,25 +369,30 @@ class PublicDemoGuard:
             await self.app(scope, receive, send)
             return
 
-        if method == "POST" and path in self._FIXTURE_POSTS:
+        if method == "POST" and path == "/run/demo":
             body_limit = 1024
+        elif method == "POST" and path == "/creator/run/demo":
+            body_limit = 16_384
         elif _guest_filmsponsor_request(method, path):
             # Strictly opt-in. Route dependencies enforce the server-issued
             # session, ownership, CSRF token, and allowed Origin for every call.
             body_limit = 16_384
         elif method == "POST" and path == "/creator/run":
-            if not public_live_requested():
-                await JSONResponse(
-                    {"detail": "Live Creator runs are disabled in this public demo."},
-                    status_code=403,
-                )(scope, receive, send)
-                return
-            if not qloo_key_configured():
-                await JSONResponse(
-                    {"detail": "Live Qloo is not configured for this public demo."},
-                    status_code=503,
-                )(scope, receive, send)
-                return
+            query = bytes(scope.get("query_string") or b"")
+            is_fixture_demo = b"demo=fixture" in query
+            if not is_fixture_demo:
+                if not public_live_requested():
+                    await JSONResponse(
+                        {"detail": "Live Creator runs are disabled in this public demo."},
+                        status_code=403,
+                    )(scope, receive, send)
+                    return
+                if not qloo_key_configured():
+                    await JSONResponse(
+                        {"detail": "Live Qloo is not configured for this public demo."},
+                        status_code=503,
+                    )(scope, receive, send)
+                    return
             body_limit = 16_384
         else:
             await JSONResponse(
