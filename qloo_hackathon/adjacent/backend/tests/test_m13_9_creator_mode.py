@@ -485,3 +485,90 @@ class TestCreatorLiveRunHonesty:
         assert response.status_code == 200
         assert response.json()["status"] == "failed"
         assert response.json()["result"] is None
+
+
+class TestCreatorThemeInputs:
+    def test_themes_are_not_converted_into_film_reference_seeds(self) -> None:
+        request = creator_routes.CreatorRunRequest(
+            title="Test Film",
+            themes=["isolation", "night workers"],
+            references=[
+                creator_routes.ReferenceInput(title="Nightcrawler", year=2014),
+                creator_routes.ReferenceInput(title="After Hours", year=1985),
+            ],
+        )
+
+        assert request.seeds() == [
+            {"title": "Nightcrawler", "year": 2014, "imdb_id": None},
+            {"title": "After Hours", "year": 1985, "imdb_id": None},
+        ]
+
+    def test_only_unique_exact_theme_tags_enter_taste_and_expansion_signals(self) -> None:
+        from app.agent.budget import Budget
+        from app.agent.state import AdjacentState
+        from app.live_runner import LivePipeline
+        from app.runner import _expand_candidates, _taste_profile
+
+        class FakeClient:
+            def __init__(self):
+                self.recorder = SimpleNamespace(rows=[])
+                self.tag_queries = []
+                self.insight_calls = []
+
+            async def tags(self, *, filter_query, **_kwargs):
+                self.tag_queries.append(filter_query)
+                self.recorder.rows.append(object())
+                if filter_query == "Thriller":
+                    results = [
+                        SimpleNamespace(tag_id="qloo-thriller", name="Thriller"),
+                        SimpleNamespace(tag_id="qloo-thriller-films", name="Thriller Films"),
+                    ]
+                else:
+                    # A close-looking result is not accepted as an exact tag match.
+                    results = [SimpleNamespace(tag_id="qloo-night-worker", name="Night Worker")]
+                return SimpleNamespace(
+                    call_id=f"theme-call-{len(self.tag_queries)}",
+                    results=results,
+                )
+
+            async def insights(self, **kwargs):
+                self.insight_calls.append(kwargs)
+                if kwargs["filter_type"] == "urn:tag":
+                    results = [SimpleNamespace(
+                        tag_id="qloo-profile-tag",
+                        name="Urban isolation",
+                        affinity=0.72,
+                        band="high",
+                    )]
+                    return SimpleNamespace(call_id="taste-call", results=results)
+                return SimpleNamespace(call_id="expand-call", results=[])
+
+        class EmptyResolver:
+            async def resolve_programme(self, programme):
+                assert programme == []
+                return []
+
+        client = FakeClient()
+        state = AdjacentState(
+            run_id="theme-signal-test",
+            data_status="measured",
+            theme_queries=["Thriller", "Night workers"],
+            programme=[],
+            budget=Budget(),
+        )
+        pipeline = LivePipeline(client, EmptyResolver(), [])
+        asyncio.run(pipeline.resolve_programme(state, state.budget))
+
+        assert state.theme_tag_ids == ["qloo-thriller"]
+        assert [row["status"] for row in state.theme_resolution] == ["matched", "unresolved"]
+        assert state.resolution_verdict is not None and state.resolution_verdict.sufficient
+
+        asyncio.run(_taste_profile(client, state, state.budget))
+        assert client.insight_calls[0]["signal_interests_entities"] is None
+        assert client.insight_calls[0]["signal_interests_tags"] == ["qloo-thriller"]
+
+        asyncio.run(_expand_candidates(
+            client, state, state.budget, domains=("urn:entity:movie",)
+        ))
+        assert client.insight_calls[1]["signal_interests_entities"] is None
+        assert client.insight_calls[1]["signal_interests_tags"] == ["qloo-thriller"]
