@@ -208,6 +208,9 @@ class TestCreatorExperimentJourney:
         from app import runner
         from app.config import Settings
         from app.qloo import mock as mock_module
+        from app.agent.state import AdjacentState, ProgrammeItem
+        from app.agent.budget import Budget
+        from app.domain.ledger import ProvenanceLedger
 
         record = run_store.create(city="", venue_name="Creator fixture failure", programme=[])
         record.result = {"data_status": "fixture", "partial": "must be cleared"}
@@ -233,12 +236,35 @@ class TestCreatorExperimentJourney:
         monkeypatch.setattr(mock_module, "MockQlooClient", lambda *_args, **_kwargs: fake_client)
         monkeypatch.setattr(runner, "resolve_fixture_path", lambda *_args, **_kwargs: SimpleNamespace(stem="synthetic"))
         monkeypatch.setattr(runner, "programme_items", lambda _programme: [])
-        # The orchestrator returns state, then creator post-processing fails.
-        state = SimpleNamespace(
-            stop_reason="complete",
-            phase=SimpleNamespace(value="DECIDE"),
-            trace_rows=[{"call_id": "fixture-call-safe", "tool": "fixture_test"}],
+        # The real state shape passes through orchestration and public-stop
+        # sanitization, then post-processing fails after state/trace exist.
+        state = AdjacentState(
+            run_id=record.run_id,
+            fixture_name="synthetic",
+            fixture_path="synthetic.json",
+            scenario="synthetic",
+            fixture_notice="fixture",
+            data_status="fixture",
+            description="safe synthetic fixture",
+            programme=[ProgrammeItem(
+                title="Synthetic Seed", year=2000, imdb_id=None, declared_entity_id=None
+            )],
+            budget=Budget(),
         )
+        state.ledger = ProvenanceLedger(recorder=SimpleNamespace(rows=[]), data_status="fixture")
+        state.stop = SimpleNamespace(
+            reason=SimpleNamespace(value="complete"),
+            message="synthetic complete",
+            detail_code=None,
+            stats={},
+        )
+        state.status = SimpleNamespace(value="finished")
+        # Add one deterministic safe trace row to the actual recorder shape.
+        state.ledger.recorder.rows.append(SimpleNamespace(
+            started_at="2026-01-01T00:00:00+00:00",
+            seq=1,
+            model_dump=lambda: {"call_id": "fixture-call-safe", "tool": "fixture_test"},
+        ))
         class FakeOrchestrator:
             def __init__(self, *_args, **_kwargs):
                 pass
@@ -249,8 +275,6 @@ class TestCreatorExperimentJourney:
         async def fail_post(*_args, **_kwargs):
             raise TypeError("SENSITIVE-FIXTURE-CANARY")
         monkeypatch.setattr(creator_routes, "_post_pipeline_creator", fail_post)
-        from app.domain import ledger as ledger_module
-        monkeypatch.setattr(ledger_module, "ProvenanceLedger", lambda **_kwargs: SimpleNamespace())
         caplog.set_level(logging.ERROR, logger=creator_routes.__name__)
 
         asyncio.run(creator_routes._execute_creator_demo_run(record))
