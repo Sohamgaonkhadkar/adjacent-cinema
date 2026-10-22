@@ -13,7 +13,7 @@ COPY backend ./backend
 RUN python -m pip install --upgrade pip \
     && python -m pip install --no-cache-dir . \
     && groupadd --gid 10001 adjacent \
-    && useradd --uid 10001 --create-home --shell /usr/sbin/nologin adjacent \
+    && useradd --uid 10001 --gid adjacent --create-home --shell /usr/sbin/nologin adjacent \
     && mkdir -p /data \
     && chown adjacent:adjacent /data
 
