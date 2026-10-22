@@ -14,7 +14,10 @@ adding auth is a separate, explicit decision (see M13.9 verification report).
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
+import traceback
+from contextlib import suppress
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -41,12 +44,15 @@ from ..public_demo import (
     acquire_public_demo_run,
     prune_public_run_cache,
     public_demo_enabled,
+    safe_public_trace,
     safe_run_error,
     sanitize_public_stop,
 )
 from .routes import (
     DEMO_FIXTURE,
+    RunEvent,
     RunResponse,
+    RunStatus,
     _build_result,
     _emit_state_events,
     _record_to_response,
@@ -54,6 +60,7 @@ from .routes import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 #: Runtime experiment data — NOT committed (see .gitignore). Tests override
 #: via ADJACENT_EXPERIMENTS_DB.
@@ -100,20 +107,15 @@ class CreatorRunRequest(BaseModel):
     release_goal: str = Field(default="", max_length=300)
     #: Optional release-location context; geography is only analysed when set.
     city: str = Field(default="", max_length=120)
+    demo: str | bool | None = Field(default=None)
 
     def seeds(self) -> list[dict[str, Any]]:
-        """Analysis seeds = comparable works + themes, in user order."""
-        items: list[dict[str, Any]] = [
+        """Return comparable film references only; theme text is resolved as Qloo tags."""
+        return [
             {"title": r.title.strip(), "year": r.year, "imdb_id": None}
             for r in self.references
             if r.title.strip()
         ]
-        items += [
-            {"title": t.strip(), "year": None, "imdb_id": None}
-            for t in self.themes
-            if t.strip()
-        ]
-        return items
 
 
 class SaveExperimentRequest(BaseModel):
@@ -164,15 +166,65 @@ class EvaluationRequest(BaseModel):
     supersedes_id: str | None = Field(default=None, max_length=64)
 
 
+class CreatorDemoRunRequest(BaseModel):
+    title: str | None = Field(default=None, max_length=160)
+    logline: str = Field(default="", max_length=2000)
+    genre: str = Field(default="", max_length=120)
+    language: str = Field(default="", max_length=80)
+    themes: list[Annotated[str, Field(min_length=1, max_length=120)]] = Field(
+        default_factory=list, max_length=5
+    )
+    references: list[ReferenceInput] = Field(default_factory=list, max_length=5)
+    release_goal: str = Field(default="", max_length=300)
+    city: str = Field(default="", max_length=120)
+    demo: str | bool | None = Field(default=None)
+
+
 # ---------------------------------------------------------------------------
 # POST /creator/run — live creator analysis (fails honestly without a key)
 # ---------------------------------------------------------------------------
 
 
 @router.post("/creator/run", response_model=RunResponse)
-async def create_creator_run(request: CreatorRunRequest, http_request: Request) -> RunResponse:
+async def create_creator_run(
+    request: CreatorRunRequest,
+    http_request: Request,
+    demo: str | None = None,
+) -> RunResponse:
+    is_fixture = (
+        demo == "fixture"
+        or getattr(request, "demo", None) == "fixture"
+        or getattr(request, "demo", None) is True
+    )
+    if is_fixture:
+        permit = acquire_public_demo_run(http_request, live=False)
+        try:
+            prune_public_run_cache(max_records=99)
+            record = run_store.create(
+                city=request.city.strip(),
+                venue_name=f"Creator Fixture Demo: {request.title}",
+                programme=[],
+            )
+            record.creator_context = request.model_dump()
+            _tasks: set[asyncio.Task[None]] = set()
+            task = asyncio.create_task(_execute_creator_demo_run(record, request=request))
+            _tasks.add(task)
+
+            def finish_fixture(completed: asyncio.Task[None]) -> None:
+                _tasks.discard(completed)
+                if permit is not None:
+                    permit.release()
+
+            task.add_done_callback(finish_fixture)
+            return _record_to_response(record)
+        except Exception:
+            if permit is not None:
+                permit.release()
+            raise
+
     seeds = request.seeds()
-    if not seeds:
+    themes = [theme.strip() for theme in request.themes if theme.strip()]
+    if not seeds and not themes:
         raise HTTPException(
             status_code=422,
             detail="Add at least one reference work or theme to analyse.",
@@ -206,18 +258,42 @@ async def create_creator_run(request: CreatorRunRequest, http_request: Request) 
 
 
 @router.post("/creator/run/demo", response_model=RunResponse)
-async def create_creator_demo_run(http_request: Request) -> RunResponse:
+async def create_creator_demo_run(
+    http_request: Request,
+    request: CreatorDemoRunRequest | None = None,
+) -> RunResponse:
     """Fixture-backed creator demo — labelled `fixture` in every artefact."""
     permit = acquire_public_demo_run(http_request, live=False)
     try:
         prune_public_run_cache(max_records=99)
+        run_req: CreatorRunRequest | None = None
+        if request is not None and request.title:
+            run_req = CreatorRunRequest(
+                title=request.title,
+                logline=request.logline,
+                genre=request.genre,
+                language=request.language,
+                themes=request.themes,
+                references=request.references,
+                release_goal=request.release_goal,
+                city=request.city,
+                demo="fixture",
+            )
+        venue = (
+            f"Creator Fixture Demo: {run_req.title}"
+            if run_req and run_req.title
+            else "Creator Fixture Demo (offline)"
+        )
+        city = run_req.city.strip() if run_req else ""
         record = run_store.create(
-            city="",
-            venue_name="Creator Fixture Demo (offline)",
+            city=city,
+            venue_name=venue,
             programme=[],
         )
+        if run_req is not None:
+            record.creator_context = run_req.model_dump()
         _tasks: set[asyncio.Task[None]] = set()
-        task = asyncio.create_task(_execute_creator_demo_run(record))
+        task = asyncio.create_task(_execute_creator_demo_run(record, request=run_req))
         _tasks.add(task)
 
         def finish_fixture(completed: asyncio.Task[None]) -> None:
@@ -238,35 +314,121 @@ async def create_creator_demo_run(http_request: Request) -> RunResponse:
 # ---------------------------------------------------------------------------
 
 
-async def _execute_creator_run(record: Any, request: CreatorRunRequest) -> None:
-    from ..agent.budget import Budget
-    from ..agent.orchestrator import AgentOrchestrator
-    from ..agent.state import AdjacentState, ProgrammeItem
-    from ..config import Settings
-    from ..domain.ledger import ProvenanceLedger
-    from ..live_runner import LivePipeline
-    from ..resolution.resolver import EntityResolver
-    from .routes import RunEvent, RunStatus
+def _log_creator_stop_diagnostic(record: Any, state: Any) -> None:
+    """Log only exception class, call ID and source-frame labels from a stop."""
+    stop = getattr(state, "stop", None)
+    if stop is None:
+        return
+    reason = getattr(getattr(stop, "reason", None), "value", getattr(stop, "reason", None))
+    stats = getattr(stop, "stats", None)
+    error = stats.get("error") if isinstance(stats, dict) else None
+    if reason != "error" or not isinstance(error, dict):
+        return
+    frames = error.get("frames")
+    safe_frames = [frame for frame in frames if isinstance(frame, str)] if isinstance(frames, list) else []
+    logger.error(
+        "Creator orchestrator failure: run_id=%s error_type=%s call_id=%s frames=%s",
+        record.run_id,
+        error.get("error_type") or "unknown",
+        error.get("call_id") or "none",
+        " > ".join(safe_frames) or "<traceback unavailable>",
+    )
 
-    record.status = RunStatus.RUNNING
-    record.emit(RunEvent("trace", {
-        "phase": "INIT",
-        "message": f"Creator analysis for '{request.title}' — {len(record.programme)} seed(s)",
+
+def _record_creator_stopped(record: Any, state: Any) -> None:
+    """Record a non-exception terminal failure without exposing partial artefacts."""
+    from .routes import RunEvent, RunStatus, _safe_state_failure_message
+
+    message = _safe_state_failure_message(state)
+    phase = getattr(getattr(state, "phase", None), "value", "")
+    record.status = RunStatus.FAILED
+    record.stop_reason = getattr(state, "stop_reason", "error")
+    record.stop_message = message
+    record.error = message
+    record.result = None
+    record.state_json = None
+    record.current_phase = phase
+    trace_rows = getattr(state, "trace_rows", None)
+    record.trace = safe_public_trace(trace_rows) if isinstance(trace_rows, list) else []
+    record.emit(RunEvent("error", {
+        "message": message,
+        "stop_reason": record.stop_reason,
     }))
 
-    settings = Settings.from_env()
-    if not settings.has_api_key:
-        message = (
-            "Live Qloo is not configured for this public demo. Try the labelled fixture."
-            if public_demo_enabled()
-            else "QLOO_API_KEY not configured"
-        )
-        record.status = RunStatus.FAILED
-        record.error = message
-        record.emit(RunEvent("error", {"message": message}))
-        return
+
+def _record_creator_failure(record: Any, state: Any, exc: Exception) -> None:
+    """Fail a Creator run without discarding the trace needed to diagnose it.
+
+    Traceback logging deliberately records only file/function/line frames and
+    the exception class. Exception messages can contain upstream response data,
+    request values, or credentials and must not be copied into application logs.
+    """
+    from .routes import RunEvent, RunStatus
+
+    message = safe_run_error(exc)
+    frames = [
+        f"{Path(frame.filename).name}:{frame.name}:{frame.lineno}"
+        for frame in traceback.extract_tb(exc.__traceback__)[-16:]
+    ]
+    logger.error(
+        "Creator run failed: run_id=%s error_type=%s frames=%s",
+        record.run_id,
+        type(exc).__name__,
+        " > ".join(frames) or "<traceback unavailable>",
+    )
+
+    record.status = RunStatus.FAILED
+    record.stop_reason = "error"
+    record.stop_message = message
+    record.error = message
+    record.result = None
+    record.state_json = None
+    if state is not None:
+        phase = getattr(state, "phase", None)
+        record.current_phase = getattr(phase, "value", str(phase or ""))
+        trace_rows = getattr(state, "trace_rows", None)
+        if isinstance(trace_rows, list):
+            # Store only the same sanitised trace exposed by the run API.
+            record.trace = safe_public_trace(trace_rows)
+    record.emit(RunEvent("error", {"message": message, "stop_reason": "error"}))
+
+
+async def _execute_creator_run(record: Any, request: CreatorRunRequest) -> None:
+    client = None
+    state = None
+    record.status = RunStatus.RUNNING
+    record.current_phase = "INIT"
+    record.emit(RunEvent("trace", {
+        "phase": "INIT",
+        "message": f"Creator analysis for '{request.title}' — {len(record.programme)} reference film(s), {len(request.themes)} theme input(s)",
+    }))
 
     try:
+        from ..agent.budget import Budget
+        from ..agent.orchestrator import AgentOrchestrator
+        from ..agent.state import AdjacentState, ProgrammeItem
+        from ..config import Settings
+        from ..domain.ledger import ProvenanceLedger
+        from ..live_runner import LivePipeline
+        from ..resolution.resolver import EntityResolver
+
+        settings = Settings.from_env()
+        if not settings.has_api_key:
+            message = (
+                "Live Qloo is not configured for this public demo. Try the labelled fixture."
+                if public_demo_enabled()
+                else "QLOO_API_KEY not configured"
+            )
+            record.status = RunStatus.FAILED
+            record.stop_reason = "configuration"
+            record.stop_message = message
+            record.error = message
+            record.result = None
+            record.state_json = None
+            record.current_phase = "INIT"
+            record.emit(RunEvent("error", {"message": message, "stop_reason": "configuration"}))
+            return
+
         from ..qloo.client import QlooClient
         client = QlooClient(settings)
         resolver = EntityResolver(client, delay_s=2.0)
@@ -284,16 +446,22 @@ async def _execute_creator_run(record: Any, request: CreatorRunRequest) -> None:
                     title=str(item.get("title", "(unnamed)")),
                     year=item.get("year"),
                     imdb_id=item.get("imdb_id"),
+                    declared_entity_id=item.get("entity_id"),
                 )
                 for item in record.programme
             ],
+            theme_queries=[theme.strip() for theme in request.themes if theme.strip()],
             budget=Budget(),
         )
         state.ledger = ProvenanceLedger(recorder=client.recorder, data_status="measured")
 
         pipeline = LivePipeline(client, resolver, record.programme)
-        state = await AgentOrchestrator(pipeline).run(state)
+        state = await AgentOrchestrator(pipeline, allow_title_search=True).run(state)
+        _log_creator_stop_diagnostic(record, state)
         sanitize_public_stop(state)
+        if state.stop_reason not in ("complete", "insufficiency"):
+            _record_creator_stopped(record, state)
+            return
 
         geography_result, bet, test_card, investigation = await _post_pipeline_creator(
             record, state, client, request
@@ -302,15 +470,17 @@ async def _execute_creator_run(record: Any, request: CreatorRunRequest) -> None:
         _finalize_creator(
             record, state, request, geography_result, bet, test_card, investigation
         )
-        await client.aclose()
     except Exception as exc:
-        message = safe_run_error(exc)
-        record.status = RunStatus.FAILED
-        record.error = message
-        record.emit(RunEvent("error", {"message": message}))
+        _record_creator_failure(record, state, exc)
+    finally:
+        if client is not None:
+            with suppress(Exception):
+                await client.aclose()
 
 
-async def _execute_creator_demo_run(record: Any) -> None:
+async def _execute_creator_demo_run(
+    record: Any, request: CreatorRunRequest | None = None
+) -> None:
     from ..agent.budget import Budget
     from ..agent.orchestrator import AgentOrchestrator
     from ..agent.state import AdjacentState
@@ -321,11 +491,16 @@ async def _execute_creator_demo_run(record: Any) -> None:
     from .routes import RunEvent, RunStatus
 
     record.status = RunStatus.RUNNING
+    record.current_phase = "INIT"
+    record.result = None
+    record.state_json = None
     record.emit(RunEvent("trace", {
         "phase": "INIT",
         "message": f"Creator FIXTURE demo ({DEMO_FIXTURE}) — offline, no Qloo calls",
     }))
 
+    client = None
+    state = None
     try:
         settings = Settings.from_env()
         fixture_path = resolve_fixture_path(DEMO_FIXTURE, settings=settings)
@@ -337,14 +512,18 @@ async def _execute_creator_demo_run(record: Any) -> None:
             {"title": str(p.get("title", "(unnamed)")), "year": p.get("year"), "imdb_id": p.get("imdb_id")}
             for p in fx.programme
         ]
-        demo_request = CreatorRunRequest(
+        demo_request = request or CreatorRunRequest(
             title="Sample Short — 'Neon Harbour'",
             logline="A dockside night-shift romance told in three silent vignettes.",
             genre="drama",
             language="English",
-            themes=[t["title"] for t in record.programme if t.get("title")][:5],
+            themes=[],  # Fixture demo does not claim to resolve creator-entered themes.
             release_goal="YouTube premiere after festival window",
         )
+        if request is not None:
+            record.creator_context = request.model_dump()
+            if request.city.strip():
+                record.city = request.city.strip()
 
         state = AdjacentState(
             run_id=record.run_id,
@@ -358,9 +537,17 @@ async def _execute_creator_demo_run(record: Any) -> None:
             budget=Budget(),
         )
         state.ledger = ProvenanceLedger(recorder=client.recorder, data_status="fixture")
+        record.current_phase = getattr(getattr(state, "phase", None), "value", "INIT")
 
-        state = await AgentOrchestrator(FixturePipeline(client, fx)).run(state)
+        state = await AgentOrchestrator(
+            FixturePipeline(client, fx), allow_title_search=True
+        ).run(state)
+        record.current_phase = getattr(getattr(state, "phase", None), "value", record.current_phase)
+        _log_creator_stop_diagnostic(record, state)
         sanitize_public_stop(state)
+        if state.stop_reason not in ("complete", "insufficiency"):
+            _record_creator_stopped(record, state)
+            return
 
         geography_result, bet, test_card, investigation = await _post_pipeline_creator(
             record, state, client, demo_request
@@ -370,10 +557,11 @@ async def _execute_creator_demo_run(record: Any) -> None:
             record, state, demo_request, geography_result, bet, test_card, investigation
         )
     except Exception as exc:
-        message = safe_run_error(exc)
-        record.status = RunStatus.FAILED
-        record.error = message
-        record.emit(RunEvent("error", {"message": message}))
+        _record_creator_failure(record, state, exc)
+    finally:
+        if client is not None:
+            with suppress(Exception):
+                await client.aclose()
 
 
 async def _post_pipeline_creator(
@@ -390,7 +578,8 @@ async def _post_pipeline_creator(
             from ..domain.geography import build_geography_result
             heatmap = await client.insights(
                 filter_type="urn:heatmap",
-                signal_interests_entities=state.resolved_ids,
+                signal_interests_entities=state.resolved_ids or None,
+                signal_interests_tags=state.theme_tag_ids or None,
                 filter_location_query=record.city,
                 filter_location_radius=0,
                 output_heatmap_boundary="urn:geohash",
@@ -451,6 +640,7 @@ async def _post_pipeline_creator(
             "genre": request.genre,
             "language": request.language,
             "release_goal": request.release_goal,
+            "themes": list(request.themes),
         },
         seeds=seeds if (seeds := [str(p.get("title")) for p in record.programme if p.get("title")]) else [],
         bet=bet,
@@ -500,7 +690,9 @@ def _finalize_creator(
         "genre": request.genre,
         "language": request.language,
         "release_goal": request.release_goal,
+        "themes": list(request.themes),
     }
+    result["theme_inputs"] = list(state.theme_resolution)
     result["investigation"] = investigation
     record.result = result
     record.trace = state.trace_rows
@@ -770,6 +962,11 @@ def creator_synthesize(request: SynthesizeRequest) -> dict[str, Any]:
     record = run_store.get(request.run_id)
     if record is None:
         raise HTTPException(status_code=404, detail=f"run {request.run_id} not found")
+    if record.status.value == "failed":
+        raise HTTPException(
+            status_code=409,
+            detail="Failed runs cannot be synthesized; start from a completed or insufficient run.",
+        )
     result = record.result or {}
     investigation = result.get("investigation")
     if not investigation:

@@ -715,6 +715,9 @@ def _build_result(
                 {
                     "cohort_id": c.cohort_id,
                     "domain": c.domain,
+                    "kind": c.kind,
+                    "construction_reason": c.construction_reason,
+                    "construction_evidence": c.construction_evidence,
                     "rank": c.rank,
                     "member_count": c.member_count,
                     "verdict": c.verdict.reason_code if c.verdict else None,

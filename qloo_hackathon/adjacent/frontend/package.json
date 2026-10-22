@@ -5,7 +5,11 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test:recovery": "node --experimental-default-type=module --experimental-strip-types --test tests/run-recovery.test.mjs",
+    "test:layout": "node --experimental-default-type=module --experimental-strip-types --test tests/responsive-intake.test.mjs",
+    "test:creator-ui": "node --experimental-default-type=module --experimental-strip-types --test tests/creator-failure-panels.test.mjs",
+    "test:render": "node --experimental-default-type=module --experimental-strip-types --test tests/render-smoke.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.54.0",

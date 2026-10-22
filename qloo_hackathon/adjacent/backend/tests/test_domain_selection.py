@@ -6,6 +6,7 @@ from app.domain.domain_selection import (
     _extract_tag_families,
     select_domains,
 )
+from app.qloo.params import ENTITY_FILTER_TYPES
 
 
 class MockTag:
@@ -152,3 +153,15 @@ class TestSelectDomains:
         # Should save calls by not querying irrelevant domains
         assert result.qloo_calls_saved > 0
         assert result.qloo_calls_saved == len(ALL_DOMAINS) - len(result.selected_domains)
+
+
+class TestExpansionDomainContracts:
+    def test_every_expansion_domain_is_a_documented_qloo_entity_filter(self):
+        configured = {spec.domain for spec in ALL_DOMAINS}
+        unsupported = configured - ENTITY_FILTER_TYPES
+        assert not unsupported, f"Unsupported Qloo insights entity filter(s): {sorted(unsupported)}"
+
+    def test_geography_signals_select_the_supported_place_filter(self):
+        result = select_domains([MockTag("Travel destination city geography")])
+        assert "urn:entity:place" in result.selected_domains
+        assert "urn:entity:destination" not in result.selected_domains

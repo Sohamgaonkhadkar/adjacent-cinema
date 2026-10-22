@@ -72,6 +72,7 @@ export default function SponsorPage() {
   const [goals, setGoals] = useState("");
   const [intakeError, setIntakeError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const createRequest = useRef<{ signature: string; requestId: string } | null>(null);
 
   // Selected campaign
   const [detail, setDetail] = useState<SponsorCampaignDetail | null>(null);
@@ -100,8 +101,8 @@ export default function SponsorPage() {
   const [reviewError, setReviewError] = useState<string | null>(null);
 
   // Outreach
-  const [outreachStatus, setOutreachStatus] = useState("CONTACTED");
-  const [outreachMeasurement, setOutreachMeasurement] = useState("OBSERVED");
+  const [outreachStatus, setOutreachStatus] = useState("");
+  const [outreachMeasurement, setOutreachMeasurement] = useState("");
   const [outreachDraftId, setOutreachDraftId] = useState("");
   const [outreachDate, setOutreachDate] = useState("");
   const [outreachReplies, setOutreachReplies] = useState("");
@@ -233,21 +234,32 @@ export default function SponsorPage() {
         .map((t) => t.trim())
         .filter(Boolean)
         .slice(0, 5);
-      const result = await createSponsorCampaign({
-        request_id: `spc-${Date.now()}`,
+      const payload = {
         film_title: filmTitle.trim(),
         film_year: year && Number.isFinite(year) ? year : null,
         imdb_id: imdbId.trim() || null,
         themes,
         goals: goals.trim(),
+      };
+      const signature = JSON.stringify(payload);
+      if (!createRequest.current || createRequest.current.signature !== signature) {
+        createRequest.current = {
+          signature,
+          requestId: `spc-${crypto.randomUUID()}`,
+        };
+      }
+      const result = await createSponsorCampaign({
+        request_id: createRequest.current.requestId,
+        ...payload,
       });
-      await reloadCampaigns();
-      await reloadDetail(result.campaign.campaign_id);
+      createRequest.current = null;
       setFilmTitle("");
       setFilmYear("");
       setImdbId("");
       setThemesText("");
       setGoals("");
+      await reloadCampaigns();
+      await reloadDetail(result.campaign.campaign_id);
     } catch (err) {
       setIntakeError(err instanceof Error ? err.message : "Could not create the campaign.");
     } finally {
@@ -342,6 +354,10 @@ export default function SponsorPage() {
 
   async function handleOutreach() {
     if (!detail) return;
+    if (!outreachStatus || !outreachMeasurement) {
+      setOutreachError("Choose the contact and measurement statuses that match what actually happened.");
+      return;
+    }
     setOutreachBusy(true);
     setOutreachError(null);
     try {
@@ -358,6 +374,8 @@ export default function SponsorPage() {
         outcome: outreachOutcome.trim() || null,
         notes: outreachNotes.trim() || null,
       });
+      setOutreachStatus("");
+      setOutreachMeasurement("");
       setOutreachOutcome("");
       setOutreachNotes("");
       setOutreachReplies("");
@@ -924,6 +942,7 @@ export default function SponsorPage() {
                       value={outreachStatus}
                       onChange={(e) => setOutreachStatus(e.target.value)}
                     >
+                      <option value="" disabled>Choose a contact status…</option>
                       <option value="CONTACTED">Contacted</option>
                       <option value="RESPONDED">Responded</option>
                       <option value="PASSED">Passed</option>
@@ -938,6 +957,7 @@ export default function SponsorPage() {
                       value={outreachMeasurement}
                       onChange={(e) => setOutreachMeasurement(e.target.value)}
                     >
+                      <option value="" disabled>Choose a measurement status…</option>
                       <option value="OBSERVED">Observed</option>
                       <option value="PARTIAL">Partial</option>
                       <option value="MISSING">Missing</option>

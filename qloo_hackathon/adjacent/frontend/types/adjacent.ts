@@ -94,6 +94,9 @@ export interface ExcludedMember {
 export interface RankedCohort {
   cohort_id: string;
   domain: string;
+  kind?: string;
+  construction_reason?: string;
+  construction_evidence?: { subtype?: string; [key: string]: unknown };
   rank: number;
   member_count: number;
   verdict: string | null;
@@ -268,6 +271,15 @@ export interface PredictionSnapshot {
 
 // ─── Run Result (raw backend response — before normalization) ───────────────
 
+export interface CreatorThemeInputEvidence {
+  input: string;
+  status: "matched" | "ambiguous" | "unresolved";
+  qloo_tag_id: string | null;
+  qloo_name: string | null;
+  call_id: string | null;
+  candidate_count?: number;
+}
+
 export interface AdjacentRunResult {
   /** Provenance of the whole result: "measured" for live Qloo, "fixture" for demo runs. */
   data_status: "measured" | "fixture" | string;
@@ -291,7 +303,10 @@ export interface AdjacentRunResult {
     genre: string;
     language: string;
     release_goal: string;
+    themes?: string[];
   };
+  /** Creator themes resolved as exact Qloo tag matches; unresolved themes are explicitly excluded. */
+  theme_inputs?: CreatorThemeInputEvidence[];
   evidence: EvidenceData;
   city: string;
 }

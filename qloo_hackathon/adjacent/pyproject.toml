@@ -19,6 +19,7 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "ruff>=0.6",
+    "httpx2",
 ]
 # Deliberately absent on Day 1:
 #   psycopg     — add when persistence is actually needed (Phase 1/9), not before
@@ -28,7 +29,10 @@ dev = [
 
 [tool.setuptools]
 package-dir = { "" = "backend" }
-packages = ["app", "app.agent", "app.domain", "app.qloo"]
+
+[tool.setuptools.packages.find]
+where = ["backend"]
+include = ["app*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["backend"]

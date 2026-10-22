@@ -1,0 +1,65 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file:
+      - .env
+    environment:
+      PORT: "8000"
+      ADJACENT_PUBLIC_DEMO: ${ADJACENT_PUBLIC_DEMO:-1}
+      ADJACENT_PUBLIC_LIVE: ${ADJACENT_PUBLIC_LIVE:-0}
+      ADJACENT_FILMSPONSOR_GUEST_DEMO: ${ADJACENT_FILMSPONSOR_GUEST_DEMO:-1}
+      ADJACENT_FILMSPONSOR_GUEST_ORIGINS: ${ADJACENT_FILMSPONSOR_GUEST_ORIGINS:?Set the exact HTTPS frontend origin in .env}
+      ADJACENT_FILMSPONSOR_GUEST_COOKIE_SECURE: ${ADJACENT_FILMSPONSOR_GUEST_COOKIE_SECURE:-1}
+      ADJACENT_EXPERIMENTS_DB: /data/experiments.db
+    volumes:
+      - adjacent_data:/data
+    networks:
+      - app
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        ADJACENT_API_ORIGIN: http://backend:8000
+    environment:
+      NODE_ENV: production
+      ADJACENT_API_ORIGIN: http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - app
+      - edge
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in .env to a domain whose DNS points at this host}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+    networks:
+      - edge
+    restart: unless-stopped
+
+networks:
+  app:
+  edge:
+
+volumes:
+  adjacent_data:
+  caddy_data:
+  caddy_config:

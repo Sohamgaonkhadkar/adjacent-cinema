@@ -8,7 +8,8 @@ from backend.app.domain.geography import (
     build_geography_result,
 )
 from backend.app.domain.programme_bet import ProgrammeBet, build_programme_bet
-from backend.app.domain.test_card import TestCard, build_test_card
+from backend.app.domain.test_card import TestCard as CardResult
+from backend.app.domain.test_card import build_test_card
 from backend.app.qloo.models import parse_entity_affinity, parse_heatmap, parse_tag_affinity
 
 # ---------------------------------------------------------------------------
@@ -424,7 +425,7 @@ class TestTestCard:
         assert bet is not None
 
         card = build_test_card(bet, ["Perfect Days", "Paris Texas"], "London, UK")
-        assert isinstance(card, TestCard)
+        assert isinstance(card, CardResult)
         assert "Book" in card.title
         assert "London" in card.title
         assert "2 film" in card.programme_context

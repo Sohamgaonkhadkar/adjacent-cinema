@@ -69,10 +69,12 @@ ALL_DOMAINS: tuple[DomainSpec, ...] = (
         description="Brands — relevant when programme has lifestyle/fashion-related tags",
     ),
     DomainSpec(
-        domain="urn:entity:destination",
-        noun="destination",
+        # Qloo's documented insights entity type is `urn:entity:place`;
+        # `urn:entity:destination` is not an accepted `filter.type`.
+        domain="urn:entity:place",
+        noun="place",
         signal_families=("travel", "destination", "city", "country", "tourism", "geography"),
-        description="Destinations — relevant when programme has travel/geography-related tags",
+        description="Places and destinations — relevant when programme has travel/geography-related tags",
     ),
     DomainSpec(
         domain="urn:entity:podcast",

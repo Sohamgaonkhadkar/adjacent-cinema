@@ -28,8 +28,11 @@ The orchestrator knows nothing about Qloo: it holds five tools and a runtime nam
 
 from __future__ import annotations
 
+import logging
 import time
+import traceback
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from ..qloo.errors import QlooError
@@ -72,6 +75,8 @@ ACTION_LABEL: dict[str, str] = {
 #: should never fire — it exists so a future planning bug cannot spin the loop.
 MAX_ITERATIONS = 24
 
+logger = logging.getLogger(__name__)
+
 
 class OrchestratorFinished(RuntimeError):
     """Raised when a state is asked to execute after the run has stopped."""
@@ -99,6 +104,29 @@ class Evaluation:
         return self.decision == "stop"
 
 
+def _error_decision_with_frames(exc: Exception, state: AdjacentState) -> StopDecision:
+    decision = stop_for_error(exc, state)
+    error = decision.stats.get("error")
+    if isinstance(error, dict):
+        error["frames"] = [
+            f"{Path(frame.filename).name}:{frame.name}:{frame.lineno}"
+            for frame in traceback.extract_tb(exc.__traceback__)[-16:]
+        ]
+    # This boundary actually observes tool-level exceptions: the outer Creator
+    # route receives only the terminal state, not the original exception.
+    safe_error = decision.stats.get("error", {})
+    safe_error = safe_error if isinstance(safe_error, dict) else {}
+    frames = safe_error.get("frames", [])
+    safe_frames = [frame for frame in frames if isinstance(frame, str)] if isinstance(frames, list) else []
+    logger.error(
+        "Orchestrator tool failure: error_type=%s call_id=%s frames=%s",
+        safe_error.get("error_type") or type(exc).__name__,
+        safe_error.get("call_id") or "none",
+        " > ".join(safe_frames) or "<traceback unavailable>",
+    )
+    return decision
+
+
 class AgentOrchestrator:
     """Drives one run to a terminal state. See the module docstring for the cycle."""
 
@@ -108,10 +136,12 @@ class AgentOrchestrator:
         *,
         tools: dict[str, Any] | None = None,
         clock: Callable[[], float] = time.monotonic,
+        allow_title_search: bool = False,
     ) -> None:
         self.runtime = runtime
         self.tools: dict[str, Any] = tools if tools is not None else default_tools(runtime)
         self.clock = clock
+        self.allow_title_search = allow_title_search
 
     # -- the loop ----------------------------------------------------------
     async def run(self, state: AdjacentState) -> AdjacentState:
@@ -126,7 +156,7 @@ class AgentOrchestrator:
             to_state=Phase.PLAN,
             action="plan",
             reason=(
-                f"input accepted: {len(state.programme)} programme item(s); "
+                f"input accepted: {len(state.programme)} film reference(s), {len(state.theme_queries)} theme input(s); "
                 f"runtime={self.runtime.name} ({self.runtime.data_status}); "
                 f"budget={state.budget.max_steps} steps / {state.budget.max_qloo_calls} calls"
             ),
@@ -191,10 +221,10 @@ class AgentOrchestrator:
                 self.stop(state, stop_for_budget(exc, state))
                 break
             except QlooError as exc:
-                self.stop(state, stop_for_error(exc, state))
+                self.stop(state, _error_decision_with_frames(exc, state))
                 break
             except Exception as exc:
-                self.stop(state, stop_for_error(exc, state))
+                self.stop(state, _error_decision_with_frames(exc, state))
                 break
 
             self.record_evaluation(state, result, evaluation)
@@ -207,9 +237,14 @@ class AgentOrchestrator:
     # -- PLAN --------------------------------------------------------------
     def validate_input(self, state: AdjacentState) -> OrchestratorInvalidInput | None:
         """Invalid input is a user problem, and stays distinct from thin evidence."""
-        if not state.programme:
+        if not state.programme and not state.theme_queries:
             return OrchestratorInvalidInput(CODE_EMPTY_PROGRAMME, MSG_INVALID_INPUT_EMPTY)
-        if not any(item.identifiers for item in state.programme):
+        # Creator can resolve a title or a theme. Themes are looked up as Qloo
+        # tags by the live runtime; they must never be treated as movie titles.
+        has_film_input = any(item.identifiers for item in state.programme) or (
+            self.allow_title_search and any(item.title.strip() for item in state.programme)
+        )
+        if not has_film_input and not state.theme_queries:
             return OrchestratorInvalidInput(
                 CODE_NO_IDENTIFIERS,
                 MSG_INVALID_INPUT_NO_IDS.format(count=len(state.programme)),
@@ -228,8 +263,8 @@ class AgentOrchestrator:
             )
 
         resolved = len(state.resolved_ids)
-        if resolved == 0:
-            return Phase.STOP, "no entity id resolved: no further tool can obtain any evidence"
+        if resolved == 0 and not state.theme_tag_ids:
+            return Phase.STOP, "no verified film entity or exact theme tag resolved; no further tool can obtain evidence"
 
         if "analyse" not in state.completed:
             return Phase.ANALYSE, f"characterise the programme's taste from {resolved} resolved id(s)"

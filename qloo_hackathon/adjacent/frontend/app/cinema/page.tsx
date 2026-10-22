@@ -12,6 +12,8 @@ import {
 } from "@/lib/api";
 import type { AdjacentRunResult, HeatmapCell } from "@/types/adjacent";
 import IntakeForm from "@/components/IntakeForm";
+import AdjacencyGraph from "@/components/AdjacencyGraph";
+import { downloadTextFile, formatTestCardText, safeTextFilename } from "@/lib/testCardExport";
 
 // ─── Editorial sample strip (illustrative photography, NOT a live analysis) ──
 
@@ -139,6 +141,30 @@ export default function Home() {
   const traceEvents = events.filter((e) => e.event === "trace");
   const insufficient = run?.status === "insufficient";
   const failed = run?.status === "failed";
+
+  function handleExportCinemaTestCard() {
+    if (!testCard) return;
+    const text = formatTestCardText({
+      title: testCard.title,
+      context: request ? "CINEMA: " + request.venue + " · " + request.city : "CITY: " + (result?.city ?? "Not supplied"),
+      dataStatus: testCard.data_status,
+      sections: [
+        { label: "Programme context", value: testCard.programme_context },
+        { label: "Audience hypothesis", value: testCard.audience_hypothesis },
+        { label: "Cultural bridge", value: testCard.cultural_bridge },
+        { label: "Geographic signal", value: testCard.geographic_signal },
+        { label: "Programming direction", value: testCard.programming_direction },
+        { label: "Primary evidence", value: testCard.primary_evidence },
+        { label: "Runner-up direction", value: testCard.runner_up },
+        { label: "Observable success criteria", value: testCard.success_criteria },
+        { label: "Observation window", value: testCard.observation_window },
+        { label: "Falsification condition", value: testCard.falsification_condition },
+      ],
+      provenance: testCard.provenance,
+      footerNote: "This is a bounded programming hypothesis, not a new identity for the cinema. Affinity is not an attendance or conversion forecast.",
+    });
+    downloadTextFile(safeTextFilename(testCard.title) + ".txt", text);
+  }
 
   function beginRunRequest(): number {
     stopRunTracking();
@@ -547,6 +573,20 @@ export default function Home() {
                 )}
               </div>
 
+              {/* Evidence-derived cultural fingerprint for the actual submitted programme. */}
+              {result.cohorts && (
+                <div className="fingerprint-cinema-graph">
+                  <AdjacencyGraph
+                    filmTitle={request?.venue ?? "Your cinema"}
+                    anchorLabel={request?.venue ?? "Your cinema"}
+                    anchorSubLabel={"CINEMA · " + (request?.city ?? result.city ?? "PROGRAMME")}
+                    cohorts={result.cohorts}
+                    bet={bet}
+                    dataStatus={result.data_status}
+                  />
+                </div>
+              )}
+
               {/* Programme profile */}
               <div className="evidence-panel">
                 <h3>Programme Profile</h3>
@@ -903,7 +943,7 @@ export default function Home() {
             </p>
           </div>
 
-          <article style={{ padding: 32, border: "1px solid var(--rule)", borderRadius: 8, background: "rgba(232,226,213,0.02)" }}>
+          <article className="test-card-sheet" style={{ padding: 32, border: "1px solid var(--rule)", borderRadius: 8, background: "rgba(232,226,213,0.02)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 24, paddingBottom: 16, borderBottom: "1px solid var(--rule)", gap: 12, flexWrap: "wrap" }}>
               <span className="micro-label">PROGRAMME EXPERIMENT · TEST CARD</span>
               <span className="mono-note">
@@ -970,7 +1010,7 @@ export default function Home() {
                   {testCard.falsification_condition && (
                     <div style={{ padding: "12px 14px", background: "rgba(138,80,72,0.1)", border: "1px solid rgba(138,80,72,0.25)", borderRadius: 6 }}>
                       <span className="micro-label" style={{ color: "#c97a6a", marginBottom: 6, display: "block" }}>&#9888; FALSIFICATION CONDITION</span>
-                      <p style={{ color: "#d4a89e", fontSize: 12, lineHeight: 1.7, margin: 0 }}>
+                      <p className="test-card-caution" style={{ color: "#d4a89e", fontSize: 12, lineHeight: 1.7, margin: 0 }}>
                         {testCard.falsification_condition}
                       </p>
                     </div>
@@ -1017,6 +1057,15 @@ export default function Home() {
               <span className="mono-note">NO ATTENDANCE TARGETS / NO CONVERSION CLAIMS</span>
               <span className="mono-note">REVIEW AFTER THE EXPERIMENT</span>
             </div>
+            {testCard && (
+              <div className="test-card-footer-actions">
+                <button type="button" className="test-card-export" onClick={handleExportCinemaTestCard}>
+                  <span>Export test card</span><small>PLAIN TEXT · .TXT</small><span aria-hidden="true">↓</span>
+                </button>
+                <a className="test-card-secondary" href="#programme">Edit programme ↗</a>
+                <a className="test-card-secondary" href="#field">Back to cultural field ↗</a>
+              </div>
+            )}
           </article>
 
           <footer style={{ display: "flex", justifyContent: "space-between", marginTop: 48, paddingTop: 24, borderTop: "1px solid var(--rule)", gap: 12, flexWrap: "wrap" }}>

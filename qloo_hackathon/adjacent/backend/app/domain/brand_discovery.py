@@ -336,8 +336,10 @@ async def discover_brand_evidence(
             exact = [
                 tag
                 for tag in (getattr(response, "results", []) or [])
-                if getattr(tag, "name", None)
+                if isinstance(getattr(tag, "name", None), str)
                 and tag.name.strip().lower() == theme.strip().lower()
+                and isinstance(getattr(tag, "tag_id", None), str)
+                and tag.tag_id.strip()
             ]
             if exact:
                 tag = exact[0]

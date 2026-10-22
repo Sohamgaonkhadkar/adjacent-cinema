@@ -110,6 +110,7 @@ class EvidenceReport:
     surviving_cohorts: int = 0
     rejected_cohorts: int = 0
     resolved_ids: int = 0
+    resolved_theme_tags: int = 0
 
     # -- readings ---------------------------------------------------------
     @property
@@ -125,7 +126,7 @@ class EvidenceReport:
         all no-op: the run can only refuse. This is what makes an early
         `insufficiency` stop honest rather than lazy.
         """
-        return self.resolved_ids > 0
+        return self.resolved_ids > 0 or self.resolved_theme_tags > 0
 
     @property
     def failing_verdict(self) -> EvidenceVerdict | None:
@@ -154,6 +155,7 @@ class EvidenceReport:
             "surviving_cohorts": self.surviving_cohorts,
             "rejected_cohorts": self.rejected_cohorts,
             "resolved_ids": self.resolved_ids,
+            "resolved_theme_tags": self.resolved_theme_tags,
             "resolution_verdict": self.resolution_verdict.as_dict() if self.resolution_verdict else None,
             "taste_verdict": self.taste_verdict.as_dict() if self.taste_verdict else None,
             "cohort_verdict": self.cohort_verdict.as_dict() if self.cohort_verdict else None,
@@ -220,6 +222,7 @@ def build_evidence_report(state: AdjacentState) -> EvidenceReport:
         surviving_cohorts=len(state.ranked),
         rejected_cohorts=len(state.rejected),
         resolved_ids=len(state.resolved_ids),
+        resolved_theme_tags=len(state.theme_tag_ids),
     )
 
 

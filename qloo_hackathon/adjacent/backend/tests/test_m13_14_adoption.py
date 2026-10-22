@@ -17,6 +17,8 @@ import time
 from copy import deepcopy
 from typing import Any
 
+import pytest
+from app.api import creator_routes
 from app.domain.llm_provider import StubSynthesisProvider
 from app.domain.synthesis import (
     deterministic_fallback,
@@ -252,6 +254,13 @@ def _save_body(run_id: str, refs: list[str], inv_id: str, **overrides) -> dict:
 
 
 class TestAdoptionPersistence:
+    @pytest.fixture(autouse=True)
+    def isolated_experiment_store(self, tmp_path):
+        """Keep test-created Demo Film records out of the developer workspace DB."""
+        creator_routes.reset_repo_for_tests(tmp_path / "adoption-experiments.db")
+        yield
+        creator_routes.reset_repo_for_tests(None)
+
     def test_snapshot_saved_sanitised_and_ref_verified(self) -> None:
         client = TestClient(app)
         run_id, record = _demo(client)

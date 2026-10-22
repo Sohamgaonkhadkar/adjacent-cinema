@@ -333,7 +333,8 @@ async def _resolve_programme(client: Any, fixture: Any, run: AdjacentState, budg
 
 async def _taste_profile(client: Any, run: AdjacentState, budget: Budget) -> None:
     ids = run.resolved_ids
-    if not ids:
+    tag_ids = run.theme_tag_ids
+    if not ids and not tag_ids:
         run.taste_verdict = evidence.evaluate_tags([])
         run.findings.append(
             Finding(
@@ -347,7 +348,8 @@ async def _taste_profile(client: Any, run: AdjacentState, budget: Budget) -> Non
         return
     response = await client.insights(
         filter_type="urn:tag",
-        signal_interests_entities=ids,
+        signal_interests_entities=ids or None,
+        signal_interests_tags=tag_ids or None,
         take=50,
         tool="taste_profile",
     )
@@ -367,7 +369,8 @@ async def _taste_profile(client: Any, run: AdjacentState, budget: Budget) -> Non
 async def _expand_candidates(client: Any, run: AdjacentState, budget: Budget, *, domains: tuple[str, ...] | None = None) -> None:
     """One adjacency call per domain. A failure degrades that domain, never the run."""
     ids = run.resolved_ids
-    if not ids:
+    tag_ids = run.theme_tag_ids
+    if not ids and not tag_ids:
         return
     target_domains = domains or DEFAULT_EXPANSION_DOMAINS
     for domain in target_domains:
@@ -383,7 +386,8 @@ async def _expand_candidates(client: Any, run: AdjacentState, budget: Budget, *,
         try:
             response = await client.insights(
                 filter_type=domain,
-                signal_interests_entities=ids,
+                signal_interests_entities=ids or None,
+                signal_interests_tags=tag_ids or None,
                 filter_popularity_min=0.05,
                 filter_popularity_max=0.90,
                 take=50,

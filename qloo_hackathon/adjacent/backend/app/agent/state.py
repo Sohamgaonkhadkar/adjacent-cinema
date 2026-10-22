@@ -179,6 +179,10 @@ class AdjacentState:
     description: str = ""
     data_status: str = "fixture"
     programme: list[ProgrammeItem] = field(default_factory=list)
+    # Creator theme strings are resolved as Qloo tag inputs, never as film titles.
+    theme_queries: list[str] = field(default_factory=list)
+    theme_resolution: list[dict[str, Any]] = field(default_factory=list)
+    theme_tag_ids: list[str] = field(default_factory=list)
 
     # -- artefacts (filled by the tools) ---------------------------------
     resolution_call_ids: list[str] = field(default_factory=list)
@@ -218,6 +222,11 @@ class AdjacentState:
     @property
     def resolved_ids(self) -> list[str]:
         return [p.resolved_entity_id for p in self.programme if p.resolved_entity_id]
+
+    @property
+    def has_seed_signals(self) -> bool:
+        """Whether a verified film entity or exact Qloo tag has been resolved."""
+        return bool(self.resolved_ids or self.theme_tag_ids)
 
     @property
     def domains_represented(self) -> list[str]:
@@ -303,6 +312,11 @@ class AdjacentState:
             "stop_message": self.stop_message,
             "calls_made": self.calls_made,
             "programme": [p.to_dict() for p in self.programme],
+            "theme_inputs": {
+                "queries": list(self.theme_queries),
+                "resolved": list(self.theme_resolution),
+                "tag_ids": list(self.theme_tag_ids),
+            },
             "resolution": {
                 "resolved": len(self.resolved_items),
                 "unresolved": len(self.unresolved_items),

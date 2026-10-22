@@ -1,0 +1,49 @@
+services:
+  - type: pserv
+    name: adjacent-cinema-api
+    runtime: python
+    region: oregon
+    plan: 0.5c-512mb
+    autoDeployTrigger: checksPass
+    rootDir: qloo_hackathon/adjacent
+    buildCommand: python -m pip install --upgrade pip && python -m pip install -e .
+    startCommand: PYTHONPATH=backend uvicorn app.main:app --host 0.0.0.0 --port 10000 --workers 1
+    disk:
+      name: adjacent-cinema-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.15"
+      - key: ADJACENT_EXPERIMENTS_DB
+        value: /data/experiments.db
+      - key: ADJACENT_PUBLIC_DEMO
+        value: "1"
+      - key: ADJACENT_PUBLIC_LIVE
+        value: "0"
+      - key: ADJACENT_FILMSPONSOR_GUEST_DEMO
+        value: "1"
+      - key: ADJACENT_FILMSPONSOR_GUEST_COOKIE_SECURE
+        value: "1"
+      # Set this to the exact URL assigned to the frontend, without a path or wildcard.
+      - key: ADJACENT_FILMSPONSOR_GUEST_ORIGINS
+        sync: false
+
+  - type: web
+    name: adjacent-cinema-web
+    runtime: node
+    region: oregon
+    plan: 1c-2g
+    rootDir: qloo_hackathon/adjacent/frontend
+    buildCommand: npm ci --no-audit --no-fund && npm run build
+    startCommand: npm run start -- --hostname 0.0.0.0
+    healthCheckPath: /
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: NODE_VERSION
+        value: "22.23.4"
+      - key: ADJACENT_API_ORIGIN
+        fromService:
+          type: pserv
+          name: adjacent-cinema-api
+          property: hostport

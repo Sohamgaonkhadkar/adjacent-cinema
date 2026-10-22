@@ -10,15 +10,17 @@ import { traceAnchorId } from "@/components/EvidenceTrace";
 // worlds kept visible with their reason codes. No synthetic nodes, no invented
 // affinities — an empty field renders as an honest empty state.
 
-const W = 920;
-const H = 540;
+const W = 1120;
+const H = 700;
 const CX = W / 2;
-const CY = H / 2 + 8;
+const CY = H / 2;
 
 interface NodeDatum {
   key: string;
   label: string;
   domain: string;
+  kindLabel: string;
+  constructionReason: string | null;
   rank: number;
   memberCount: number;
   qualifyingCount: number | null;
@@ -37,24 +39,45 @@ function comparableName(value: string | null | undefined): string {
   return value?.trim().toLowerCase() ?? "";
 }
 
+function cohortKindLabel(kind: string | undefined, subtype: string | undefined, domain: string): string {
+  if (kind === "subtype_group" && subtype) return `Qloo subtype · ${subtype}`;
+  if (kind === "tag_cluster") return "Shared Qloo tag group";
+  if (kind === "domain_group") return "Domain-only group";
+  if (kind === "singleton_group") return "Single candidate";
+  return domainLabel(domain);
+}
+
 export default function AdjacencyGraph({
   filmTitle,
+  anchorLabel,
+  anchorSubLabel,
   cohorts,
   bet,
   dataStatus,
-  traceRows,
+  traceRows = [],
 }: {
   filmTitle: string;
+  anchorLabel?: string;
+  anchorSubLabel?: string;
   cohorts: CulturalField;
   bet: ProgrammeBetData | null;
   dataStatus: string;
-  traceRows: TraceRow[];
+  traceRows?: TraceRow[];
 }) {
   const [selected, setSelected] = useState<string | null>(null);
+  const displayTitle = anchorLabel?.trim() || filmTitle;
+  const displaySubLabel = anchorSubLabel?.trim() || "YOUR FILM";
 
   const nodes: NodeDatum[] = useMemo(() => {
     return cohorts.ranked.map((c, i) => {
-      const label = c.members?.find((m) => m.name)?.name ?? domainLabel(c.domain);
+      const memberLabel = c.members?.find((m) => m.name)?.name ?? domainLabel(c.domain);
+      // Distinguish same-domain cohorts without changing their underlying rank.
+      const groupingHint = c.construction_evidence?.subtype
+        ?? c.construction_reason
+        ?? (c.kind && c.kind !== "domain_group" ? c.kind.replace(/_/g, " ") : null);
+      const label = groupingHint && !memberLabel.toLowerCase().includes(groupingHint.toLowerCase())
+        ? `${memberLabel} · ${groupingHint}`
+        : memberLabel;
       const isPrimary = bet?.primary
         ? bet.primary.cohort_id
           ? bet.primary.cohort_id === c.cohort_id
@@ -72,6 +95,8 @@ export default function AdjacencyGraph({
         key: c.cohort_id || `${c.domain}-${i}`,
         label,
         domain: c.domain,
+        kindLabel: cohortKindLabel(c.kind, c.construction_evidence?.subtype, c.domain),
+        constructionReason: c.construction_reason ?? null,
         rank: c.rank,
         memberCount: c.member_count,
         qualifyingCount: c.qualifying_count ?? null,
@@ -87,17 +112,35 @@ export default function AdjacencyGraph({
   const maxMembers = Math.max(1, ...nodes.map((n) => n.memberCount));
   const placed = nodes.map((n, i) => {
     const angle = (i / Math.max(1, nodes.length)) * Math.PI * 2 - Math.PI / 2;
-    const ring = 168 + (n.rank > 3 ? 46 : 0);
+    const ring = 168 + (n.rank > 3 ? 18 : 0);
     return {
       node: n,
+      angle,
       x: CX + Math.cos(angle) * ring,
-      y: CY + Math.sin(angle) * ring * 0.72,
-      r: 16 + (n.memberCount / maxMembers) * 26,
+      y: CY + Math.sin(angle) * ring * 0.76,
+      r: 6 + (n.memberCount / maxMembers) * 3,
     };
   });
 
+  // Outer nodes are real members returned in each ranked cohort — never synthetic recommendations.
+  const memberNodes = placed.flatMap((parent) =>
+    parent.node.members.slice(0, 2).map((member, index) => {
+      const angle = parent.angle + (parent.node.members.length > 1 ? (index === 0 ? -0.085 : 0.085) : 0);
+      return {
+        key: "member-" + parent.node.key + "-" + member.name + "-" + index,
+        parentKey: parent.node.key,
+        name: member.name,
+        affinity: member.affinity,
+        angle,
+        x: CX + Math.cos(angle) * 296,
+        y: CY + Math.sin(angle) * 216,
+      };
+    })
+  );
+
   const rejected = cohorts.rejected ?? [];
-  const active = placed.find((p) => p.node.key === selected) ?? null;
+  const activeMember = memberNodes.find((member) => member.key === selected) ?? null;
+  const active = placed.find((p) => p.node.key === (activeMember?.parentKey ?? selected)) ?? null;
   const activeTrace = active?.node.callId
     ? traceRows.find((row) => row.call_id === active.node.callId) ?? null
     : null;
@@ -117,13 +160,26 @@ export default function AdjacencyGraph({
 
   return (
     <div className="agraph">
+      <div className="agraph-visual">
       <div className="agraph-canvas-wrap">
         <svg
           viewBox={`0 0 ${W} ${H}`}
           role="group"
-          aria-label={`Interactive cultural fingerprint for ${filmTitle}. Use Tab to select a ranked cultural world.`}
+          aria-label={`Interactive cultural fingerprint for ${displayTitle}. Use Tab to select a cultural world or related entity.`}
         >
-          <title>Adjacent cultural worlds around {filmTitle}</title>
+          <title>Adjacent cultural worlds around {displayTitle}</title>
+          <defs>
+            <radialGradient id="agraph-field-glow">
+              <stop offset="0%" stopColor="#c99b65" stopOpacity="0.12" />
+              <stop offset="58%" stopColor="#c99b65" stopOpacity="0.035" />
+              <stop offset="100%" stopColor="#c99b65" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+          <circle cx={CX} cy={CY} r="358" fill="url(#agraph-field-glow)" />
+          <ellipse className="agraph-orbit agraph-orbit-inner" cx={CX} cy={CY} rx="178" ry="134" />
+          <ellipse className="agraph-orbit" cx={CX} cy={CY} rx="250" ry="184" />
+          <ellipse className="agraph-orbit agraph-orbit-outer" cx={CX} cy={CY} rx="326" ry="238" />
+
           {/* rejected worlds — visible on the outer edge, with reason codes */}
           {rejected.map((r, i) => {
             const angle = (i / Math.max(1, rejected.length)) * Math.PI * 2 + 0.4;
@@ -139,71 +195,129 @@ export default function AdjacencyGraph({
             );
           })}
 
-          {/* edges */}
-          {placed.map((p) => (
-            <line
-              key={`edge-${p.node.key}`}
-              x1={CX}
-              y1={CY}
-              x2={p.x}
-              y2={p.y}
-              className={
-                p.node.role === "primary"
-                  ? "agraph-edge is-primary"
-                  : p.node.role === "runner-up"
-                    ? "agraph-edge is-runner"
-                    : "agraph-edge"
-              }
-              style={{
-                opacity: p.node.meanAffinity != null ? 0.25 + Math.min(0.6, p.node.meanAffinity) : 0.25,
-              }}
-            />
-          ))}
+          {/* Curved relationships from the programme anchor to ranked worlds. */}
+          {placed.map((p, index) => {
+            const dx = p.x - CX;
+            const dy = p.y - CY;
+            const length = Math.max(1, Math.hypot(dx, dy));
+            const bend = index % 2 === 0 ? 20 : -20;
+            const controlX = (CX + p.x) / 2 - (dy / length) * bend;
+            const controlY = (CY + p.y) / 2 + (dx / length) * bend;
+            return (
+              <path
+                key={"edge-" + p.node.key}
+                d={"M " + CX + " " + CY + " Q " + controlX + " " + controlY + " " + p.x + " " + p.y}
+                className={
+                  p.node.role === "primary"
+                    ? "agraph-edge is-primary"
+                    : p.node.role === "runner-up"
+                      ? "agraph-edge is-runner"
+                      : "agraph-edge"
+                }
+                style={{
+                  opacity: p.node.meanAffinity != null ? 0.25 + Math.min(0.6, p.node.meanAffinity) : 0.25,
+                }}
+              />
+            );
+          })}
+
+          {/* Second orbit: links to actual entities nested inside the ranked cohorts. */}
+          {memberNodes.map((member) => {
+            const parent = placed.find((item) => item.node.key === member.parentKey);
+            if (!parent) return null;
+            return (
+              <path
+                key={"member-edge-" + member.key}
+                d={"M " + parent.x + " " + parent.y + " Q " + ((parent.x + member.x) / 2 + (Math.cos(member.angle) > 0 ? 7 : -7)) + " " + ((parent.y + member.y) / 2) + " " + member.x + " " + member.y}
+                className="agraph-member-edge"
+                style={{ opacity: member.affinity == null ? 0.32 : 0.24 + Math.min(0.42, Math.max(0, member.affinity)) }}
+              />
+            );
+          })}
 
           {/* center: the film */}
           <g className="agraph-center">
-            <circle cx={CX} cy={CY} r={44} />
-            <text x={CX} y={CY - 4} textAnchor="middle" className="agraph-center-title">
-              {filmTitle.length > 18 ? `${filmTitle.slice(0, 17)}…` : filmTitle}
+            <circle className="agraph-center-halo" cx={CX} cy={CY} r="52" />
+            <circle className="agraph-center-ring" cx={CX} cy={CY} r="38" />
+            <circle className="agraph-center-core" cx={CX} cy={CY} r="5.5" />
+            <text x={CX} y={CY - 3} textAnchor="middle" className="agraph-center-title">
+              {displayTitle.length > 22 ? `${displayTitle.slice(0, 21)}…` : displayTitle}
             </text>
-            <text x={CX} y={CY + 14} textAnchor="middle" className="agraph-center-sub">
-              YOUR FILM
+            <text x={CX} y={CY + 13} textAnchor="middle" className="agraph-center-sub">
+              {displaySubLabel.length > 30 ? `${displaySubLabel.slice(0, 29)}…` : displaySubLabel}
             </text>
           </g>
 
-          {/* ranked worlds */}
-          {placed.map((p) => (
-            <g
-              key={p.node.key}
-              className={`agraph-node${selected === p.node.key ? " is-selected" : ""}${
-                p.node.role === "primary" ? " is-primary" : p.node.role === "runner-up" ? " is-runner" : ""
-              }`}
-              role="button"
-              tabIndex={0}
-              onClick={() => setSelected(selected === p.node.key ? null : p.node.key)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  setSelected(selected === p.node.key ? null : p.node.key);
-                }
-              }}
-              aria-pressed={selected === p.node.key}
-              aria-label={`${p.node.label}, ${p.node.role === "primary" ? "primary positioning target" : p.node.role === "runner-up" ? "runner-up world" : "ranked world"}, rank ${p.node.rank}`}
-            >
-              <circle cx={p.x} cy={p.y} r={p.r} />
-              <text x={p.x} y={p.y - p.r - 10} textAnchor="middle" className="agraph-node-label">
-                {p.node.label.length > 22 ? `${p.node.label.slice(0, 21)}…` : p.node.label}
-              </text>
-              <text x={p.x} y={p.y - p.r + 2} textAnchor="middle" className="agraph-node-meta">
-                #{p.node.rank} · {domainLabel(p.node.domain)}
-              </text>
-              {p.node.meanAffinity != null && (
-                <text x={p.x} y={p.y + 14} textAnchor="middle" className="agraph-node-meta">
-                  affinity {p.node.meanAffinity.toFixed(2)}
+          {/* Ranked cultural domains: small marks, editorial labels and clear hierarchy. */}
+          {placed.map((p) => {
+            const cosine = Math.cos(p.angle);
+            const sine = Math.sin(p.angle);
+            const anchor = cosine > 0.2 ? "start" : cosine < -0.2 ? "end" : "middle";
+            const labelX = p.x + (anchor === "start" ? 13 : anchor === "end" ? -13 : 0);
+            const labelY = Math.abs(cosine) <= 0.2 ? p.y + (sine > 0 ? 22 : -14) : p.y + 4;
+            const isSelected = selected === p.node.key || activeMember?.parentKey === p.node.key;
+            return (
+              <g
+                key={p.node.key}
+                className={"agraph-node agraph-domain-node" + (isSelected ? " is-selected" : "") + (p.node.role === "primary" ? " is-primary" : p.node.role === "runner-up" ? " is-runner" : "")}
+                role="button"
+                tabIndex={0}
+                onClick={() => setSelected(isSelected ? null : p.node.key)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelected(isSelected ? null : p.node.key);
+                  }
+                }}
+                aria-pressed={isSelected}
+                aria-label={p.node.label + ", " + p.node.kindLabel + ", rank " + p.node.rank}
+              >
+                <circle className="agraph-node-halo" cx={p.x} cy={p.y} r="13" />
+                <circle cx={p.x} cy={p.y} r={p.node.role === "primary" ? 7.5 : 5.8} />
+                <text x={labelX} y={labelY} textAnchor={anchor} className="agraph-node-label">
+                  {p.node.label.length > 21 ? p.node.label.slice(0, 20) + "…" : p.node.label}
                 </text>
-              )}
-            </g>
-          ))}
+                <text x={labelX} y={labelY + 13} textAnchor={anchor} className="agraph-node-meta">
+                  {String(p.node.rank).padStart(2, "0") + " · " + p.node.memberCount + " MEMBERS"}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* The outer orbit names real cohort members. Each entity can be inspected independently. */}
+          {memberNodes.map((member) => {
+            const cosine = Math.cos(member.angle);
+            const sine = Math.sin(member.angle);
+            const anchor = cosine > 0.18 ? "start" : cosine < -0.18 ? "end" : "middle";
+            const labelX = member.x + (anchor === "start" ? 9 : anchor === "end" ? -9 : 0);
+            const labelY = Math.abs(cosine) <= 0.18 ? member.y + (sine > 0 ? 15 : -9) : member.y + 3;
+            const isSelected = selected === member.key;
+            return (
+              <g
+                key={member.key}
+                className={"agraph-node agraph-entity-node" + (isSelected ? " is-selected" : "")}
+                role="button"
+                tabIndex={0}
+                onClick={() => setSelected(isSelected ? null : member.key)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelected(isSelected ? null : member.key);
+                  }
+                }}
+                aria-pressed={isSelected}
+                aria-label={member.name + ", member of " + (placed.find((p) => p.node.key === member.parentKey)?.node.label ?? "a cultural world")}
+              >
+                <circle cx={member.x} cy={member.y} r={member.affinity == null ? 4.6 : 4.1 + Math.max(0, Math.min(1, member.affinity)) * 2.2} />
+                <text x={labelX} y={labelY} textAnchor={anchor} className="agraph-node-label">
+                  {member.name.length > 25 ? member.name.slice(0, 24) + "…" : member.name}
+                </text>
+                <text x={labelX} y={labelY + 12} textAnchor={anchor} className="agraph-node-meta">
+                  {placed.find((p) => p.node.key === member.parentKey)?.node.label ?? "CULTURAL CONNECTION"}
+                </text>
+              </g>
+            );
+          })}
         </svg>
         {dataStatus === "fixture" && (
           <span className="agraph-stamp">FIXTURE DEMONSTRATION — NOT LIVE QLOO DATA</span>
@@ -211,6 +325,16 @@ export default function AdjacencyGraph({
         {dataStatus !== "measured" && dataStatus !== "fixture" && (
           <span className="agraph-stamp is-unknown">DATA STATUS UNKNOWN</span>
         )}
+      </div>
+      <div className="agraph-legend" aria-label="Cultural fingerprint legend">
+        <span><i className="agraph-legend-anchor" /> Programme anchor</span>
+        <span><i className="agraph-legend-node" /> Cultural connection</span>
+        <span className="agraph-legend-hint">Select a node to inspect</span>
+      </div>
+      <p className="agraph-footnote">
+        Showing {nodes.length} ranked cultural world{nodes.length === 1 ? "" : "s"}. Outer labels are entities returned inside their parent cohorts; the full member lists and exclusions remain available below.
+        {rejected.length > 0 ? " " + rejected.length + " rejected world(s) remain annotated separately." : ""}
+      </p>
       </div>
 
       <aside className="agraph-inspector" aria-live="polite">
@@ -224,15 +348,26 @@ export default function AdjacencyGraph({
         {active && (
           <>
             <span className="micro-label">
-              {active.node.role === "primary"
-                ? "Primary positioning target"
-                : active.node.role === "runner-up"
-                  ? "Runner-up world"
-                  : `Ranked world #${active.node.rank}`}
+              {activeMember
+                ? "ENTITY / " + active.node.label
+                : active.node.role === "primary"
+                  ? "Primary positioning target"
+                  : active.node.role === "runner-up"
+                    ? "Runner-up world"
+                    : `Ranked world #${active.node.rank}`}
             </span>
-            <h4>{active.node.label}</h4>
+            <h4>{activeMember?.name ?? active.node.label}</h4>
+            {activeMember && (
+              <p className="agraph-inspector-kicker">RELATED TO {active.node.label}</p>
+            )}
             <dl className="agraph-facts">
               <div><dt>Domain</dt><dd>{domainLabel(active.node.domain)}</dd></div>
+              {!activeMember && <div><dt>Grouping</dt><dd>{active.node.kindLabel}</dd></div>}
+              {activeMember && <div><dt>Related world</dt><dd>{active.node.label}</dd></div>}
+              {activeMember?.affinity != null && <div><dt>Entity affinity</dt><dd>{activeMember.affinity.toFixed(3)}</dd></div>}
+              {active.node.constructionReason && (
+                <div><dt>Why grouped</dt><dd>{active.node.constructionReason}</dd></div>
+              )}
               <div><dt>Members</dt><dd>{active.node.memberCount}</dd></div>
               {active.node.qualifyingCount != null && (
                 <div><dt>Qualifying</dt><dd>{active.node.qualifyingCount}</dd></div>
@@ -261,7 +396,7 @@ export default function AdjacencyGraph({
                 <div><dt>Evidence call</dt><dd>Not linked in this response</dd></div>
               )}
             </dl>
-            {active.node.members.length > 0 && (
+            {!activeMember && active.node.members.length > 0 && (
               <>
                 <span className="micro-label">Strongest members</span>
                 <ul className="agraph-members">

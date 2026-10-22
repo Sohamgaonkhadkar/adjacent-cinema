@@ -30,10 +30,13 @@ import {
   type SSEEvent,
   type YouTubeStatus,
   type YouTubeVideo,
+  type CreatorRunRequest,
 } from "@/lib/api";
 import type { AdjacentRunResult, InvestigationData, ProgrammeFilm, TraceRow } from "@/types/adjacent";
 import AdjacencyGraph from "@/components/AdjacencyGraph";
 import { EvidenceReferences, EvidenceTraceLog } from "@/components/EvidenceTrace";
+import { watchRunWithRecovery } from "@/lib/runRecovery";
+import { downloadTextFile, formatTestCardText, safeTextFilename } from "@/lib/testCardExport";
 
 // Small helpers shared with the cinema page's visual language.
 const mono = { fontFamily: "var(--mono)" } as const;
@@ -77,6 +80,7 @@ export default function CreatorPage() {
   const [releaseGoal, setReleaseGoal] = useState("");
   const [city, setCity] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+  const [isFixtureMode, setIsFixtureMode] = useState<boolean>(false);
 
   // ── run state ────────────────────────────────────────────────────────────
   const [runId, setRunId] = useState<string | null>(null);
@@ -86,6 +90,8 @@ export default function CreatorPage() {
   const [events, setEvents] = useState<SSEEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const stopStream = useRef<(() => void) | null>(null);
+  const runGeneration = useRef(0);
+  const activeRunId = useRef<string | null>(null);
   const experimentDetailRequest = useRef(0);
   const experimentListRequest = useRef(0);
 
@@ -107,6 +113,26 @@ export default function CreatorPage() {
   const [backendHealth, setBackendHealth] = useState<BackendHealth | null>(null);
 
   const result: AdjacentRunResult | null = (run?.result as AdjacentRunResult | null) ?? null;
+  const [activeStage, setActiveStage] = useState("intake");
+  useEffect(() => {
+    const stageIds = ["intake", "analysis", "fingerprint", "brief", "experiments"];
+    const targets = stageIds
+      .map((id) => document.getElementById(id))
+      .filter((target): target is HTMLElement => target instanceof HTMLElement);
+    if (!targets.length || !("IntersectionObserver" in window)) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target instanceof HTMLElement) setActiveStage(visible.target.id);
+      },
+      { rootMargin: "-12% 0px -65% 0px", threshold: [0, 0.2, 0.5] },
+    );
+    targets.forEach((target) => observer.observe(target));
+    return () => observer.disconnect();
+  }, [result, run?.status]);
   const traceRows: TraceRow[] = run?.trace ?? [];
   const insufficient = run?.status === "insufficient";
   const failed = run?.status === "failed";
@@ -142,52 +168,94 @@ export default function CreatorPage() {
     void refreshExperiments();
     return () => {
       experimentListRequest.current += 1;
+      runGeneration.current += 1;
+      activeRunId.current = null;
       stopStream.current?.();
+      stopStream.current = null;
     };
   }, [refreshExperiments]);
 
+  const cancelRunWatch = useCallback(() => {
+    runGeneration.current += 1;
+    activeRunId.current = null;
+    stopStream.current?.();
+    stopStream.current = null;
+  }, []);
+
   const watchRun = useCallback((id: string) => {
+    const generation = ++runGeneration.current;
+    activeRunId.current = id;
+    stopStream.current?.();
+    stopStream.current = null;
     setRunId(id);
     setAnalysing(true);
     setEvents([]);
-    stopStream.current?.();
-    stopStream.current = streamRun(
-      id,
-      (event) => {
-        setEvents((prev) => [...prev, event]);
-        if (event.event === "done" || event.event === "insufficiency" || event.event === "error") {
-          getRun(id)
-            .then((r) => {
-              setRun(r);
-              setAnalysing(false);
-            })
-            .catch(() => {
-              setError("Could not load the completed analysis");
-              setAnalysing(false);
-            });
+
+    const isCurrent = () =>
+      runGeneration.current === generation && activeRunId.current === id;
+    stopStream.current = watchRunWithRecovery(id, {
+      isCurrent,
+      stream: streamRun,
+      fetchRun: getRun,
+      onEvent: (event) => {
+        if (isCurrent()) setEvents((prev) => [...prev, event]);
+      },
+      onRun: (response) => {
+        if (!isCurrent()) return;
+        setRun(response);
+        if (["completed", "failed", "insufficient"].includes(response.status)) {
+          setAnalysing(false);
         }
       },
-      (err) => {
-        setError(err.message);
+      onExhausted: () => {
+        if (!isCurrent()) return;
+        setError("The stream disconnected and run status could not be confirmed. Retry loading this run.");
         setAnalysing(false);
-      }
+      },
+    });
+  }, []);
+
+  const exitFixtureMode = useCallback(() => {
+    setIsFixtureMode(false);
+    setRequestMode(null);
+    const params = new URLSearchParams(window.location.search);
+    params.delete("demo");
+    const query = params.toString();
+    window.history.replaceState(
+      {},
+      "",
+      `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`
     );
   }, []);
 
-  const startDemoRun = useCallback(() => {
+  const startDemoRun = useCallback((customPayload?: CreatorRunRequest) => {
+    cancelRunWatch();
     setError(null);
     setRun(null);
     setSaveState(null);
     setFormError(null);
+    setIsFixtureMode(true);
     setRequestMode("fixture");
     setAnalysing(true);
-    createCreatorDemoRun()
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("demo") !== "fixture") {
+      params.set("demo", "fixture");
+      const query = params.toString();
+      window.history.replaceState(
+        {},
+        "",
+        `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`
+      );
+    }
+
+    createCreatorDemoRun(customPayload)
       .then((r) => watchRun(r.run_id))
       .catch((err) => {
         setError(err instanceof Error ? err.message : "Failed to start the fixture demo");
         setAnalysing(false);
       });
-  }, [watchRun]);
+  }, [watchRun, cancelRunWatch]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -198,10 +266,9 @@ export default function CreatorPage() {
     else if (yt === "denied") setYtBanner("Authorization was declined — no data was accessed. You can reconnect any time.");
     else if (yt === "error") setYtBanner(`YouTube authorization failed (${params.get("reason") ?? "unknown reason"}). No connection was stored.`);
 
-    if (yt || startFixture) {
+    if (yt) {
       params.delete("yt");
-      params.delete("demo");
-      if (yt) params.delete("reason");
+      params.delete("reason");
       const query = params.toString();
       window.history.replaceState(
         {},
@@ -209,10 +276,27 @@ export default function CreatorPage() {
         `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`
       );
     }
-    if (startFixture) startDemoRun();
+
+    if (startFixture) {
+      setIsFixtureMode(true);
+      setRequestMode("fixture");
+      setTitle((t) => t || "Sample Short — 'Neon Harbour'");
+      setLogline((l) => l || "A dockside night-shift romance told in three silent vignettes.");
+      setGenre((g) => g || "drama");
+      setLanguage((lang) => lang || "English");
+      setThemesText((th) => th || "isolation, night workers, coastal towns");
+      setReferenceRows((refs) => (refs.some((r) => r.title.trim()) ? refs : [
+        { title: "Chungking Express", year: "1994" },
+        { title: "In the Mood for Love", year: "2000" },
+      ]));
+      setReleaseGoal((rg) => rg || "YouTube premiere after festival window");
+      setCity((c) => c || "Portland, Oregon");
+      startDemoRun();
+    }
   }, [startDemoRun]);
 
   function handleAnalyse() {
+    cancelRunWatch();
     setError(null);
     setRun(null);
     setSaveState(null);
@@ -247,14 +331,15 @@ export default function CreatorPage() {
       setFormError("Each reference title must be 160 characters or fewer.");
       return;
     }
-    if (refs.length === 0 && themes.length === 0) {
+    if (!isFixtureMode && refs.length === 0 && themes.length === 0) {
       setFormError("Add at least one reference work or theme — the analysis needs cultural seeds.");
       return;
     }
     setFormError(null);
-    setRequestMode("live");
+    setRequestMode(isFixtureMode ? "fixture" : "live");
     setAnalysing(true);
-    createCreatorRun({
+
+    const payload: CreatorRunRequest = {
       title: title.trim(),
       logline: logline.trim(),
       genre: genre.trim(),
@@ -263,7 +348,13 @@ export default function CreatorPage() {
       references: refs,
       release_goal: releaseGoal.trim(),
       city: city.trim(),
-    })
+    };
+
+    const runCall = isFixtureMode
+      ? createCreatorDemoRun(payload)
+      : createCreatorRun(payload);
+
+    runCall
       .then((r) => watchRun(r.run_id))
       .catch((err) => {
         setError(err instanceof Error ? err.message : "Failed to start analysis");
@@ -357,6 +448,32 @@ export default function CreatorPage() {
   const rejected = result?.cohorts?.rejected ?? [];
   const tasteTags = result?.taste_dna?.tags ?? [];
   const progItems = result?.programme?.items ?? [];
+  const themeInputs = result?.theme_inputs ?? [];
+
+  function handleExportTestCard() {
+    if (!card) return;
+    const filmName = (result?.film as { title?: string } | undefined)?.title ?? title ?? "Your film";
+    const text = formatTestCardText({
+      title: card.title,
+      context: "FILM: " + filmName,
+      dataStatus: card.data_status,
+      sections: [
+        { label: "Programme context", value: card.programme_context },
+        { label: "Audience hypothesis", value: card.audience_hypothesis },
+        { label: "Cultural bridge", value: card.cultural_bridge },
+        { label: "Geographic signal", value: card.geographic_signal },
+        { label: "Positioning direction", value: card.programming_direction },
+        { label: "Primary evidence", value: card.primary_evidence },
+        { label: "Runner-up direction", value: card.runner_up },
+        { label: "Observable success criteria", value: card.success_criteria },
+        { label: "Observation window", value: card.observation_window },
+        { label: "Falsification condition", value: card.falsification_condition },
+      ],
+      provenance: card.provenance,
+      footerNote: "Cultural affinity is not a forecast of views, attendance, revenue, or audience demand.",
+    });
+    downloadTextFile(safeTextFilename(card.title) + ".txt", text);
+  }
 
   return (
     <main style={{ background: "var(--void)", minHeight: "100vh", color: "var(--paper)" }}>
@@ -382,26 +499,26 @@ export default function CreatorPage() {
 
       {/* ── Step navigation (M13.15): the creator journey at a glance ────── */}
       <nav className="step-nav" aria-label="Creator journey">
-        <a href="#intake">01 · Your film</a>
-        {result ? (
-          <a href="#analysis">02 · Investigation</a>
+        <a href="#intake" className={activeStage === "intake" ? "is-active" : undefined} aria-current={activeStage === "intake" ? "step" : undefined}>01 · Your film</a>
+        {result || (failed && !analysing) ? (
+          <a href="#analysis" className={activeStage === "analysis" ? "is-active" : undefined} aria-current={activeStage === "analysis" ? "step" : undefined}>02 · Investigation</a>
         ) : (
           <span className="is-disabled" aria-disabled="true">02 · Investigation</span>
         )}
-        {result?.cohorts ? (
-          <a href="#fingerprint">03 · Fingerprint</a>
+        {result?.cohorts || (failed && !analysing) ? (
+          <a href="#fingerprint" className={activeStage === "fingerprint" ? "is-active" : undefined} aria-current={activeStage === "fingerprint" ? "step" : undefined}>03 · Fingerprint</a>
         ) : (
           <span className="is-disabled" aria-disabled="true">03 · Fingerprint</span>
         )}
-        {result?.investigation ? (
-          <a href="#brief">04 · Decision brief</a>
+        {result?.investigation || (failed && !analysing) ? (
+          <a href="#brief" className={activeStage === "brief" ? "is-active" : undefined} aria-current={activeStage === "brief" ? "step" : undefined}>04 · Decision brief</a>
         ) : (
           <span className="is-disabled" aria-disabled="true">04 · Decision brief</span>
         )}
-        <a href="#experiments" className="is-soft">05 · Experiments</a>
+        <a href="#experiments" className={`is-soft${activeStage === "experiments" ? " is-active" : ""}`} aria-current={activeStage === "experiments" ? "step" : undefined}>05 · Experiments</a>
       </nav>
 
-      <div style={{ maxWidth: 980, margin: "0 auto", padding: "40px 24px 80px" }}>
+      <div className="creator-content-shell">
         {ytBanner && (
           <div className="evidence-panel" style={{ borderColor: "var(--amber)", marginBottom: 20 }}>
             <span className="mono-note">{ytBanner}</span>
@@ -422,6 +539,25 @@ export default function CreatorPage() {
         )}
         {/* ── 1. Film intake ─────────────────────────────────────────── */}
         <div className="evidence-panel" id="intake">
+          {isFixtureMode && (
+            <div
+              className="evidence-panel"
+              role="status"
+              style={{
+                borderColor: "#c29a6e",
+                background: "rgba(194,154,110,0.08)",
+                marginBottom: 16,
+                padding: "10px 14px",
+              }}
+            >
+              <strong className="mono-note" style={{ display: "block", color: "#c29a6e", letterSpacing: "0.08em" }}>
+                FIXTURE DEMO MODE ACTIVE · OFFLINE DETERMINISTIC ANALYSIS
+              </strong>
+              <p style={{ color: "#d5cfc5", fontSize: 12, lineHeight: 1.6, margin: "6px 0 0" }}>
+                Form submissions run against labelled fixture evidence without calling upstream Qloo. Results are never presented as live data.
+              </p>
+            </div>
+          )}
           <h3>Your film</h3>
           <span className="mono-note" style={{ display: "block", marginBottom: 16 }}>
             ONLY THE TITLE IS REQUIRED · EVERYTHING ELSE STRENGTHENS THE EVIDENCE
@@ -482,18 +618,31 @@ export default function CreatorPage() {
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <button
                 onClick={handleAnalyse}
-                disabled={analysing || Boolean(backendHealth?.public_demo && !backendHealth.live_creator_available)}
+                disabled={analysing || Boolean(!isFixtureMode && backendHealth?.public_demo && !backendHealth.live_creator_available)}
                 className="intake-submit"
               >
                 {analysing
                   ? "Analysing…"
-                  : backendHealth?.public_demo && !backendHealth.live_creator_available
-                    ? "Live Creator disabled in public demo"
-                    : "Analyse cultural position"}
+                  : isFixtureMode
+                    ? "Analyse cultural position (fixture demo)"
+                    : backendHealth?.public_demo && !backendHealth.live_creator_available
+                      ? "Live Creator disabled in public demo"
+                      : "Analyse cultural position"}
               </button>
-              <button onClick={startDemoRun} disabled={analysing} className="intake-sample-btn">
-                View labelled fixture demo (offline)
-              </button>
+              {isFixtureMode ? (
+                <button
+                  type="button"
+                  onClick={exitFixtureMode}
+                  disabled={analysing}
+                  className="intake-sample-btn"
+                >
+                  Switch to live analysis
+                </button>
+              ) : (
+                <button onClick={() => startDemoRun()} disabled={analysing} className="intake-sample-btn">
+                  View labelled fixture demo (offline)
+                </button>
+              )}
             </div>
             {error && (
               <div className="intake-form-error" role="alert" style={{ padding: 12, border: "1px solid rgba(138,80,72,0.4)", borderRadius: 6 }}>
@@ -524,11 +673,36 @@ export default function CreatorPage() {
           </div>
         )}
         {run && !analysing && failed && (
-          <div className="insufficient-panel" role="alert" style={{ marginTop: 24, borderColor: "rgba(138,80,72,0.45)", background: "rgba(138,80,72,0.08)" }}>
-            <h3 style={{ color: "#d4a89e" }}>The analysis could not complete</h3>
-            <p>{run.error || run.stop_message || result?.evidence?.stop_message || "Unknown failure."}</p>
-            {result && <p>Any partial evidence below is not a completed positioning result.</p>}
-          </div>
+          <>
+            <div className="insufficient-panel" role="alert" style={{ marginTop: 24, borderColor: "rgba(138,80,72,0.45)", background: "rgba(138,80,72,0.08)" }}>
+              <h3 style={{ color: "#d4a89e" }}>The analysis could not complete</h3>
+              <p>{run.error || run.stop_message || result?.evidence?.stop_message || "Unknown failure."}</p>
+              {result && <p>Any partial evidence below is not a completed positioning result.</p>}
+            </div>
+            {traceRows.length > 0 && <EvidenceTraceLog rows={traceRows} />}
+            {!result && (
+              <div style={{ display: "grid", gap: 12, marginTop: 18 }}>
+                <section className="evidence-panel" id="analysis" aria-labelledby="analysis-unavailable-title">
+                  <h3 id="analysis-unavailable-title">Investigation unavailable</h3>
+                  <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.7, marginBottom: 0 }}>
+                    The run failed before a structured investigation could be produced. No findings or hypotheses are being inferred from a failed run. Retry after the backend failure has been diagnosed.
+                  </p>
+                </section>
+                <section className="evidence-panel" id="fingerprint" aria-labelledby="fingerprint-unavailable-title">
+                  <h3 id="fingerprint-unavailable-title">Cultural fingerprint unavailable</h3>
+                  <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.7, marginBottom: 0 }}>
+                    A fingerprint requires verified cultural cohorts from a completed analysis. This failed run produced no result, so no substitute or fixture fingerprint is shown.
+                  </p>
+                </section>
+                <section className="evidence-panel" id="brief" aria-labelledby="brief-unavailable-title">
+                  <h3 id="brief-unavailable-title">Decision brief unavailable</h3>
+                  <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.7, marginBottom: 0 }}>
+                    The decision brief depends on the structured investigation above. It will become available after a successful run; optional language-model synthesis is not used to replace missing evidence.
+                  </p>
+                </section>
+              </div>
+            )}
+          </>
         )}
 
         {/* ── 2. Cultural analysis ───────────────────────────────────── */}
@@ -550,7 +724,7 @@ export default function CreatorPage() {
             <div className="evidence-panel" id="analysis">
               <h3>What was analysed</h3>
               <span className="mono-note" style={{ display: "block", marginBottom: 12 }}>
-                {result.programme?.resolved_count ?? 0}/{result.programme?.total_count ?? 0} SEEDS RESOLVED AGAINST QLOO · UNRESOLVED SEEDS ARE EXCLUDED, NEVER GUESSED
+                {result.programme?.resolved_count ?? 0}/{result.programme?.total_count ?? 0} FILM REFERENCES VERIFIED AGAINST QLOO · UNRESOLVED REFERENCES ARE EXCLUDED, NEVER GUESSED
               </span>
               <div style={{ display: "grid", gap: 6 }}>
                 {progItems.map((item, i) => (
@@ -579,6 +753,33 @@ export default function CreatorPage() {
               </div>
             </div>
 
+            {(result.film?.themes?.length ?? 0) > 0 && (
+              <div className="evidence-panel">
+                <h3>Creator theme inputs</h3>
+                <span className="mono-note" style={{ display: "block", marginBottom: 12 }}>
+                  EXACT QLOO TAG MATCHES ARE USED AS SIGNALS · UNMATCHED THEMES ARE EXCLUDED
+                </span>
+                <div style={{ display: "grid", gap: 8 }}>
+                  {result.film?.themes?.map((theme, i) => {
+                    const evidence = themeInputs.find((item) => item.input === theme);
+                    const matched = evidence?.status === "matched";
+                    return (
+                      <div key={`${theme}-${i}`} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 12 }}>
+                        <span style={{ color: matched ? "#7aba8a" : "#c29a6e" }}>
+                          {matched ? "✓ MATCHED" : evidence?.status === "ambiguous" ? "⚠ AMBIGUOUS" : "✕ NOT USED"}
+                        </span>
+                        <span>{theme}</span>
+                        {matched && evidence?.qloo_name && <span className="mono-note">QLOO TAG: {evidence.qloo_name}</span>}
+                        {matched && evidence?.qloo_tag_id && <span className="mono-note">TAG ID: {evidence.qloo_tag_id}</span>}
+                        {!matched && <span className="mono-note">No exact unique Qloo tag match; excluded from analysis signals.</span>}
+                        {evidence?.call_id && <EvidenceReferences refs={[evidence.call_id]} traceRows={traceRows} />}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {tasteTags.length > 0 && (
               <div className="evidence-panel">
                 <h3>Expressed cultural profile</h3>
@@ -601,9 +802,17 @@ export default function CreatorPage() {
 
             {result.cohorts && (
               <div className="evidence-panel" id="fingerprint">
-                <h3>Cultural fingerprint</h3>
+                <div className="fingerprint-heading">
+                  <div>
+                    <p className="eyebrow"><span>03</span> CULTURAL FIELD / {result.data_status === "fixture" ? "MOCK DATA" : result.data_status === "measured" ? "LIVE QLOO DATA" : "DATA STATUS UNKNOWN"}</p>
+                    <h3 id="fingerprint-title" className="fingerprint-title">A programme is<br /><em>a cultural fingerprint.</em></h3>
+                  </div>
+                  <p className="fingerprint-intro">
+                    Follow the relationships outward. The useful signal is not a recommendation; it is a cultural territory your film could choose to enter.
+                  </p>
+                </div>
                 <span className="mono-note" style={{ display: "block", marginBottom: 12 }}>
-                  ADJACENT CULTURAL WORLDS AROUND YOUR FILM · DRAWN ONLY FROM THIS RUN&rsquo;S QLOO EVIDENCE
+                  RANKED CULTURAL WORLDS AND RELATED ENTITIES · DRAWN ONLY FROM THIS RUN’S EVIDENCE
                 </span>
                 <AdjacencyGraph
                   filmTitle={(result.film as { title?: string } | undefined)?.title ?? title ?? "Your film"}
@@ -737,7 +946,7 @@ export default function CreatorPage() {
 
             {/* ── Test Card → experiment ─────────────────────────────── */}
             {card && (
-              <article style={{ padding: 28, border: "1px solid var(--rule)", borderRadius: 8, background: "rgba(232,226,213,0.02)" }}>
+              <article className="test-card-sheet" style={{ padding: 28, border: "1px solid var(--rule)", borderRadius: 8, background: "rgba(232,226,213,0.02)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
                   <span className="micro-label">EXPERIMENT · TEST CARD</span>
                   <span className="mono-note">DATA STATUS: {String(card.data_status ?? "unknown").toUpperCase()}</span>
@@ -762,7 +971,7 @@ export default function CreatorPage() {
                   {card.falsification_condition && (
                     <div style={{ padding: "12px 14px", background: "rgba(138,80,72,0.1)", border: "1px solid rgba(138,80,72,0.25)", borderRadius: 6 }}>
                       <span className="micro-label" style={{ color: "#c97a6a", marginBottom: 6, display: "block" }}>&#9888; FALSIFICATION CONDITION</span>
-                      <p style={{ color: "#d4a89e", fontSize: 12, lineHeight: 1.7, margin: 0 }}>{card.falsification_condition}</p>
+                      <p className="test-card-caution" style={{ color: "#d4a89e", fontSize: 12, lineHeight: 1.7, margin: 0 }}>{card.falsification_condition}</p>
                     </div>
                   )}
                   <div>
@@ -778,7 +987,10 @@ export default function CreatorPage() {
                     </div>
                   </div>
                 </div>
-                <div style={{ marginTop: 24, paddingTop: 18, borderTop: "1px solid var(--rule)", display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                <div className="test-card-footer-actions">
+                  <button type="button" className="test-card-export" onClick={handleExportTestCard}>
+                    <span>Export test card</span><small>PLAIN TEXT · .TXT</small><span aria-hidden="true">↓</span>
+                  </button>
                   <button onClick={handleSaveExperiment} className="intake-submit" disabled={backendHealth?.public_demo}>
                     {backendHealth?.public_demo ? "Saving disabled in public demo" : "Save as planned experiment"}
                   </button>
