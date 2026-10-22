@@ -203,6 +203,45 @@ class TestCreatorExperimentJourney:
 
 
 class TestCreatorLiveRunHonesty:
+    def test_unexpected_setup_exception_finishes_run_without_leaking_message(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        from app.config import Settings
+
+        def fail_from_env(_cls):
+            raise TypeError("SENSITIVE-SETUP-CANARY")
+
+        monkeypatch.setattr(Settings, "from_env", classmethod(fail_from_env))
+        caplog.set_level(logging.ERROR, logger=creator_routes.__name__)
+
+        request = creator_routes.CreatorRunRequest(
+            title="Synthetic setup failure",
+            references=[creator_routes.ReferenceInput(title="Synthetic seed", year=2000)],
+        )
+        record = run_store.create(
+            city="",
+            venue_name="Creator: Synthetic setup failure",
+            programme=request.seeds(),
+        )
+        asyncio.run(creator_routes._execute_creator_run(record, request))
+
+        assert record.status.value == "failed"
+        assert record.result is None
+        assert record.state_json is None
+        assert record.current_phase == "INIT"
+        assert record.stop_reason == "error"
+        assert "error_type=TypeError" in caplog.text
+        assert "_execute_creator_run" in caplog.text
+        assert "SENSITIVE-SETUP-CANARY" not in caplog.text
+        assert "SENSITIVE-SETUP-CANARY" not in (record.error or "")
+        assert len([event for event in record.events if event.event == "error"]) == 1
+
+        response = TestClient(app).get(f"/run/{record.run_id}")
+        assert response.status_code == 200
+        assert response.json()["status"] == "failed"
+        assert response.json()["result"] is None
+        assert "SENSITIVE-SETUP-CANARY" not in response.text
+
     def test_orchestrator_tool_typeerror_logs_safe_frames_through_creator_executor(
         self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
     ) -> None:
