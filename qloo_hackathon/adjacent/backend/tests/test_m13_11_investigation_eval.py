@@ -120,7 +120,7 @@ class TestInvestigationHonesty:
         )
         inv = build_investigation(
             empty_state,
-            film={"title": "Untitled"}, seeds=["a theme"],
+            film={"title": "Untitled"}, seeds=[],
             bet=None, test_card=None, geography=None, city=None,
             data_status="measured",
         )
