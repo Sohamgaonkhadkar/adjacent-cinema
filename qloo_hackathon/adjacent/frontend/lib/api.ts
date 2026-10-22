@@ -20,6 +20,46 @@ import type {
 // Keep the backend server-side: browser requests always stay on this origin,
 // and Next.js proxies /api using ADJACENT_API_ORIGIN.
 const API_BASE = "/api";
+const API_TIMEOUT_MS = 12_000;
+
+async function fetchWithTimeout(
+  path: string,
+  init: RequestInit,
+  timeoutMessage: string
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  try {
+    return await fetch(`${API_BASE}${path}`, { ...init, signal: controller.signal });
+  } catch (err) {
+    if (controller.signal.aborted) throw new Error(timeoutMessage);
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function fetchJsonWithTimeout<T>(
+  path: string,
+  init: RequestInit,
+  timeoutMessage: string
+): Promise<{ response: Response; data: T | null }> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${API_BASE}${path}`, { ...init, signal: controller.signal });
+    const data = await response.json().catch((err: unknown) => {
+      if (controller.signal.aborted) throw err;
+      return null;
+    }) as T | null;
+    return { response, data };
+  } catch (err) {
+    if (controller.signal.aborted) throw new Error(timeoutMessage);
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 // ─── Programme Input ────────────────────────────────────────────────────────
 
@@ -150,9 +190,13 @@ export interface BackendHealth {
 }
 
 export async function getHealth(): Promise<BackendHealth> {
-  const res = await fetch(`${API_BASE}/health`);
-  if (!res.ok) throw new Error("Could not load backend status");
-  return res.json();
+  const { response, data } = await fetchJsonWithTimeout<BackendHealth>(
+    "/health",
+    {},
+    "Backend status check timed out. Check the backend connection and retry."
+  );
+  if (!response.ok || !data) throw new Error("Could not load backend status");
+  return data;
 }
 
 // ─── Normalizers ────────────────────────────────────────────────────────────
@@ -293,17 +337,23 @@ function noteGuestSessionExpiry(path: string, response: Response) {
 export async function initializeSponsorGuestSession(): Promise<{ expires_at: string }> {
   if (sponsorSessionInitialization) return sponsorSessionInitialization;
   const initialize = async (): Promise<{ expires_at: string }> => {
-    const res = await fetch(`${API_BASE}/filmsponsor/guest-session`, {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: "{}",
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: res.statusText }));
-      throw new Error(typeof err.detail === "string" ? err.detail : "Could not initialize guest session.");
+    const { response: res, data } = await fetchJsonWithTimeout<{
+      csrf_token: string;
+      expires_at: string;
+      detail?: string;
+    }>(
+      "/filmsponsor/guest-session",
+      {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      },
+      "FilmSponsor workspace initialization timed out. Check the backend connection and retry."
+    );
+    if (!res.ok || !data) {
+      throw new Error(typeof data?.detail === "string" ? data.detail : "Could not initialize guest session.");
     }
-    const data = (await res.json()) as { csrf_token: string; expires_at: string };
     filmSponsorCsrfToken = data.csrf_token;
     return { expires_at: data.expires_at };
   };
@@ -333,11 +383,15 @@ async function sponsorFetch(path: string, init: RequestInit = {}): Promise<Respo
   if (filmSponsorCsrfToken && path !== "/filmsponsor/guest-session") {
     headers.set("X-FilmSponsor-CSRF", filmSponsorCsrfToken);
   }
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    credentials: "same-origin",
-    headers,
-  });
+  const res = await fetchWithTimeout(
+    path,
+    {
+      ...init,
+      credentials: "same-origin",
+      headers,
+    },
+    "FilmSponsor request timed out. Check the backend connection and retry."
+  );
   noteGuestSessionExpiry(path, res);
   return res;
 }
@@ -392,10 +446,13 @@ export function addEvaluation(
 }
 
 export async function listExperiments(): Promise<ExperimentRecord[]> {
-  const res = await fetch(`${API_BASE}/experiments`);
-  if (!res.ok) throw new Error("Failed to load experiments");
-  const data = await res.json();
-  return data.experiments ?? [];
+  const { response, data } = await fetchJsonWithTimeout<{ experiments?: ExperimentRecord[] }>(
+    "/experiments",
+    {},
+    "Research Log request timed out. Check the backend connection and retry."
+  );
+  if (!response.ok) throw new Error("Failed to load experiments");
+  return data?.experiments ?? [];
 }
 
 export async function getExperiment(
@@ -623,13 +680,21 @@ export function createSponsorCampaign(
 }
 
 export async function listSponsorCampaigns(): Promise<SponsorCampaign[]> {
-  const res = await sponsorFetch("/filmsponsor/campaigns");
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(typeof body.detail === "string" ? body.detail : "Failed to load campaigns");
+  const headers = new Headers();
+  if (filmSponsorCsrfToken) headers.set("X-FilmSponsor-CSRF", filmSponsorCsrfToken);
+  const { response, data } = await fetchJsonWithTimeout<{
+    campaigns?: SponsorCampaign[];
+    detail?: string;
+  }>(
+    "/filmsponsor/campaigns",
+    { credentials: "same-origin", headers },
+    "FilmSponsor campaign request timed out. Check the backend connection and retry."
+  );
+  noteGuestSessionExpiry("/filmsponsor/campaigns", response);
+  if (!response.ok) {
+    throw new Error(typeof data?.detail === "string" ? data.detail : "Failed to load campaigns");
   }
-  const data = await res.json();
-  return data.campaigns ?? [];
+  return data?.campaigns ?? [];
 }
 
 export async function getSponsorCampaign(campaignId: string): Promise<SponsorCampaignDetail> {

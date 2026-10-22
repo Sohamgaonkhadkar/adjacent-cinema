@@ -74,6 +74,9 @@ export default function Home() {
   const [request, setRequest] = useState<{ city: string; venue: string; programme: ProgrammeItemInput[] } | null>(null);
   const [requestMode, setRequestMode] = useState<"live" | "fixture" | null>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
+  const runPollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestGenerationRef = useRef(0);
+  const activeRunIdRef = useRef<string | null>(null);
 
   // Intersection observer for active chapter
   useEffect(() => {
@@ -91,11 +94,29 @@ export default function Home() {
     return () => observer.disconnect();
   }, []);
 
-  // Cleanup SSE on unmount
-  useEffect(() => { return () => cleanupRef.current?.(); }, []);
+  function stopRunTracking() {
+    if (runPollTimerRef.current !== null) clearTimeout(runPollTimerRef.current);
+    runPollTimerRef.current = null;
+    cleanupRef.current?.();
+    cleanupRef.current = null;
+  }
 
-  // ── Typed views of the current result (no `any`: this is the API contract) ──
-  const result: AdjacentRunResult | null = run?.result ?? null;
+  // Cleanup and invalidate all pending requests/SSE callbacks on unmount.
+  useEffect(() => {
+    return () => {
+      requestGenerationRef.current += 1;
+      activeRunIdRef.current = null;
+      stopRunTracking();
+    };
+  }, []);
+
+  // ── Typed views of a valid terminal result (never partial failed output) ──
+  const runIsTerminalSuccess = run?.status === "completed" || run?.status === "insufficient";
+  const candidateResult = runIsTerminalSuccess ? run?.result : null;
+  const result: AdjacentRunResult | null =
+    candidateResult && (candidateResult.data_status === "measured" || candidateResult.data_status === "fixture")
+      ? candidateResult
+      : null;
   const dataStatus = result?.data_status ?? null;
   const programme = result?.programme ?? null;
   const tasteTags = result?.taste_dna?.tags ?? [];
@@ -116,34 +137,93 @@ export default function Home() {
     : activeChapter;
 
   const traceEvents = events.filter((e) => e.event === "trace");
-  const insufficient = run?.status === "insufficient" || run?.stop_reason === "insufficiency";
+  const insufficient = run?.status === "insufficient";
   const failed = run?.status === "failed";
 
-  function startStream(id: string) {
+  function beginRunRequest(): number {
+    stopRunTracking();
+    activeRunIdRef.current = null;
+    requestGenerationRef.current += 1;
+    setRunId(null);
+    return requestGenerationRef.current;
+  }
+
+  function startStream(id: string, generation: number) {
+    const isCurrentRun = () =>
+      generation === requestGenerationRef.current && activeRunIdRef.current === id;
+    let terminalReconciled = false;
+    let pollScheduled = false;
+    let pollDelayMs = 1_500;
+
+    const reconcileRun = async (eventMessage?: string): Promise<boolean> => {
+      try {
+        const finalRun = await getRun(id);
+        if (!isCurrentRun()) return true;
+        const terminal = ["completed", "insufficient", "failed"].includes(finalRun.status);
+        if (terminal && !terminalReconciled) {
+          terminalReconciled = true;
+          setRun(finalRun);
+          setError(
+            finalRun.status === "failed" && !finalRun.error && !finalRun.stop_message
+              ? eventMessage || "The analysis could not complete."
+              : null
+          );
+          setAnalysing(false);
+          stopRunTracking();
+        } else if (eventMessage && !terminal) {
+          setError(eventMessage);
+        }
+        return terminal;
+      } catch (err: unknown) {
+        if (!isCurrentRun()) return true;
+        setError(eventMessage || (err instanceof Error ? err.message : "Could not load the final run status."));
+        return false;
+      }
+    };
+
+    const schedulePoll = () => {
+      if (!isCurrentRun() || pollScheduled || terminalReconciled) return;
+      pollScheduled = true;
+      runPollTimerRef.current = setTimeout(() => {
+        pollScheduled = false;
+        runPollTimerRef.current = null;
+        void reconcileRun().then((terminal) => {
+          if (!terminal && isCurrentRun()) {
+            pollDelayMs = Math.min(pollDelayMs + 1_000, 5_000);
+            schedulePoll();
+          }
+        });
+      }, pollDelayMs);
+    };
+
     const cleanup = streamRun(
       id,
       (event) => {
+        if (!isCurrentRun()) return;
         setEvents((prev) => [...prev, event]);
-        if (event.event === "done" || event.event === "insufficiency") {
-          cleanupRef.current?.();
-          getRun(id)
-            .then((finalRun) => { setRun(finalRun); setAnalysing(false); })
-            .catch(() => { setError("Could not load the completed analysis"); setAnalysing(false); });
-        }
-        if (event.event === "error") {
-          cleanupRef.current?.();
-          setError(String(event.data?.message || "Analysis failed"));
-          getRun(id).then(setRun).catch(() => undefined);
-          setAnalysing(false);
+        if (["done", "insufficiency", "error"].includes(event.event)) {
+          cleanupRef.current = null;
+          const eventMessage = String(event.data?.message || event.data?.stop_message || "");
+          void reconcileRun(event.event === "error" ? eventMessage : undefined).then((terminal) => {
+            if (!terminal) schedulePoll();
+          });
         }
       },
-      (err) => { setError(err.message); setAnalysing(false); }
+      (err) => {
+        if (!isCurrentRun()) return;
+        cleanupRef.current = null;
+        void reconcileRun(err.message).then((terminal) => {
+          if (!terminal) schedulePoll();
+        });
+      }
     );
     cleanupRef.current = cleanup;
+    schedulePoll();
   }
 
   // The live path: exactly the values entered in the intake form are submitted.
   async function handleAnalyse(city: string, venue: string, programmeItems: ProgrammeItemInput[]) {
+    const generation = beginRunRequest();
     setError(null);
     setAnalysing(true);
     setRun(null);
@@ -153,11 +233,14 @@ export default function Home() {
 
     try {
       const response = await createRun({ city, venue_name: venue, programme: programmeItems });
+      if (generation !== requestGenerationRef.current) return;
+      activeRunIdRef.current = response.run_id;
       setRunId(response.run_id);
       setRun(response);
       document.getElementById("field")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      startStream(response.run_id);
+      startStream(response.run_id, generation);
     } catch (err: unknown) {
+      if (generation !== requestGenerationRef.current) return;
       setError(err instanceof Error ? err.message : "Failed to start analysis");
       setAnalysing(false);
     }
@@ -165,6 +248,7 @@ export default function Home() {
 
   // The fixture path: an explicit, labelled offline demo — never a silent fallback.
   async function handleDemo() {
+    const generation = beginRunRequest();
     setError(null);
     setAnalysing(true);
     setRun(null);
@@ -174,18 +258,23 @@ export default function Home() {
 
     try {
       const response = await createDemoRun();
+      if (generation !== requestGenerationRef.current) return;
+      activeRunIdRef.current = response.run_id;
       setRunId(response.run_id);
       setRun(response);
       document.getElementById("field")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      startStream(response.run_id);
+      startStream(response.run_id, generation);
     } catch (err: unknown) {
+      if (generation !== requestGenerationRef.current) return;
       setError(err instanceof Error ? err.message : "Failed to start the fixture demo");
       setAnalysing(false);
     }
   }
 
   function resetAnalysis() {
-    cleanupRef.current?.();
+    requestGenerationRef.current += 1;
+    activeRunIdRef.current = null;
+    stopRunTracking();
     setRunId(null);
     setRun(null);
     setEvents([]);
@@ -707,7 +796,7 @@ export default function Home() {
             </p>
           </div>
 
-          {!result && (
+          {!result && !failed && (
             <div className="insufficient-panel">
               <h3>No numbers before evidence</h3>
               <p>

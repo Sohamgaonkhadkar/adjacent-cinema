@@ -10,6 +10,7 @@ Routes:
 from __future__ import annotations
 
 import asyncio
+from contextlib import suppress
 from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, HTTPException, Request
@@ -21,6 +22,7 @@ from ..public_demo import (
     prune_public_run_cache,
     public_demo_enabled,
     public_failure_message,
+    safe_error_diagnostic,
     safe_public_event,
     safe_public_trace,
     safe_run_error,
@@ -205,6 +207,27 @@ async def get_trace(run_id: str) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+def _safe_state_failure_message(state: Any) -> str:
+    """Expose useful stop diagnostics without serializing raw exception details."""
+    stop = getattr(state, "stop", None)
+    if stop is None:
+        return "The analysis could not complete. Review the sanitized trace and retry."
+
+    reason = getattr(getattr(stop, "reason", None), "value", getattr(stop, "reason", None))
+    if reason != "error":
+        return str(getattr(stop, "message", "") or "The analysis stopped before completion.")
+
+    stats = getattr(stop, "stats", {})
+    error = stats.get("error") if isinstance(stats, dict) else None
+    error = error if isinstance(error, dict) else {}
+    return safe_error_diagnostic(
+        error_type=error.get("error_type") or getattr(stop, "detail_code", None),
+        kind=error.get("kind"),
+        status=error.get("status"),
+        call_id=error.get("call_id"),
+    )
+
+
 async def _execute_run(record: RunRecord) -> None:
     """Execute the Adjacent pipeline and update the run record."""
     from ..agent.budget import Budget
@@ -226,9 +249,13 @@ async def _execute_run(record: RunRecord) -> None:
     if not settings.has_api_key:
         record.status = RunStatus.FAILED
         record.error = "QLOO_API_KEY not configured"
-        record.emit(RunEvent("error", {"message": "QLOO_API_KEY not configured"}))
+        record.stop_message = record.error
+        record.result = None
+        record.emit(RunEvent("error", {"message": record.error}))
         return
 
+    client = None
+    state = None
     try:
         from ..qloo.client import QlooClient
         client = QlooClient(settings)
@@ -265,29 +292,43 @@ async def _execute_run(record: RunRecord) -> None:
         state = await orchestrator.run(state)
         sanitize_public_stop(state)
 
+        # Preserve safe diagnostics even when a later pipeline stage fails.
+        record.stop_reason = state.stop_reason
+        record.stop_message = state.stop_message
+        record.trace = state.trace_rows
+        _emit_state_events(record, state)
+
+        if state.stop_reason not in ("complete", "insufficiency"):
+            message = _safe_state_failure_message(state)
+            record.status = RunStatus.FAILED
+            record.error = message
+            record.stop_message = message
+            record.result = None
+            record.emit(RunEvent("error", {
+                "stop_reason": state.stop_reason,
+                "stop_message": message,
+                "message": message,
+                "resolved": len(state.resolved_items),
+                "total": len(state.programme),
+            }))
+            await client.aclose()
+            return
+
+        record.state_json = state.to_json()
+
         # --- Post-pipeline: Geography, Programme Bet, Test Card ---
         geography_result, programme_bet, test_card = await _post_pipeline_artifacts(
             record, state, client
         )
 
-        # Emit state events
-        _emit_state_events(record, state)
-
-        # Finalize
-        record.state_json = state.to_json()
-        record.stop_reason = state.stop_reason
-        record.stop_message = state.stop_message
-
-        # Build result
         record.result = _build_result(
             state, record.city,
             geography=geography_result,
             programme_bet=programme_bet,
             test_card=test_card,
         )
-        record.trace = state.trace_rows
 
-        if state.stop_reason in ("complete",):
+        if state.stop_reason == "complete":
             record.status = RunStatus.COMPLETED
             record.emit(RunEvent("done", {
                 "stop_reason": state.stop_reason,
@@ -297,15 +338,9 @@ async def _execute_run(record: RunRecord) -> None:
                 "cohorts_ranked": len(state.ranked),
                 "cohorts_rejected": len(state.rejected),
             }))
-        elif state.stop_reason == "insufficiency":
+        else:
             record.status = RunStatus.INSUFFICIENT
             record.emit(RunEvent("insufficiency", {
-                "stop_reason": state.stop_reason,
-                "stop_message": state.stop_message,
-            }))
-        else:
-            record.status = RunStatus.FAILED
-            record.emit(RunEvent("error", {
                 "stop_reason": state.stop_reason,
                 "stop_message": state.stop_message,
             }))
@@ -316,6 +351,15 @@ async def _execute_run(record: RunRecord) -> None:
         message = safe_run_error(exc)
         record.status = RunStatus.FAILED
         record.error = message
+        record.stop_message = message
+        record.result = None
+        if client is not None:
+            with suppress(Exception):
+                await client.aclose()
+        if state is not None:
+            with suppress(Exception):
+                record.stop_reason = state.stop_reason
+                record.trace = state.trace_rows
         record.emit(RunEvent("error", {"message": message}))
 
 
@@ -505,22 +549,36 @@ async def _execute_demo_run(record: RunRecord) -> None:
         state = await orchestrator.run(state)
         sanitize_public_stop(state)
 
+        record.stop_reason = state.stop_reason
+        record.stop_message = state.stop_message
+        record.trace = state.trace_rows
+        _emit_state_events(record, state)
+
+        if state.stop_reason not in ("complete", "insufficiency"):
+            message = _safe_state_failure_message(state)
+            record.status = RunStatus.FAILED
+            record.error = message
+            record.stop_message = message
+            record.result = None
+            record.emit(RunEvent("error", {
+                "stop_reason": state.stop_reason,
+                "stop_message": message,
+                "message": message,
+                "resolved": len(state.resolved_items),
+                "total": len(state.programme),
+            }))
+            return
+
+        record.state_json = state.to_json()
         geography_result, programme_bet, test_card = await _post_pipeline_artifacts(
             record, state, client
         )
-
-        _emit_state_events(record, state)
-
-        record.state_json = state.to_json()
-        record.stop_reason = state.stop_reason
-        record.stop_message = state.stop_message
         record.result = _build_result(
             state, record.city,
             geography=geography_result,
             programme_bet=programme_bet,
             test_card=test_card,
         )
-        record.trace = state.trace_rows
 
         if state.stop_reason == "complete":
             record.status = RunStatus.COMPLETED
@@ -549,6 +607,8 @@ async def _execute_demo_run(record: RunRecord) -> None:
         message = safe_run_error(exc)
         record.status = RunStatus.FAILED
         record.error = message
+        record.stop_message = message
+        record.result = None
         record.emit(RunEvent("error", {"message": message}))
 
 
@@ -725,7 +785,9 @@ def _build_result(
 def _record_to_response(record: RunRecord) -> RunResponse:
     stop_message = record.stop_message
     error = record.error
-    result = record.result
+    # A failed terminal run must never serialize partial measured/fixture output,
+    # even if an older execution path populated RunRecord.result before failing.
+    result = None if record.status == RunStatus.FAILED else record.result
     if public_demo_enabled():
         if record.stop_reason == "error":
             stop_message = public_failure_message()
