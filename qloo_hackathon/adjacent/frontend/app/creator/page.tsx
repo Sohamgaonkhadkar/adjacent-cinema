@@ -991,7 +991,7 @@ export default function CreatorPage() {
                   <button type="button" className="test-card-export" onClick={handleExportTestCard}>
                     <span>Export test card</span><small>PLAIN TEXT · .TXT</small><span aria-hidden="true">↓</span>
                   </button>
-                  <button onClick={handleSaveExperiment className="intake-submit" disabled={backendHealth?.public_demo}>
+                  <button onClick={handleSaveExperiment} className="intake-submit" disabled={backendHealth?.public_demo}>
                     {backendHealth?.public_demo ? "Saving disabled in public demo" : "Save as planned experiment"}
                   </button>
                   {saveState && <span className="mono-note" role="status" aria-live="polite">{saveState}</span>}
