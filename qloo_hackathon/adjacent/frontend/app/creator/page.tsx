@@ -129,7 +129,7 @@ export default function CreatorPage() {
     );
     targets.forEach((target) => observer.observe(target));
     return () => observer.disconnect();
-  }, [result]);
+  }, [result, failed, insufficient]);
   const traceRows: TraceRow[] = run?.trace ?? [];
   const insufficient = run?.status === "insufficient";
   const failed = run?.status === "failed";
@@ -423,17 +423,17 @@ export default function CreatorPage() {
       {/* ── Step navigation (M13.15): the creator journey at a glance ────── */}
       <nav className="step-nav" aria-label="Creator journey">
         <a href="#intake" className={activeStage === "intake" ? "is-active" : undefined} aria-current={activeStage === "intake" ? "step" : undefined}>01 · Your film</a>
-        {result ? (
+        {result || (failed && !analysing) ? (
           <a href="#analysis" className={activeStage === "analysis" ? "is-active" : undefined} aria-current={activeStage === "analysis" ? "step" : undefined}>02 · Investigation</a>
         ) : (
           <span className="is-disabled" aria-disabled="true">02 · Investigation</span>
         )}
-        {result?.cohorts ? (
+        {result?.cohorts || (failed && !analysing) ? (
           <a href="#fingerprint" className={activeStage === "fingerprint" ? "is-active" : undefined} aria-current={activeStage === "fingerprint" ? "step" : undefined}>03 · Fingerprint</a>
         ) : (
           <span className="is-disabled" aria-disabled="true">03 · Fingerprint</span>
         )}
-        {result?.investigation ? (
+        {result?.investigation || (failed && !analysing) ? (
           <a href="#brief" className={activeStage === "brief" ? "is-active" : undefined} aria-current={activeStage === "brief" ? "step" : undefined}>04 · Decision brief</a>
         ) : (
           <span className="is-disabled" aria-disabled="true">04 · Decision brief</span>
@@ -571,6 +571,28 @@ export default function CreatorPage() {
               {result && <p>Any partial evidence below is not a completed positioning result.</p>}
             </div>
             {traceRows.length > 0 && <EvidenceTraceLog rows={traceRows} />}
+            {!result && (
+              <div style={{ display: "grid", gap: 12, marginTop: 18 }}>
+                <section className="evidence-panel" id="analysis" aria-labelledby="analysis-unavailable-title">
+                  <h3 id="analysis-unavailable-title">Investigation unavailable</h3>
+                  <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.7, marginBottom: 0 }}>
+                    The run failed before a structured investigation could be produced. No findings or hypotheses are being inferred from a failed run. Retry after the backend failure has been diagnosed.
+                  </p>
+                </section>
+                <section className="evidence-panel" id="fingerprint" aria-labelledby="fingerprint-unavailable-title">
+                  <h3 id="fingerprint-unavailable-title">Cultural fingerprint unavailable</h3>
+                  <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.7, marginBottom: 0 }}>
+                    A fingerprint requires verified cultural cohorts from a completed analysis. This failed run produced no result, so no substitute or fixture fingerprint is shown.
+                  </p>
+                </section>
+                <section className="evidence-panel" id="brief" aria-labelledby="brief-unavailable-title">
+                  <h3 id="brief-unavailable-title">Decision brief unavailable</h3>
+                  <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.7, marginBottom: 0 }}>
+                    The decision brief depends on the structured investigation above. It will become available after a successful run; optional language-model synthesis is not used to replace missing evidence.
+                  </p>
+                </section>
+              </div>
+            )}
           </>
         )}
 
