@@ -11,6 +11,7 @@ const apiOrigin = (/^https?:\/\//i.test(configuredApiOrigin)
 ).replace(/\/+$/, "");
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   // The Render deployment serves Next.js directly (without the Caddy layer used
   // by Compose), so set baseline browser security headers at the app boundary.
   async headers() {
