@@ -156,7 +156,7 @@ class AgentOrchestrator:
             to_state=Phase.PLAN,
             action="plan",
             reason=(
-                f"input accepted: {len(state.programme)} programme item(s); "
+                f"input accepted: {len(state.programme)} film reference(s), {len(state.theme_queries)} theme input(s); "
                 f"runtime={self.runtime.name} ({self.runtime.data_status}); "
                 f"budget={state.budget.max_steps} steps / {state.budget.max_qloo_calls} calls"
             ),
@@ -237,13 +237,14 @@ class AgentOrchestrator:
     # -- PLAN --------------------------------------------------------------
     def validate_input(self, state: AdjacentState) -> OrchestratorInvalidInput | None:
         """Invalid input is a user problem, and stays distinct from thin evidence."""
-        if not state.programme:
+        if not state.programme and not state.theme_queries:
             return OrchestratorInvalidInput(CODE_EMPTY_PROGRAMME, MSG_INVALID_INPUT_EMPTY)
-        # Creator enables title lookup explicitly; default runtimes still require
-        # at least one caller-supplied identifier to preserve their input contract.
-        if not any(item.identifiers for item in state.programme) and not (
+        # Creator can resolve a title or a theme. Themes are looked up as Qloo
+        # tags by the live runtime; they must never be treated as movie titles.
+        has_film_input = any(item.identifiers for item in state.programme) or (
             self.allow_title_search and any(item.title.strip() for item in state.programme)
-        ):
+        )
+        if not has_film_input and not state.theme_queries:
             return OrchestratorInvalidInput(
                 CODE_NO_IDENTIFIERS,
                 MSG_INVALID_INPUT_NO_IDS.format(count=len(state.programme)),
@@ -262,8 +263,8 @@ class AgentOrchestrator:
             )
 
         resolved = len(state.resolved_ids)
-        if resolved == 0:
-            return Phase.STOP, "no entity id resolved: no further tool can obtain any evidence"
+        if resolved == 0 and not state.theme_tag_ids:
+            return Phase.STOP, "no verified film entity or exact theme tag resolved; no further tool can obtain evidence"
 
         if "analyse" not in state.completed:
             return Phase.ANALYSE, f"characterise the programme's taste from {resolved} resolved id(s)"
