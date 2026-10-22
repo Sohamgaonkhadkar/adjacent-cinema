@@ -139,7 +139,8 @@ export default function AdjacencyGraph({
   );
 
   const rejected = cohorts.rejected ?? [];
-  const active = placed.find((p) => p.node.key === selected) ?? null;
+  const activeMember = memberNodes.find((member) => member.key === selected) ?? null;
+  const active = placed.find((p) => p.node.key === (activeMember?.parentKey ?? selected)) ?? null;
   const activeTrace = active?.node.callId
     ? traceRows.find((row) => row.call_id === active.node.callId) ?? null
     : null;
@@ -166,6 +167,18 @@ export default function AdjacencyGraph({
           aria-label={`Interactive cultural fingerprint for ${displayTitle}. Use Tab to select a ranked cultural world.`}
         >
           <title>Adjacent cultural worlds around {displayTitle}</title>
+          <defs>
+            <radialGradient id="agraph-field-glow">
+              <stop offset="0%" stopColor="#c99b65" stopOpacity="0.12" />
+              <stop offset="58%" stopColor="#c99b65" stopOpacity="0.035" />
+              <stop offset="100%" stopColor="#c99b65" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+          <circle cx={CX} cy={CY} r="358" fill="url(#agraph-field-glow)" />
+          <ellipse className="agraph-orbit agraph-orbit-inner" cx={CX} cy={CY} rx="178" ry="134" />
+          <ellipse className="agraph-orbit" cx={CX} cy={CY} rx="250" ry="184" />
+          <ellipse className="agraph-orbit agraph-orbit-outer" cx={CX} cy={CY} rx="326" ry="238" />
+
           {/* rejected worlds — visible on the outer edge, with reason codes */}
           {rejected.map((r, i) => {
             const angle = (i / Math.max(1, rejected.length)) * Math.PI * 2 + 0.4;
@@ -223,7 +236,9 @@ export default function AdjacencyGraph({
 
           {/* center: the film */}
           <g className="agraph-center">
-            <circle cx={CX} cy={CY} r={38} />
+            <circle className="agraph-center-halo" cx={CX} cy={CY} r="52" />
+            <circle className="agraph-center-ring" cx={CX} cy={CY} r="38" />
+            <circle className="agraph-center-core" cx={CX} cy={CY} r="5.5" />
             <text x={CX} y={CY - 3} textAnchor="middle" className="agraph-center-title">
               {displayTitle.length > 22 ? `${displayTitle.slice(0, 21)}…` : displayTitle}
             </text>
@@ -239,7 +254,7 @@ export default function AdjacencyGraph({
             const anchor = cosine > 0.2 ? "start" : cosine < -0.2 ? "end" : "middle";
             const labelX = p.x + (anchor === "start" ? 13 : anchor === "end" ? -13 : 0);
             const labelY = Math.abs(cosine) <= 0.2 ? p.y + (sine > 0 ? 22 : -14) : p.y + 4;
-            const isSelected = selected === p.node.key;
+            const isSelected = selected === p.node.key || activeMember?.parentKey === p.node.key;
             return (
               <g
                 key={p.node.key}
@@ -268,25 +283,25 @@ export default function AdjacencyGraph({
             );
           })}
 
-          {/* The outer orbit names real cohort members and selects their parent world. */}
+          {/* The outer orbit names real cohort members. Each entity can be inspected independently. */}
           {memberNodes.map((member) => {
             const cosine = Math.cos(member.angle);
             const sine = Math.sin(member.angle);
             const anchor = cosine > 0.18 ? "start" : cosine < -0.18 ? "end" : "middle";
             const labelX = member.x + (anchor === "start" ? 9 : anchor === "end" ? -9 : 0);
             const labelY = Math.abs(cosine) <= 0.18 ? member.y + (sine > 0 ? 15 : -9) : member.y + 3;
-            const isSelected = selected === member.parentKey;
+            const isSelected = selected === member.key;
             return (
               <g
                 key={member.key}
                 className={"agraph-node agraph-entity-node" + (isSelected ? " is-selected" : "")}
                 role="button"
                 tabIndex={0}
-                onClick={() => setSelected(isSelected ? null : member.parentKey)}
+                onClick={() => setSelected(isSelected ? null : member.key)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    setSelected(isSelected ? null : member.parentKey);
+                    setSelected(isSelected ? null : member.key);
                   }
                 }}
                 aria-pressed={isSelected}
@@ -322,16 +337,23 @@ export default function AdjacencyGraph({
         {active && (
           <>
             <span className="micro-label">
-              {active.node.role === "primary"
-                ? "Primary positioning target"
-                : active.node.role === "runner-up"
-                  ? "Runner-up world"
-                  : `Ranked world #${active.node.rank}`}
+              {activeMember
+                ? "ENTITY / " + active.node.label
+                : active.node.role === "primary"
+                  ? "Primary positioning target"
+                  : active.node.role === "runner-up"
+                    ? "Runner-up world"
+                    : `Ranked world #${active.node.rank}`}
             </span>
-            <h4>{active.node.label}</h4>
+            <h4>{activeMember?.name ?? active.node.label}</h4>
+            {activeMember && (
+              <p className="agraph-inspector-kicker">RELATED TO {active.node.label}</p>
+            )}
             <dl className="agraph-facts">
               <div><dt>Domain</dt><dd>{domainLabel(active.node.domain)}</dd></div>
-              <div><dt>Grouping</dt><dd>{active.node.kindLabel}</dd></div>
+              {!activeMember && <div><dt>Grouping</dt><dd>{active.node.kindLabel}</dd></div>}
+              {activeMember && <div><dt>Related world</dt><dd>{active.node.label}</dd></div>}
+              {activeMember?.affinity != null && <div><dt>Entity affinity</dt><dd>{activeMember.affinity.toFixed(3)}</dd></div>}
               {active.node.constructionReason && (
                 <div><dt>Why grouped</dt><dd>{active.node.constructionReason}</dd></div>
               )}
@@ -363,7 +385,7 @@ export default function AdjacencyGraph({
                 <div><dt>Evidence call</dt><dd>Not linked in this response</dd></div>
               )}
             </dl>
-            {active.node.members.length > 0 && (
+            {!activeMember && active.node.members.length > 0 && (
               <>
                 <span className="micro-label">Strongest members</span>
                 <ul className="agraph-members">

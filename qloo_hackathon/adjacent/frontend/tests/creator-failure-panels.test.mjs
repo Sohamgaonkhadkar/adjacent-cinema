@@ -4,6 +4,7 @@ import test from "node:test";
 import { formatTestCardText, safeTextFilename } from "../lib/testCardExport.ts";
 
 const cinemaSource = readFileSync(new URL("../app/cinema/page.tsx", import.meta.url), "utf8");
+const graphSource = readFileSync(new URL("../components/AdjacencyGraph.tsx", import.meta.url), "utf8");
 
 const source = readFileSync(new URL("../app/creator/page.tsx", import.meta.url), "utf8");
 
@@ -56,4 +57,14 @@ test("Creator and Cinema offer a plain-text test card export", () => {
   assert.ok(!text.includes("[object Object]"));
   assert.equal(safeTextFilename("Cinema × Contemporary Classical"), "cinema-contemporary-classical");
   assert.equal(safeTextFilename("!!!"), "adjacent-test-card");
+});
+
+
+test("cultural fingerprint renders orbit guides and inspectable member nodes", () => {
+  assert.match(graphSource, /className="agraph-orbit agraph-orbit-inner"/);
+  assert.match(graphSource, /className="agraph-orbit agraph-orbit-outer"/);
+  assert.match(graphSource, /activeMember = memberNodes\.find/);
+  assert.match(graphSource, /setSelected\(isSelected \? null : member\.key\)/);
+  assert.match(graphSource, /Entity affinity/);
+  assert.match(graphSource, /agraph-center-halo/);
 });
