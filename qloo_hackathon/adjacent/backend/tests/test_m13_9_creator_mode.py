@@ -202,6 +202,72 @@ class TestCreatorExperimentJourney:
         assert response.json()["result"] is None
 
 
+    def test_fixture_executor_failure_after_state_creation_clears_partial_result_and_closes_client(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        from app import runner
+        from app.config import Settings
+        from app.qloo import mock as mock_module
+
+        record = run_store.create(city="", venue_name="Creator fixture failure", programme=[])
+        record.result = {"data_status": "fixture", "partial": "must be cleared"}
+        record.state_json = '{"partial": true}'
+        monkeypatch.delenv("ADJACENT_PUBLIC_DEMO", raising=False)
+
+        class FakeClient:
+            def __init__(self, *_args, **_kwargs):
+                self.notice = "fixture"
+                self.fixture = SimpleNamespace(
+                    programme=[{"title": "Synthetic Seed", "year": 2000, "imdb_id": None}],
+                    scenario="synthetic",
+                    description="safe synthetic fixture",
+                )
+                self.recorder = SimpleNamespace(rows=[])
+                self.closed = False
+
+            async def aclose(self):
+                self.closed = True
+
+        fake_client = FakeClient()
+        monkeypatch.setattr(Settings, "from_env", classmethod(lambda cls: SimpleNamespace()))
+        monkeypatch.setattr(mock_module, "MockQlooClient", lambda *_args, **_kwargs: fake_client)
+        monkeypatch.setattr(runner, "resolve_fixture_path", lambda *_args, **_kwargs: SimpleNamespace(stem="synthetic"))
+        monkeypatch.setattr(runner, "programme_items", lambda _programme: [])
+        # The orchestrator returns state, then creator post-processing fails.
+        state = SimpleNamespace(
+            stop_reason="complete",
+            phase=SimpleNamespace(value="DECIDE"),
+            trace_rows=[{"call_id": "fixture-call-safe", "tool": "fixture_test"}],
+        )
+        class FakeOrchestrator:
+            def __init__(self, *_args, **_kwargs):
+                pass
+            async def run(self, _state):
+                return state
+
+        monkeypatch.setattr("app.agent.orchestrator.AgentOrchestrator", FakeOrchestrator)
+        async def fail_post(*_args, **_kwargs):
+            raise TypeError("SENSITIVE-FIXTURE-CANARY")
+        monkeypatch.setattr(creator_routes, "_post_pipeline_creator", fail_post)
+        from app.domain import ledger as ledger_module
+        monkeypatch.setattr(ledger_module, "ProvenanceLedger", lambda **_kwargs: SimpleNamespace())
+        caplog.set_level(logging.ERROR, logger=creator_routes.__name__)
+
+        asyncio.run(creator_routes._execute_creator_demo_run(record))
+
+        assert record.status.value == "failed"
+        assert record.result is None
+        assert record.state_json is None
+        assert record.current_phase == "DECIDE"
+        assert record.trace[0]["call_id"] == "fixture-call-safe"
+        assert "SENSITIVE-FIXTURE-CANARY" not in caplog.text
+        assert fake_client.closed is True
+        assert len([event for event in record.events if event.event == "error"]) == 1
+        response = TestClient(app).get(f"/run/{record.run_id}")
+        assert response.status_code == 200
+        assert response.json()["status"] == "failed"
+        assert response.json()["result"] is None
+
 class TestCreatorLiveRunHonesty:
     def test_unexpected_setup_exception_finishes_run_without_leaking_message(
         self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
