@@ -50,7 +50,9 @@ from ..public_demo import (
 )
 from .routes import (
     DEMO_FIXTURE,
+    RunEvent,
     RunResponse,
+    RunStatus,
     _build_result,
     _emit_state_events,
     _record_to_response,
@@ -323,36 +325,41 @@ def _record_creator_failure(record: Any, state: Any, exc: Exception) -> None:
 
 
 async def _execute_creator_run(record: Any, request: CreatorRunRequest) -> None:
-    from ..agent.budget import Budget
-    from ..agent.orchestrator import AgentOrchestrator
-    from ..agent.state import AdjacentState, ProgrammeItem
-    from ..config import Settings
-    from ..domain.ledger import ProvenanceLedger
-    from ..live_runner import LivePipeline
-    from ..resolution.resolver import EntityResolver
-    from .routes import RunEvent, RunStatus
-
+    client = None
+    state = None
     record.status = RunStatus.RUNNING
+    record.current_phase = "INIT"
     record.emit(RunEvent("trace", {
         "phase": "INIT",
         "message": f"Creator analysis for '{request.title}' — {len(record.programme)} seed(s)",
     }))
 
-    settings = Settings.from_env()
-    if not settings.has_api_key:
-        message = (
-            "Live Qloo is not configured for this public demo. Try the labelled fixture."
-            if public_demo_enabled()
-            else "QLOO_API_KEY not configured"
-        )
-        record.status = RunStatus.FAILED
-        record.error = message
-        record.emit(RunEvent("error", {"message": message}))
-        return
-
-    client = None
-    state = None
     try:
+        from ..agent.budget import Budget
+        from ..agent.orchestrator import AgentOrchestrator
+        from ..agent.state import AdjacentState, ProgrammeItem
+        from ..config import Settings
+        from ..domain.ledger import ProvenanceLedger
+        from ..live_runner import LivePipeline
+        from ..resolution.resolver import EntityResolver
+
+        settings = Settings.from_env()
+        if not settings.has_api_key:
+            message = (
+                "Live Qloo is not configured for this public demo. Try the labelled fixture."
+                if public_demo_enabled()
+                else "QLOO_API_KEY not configured"
+            )
+            record.status = RunStatus.FAILED
+            record.stop_reason = "configuration"
+            record.stop_message = message
+            record.error = message
+            record.result = None
+            record.state_json = None
+            record.current_phase = "INIT"
+            record.emit(RunEvent("error", {"message": message, "stop_reason": "configuration"}))
+            return
+
         from ..qloo.client import QlooClient
         client = QlooClient(settings)
         resolver = EntityResolver(client, delay_s=2.0)
