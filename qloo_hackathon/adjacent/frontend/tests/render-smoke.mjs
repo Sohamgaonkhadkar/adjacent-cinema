@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { spawn } from "node:child_process";
+import { readFile } from "node:fs/promises";
+import { createServer } from "node:http";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 
@@ -18,6 +20,47 @@ async function getFreePort() {
   if (!address || typeof address === "string") throw new Error("Could not reserve a local port");
   await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   return address.port;
+}
+
+async function startMockApiFromBuiltRewrite() {
+  const manifestPath = new URL("../.next/routes-manifest.json", import.meta.url);
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  const rewriteGroups = Object.values(manifest.rewrites ?? {});
+  const rewrite = rewriteGroups
+    .flatMap((group) => Array.isArray(group) ? group : [])
+    .find((rule) => rule.source === "/api/:path*" && typeof rule.destination === "string");
+
+  assert.ok(rewrite, "production routes manifest is missing the same-origin /api rewrite");
+  const destination = rewrite.destination.replace(/\\/:path\\*$/, "");
+  const target = new URL(destination);
+  assert.ok(
+    ["127.0.0.1", "localhost", "::1"].includes(target.hostname),
+    "proxy smoke test must use its isolated local API origin; got " + target.origin,
+  );
+  const port = Number(target.port || (target.protocol === "https:" ? 443 : 80));
+  const server = createServer((request, response) => {
+    if (request.url === "/health") {
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({ status: "ok", service: "adjacent-proxy-smoke" }));
+      return;
+    }
+    response.writeHead(404, { "content-type": "application/json; charset=utf-8" });
+    response.end(JSON.stringify({ detail: "Unexpected smoke-test path" }));
+  });
+  await new Promise((resolve, reject) => {
+    const onError = (error) => {
+      server.off("listening", onListening);
+      reject(new Error("Could not start proxy smoke API on " + target.origin + ": " + error.message));
+    };
+    const onListening = () => {
+      server.off("error", onError);
+      resolve();
+    };
+    server.once("error", onError);
+    server.once("listening", onListening);
+    server.listen(port);
+  });
+  return server;
 }
 
 async function waitForServer(child, baseUrl, readLogs) {
@@ -60,8 +103,19 @@ test("production build renders every primary web surface", async () => {
   child.stdout.setEncoding("utf8").on("data", (chunk) => { logs += chunk; });
   child.stderr.setEncoding("utf8").on("data", (chunk) => { logs += chunk; });
 
+  let mockApi;
   try {
+    mockApi = await startMockApiFromBuiltRewrite();
     await waitForServer(child, baseUrl + "/", () => logs);
+    const apiHealth = await fetch(baseUrl + "/api/health", {
+      signal: AbortSignal.timeout(5_000),
+    });
+    assert.equal(apiHealth.status, 200, "/api/health did not reach the configured backend proxy");
+    assert.deepEqual(await apiHealth.json(), {
+      status: "ok",
+      service: "adjacent-proxy-smoke",
+    });
+
     for (const route of routes) {
       const response = await fetch(baseUrl + route, {
         headers: { accept: "text/html" },
@@ -86,5 +140,8 @@ test("production build renders every primary web surface", async () => {
       delay(5_000),
     ]);
     if (child.exitCode === null) child.kill("SIGKILL");
+    if (mockApi) {
+      await new Promise((resolve) => mockApi.close(resolve));
+    }
   }
 });
