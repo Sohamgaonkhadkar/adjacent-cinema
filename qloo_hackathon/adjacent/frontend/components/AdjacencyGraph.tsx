@@ -64,7 +64,14 @@ export default function AdjacencyGraph({
 
   const nodes: NodeDatum[] = useMemo(() => {
     return cohorts.ranked.map((c, i) => {
-      const label = c.members?.find((m) => m.name)?.name ?? domainLabel(c.domain);
+      const memberLabel = c.members?.find((m) => m.name)?.name ?? domainLabel(c.domain);
+      // Distinguish same-domain cohorts without changing their underlying rank.
+      const groupingHint = c.construction_evidence?.subtype
+        ?? c.construction_reason
+        ?? (c.kind && c.kind !== "domain_group" ? c.kind.replace(/_/g, " ") : null);
+      const label = groupingHint && !memberLabel.toLowerCase().includes(groupingHint.toLowerCase())
+        ? `${memberLabel} · ${groupingHint}`
+        : memberLabel;
       const isPrimary = bet?.primary
         ? bet.primary.cohort_id
           ? bet.primary.cohort_id === c.cohort_id
