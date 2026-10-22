@@ -549,6 +549,8 @@ Do not run `docker compose down -v` as a routine restart; it removes named data 
 
 ## Documentation map
 
+**Historical QA note:** the root-level `QA_AUDIT_REPORT.md` and `PR6_QA_REPORT.md` are point-in-time reports from earlier code snapshots. They preserve useful reproduction history, but their ports, commits and verdicts are not a current deployment sign-off. Use the current branch's CI results and the [public-deployment acceptance checklist](#public-deployment-acceptance-checklist) for the present state.
+
 | Document | Why it exists |
 |---|---|
 | [Developer guide](qloo_hackathon/adjacent/README.md) | Concise local setup, modes, testing and storage |
@@ -558,6 +560,7 @@ Do not run `docker compose down -v` as a routine restart; it removes named data 
 | [Deployment runbook](qloo_hackathon/adjacent/docs/DEPLOYMENT.md) | Render and Docker/Caddy deployment details |
 | [Deployment topology ADR](qloo_hackathon/adjacent/docs/adr/006-deployment-topology.md) | Trade-offs behind the proposed topology |
 | [Architecture freeze](qloo_hackathon/adjacent/docs/ARCHITECTURE_FREEZE.md) | Architectural decisions and frozen boundaries |
+| Historical browser QA | [QA_AUDIT_REPORT.md](QA_AUDIT_REPORT.md), [PR6_QA_REPORT.md](PR6_QA_REPORT.md) — older snapshots; not current sign-off |
 | [Security/integration reference](qloo_hackathon/adjacent/.env.example) | Names and safe defaults for supported settings |
 
 ## License and contribution notes
