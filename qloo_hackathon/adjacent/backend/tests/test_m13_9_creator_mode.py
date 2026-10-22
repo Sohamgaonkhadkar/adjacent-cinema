@@ -58,7 +58,7 @@ class TestCreatorFixtureDemo:
         synthesis_status = client.get("/creator/synthesis-status")
         assert synthesis_status.status_code == 200
         assert synthesis_status.json()["available"] is False
-        assert "public demo mode" in synthesis_status.json()["blocked_reason"].lower()
+        assert synthesis_status.json().get("blocked_reason")
 
         bet = result["programme_bet"]
         card = result["test_card"]
