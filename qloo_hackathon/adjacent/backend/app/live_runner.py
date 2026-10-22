@@ -72,87 +72,150 @@ class LivePipeline:
     async def resolve_programme(
         self, state: AdjacentState, budget: Budget
     ) -> ResolveResult:
-        """Resolve programme items using the trusted resolver.
+        """Resolve film references as movies and Creator themes as Qloo tags."""
+        theme_queries = [query.strip() for query in state.theme_queries if query.strip()]
+        expected_calls = sum(
+            1 + int(bool(item.get("imdb_id")))
+            for item in self._programme
+        ) + len(theme_queries)
+        budget.ensure(expected_calls)
+        rows_before = len(self.client.recorder.rows) if getattr(self.client, "recorder", None) else 0
 
-        Each item is resolved via /search with title + year verification.
-        Only VERIFIED items proceed to analysis.  Programme items are already
-        seeded by `run_live_async` before the orchestrator starts.
-        """
-        budget.ensure(len(state.programme))  # one search call per item
+        try:
+            results = await self.resolver.resolve_programme(self._programme) if self._programme else []
+            for item, resolution in zip(state.programme, results, strict=False):
+                item.resolution_evidence = resolution.to_dict()
+                for call_id in (resolution.call_id, *resolution.related_call_ids):
+                    if call_id and call_id not in state.resolution_call_ids:
+                        state.resolution_call_ids.append(call_id)
 
-        results = await self.resolver.resolve_programme(self._programme)
-
-        for item, resolution in zip(state.programme, results, strict=False):
-            # Keep the decision-grade identity verification visible to the API
-            # and UI without exposing the raw Qloo response body.
-            item.resolution_evidence = resolution.to_dict()
-            for call_id in (resolution.call_id, *resolution.related_call_ids):
-                if call_id and call_id not in state.resolution_call_ids:
-                    state.resolution_call_ids.append(call_id)
-
-            if resolution.match_status == MatchStatus.VERIFIED:
-                item.resolved_entity_id = resolution.qloo_entity_id
-                item.resolved_name = resolution.qloo_name
-                item.entity_type = resolution.qloo_entity_type
-                item.subtype = None
-                item.popularity = resolution.qloo_popularity
-                item.source_call_id = resolution.call_id
-            elif resolution.match_status == MatchStatus.AMBIGUOUS:
-                state.findings.append(
-                    Finding(
+                if resolution.match_status == MatchStatus.VERIFIED:
+                    item.resolved_entity_id = resolution.qloo_entity_id
+                    item.resolved_name = resolution.qloo_name
+                    item.entity_type = resolution.qloo_entity_type
+                    item.subtype = None
+                    item.popularity = resolution.qloo_popularity
+                    item.source_call_id = resolution.call_id
+                elif resolution.match_status == MatchStatus.AMBIGUOUS:
+                    state.findings.append(Finding(
                         code="ambiguous_resolution",
                         message=(
                             f"{item.title!r}: {resolution.verification_notes[0] if resolution.verification_notes else 'ambiguous match'}"
                         ),
                         stats=resolution.to_dict(),
-                    )
-                )
-            elif resolution.match_status == MatchStatus.MISMATCH:
-                state.findings.append(
-                    Finding(
+                    ))
+                elif resolution.match_status == MatchStatus.MISMATCH:
+                    state.findings.append(Finding(
                         code="mismatch_resolution",
                         message=(
                             f"{item.title!r}: {resolution.verification_notes[0] if resolution.verification_notes else 'title/year mismatch'}"
                         ),
                         stats=resolution.to_dict(),
-                    )
-                )
-            else:  # UNRESOLVED
-                state.findings.append(
-                    Finding(
+                    ))
+                else:
+                    state.findings.append(Finding(
                         code="unresolved_entity",
-                        message=(
-                            f"{item.title!r}: not found in Qloo"
-                        ),
+                        message=f"{item.title!r}: not found in Qloo",
                         stats=resolution.to_dict(),
-                    )
+                    ))
+
+            # Theme text is a separate input type. Resolve it through /v2/tags,
+            # and only use a unique exact-name match; don't treat a theme as a film.
+            import unicodedata
+
+            def normalise(value: str) -> str:
+                decomposed = unicodedata.normalize("NFKD", value).casefold()
+                return " ".join(
+                    "".join(ch for ch in decomposed if not unicodedata.combining(ch)).split()
                 )
 
-        state.resolution_verdict = evidence.evaluate_programme_resolution(
-            len(state.resolved_items)
-        )
-        if state.resolution_verdict.insufficient:
-            state.findings.append(
-                Finding(
+            state.theme_resolution = []
+            state.theme_tag_ids = []
+            for theme in theme_queries:
+                response = await self.client.tags(
+                    filter_query=theme,
+                    take=20,
+                    tool="resolve_creator_theme",
+                )
+                exact = {
+                    tag.tag_id: tag
+                    for tag in response.results
+                    if tag.tag_id and tag.name and normalise(tag.name) == normalise(theme)
+                }
+                call_id = response.call_id
+                if call_id and call_id not in state.resolution_call_ids:
+                    state.resolution_call_ids.append(call_id)
+                if len(exact) == 1:
+                    tag_id, tag = next(iter(exact.items()))
+                    state.theme_tag_ids.append(tag_id)
+                    state.theme_resolution.append({
+                        "input": theme,
+                        "status": "matched",
+                        "qloo_tag_id": tag_id,
+                        "qloo_name": tag.name,
+                        "call_id": call_id,
+                    })
+                elif len(exact) > 1:
+                    state.theme_resolution.append({
+                        "input": theme,
+                        "status": "ambiguous",
+                        "qloo_tag_id": None,
+                        "qloo_name": None,
+                        "call_id": call_id,
+                        "candidate_count": len(exact),
+                    })
+                else:
+                    state.theme_resolution.append({
+                        "input": theme,
+                        "status": "unresolved",
+                        "qloo_tag_id": None,
+                        "qloo_name": None,
+                        "call_id": call_id,
+                        "candidate_count": 0,
+                    })
+
+            state.theme_tag_ids = list(dict.fromkeys(state.theme_tag_ids))
+            film_verdict = evidence.evaluate_programme_resolution(len(state.resolved_items))
+            if state.theme_tag_ids:
+                state.resolution_verdict = evidence.EvidenceVerdict(
+                    True,
+                    "seed_signals_resolved",
+                    "",
+                    {
+                        "verified_reference_works": len(state.resolved_items),
+                        "required_reference_works": evidence.MIN_RESOLVED_TITLES,
+                        "resolved_theme_tags": len(state.theme_tag_ids),
+                    },
+                )
+            else:
+                state.resolution_verdict = film_verdict
+
+            if state.resolution_verdict.insufficient:
+                state.findings.append(Finding(
                     code=state.resolution_verdict.reason_code,
                     message=state.resolution_verdict.message,
                     stats=dict(state.resolution_verdict.stats),
-                )
-            )
+                ))
 
-        return ResolveResult(
-            tool="resolve_programme",
-            action="resolve",
-            detail=(
-                f"resolved {len(state.resolved_items)}/{len(state.programme)} "
-                f"(verified via /search); "
-                f"gate={state.resolution_verdict.reason_code if state.resolution_verdict else 'not evaluated'}"
-            ),
-            call_ids=tuple(state.resolution_call_ids),
-            resolved=len(state.resolved_items),
-            unresolved=len(state.unresolved_items),
-            verdict=state.resolution_verdict,
-        )
+            matched_themes = len(state.theme_tag_ids)
+            return ResolveResult(
+                tool="resolve_programme",
+                action="resolve",
+                detail=(
+                    f"verified {len(state.resolved_items)}/{len(state.programme)} film reference(s); "
+                    f"matched {matched_themes}/{len(theme_queries)} theme tag(s); "
+                    f"gate={state.resolution_verdict.reason_code if state.resolution_verdict else 'not evaluated'}"
+                ),
+                call_ids=tuple(state.resolution_call_ids),
+                resolved=len(state.resolved_items),
+                unresolved=len(state.unresolved_items),
+                verdict=state.resolution_verdict,
+            )
+        finally:
+            recorder = getattr(self.client, "recorder", None)
+            if recorder is not None:
+                calls_made = max(0, len(recorder.rows) - rows_before)
+                budget.record_calls(calls_made)
 
     async def get_taste_profile(
         self, state: AdjacentState, budget: Budget
