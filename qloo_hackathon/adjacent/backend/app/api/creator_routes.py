@@ -326,7 +326,7 @@ async def _execute_creator_run(record: Any, request: CreatorRunRequest) -> None:
     record.current_phase = "INIT"
     record.emit(RunEvent("trace", {
         "phase": "INIT",
-        "message": f"Creator analysis for '{request.title}' — {len(record.programme)} seed(s)",
+        "message": f"Creator analysis for '{request.title}' — {len(record.programme)} reference film(s), {len(request.themes)} theme input(s)",
     }))
 
     try:
