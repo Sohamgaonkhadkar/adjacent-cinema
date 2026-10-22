@@ -11,7 +11,6 @@ import os
 import time
 
 import pytest
-
 from app.config import Settings
 from app.main import app
 from fastapi.testclient import TestClient
