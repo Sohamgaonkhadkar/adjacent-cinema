@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test:recovery": "node --experimental-default-type=module --experimental-strip-types --test tests/run-recovery.test.mjs"
+    "test:recovery": "node --experimental-default-type=module --experimental-strip-types --test tests/run-recovery.test.mjs",
+    "test:layout": "node --experimental-default-type=module --experimental-strip-types --test tests/responsive-intake.test.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.54.0",
