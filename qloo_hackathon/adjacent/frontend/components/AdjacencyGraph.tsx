@@ -181,26 +181,31 @@ export default function AdjacencyGraph({
             );
           })}
 
-          {/* edges */}
-          {placed.map((p) => (
-            <line
-              key={`edge-${p.node.key}`}
-              x1={CX}
-              y1={CY}
-              x2={p.x}
-              y2={p.y}
-              className={
-                p.node.role === "primary"
-                  ? "agraph-edge is-primary"
-                  : p.node.role === "runner-up"
-                    ? "agraph-edge is-runner"
-                    : "agraph-edge"
-              }
-              style={{
-                opacity: p.node.meanAffinity != null ? 0.25 + Math.min(0.6, p.node.meanAffinity) : 0.25,
-              }}
-            />
-          ))}
+          {/* Curved relationships from the programme anchor to ranked worlds. */}
+          {placed.map((p, index) => {
+            const dx = p.x - CX;
+            const dy = p.y - CY;
+            const length = Math.max(1, Math.hypot(dx, dy));
+            const bend = index % 2 === 0 ? 20 : -20;
+            const controlX = (CX + p.x) / 2 - (dy / length) * bend;
+            const controlY = (CY + p.y) / 2 + (dx / length) * bend;
+            return (
+              <path
+                key={"edge-" + p.node.key}
+                d={"M " + CX + " " + CY + " Q " + controlX + " " + controlY + " " + p.x + " " + p.y}
+                className={
+                  p.node.role === "primary"
+                    ? "agraph-edge is-primary"
+                    : p.node.role === "runner-up"
+                      ? "agraph-edge is-runner"
+                      : "agraph-edge"
+                }
+                style={{
+                  opacity: p.node.meanAffinity != null ? 0.25 + Math.min(0.6, p.node.meanAffinity) : 0.25,
+                }}
+              />
+            );
+          })}
 
           {/* Second orbit: links to actual entities nested inside the ranked cohorts. */}
           {memberNodes.map((member) => {
