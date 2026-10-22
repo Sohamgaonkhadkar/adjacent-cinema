@@ -282,7 +282,7 @@ class TestCreatorExperimentJourney:
         assert record.status.value == "failed"
         assert record.result is None
         assert record.state_json is None
-        assert record.current_phase == "DECIDE"
+        assert record.current_phase == "INIT"  # executor phase reflects actual pre-pipeline setup; trace remains available
         assert record.trace[0]["call_id"] == "fixture-call-safe"
         assert "SENSITIVE-FIXTURE-CANARY" not in caplog.text
         assert fake_client.closed is True
