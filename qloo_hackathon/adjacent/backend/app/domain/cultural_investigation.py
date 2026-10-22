@@ -139,7 +139,7 @@ def build_investigation(
             "q1",
             "Which cultural interests does this film's expressed profile carry?",
             "get_taste_profile",
-            "/v2/insights?filter.type=urn:tag (signal: resolved seeds)",
+            "/v2/insights?filter.type=urn:tag (signal: verified reference entities + exact-matched theme tags)",
             "insufficient",
             [taste_call or ""],
             "No usable interest tags were returned — the expressed profile "
