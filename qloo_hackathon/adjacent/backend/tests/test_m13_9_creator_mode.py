@@ -8,10 +8,13 @@ inputs, 422 on empty seeds, 404 on unknown runs.
 
 from __future__ import annotations
 
+import logging
 import time
+from types import SimpleNamespace
 
 import pytest
 from app.api import creator_routes
+from app.api.routes import run_store
 from app.main import app
 from fastapi.testclient import TestClient
 
@@ -175,3 +178,50 @@ class TestCreatorLiveRunHonesty:
     def test_unknown_run_404(self) -> None:
         client = TestClient(app)
         assert client.get("/run/does-not-exist").status_code == 404
+
+    def test_creator_postprocessing_failure_retains_sanitized_trace_and_stack_frames(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """A top-level TypeError must not erase the API trace or leak its text."""
+        monkeypatch.delenv("ADJACENT_PUBLIC_DEMO", raising=False)
+        caplog.set_level(logging.ERROR, logger=creator_routes.__name__)
+        record = run_store.create(city="Portland, Oregon", programme=[])
+        record.result = {"data_status": "measured", "partial": "must be suppressed"}
+        record.state_json = '{"partial": true}'
+        state = SimpleNamespace(
+            phase=SimpleNamespace(value="DECIDE"),
+            trace_rows=[{
+                "call_id": "synthetic-c001",
+                "tool": "rank_cohorts",
+                "endpoint": "/v2/insights",
+                "error": {
+                    "error_type": "TypeError",
+                    "message": "SENSITIVE-CANARY",
+                    "detail": {"response": "SENSITIVE-CANARY"},
+                },
+            }],
+        )
+        try:
+            raise TypeError("SENSITIVE-CANARY")
+        except TypeError as exc:
+            creator_routes._record_creator_failure(record, state, exc)
+
+        assert record.status.value == "failed"
+        assert record.stop_reason == "error"
+        assert record.result is None
+        assert record.state_json is None
+        assert record.current_phase == "DECIDE"
+        assert record.trace[0]["call_id"] == "synthetic-c001"
+        assert record.trace[0]["error"]["error_type"] == "TypeError"
+        assert "SENSITIVE-CANARY" not in str(record.trace)
+        assert "SENSITIVE-CANARY" not in caplog.text
+        assert "TypeError" in caplog.text
+        assert "test_creator_postprocessing_failure" in caplog.text
+
+        response = TestClient(app).get(f"/run/{record.run_id}")
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["status"] == "failed"
+        assert payload["result"] is None
+        assert payload["trace"][0]["call_id"] == "synthetic-c001"
+        assert "SENSITIVE-CANARY" not in response.text

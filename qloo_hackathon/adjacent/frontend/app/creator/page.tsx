@@ -524,11 +524,14 @@ export default function CreatorPage() {
           </div>
         )}
         {run && !analysing && failed && (
-          <div className="insufficient-panel" role="alert" style={{ marginTop: 24, borderColor: "rgba(138,80,72,0.45)", background: "rgba(138,80,72,0.08)" }}>
-            <h3 style={{ color: "#d4a89e" }}>The analysis could not complete</h3>
-            <p>{run.error || run.stop_message || result?.evidence?.stop_message || "Unknown failure."}</p>
-            {result && <p>Any partial evidence below is not a completed positioning result.</p>}
-          </div>
+          <>
+            <div className="insufficient-panel" role="alert" style={{ marginTop: 24, borderColor: "rgba(138,80,72,0.45)", background: "rgba(138,80,72,0.08)" }}>
+              <h3 style={{ color: "#d4a89e" }}>The analysis could not complete</h3>
+              <p>{run.error || run.stop_message || result?.evidence?.stop_message || "Unknown failure."}</p>
+              {result && <p>Any partial evidence below is not a completed positioning result.</p>}
+            </div>
+            {traceRows.length > 0 && <EvidenceTraceLog rows={traceRows} />}
+          </>
         )}
 
         {/* ── 2. Cultural analysis ───────────────────────────────────── */}

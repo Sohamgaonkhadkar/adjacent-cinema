@@ -14,7 +14,10 @@ adding auth is a separate, explicit decision (see M13.9 verification report).
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
+import traceback
+from contextlib import suppress
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -41,6 +44,7 @@ from ..public_demo import (
     acquire_public_demo_run,
     prune_public_run_cache,
     public_demo_enabled,
+    safe_public_trace,
     safe_run_error,
     sanitize_public_stop,
 )
@@ -54,6 +58,7 @@ from .routes import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 #: Runtime experiment data — NOT committed (see .gitignore). Tests override
 #: via ADJACENT_EXPERIMENTS_DB.
@@ -238,6 +243,43 @@ async def create_creator_demo_run(http_request: Request) -> RunResponse:
 # ---------------------------------------------------------------------------
 
 
+def _record_creator_failure(record: Any, state: Any, exc: Exception) -> None:
+    """Fail a Creator run without discarding the trace needed to diagnose it.
+
+    Traceback logging deliberately records only file/function/line frames and
+    the exception class. Exception messages can contain upstream response data,
+    request values, or credentials and must not be copied into application logs.
+    """
+    from .routes import RunEvent, RunStatus
+
+    message = safe_run_error(exc)
+    frames = [
+        f"{Path(frame.filename).name}:{frame.name}:{frame.lineno}"
+        for frame in traceback.extract_tb(exc.__traceback__)[-16:]
+    ]
+    logger.error(
+        "Creator run failed: run_id=%s error_type=%s frames=%s",
+        record.run_id,
+        type(exc).__name__,
+        " > ".join(frames) or "<traceback unavailable>",
+    )
+
+    record.status = RunStatus.FAILED
+    record.stop_reason = "error"
+    record.stop_message = message
+    record.error = message
+    record.result = None
+    record.state_json = None
+    if state is not None:
+        phase = getattr(state, "phase", None)
+        record.current_phase = getattr(phase, "value", str(phase or ""))
+        trace_rows = getattr(state, "trace_rows", None)
+        if isinstance(trace_rows, list):
+            # Store only the same sanitised trace exposed by the run API.
+            record.trace = safe_public_trace(trace_rows)
+    record.emit(RunEvent("error", {"message": message, "stop_reason": "error"}))
+
+
 async def _execute_creator_run(record: Any, request: CreatorRunRequest) -> None:
     from ..agent.budget import Budget
     from ..agent.orchestrator import AgentOrchestrator
@@ -266,6 +308,8 @@ async def _execute_creator_run(record: Any, request: CreatorRunRequest) -> None:
         record.emit(RunEvent("error", {"message": message}))
         return
 
+    client = None
+    state = None
     try:
         from ..qloo.client import QlooClient
         client = QlooClient(settings)
@@ -302,12 +346,12 @@ async def _execute_creator_run(record: Any, request: CreatorRunRequest) -> None:
         _finalize_creator(
             record, state, request, geography_result, bet, test_card, investigation
         )
-        await client.aclose()
     except Exception as exc:
-        message = safe_run_error(exc)
-        record.status = RunStatus.FAILED
-        record.error = message
-        record.emit(RunEvent("error", {"message": message}))
+        _record_creator_failure(record, state, exc)
+    finally:
+        if client is not None:
+            with suppress(Exception):
+                await client.aclose()
 
 
 async def _execute_creator_demo_run(record: Any) -> None:
