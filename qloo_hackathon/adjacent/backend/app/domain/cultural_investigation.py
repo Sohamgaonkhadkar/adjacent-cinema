@@ -97,9 +97,9 @@ def build_investigation(
             "q0",
             "What did the creator tell us, and what did they leave out?",
             "context_framing",
-            "input validation; theme strings use exact-name /v2/tags lookups when supplied",
+            "no API call — creator input context only",
             "answered",
-            theme_call_ids,
+            [],
             "Context used to frame this investigation: " + "; ".join(provided)
             + (
                 ". Not supplied (weakens the questions that follow): "
@@ -122,7 +122,7 @@ def build_investigation(
             "get_taste_profile",
             "/v2/insights?filter.type=urn:tag (signal: verified reference entities + exact-matched theme tags)",
             "answered",
-            [taste_call or ""],
+            [taste_call or "", *theme_call_ids],
             f"{len(tags)} interest tags returned; strongest: {', '.join(top[:3]) or '—'}.",
         ))
         findings.append({
@@ -132,7 +132,7 @@ def build_investigation(
                 f"Qloo's taste profile for the verified reference entities and matched theme tags returned "
                 f"{len(tags)} interest tags (top: {', '.join(top[:3]) or '—'})."
             ),
-            "evidence_refs": [taste_call or ""],
+            "evidence_refs": [r for r in [taste_call or "", *theme_call_ids] if r],
         })
     else:
         questions.append(_q(
