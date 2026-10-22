@@ -397,6 +397,7 @@ export default function CreatorPage() {
   const rejected = result?.cohorts?.rejected ?? [];
   const tasteTags = result?.taste_dna?.tags ?? [];
   const progItems = result?.programme?.items ?? [];
+  const themeInputs = result?.theme_inputs ?? [];
 
   return (
     <main style={{ background: "var(--void)", minHeight: "100vh", color: "var(--paper)" }}>
@@ -615,7 +616,7 @@ export default function CreatorPage() {
             <div className="evidence-panel" id="analysis">
               <h3>What was analysed</h3>
               <span className="mono-note" style={{ display: "block", marginBottom: 12 }}>
-                {result.programme?.resolved_count ?? 0}/{result.programme?.total_count ?? 0} SEEDS RESOLVED AGAINST QLOO · UNRESOLVED SEEDS ARE EXCLUDED, NEVER GUESSED
+                {result.programme?.resolved_count ?? 0}/{result.programme?.total_count ?? 0} FILM REFERENCES VERIFIED AGAINST QLOO · UNRESOLVED REFERENCES ARE EXCLUDED, NEVER GUESSED
               </span>
               <div style={{ display: "grid", gap: 6 }}>
                 {progItems.map((item, i) => (
@@ -643,6 +644,33 @@ export default function CreatorPage() {
                 ))}
               </div>
             </div>
+
+            {(result.film?.themes?.length ?? 0) > 0 && (
+              <div className="evidence-panel">
+                <h3>Creator theme inputs</h3>
+                <span className="mono-note" style={{ display: "block", marginBottom: 12 }}>
+                  EXACT QLOO TAG MATCHES ARE USED AS SIGNALS · UNMATCHED THEMES ARE EXCLUDED
+                </span>
+                <div style={{ display: "grid", gap: 8 }}>
+                  {result.film?.themes?.map((theme, i) => {
+                    const evidence = themeInputs.find((item) => item.input === theme);
+                    const matched = evidence?.status === "matched";
+                    return (
+                      <div key={`${theme}-${i}`} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 12 }}>
+                        <span style={{ color: matched ? "#7aba8a" : "#c29a6e" }}>
+                          {matched ? "✓ MATCHED" : evidence?.status === "ambiguous" ? "⚠ AMBIGUOUS" : "✕ NOT USED"}
+                        </span>
+                        <span>{theme}</span>
+                        {matched && evidence?.qloo_name && <span className="mono-note">QLOO TAG: {evidence.qloo_name}</span>}
+                        {matched && evidence?.qloo_tag_id && <span className="mono-note">TAG ID: {evidence.qloo_tag_id}</span>}
+                        {!matched && <span className="mono-note">No exact unique Qloo tag match; excluded from analysis signals.</span>}
+                        {evidence?.call_id && <EvidenceReferences refs={[evidence.call_id]} traceRows={traceRows} />}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {tasteTags.length > 0 && (
               <div className="evidence-panel">
