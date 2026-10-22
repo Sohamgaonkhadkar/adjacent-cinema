@@ -46,6 +46,20 @@ class TestCreatorFixtureDemo:
         assert result["film"]["title"]  # demo film context present
         assert result["data_status"] == "fixture"
 
+        # These are the backend payloads required by Creator steps 02–04.
+        # They must be present on a successful fixture run even though the
+        # optional language-model synthesis may be blocked in public-demo mode.
+        investigation = result["investigation"]
+        assert investigation["data_status"] == "fixture"
+        assert investigation["questions"]
+        assert "hypotheses" in investigation
+        assert result["cohorts"]["ranked"]
+
+        synthesis_status = client.get("/creator/synthesis-status")
+        assert synthesis_status.status_code == 200
+        assert synthesis_status.json()["available"] is False
+        assert "public demo mode" in synthesis_status.json()["blocked_reason"].lower()
+
         bet = result["programme_bet"]
         card = result["test_card"]
         assert bet["data_status"] == "fixture"
