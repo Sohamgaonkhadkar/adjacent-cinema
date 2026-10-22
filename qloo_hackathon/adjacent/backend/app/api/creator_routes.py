@@ -109,18 +109,12 @@ class CreatorRunRequest(BaseModel):
     city: str = Field(default="", max_length=120)
 
     def seeds(self) -> list[dict[str, Any]]:
-        """Analysis seeds = comparable works + themes, in user order."""
-        items: list[dict[str, Any]] = [
+        """Return comparable film references only; theme text is resolved as Qloo tags."""
+        return [
             {"title": r.title.strip(), "year": r.year, "imdb_id": None}
             for r in self.references
             if r.title.strip()
         ]
-        items += [
-            {"title": t.strip(), "year": None, "imdb_id": None}
-            for t in self.themes
-            if t.strip()
-        ]
-        return items
 
 
 class SaveExperimentRequest(BaseModel):
@@ -179,7 +173,8 @@ class EvaluationRequest(BaseModel):
 @router.post("/creator/run", response_model=RunResponse)
 async def create_creator_run(request: CreatorRunRequest, http_request: Request) -> RunResponse:
     seeds = request.seeds()
-    if not seeds:
+    themes = [theme.strip() for theme in request.themes if theme.strip()]
+    if not seeds and not themes:
         raise HTTPException(
             status_code=422,
             detail="Add at least one reference work or theme to analyse.",
@@ -381,6 +376,7 @@ async def _execute_creator_run(record: Any, request: CreatorRunRequest) -> None:
                 )
                 for item in record.programme
             ],
+            theme_queries=[theme.strip() for theme in request.themes if theme.strip()],
             budget=Budget(),
         )
         state.ledger = ProvenanceLedger(recorder=client.recorder, data_status="measured")
@@ -445,7 +441,7 @@ async def _execute_creator_demo_run(record: Any) -> None:
             logline="A dockside night-shift romance told in three silent vignettes.",
             genre="drama",
             language="English",
-            themes=[t["title"] for t in record.programme if t.get("title")][:5],
+            themes=[],  # Fixture demo does not claim to resolve creator-entered themes.
             release_goal="YouTube premiere after festival window",
         )
 
@@ -502,7 +498,8 @@ async def _post_pipeline_creator(
             from ..domain.geography import build_geography_result
             heatmap = await client.insights(
                 filter_type="urn:heatmap",
-                signal_interests_entities=state.resolved_ids,
+                signal_interests_entities=state.resolved_ids or None,
+                signal_interests_tags=state.theme_tag_ids or None,
                 filter_location_query=record.city,
                 filter_location_radius=0,
                 output_heatmap_boundary="urn:geohash",
@@ -563,6 +560,7 @@ async def _post_pipeline_creator(
             "genre": request.genre,
             "language": request.language,
             "release_goal": request.release_goal,
+            "themes": list(request.themes),
         },
         seeds=seeds if (seeds := [str(p.get("title")) for p in record.programme if p.get("title")]) else [],
         bet=bet,
@@ -612,7 +610,9 @@ def _finalize_creator(
         "genre": request.genre,
         "language": request.language,
         "release_goal": request.release_goal,
+        "themes": list(request.themes),
     }
+    result["theme_inputs"] = list(state.theme_resolution)
     result["investigation"] = investigation
     record.result = result
     record.trace = state.trace_rows
