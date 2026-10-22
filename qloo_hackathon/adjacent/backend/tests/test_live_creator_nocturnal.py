@@ -89,6 +89,7 @@ def test_nocturnal_drifter_creator_all_intake_fields_and_outputs() -> None:
     assert [item["title"] for item in result["programme"]["items"]] == [
         "Nightcrawler",
         "After Hours",
+        "Taxi Driver",
     ]
     assert result["programme"]["total_count"] == len(request["references"])
     assert all(theme not in {item["title"] for item in result["programme"]["items"]} for theme in request["themes"])
