@@ -129,6 +129,7 @@ test("production build renders every primary web surface", async () => {
       assert.equal(response.status, 200, route + " returned HTTP " + response.status + "\n" + logs);
       assert.equal(response.headers.get("x-content-type-options"), "nosniff", route + " missing nosniff header");
       assert.equal(response.headers.get("x-frame-options"), "DENY", route + " missing clickjacking protection");
+      assert.equal(response.headers.get("x-powered-by"), null, route + " exposes the framework header");
       assert.match(contentType, /text\/html/i, route + " did not return HTML");
       assert.ok(html.length > 1_000, route + " returned suspiciously little HTML");
       assert.doesNotMatch(
