@@ -33,7 +33,7 @@ test("creator mode supports end-to-end fixture mode submission and honest live m
 
 test("Creator and Cinema offer a plain-text test card export", () => {
   assert.match(source, /className="test-card-export"/);
-  assert.match(source, /PLAIN TEXT · \\.TXT/);
+  assert.ok(source.includes("PLAIN TEXT · .TXT"));
   assert.match(cinemaSource, /className="test-card-export"/);
 
   const text = formatTestCardText({
@@ -51,8 +51,9 @@ test("Creator and Cinema offer a plain-text test card export", () => {
   assert.match(text, /DATA STATUS: FIXTURE/);
   assert.match(text, /AUDIENCE HYPOTHESIS/);
   assert.match(text, /CALL ID: call-123/);
-  assert.match(text, /Illustrative fixture, not live data\\./);
-  assert.doesNotMatch(text, /\\{\\s*"title"|\\[object Object\\]/);
+  assert.ok(text.includes("Illustrative fixture, not live data."));
+  assert.ok(!text.includes('{"title"'));
+  assert.ok(!text.includes("[object Object]"));
   assert.equal(safeTextFilename("Cinema × Contemporary Classical"), "cinema-contemporary-classical");
   assert.equal(safeTextFilename("!!!"), "adjacent-test-card");
 });
