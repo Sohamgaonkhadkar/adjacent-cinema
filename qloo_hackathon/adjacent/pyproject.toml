@@ -19,6 +19,7 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "ruff>=0.6",
+    "httpx2",
 ]
 # Deliberately absent on Day 1:
 #   psycopg     — add when persistence is actually needed (Phase 1/9), not before
