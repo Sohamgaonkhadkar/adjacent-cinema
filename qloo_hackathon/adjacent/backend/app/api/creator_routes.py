@@ -243,6 +243,27 @@ async def create_creator_demo_run(http_request: Request) -> RunResponse:
 # ---------------------------------------------------------------------------
 
 
+def _log_creator_stop_diagnostic(record: Any, state: Any) -> None:
+    """Log only exception class, call ID and source-frame labels from a stop."""
+    stop = getattr(state, "stop", None)
+    if stop is None:
+        return
+    reason = getattr(getattr(stop, "reason", None), "value", getattr(stop, "reason", None))
+    stats = getattr(stop, "stats", None)
+    error = stats.get("error") if isinstance(stats, dict) else None
+    if reason != "error" or not isinstance(error, dict):
+        return
+    frames = error.get("frames")
+    safe_frames = [frame for frame in frames if isinstance(frame, str)] if isinstance(frames, list) else []
+    logger.error(
+        "Creator orchestrator failure: run_id=%s error_type=%s call_id=%s frames=%s",
+        record.run_id,
+        error.get("error_type") or "unknown",
+        error.get("call_id") or "none",
+        " > ".join(safe_frames) or "<traceback unavailable>",
+    )
+
+
 def _record_creator_stopped(record: Any, state: Any) -> None:
     """Record a non-exception terminal failure without exposing partial artefacts."""
     from .routes import RunEvent, RunStatus, _safe_state_failure_message
@@ -349,6 +370,7 @@ async def _execute_creator_run(record: Any, request: CreatorRunRequest) -> None:
                     title=str(item.get("title", "(unnamed)")),
                     year=item.get("year"),
                     imdb_id=item.get("imdb_id"),
+                    declared_entity_id=item.get("entity_id"),
                 )
                 for item in record.programme
             ],
@@ -357,7 +379,8 @@ async def _execute_creator_run(record: Any, request: CreatorRunRequest) -> None:
         state.ledger = ProvenanceLedger(recorder=client.recorder, data_status="measured")
 
         pipeline = LivePipeline(client, resolver, record.programme)
-        state = await AgentOrchestrator(pipeline).run(state)
+        state = await AgentOrchestrator(pipeline, allow_title_search=True).run(state)
+        _log_creator_stop_diagnostic(record, state)
         sanitize_public_stop(state)
         if state.stop_reason not in ("complete", "insufficiency"):
             _record_creator_stopped(record, state)
@@ -394,6 +417,8 @@ async def _execute_creator_demo_run(record: Any) -> None:
         "message": f"Creator FIXTURE demo ({DEMO_FIXTURE}) — offline, no Qloo calls",
     }))
 
+    client = None
+    state = None
     try:
         settings = Settings.from_env()
         fixture_path = resolve_fixture_path(DEMO_FIXTURE, settings=settings)
@@ -427,7 +452,10 @@ async def _execute_creator_demo_run(record: Any) -> None:
         )
         state.ledger = ProvenanceLedger(recorder=client.recorder, data_status="fixture")
 
-        state = await AgentOrchestrator(FixturePipeline(client, fx)).run(state)
+        state = await AgentOrchestrator(
+            FixturePipeline(client, fx), allow_title_search=True
+        ).run(state)
+        _log_creator_stop_diagnostic(record, state)
         sanitize_public_stop(state)
         if state.stop_reason not in ("complete", "insufficiency"):
             _record_creator_stopped(record, state)
@@ -441,10 +469,11 @@ async def _execute_creator_demo_run(record: Any) -> None:
             record, state, demo_request, geography_result, bet, test_card, investigation
         )
     except Exception as exc:
-        message = safe_run_error(exc)
-        record.status = RunStatus.FAILED
-        record.error = message
-        record.emit(RunEvent("error", {"message": message}))
+        _record_creator_failure(record, state, exc)
+    finally:
+        if client is not None:
+            with suppress(Exception):
+                await client.aclose()
 
 
 async def _post_pipeline_creator(

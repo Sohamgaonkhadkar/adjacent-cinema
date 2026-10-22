@@ -8,6 +8,7 @@ inputs, 422 on empty seeds, 404 on unknown runs.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from types import SimpleNamespace
@@ -63,6 +64,8 @@ class TestCreatorFixtureDemo:
         for cohort in result["cohorts"]["ranked"]:
             assert "qualifying_count" in cohort
             assert isinstance(cohort["excluded_members"], list)
+            assert cohort["kind"]
+            assert cohort["construction_reason"]
 
     def test_demo_sse_streams_creator_events(self) -> None:
         client = TestClient(app)
@@ -148,8 +151,89 @@ class TestCreatorExperimentJourney:
         finally:
             creator_routes.reset_repo_for_tests(None)
 
+    def test_fixture_postprocessing_exception_preserves_safe_trace_and_closes_client(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        from app.qloo import mock as mock_module
+
+        closed: list[bool] = []
+        original_client = mock_module.MockQlooClient
+
+        class TrackingMockClient(original_client):
+            async def aclose(self) -> None:
+                closed.append(True)
+                await super().aclose()
+
+        async def fail_after_orchestration(*_args, **_kwargs):
+            raise TypeError("SENSITIVE-FIXTURE-CANARY")
+
+        monkeypatch.setattr(mock_module, "MockQlooClient", TrackingMockClient)
+        monkeypatch.setattr(creator_routes, "_post_pipeline_creator", fail_after_orchestration)
+        caplog.set_level(logging.ERROR, logger=creator_routes.__name__)
+
+        record = run_store.create(city="", programme=[])
+        asyncio.run(creator_routes._execute_creator_demo_run(record))
+
+        assert record.status.value == "failed"
+        assert record.result is None
+        assert record.state_json is None
+        assert record.trace  # state existed and its safe trace was retained
+        assert record.current_phase
+        assert len([event for event in record.events if event.event == "error"]) == 1
+        assert closed == [True]
+        assert "SENSITIVE-FIXTURE-CANARY" not in caplog.text
+        response = TestClient(app).get(f"/run/{record.run_id}")
+        assert response.status_code == 200
+        assert response.json()["status"] == "failed"
+        assert response.json()["result"] is None
+
 
 class TestCreatorLiveRunHonesty:
+    def test_orchestrator_tool_typeerror_logs_safe_frames_through_creator_executor(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        from app.config import Settings
+        from app.qloo import client as qloo_client_module
+        from app.qloo.trace import TraceRecorder
+        from app.resolution import resolver as resolver_module
+
+        class FakeQlooClient:
+            def __init__(self, _settings):
+                self.recorder = TraceRecorder(run_id="synthetic-live-run")
+                self.closed = False
+
+            async def aclose(self):
+                self.closed = True
+
+        class FailingResolver:
+            async def resolve_programme(self, _programme):
+                raise TypeError("SENSITIVE-TOOL-CANARY and fake provider payload")
+
+        monkeypatch.setattr(Settings, "from_env", classmethod(lambda cls: SimpleNamespace(has_api_key=True)))
+        monkeypatch.setattr(qloo_client_module, "QlooClient", FakeQlooClient)
+        monkeypatch.setattr(resolver_module, "EntityResolver", lambda *_args, **_kwargs: FailingResolver())
+        caplog.set_level(logging.ERROR, logger=creator_routes.__name__)
+
+        request = creator_routes.CreatorRunRequest(
+            title="Synthetic test",
+            references=[creator_routes.ReferenceInput(title="Synthetic seed", year=2000)],
+        )
+        record = run_store.create(
+            city="",
+            venue_name="Creator: Synthetic test",
+            programme=request.seeds(),
+        )
+        asyncio.run(creator_routes._execute_creator_run(record, request))
+
+        assert record.status.value == "failed"
+        assert record.result is None
+        assert "error_type=TypeError" in caplog.text
+        assert "resolve_programme" in caplog.text
+        assert "orchestrator.py" in caplog.text
+        assert "SENSITIVE-TOOL-CANARY" not in caplog.text
+        assert "fake provider payload" not in caplog.text
+        assert "SENSITIVE-TOOL-CANARY" not in (record.error or "")
+
     def test_live_run_without_key_fails_honestly(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("QLOO_API_KEY", raising=False)
         client = TestClient(app)

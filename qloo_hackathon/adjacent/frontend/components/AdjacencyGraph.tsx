@@ -19,6 +19,8 @@ interface NodeDatum {
   key: string;
   label: string;
   domain: string;
+  kindLabel: string;
+  constructionReason: string | null;
   rank: number;
   memberCount: number;
   qualifyingCount: number | null;
@@ -35,6 +37,14 @@ function domainLabel(domain: string): string {
 
 function comparableName(value: string | null | undefined): string {
   return value?.trim().toLowerCase() ?? "";
+}
+
+function cohortKindLabel(kind: string | undefined, subtype: string | undefined, domain: string): string {
+  if (kind === "subtype_group" && subtype) return `Qloo subtype · ${subtype}`;
+  if (kind === "tag_cluster") return "Shared Qloo tag group";
+  if (kind === "domain_group") return "Domain-only group";
+  if (kind === "singleton_group") return "Single candidate";
+  return domainLabel(domain);
 }
 
 export default function AdjacencyGraph({
@@ -72,6 +82,8 @@ export default function AdjacencyGraph({
         key: c.cohort_id || `${c.domain}-${i}`,
         label,
         domain: c.domain,
+        kindLabel: cohortKindLabel(c.kind, c.construction_evidence?.subtype, c.domain),
+        constructionReason: c.construction_reason ?? null,
         rank: c.rank,
         memberCount: c.member_count,
         qualifyingCount: c.qualifying_count ?? null,
@@ -188,14 +200,14 @@ export default function AdjacencyGraph({
                 }
               }}
               aria-pressed={selected === p.node.key}
-              aria-label={`${p.node.label}, ${p.node.role === "primary" ? "primary positioning target" : p.node.role === "runner-up" ? "runner-up world" : "ranked world"}, rank ${p.node.rank}`}
+              aria-label={`${p.node.label}, ${p.node.kindLabel}, ${p.node.role === "primary" ? "primary positioning target" : p.node.role === "runner-up" ? "runner-up world" : "ranked world"}, rank ${p.node.rank}`}
             >
               <circle cx={p.x} cy={p.y} r={p.r} />
               <text x={p.x} y={p.y - p.r - 10} textAnchor="middle" className="agraph-node-label">
                 {p.node.label.length > 22 ? `${p.node.label.slice(0, 21)}…` : p.node.label}
               </text>
               <text x={p.x} y={p.y - p.r + 2} textAnchor="middle" className="agraph-node-meta">
-                #{p.node.rank} · {domainLabel(p.node.domain)}
+                #{p.node.rank} · {p.node.kindLabel}
               </text>
               {p.node.meanAffinity != null && (
                 <text x={p.x} y={p.y + 14} textAnchor="middle" className="agraph-node-meta">
@@ -233,6 +245,10 @@ export default function AdjacencyGraph({
             <h4>{active.node.label}</h4>
             <dl className="agraph-facts">
               <div><dt>Domain</dt><dd>{domainLabel(active.node.domain)}</dd></div>
+              <div><dt>Grouping</dt><dd>{active.node.kindLabel}</dd></div>
+              {active.node.constructionReason && (
+                <div><dt>Why grouped</dt><dd>{active.node.constructionReason}</dd></div>
+              )}
               <div><dt>Members</dt><dd>{active.node.memberCount}</dd></div>
               {active.node.qualifyingCount != null && (
                 <div><dt>Qualifying</dt><dd>{active.node.qualifyingCount}</dd></div>

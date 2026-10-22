@@ -94,6 +94,9 @@ export interface ExcludedMember {
 export interface RankedCohort {
   cohort_id: string;
   domain: string;
+  kind?: string;
+  construction_reason?: string;
+  construction_evidence?: { subtype?: string; [key: string]: unknown };
   rank: number;
   member_count: number;
   verdict: string | null;

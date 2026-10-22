@@ -29,7 +29,9 @@ The orchestrator knows nothing about Qloo: it holds five tools and a runtime nam
 from __future__ import annotations
 
 import time
+import traceback
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from ..qloo.errors import QlooError
@@ -99,6 +101,17 @@ class Evaluation:
         return self.decision == "stop"
 
 
+def _error_decision_with_frames(exc: Exception, state: AdjacentState) -> StopDecision:
+    decision = stop_for_error(exc, state)
+    error = decision.stats.get("error")
+    if isinstance(error, dict):
+        error["frames"] = [
+            f"{Path(frame.filename).name}:{frame.name}:{frame.lineno}"
+            for frame in traceback.extract_tb(exc.__traceback__)[-16:]
+        ]
+    return decision
+
+
 class AgentOrchestrator:
     """Drives one run to a terminal state. See the module docstring for the cycle."""
 
@@ -108,10 +121,12 @@ class AgentOrchestrator:
         *,
         tools: dict[str, Any] | None = None,
         clock: Callable[[], float] = time.monotonic,
+        allow_title_search: bool = False,
     ) -> None:
         self.runtime = runtime
         self.tools: dict[str, Any] = tools if tools is not None else default_tools(runtime)
         self.clock = clock
+        self.allow_title_search = allow_title_search
 
     # -- the loop ----------------------------------------------------------
     async def run(self, state: AdjacentState) -> AdjacentState:
@@ -191,10 +206,10 @@ class AgentOrchestrator:
                 self.stop(state, stop_for_budget(exc, state))
                 break
             except QlooError as exc:
-                self.stop(state, stop_for_error(exc, state))
+                self.stop(state, _error_decision_with_frames(exc, state))
                 break
             except Exception as exc:
-                self.stop(state, stop_for_error(exc, state))
+                self.stop(state, _error_decision_with_frames(exc, state))
                 break
 
             self.record_evaluation(state, result, evaluation)
@@ -209,7 +224,11 @@ class AgentOrchestrator:
         """Invalid input is a user problem, and stays distinct from thin evidence."""
         if not state.programme:
             return OrchestratorInvalidInput(CODE_EMPTY_PROGRAMME, MSG_INVALID_INPUT_EMPTY)
-        if not any(item.identifiers for item in state.programme):
+        # Creator enables title lookup explicitly; default runtimes still require
+        # at least one caller-supplied identifier to preserve their input contract.
+        if not any(item.identifiers for item in state.programme) and not (
+            self.allow_title_search and any(item.title.strip() for item in state.programme)
+        ):
             return OrchestratorInvalidInput(
                 CODE_NO_IDENTIFIERS,
                 MSG_INVALID_INPUT_NO_IDS.format(count=len(state.programme)),

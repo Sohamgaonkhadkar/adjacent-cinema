@@ -34,6 +34,7 @@ import {
 import type { AdjacentRunResult, InvestigationData, ProgrammeFilm, TraceRow } from "@/types/adjacent";
 import AdjacencyGraph from "@/components/AdjacencyGraph";
 import { EvidenceReferences, EvidenceTraceLog } from "@/components/EvidenceTrace";
+import { watchRunWithRecovery } from "@/lib/runRecovery";
 
 // Small helpers shared with the cinema page's visual language.
 const mono = { fontFamily: "var(--mono)" } as const;
@@ -86,6 +87,8 @@ export default function CreatorPage() {
   const [events, setEvents] = useState<SSEEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const stopStream = useRef<(() => void) | null>(null);
+  const runGeneration = useRef(0);
+  const activeRunId = useRef<string | null>(null);
   const experimentDetailRequest = useRef(0);
   const experimentListRequest = useRef(0);
 
@@ -162,39 +165,55 @@ export default function CreatorPage() {
     void refreshExperiments();
     return () => {
       experimentListRequest.current += 1;
+      runGeneration.current += 1;
+      activeRunId.current = null;
       stopStream.current?.();
+      stopStream.current = null;
     };
   }, [refreshExperiments]);
 
+  const cancelRunWatch = useCallback(() => {
+    runGeneration.current += 1;
+    activeRunId.current = null;
+    stopStream.current?.();
+    stopStream.current = null;
+  }, []);
+
   const watchRun = useCallback((id: string) => {
+    const generation = ++runGeneration.current;
+    activeRunId.current = id;
+    stopStream.current?.();
+    stopStream.current = null;
     setRunId(id);
     setAnalysing(true);
     setEvents([]);
-    stopStream.current?.();
-    stopStream.current = streamRun(
-      id,
-      (event) => {
-        setEvents((prev) => [...prev, event]);
-        if (event.event === "done" || event.event === "insufficiency" || event.event === "error") {
-          getRun(id)
-            .then((r) => {
-              setRun(r);
-              setAnalysing(false);
-            })
-            .catch(() => {
-              setError("Could not load the completed analysis");
-              setAnalysing(false);
-            });
+
+    const isCurrent = () =>
+      runGeneration.current === generation && activeRunId.current === id;
+    stopStream.current = watchRunWithRecovery(id, {
+      isCurrent,
+      stream: streamRun,
+      fetchRun: getRun,
+      onEvent: (event) => {
+        if (isCurrent()) setEvents((prev) => [...prev, event]);
+      },
+      onRun: (response) => {
+        if (!isCurrent()) return;
+        setRun(response);
+        if (["completed", "failed", "insufficient"].includes(response.status)) {
+          setAnalysing(false);
         }
       },
-      (err) => {
-        setError(err.message);
+      onExhausted: () => {
+        if (!isCurrent()) return;
+        setError("The stream disconnected and run status could not be confirmed. Retry loading this run.");
         setAnalysing(false);
-      }
-    );
+      },
+    });
   }, []);
 
   const startDemoRun = useCallback(() => {
+    cancelRunWatch();
     setError(null);
     setRun(null);
     setSaveState(null);
@@ -207,7 +226,7 @@ export default function CreatorPage() {
         setError(err instanceof Error ? err.message : "Failed to start the fixture demo");
         setAnalysing(false);
       });
-  }, [watchRun]);
+  }, [watchRun, cancelRunWatch]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -233,6 +252,7 @@ export default function CreatorPage() {
   }, [startDemoRun]);
 
   function handleAnalyse() {
+    cancelRunWatch();
     setError(null);
     setRun(null);
     setSaveState(null);

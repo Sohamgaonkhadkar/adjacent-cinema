@@ -18,8 +18,10 @@ single-user tool with no auth model in the application today. In
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 import threading
+import traceback
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
@@ -51,6 +53,25 @@ from ..domain.filmsponsor_repository import DuplicateRequest, FilmSponsorReposit
 from .creator_routes import EXPERIMENTS_DB_PATH
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+
+def _log_discovery_failure(
+    stage: str, exc: Exception, call_ids: list[str] | None = None
+) -> None:
+    """Log only exception class, sanitized source frames and provider call IDs."""
+    frames = [
+        f"{Path(frame.filename).name}:{frame.name}:{frame.lineno}"
+        for frame in traceback.extract_tb(exc.__traceback__)[-16:]
+    ]
+    logger.error(
+        "FilmSponsor discovery failure: stage=%s error_type=%s call_ids=%s frames=%s",
+        stage,
+        type(exc).__name__,
+        ",".join(call_id for call_id in (call_ids or []) if isinstance(call_id, str)) or "none",
+        " > ".join(frames) or "<traceback unavailable>",
+    )
+
 
 _repo: FilmSponsorRepository | None = None
 _guest_store: GuestSessionStore | None = None
@@ -348,13 +369,23 @@ async def discover_campaign(
         # Expected provider failures are represented by the discovery report.
         # This boundary covers unexpected transport/response-schema errors so
         # they cannot escape as an unclassified HTTP 500 or persist partial data.
+        call_id = getattr(exc, "call_id", None)
+        _log_discovery_failure("provider_or_parsing", exc, [call_id] if isinstance(call_id, str) else [])
         raise HTTPException(
             status_code=502,
             detail="Live brand discovery could not complete. No results were stored.",
         ) from exc
 
     report = outcome.report
-    if report.get("halt_reason") is not None and not report.get("call_ids"):
+    halt_reason = report.get("halt_reason")
+    if isinstance(halt_reason, dict):
+        call_id = halt_reason.get("call_id")
+        logger.warning(
+            "FilmSponsor discovery failure: stage=provider_report error_type=%s call_id=%s",
+            halt_reason.get("error_type") or "unknown",
+            call_id if isinstance(call_id, str) else "none",
+        )
+    if halt_reason is not None and not report.get("call_ids"):
         # Provider failure before any successful call: sanitized 502, nothing stored.
         raise HTTPException(
             status_code=502,
@@ -375,6 +406,13 @@ async def discover_campaign(
         raise _storage_limit_error(exc, owner_id, "Guest discovery storage limit reached.") from exc
     except ValueError as exc:
         raise HTTPException(status_code=413, detail=str(exc)) from exc
+    except Exception as exc:
+        call_ids = report.get("call_ids")
+        _log_discovery_failure("persistence", exc, call_ids if isinstance(call_ids, list) else [])
+        raise HTTPException(
+            status_code=500,
+            detail="Discovery could not be saved. Check the campaign before retrying.",
+        ) from exc
     return {"duplicate": False, "discovery": discovery}
 
 

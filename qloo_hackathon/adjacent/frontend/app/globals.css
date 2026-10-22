@@ -484,9 +484,13 @@ button { color: inherit; background: none; border: 0; cursor: pointer; font-fami
 
 @media (max-width: 900px) {
   .intake-grid { grid-template-columns: 1fr; }
-  .intake-row { grid-template-columns: 22px 1fr 28px; grid-template-areas: "idx title rm" ". year imdb"; row-gap: 8px; }
+  .intake-row {
+    grid-template-columns: 22px minmax(0, 1fr) minmax(0, 1fr) 28px;
+    grid-template-areas: "idx title title rm" ". year imdb .";
+    row-gap: 8px;
+  }
   .intake-row-index { grid-area: idx; }
-  .intake-row-fields:nth-of-type(1) { grid-area: title; }
+  .intake-row-fields:not(.intake-year):not(.intake-imdb) { grid-area: title; }
   .intake-year { grid-area: year; }
   .intake-imdb { grid-area: imdb; }
   .intake-remove { grid-area: rm; }
