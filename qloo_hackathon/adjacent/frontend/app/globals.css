@@ -1556,3 +1556,21 @@ summary:focus-visible,
   .test-card-footer-actions { align-items: stretch; flex-direction: column; }
   .test-card-export { width: 100%; justify-content: space-between; }
 }
+
+/* Graph evidence remains readable when provider metadata contains long titles,
+   Unicode, or raw provenance identifiers. */
+.agraph-inspector,
+.agraph-inspector dd,
+.agraph-members li,
+.agraph-evidence-details summary {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+.agraph-inspector { max-height: 72vh; overflow: auto; overscroll-behavior: contain; }
+.agraph-evidence-details { margin: 10px 0 18px; }
+.agraph-evidence-details summary { cursor: pointer; color: #d5b489; font-size: 12px; line-height: 1.6; }
+.agraph-evidence-details[open] summary { margin-bottom: 8px; }
+.agraph-inspector details p { margin: 8px 0 0; line-height: 1.7; }
+@media (max-width: 760px) {
+  .agraph-inspector { max-height: none; overflow: visible; }
+}

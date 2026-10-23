@@ -304,23 +304,67 @@ def hash_request_id(session_id: str, request_id: str) -> str:
     return "guest-" + hashlib.sha256(f"{session_id}:{request_id}".encode()).hexdigest()
 
 
-def allowed_origins() -> frozenset[str]:
-    """Explicit frontend origins; wildcard and URL paths are never accepted."""
-    import os
+def normalize_origin(value: str | None, *, allow_root_slash: bool = False) -> str | None:
+    """Canonicalize an HTTP(S) origin while rejecting unsafe URL forms.
+
+    Config values may have one trailing slash for operator convenience; browser
+    Origin headers must be an origin serialization without any path. Wildcards,
+    credentials, query strings and fragments are never accepted.
+    """
+    from ipaddress import ip_address
     from urllib.parse import urlsplit
 
-    raw = os.getenv("ADJACENT_FILMSPONSOR_GUEST_ORIGINS", "")
-    origins: set[str] = set()
-    for item in raw.split(","):
-        item = item.strip().rstrip("/")
-        if not item or item == "*":
-            continue
-        parsed = urlsplit(item)
-        if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.path or parsed.query or parsed.fragment:
-            continue
-        if parsed.scheme == "http" and parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
-            continue
-        origins.add(f"{parsed.scheme}://{parsed.netloc.lower()}")
+    if not isinstance(value, str):
+        return None
+    candidate = value.strip()
+    if not candidate or candidate == "*" or candidate.lower() == "null":
+        return None
+
+    try:
+        parsed = urlsplit(candidate)
+        scheme = parsed.scheme.lower()
+        if scheme not in {"http", "https"} or not parsed.netloc:
+            return None
+        if parsed.username is not None or parsed.password is not None:
+            return None
+        if parsed.query or parsed.fragment:
+            return None
+        if parsed.path and not (allow_root_slash and parsed.path == "/"):
+            return None
+        hostname = parsed.hostname
+        if not hostname or "%" in hostname:
+            return None
+        port = parsed.port
+    except ValueError:
+        return None
+
+    # Origin hostnames are case-insensitive. IDNA yields the ASCII form browsers
+    # use for internationalized hostnames.
+    try:
+        if ":" in hostname:
+            normalized_host = f"[{ip_address(hostname).compressed}]"
+        else:
+            normalized_host = hostname.encode("idna").decode("ascii").lower()
+    except (UnicodeError, ValueError):
+        return None
+
+    if scheme == "http" and normalized_host.strip("[]") not in {"localhost", "127.0.0.1", "::1"}:
+        return None
+    if port == (443 if scheme == "https" else 80):
+        port = None
+    authority = normalized_host if port is None else f"{normalized_host}:{port}"
+    return f"{scheme}://{authority}"
+
+
+def allowed_origins() -> frozenset[str]:
+    """Explicit canonical frontend origins; wildcard and URL paths are rejected."""
+    import os
+
+    origins = {
+        origin
+        for item in os.getenv("ADJACENT_FILMSPONSOR_GUEST_ORIGINS", "").split(",")
+        if (origin := normalize_origin(item, allow_root_slash=True)) is not None
+    }
     return frozenset(origins)
 
 

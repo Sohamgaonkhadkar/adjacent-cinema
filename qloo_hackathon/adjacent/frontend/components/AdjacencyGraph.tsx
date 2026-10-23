@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { CulturalField, ProgrammeBetData, TraceRow } from "@/types/adjacent";
 import { traceAnchorId } from "@/components/EvidenceTrace";
+import { normalizeEntityName } from "@/lib/entityDisplay";
 
 // ─── Cultural adjacency graph (M13.15) ─────────────────────────────────────
 // Renders ONLY what the run actually established: ranked adjacent worlds from
@@ -25,7 +26,7 @@ interface NodeDatum {
   memberCount: number;
   qualifyingCount: number | null;
   meanAffinity: number | null;
-  members: { name: string; affinity: number | null }[];
+  members: NonNullable<CulturalField["ranked"][number]["members"]>;
   excludedCount: number;
   callId: string | null;
   role: "primary" | "runner-up" | "ranked";
@@ -35,16 +36,21 @@ function domainLabel(domain: string): string {
   return domain.replace("urn:entity:", "").replace(/_/g, " ");
 }
 
-function comparableName(value: string | null | undefined): string {
-  return value?.trim().toLowerCase() ?? "";
-}
-
-function cohortKindLabel(kind: string | undefined, subtype: string | undefined, domain: string): string {
-  if (kind === "subtype_group" && subtype) return `Qloo subtype · ${subtype}`;
-  if (kind === "tag_cluster") return "Shared Qloo tag group";
-  if (kind === "domain_group") return "Domain-only group";
+function cohortKindLabel(kind: string | undefined, domain: string): string {
+  if (kind === "subtype_group") return "Shared provider subtype";
+  if (kind === "tag_cluster") return "Shared provider tags";
+  if (kind === "domain_group") return "Domain-only grouping";
   if (kind === "singleton_group") return "Single candidate";
   return domainLabel(domain);
+}
+
+function cohortDisplayLabel(kind: string | undefined, domain: string, rank: number): string {
+  const grouping = kind === "tag_cluster" ? "tag group"
+    : kind === "subtype_group" ? "subtype group"
+      : kind === "domain_group" ? "domain group"
+        : kind === "singleton_group" ? "candidate"
+          : "group";
+  return `${domainLabel(domain)} · ${grouping} #${rank}`;
 }
 
 export default function AdjacencyGraph({
@@ -70,22 +76,15 @@ export default function AdjacencyGraph({
 
   const nodes: NodeDatum[] = useMemo(() => {
     return cohorts.ranked.map((c, i) => {
-      const memberLabel = c.members?.find((m) => m.name)?.name ?? domainLabel(c.domain);
-      // Distinguish same-domain cohorts without changing their underlying rank.
-      const groupingHint = c.construction_evidence?.subtype
-        ?? c.construction_reason
-        ?? (c.kind && c.kind !== "domain_group" ? c.kind.replace(/_/g, " ") : null);
-      const label = groupingHint && !memberLabel.toLowerCase().includes(groupingHint.toLowerCase())
-        ? `${memberLabel} · ${groupingHint}`
-        : memberLabel;
-      const isPrimary = bet?.primary
-        ? bet.primary.cohort_id
-          ? bet.primary.cohort_id === c.cohort_id
-          : bet.primary.domain === c.domain && comparableName(bet.primary.cohort_name) === comparableName(label)
-        : false;
-      const isRunnerUp = bet?.runner_up
-        ? bet.runner_up.domain === c.domain && comparableName(bet.runner_up.cohort_name) === comparableName(label)
-        : false;
+      // Cohort labels are editorial identifiers, never copied from a member name,
+      // provider tag, subtype URN, or the explanatory construction prose.
+      const label = cohortDisplayLabel(c.kind, c.domain, c.rank ?? i + 1);
+      const isPrimary = Boolean(bet?.primary && (
+        (bet.primary.cohort_id && bet.primary.cohort_id === c.cohort_id) ||
+        (!bet.primary.cohort_id && c.rank === 1 && domainLabel(c.domain) === bet.primary.domain)
+      ));
+      const isRunnerUp = Boolean(bet?.runner_up && c.rank === 2 &&
+        domainLabel(c.domain) === bet.runner_up.domain);
       const role: NodeDatum["role"] = isPrimary ? "primary" : isRunnerUp ? "runner-up" : "ranked";
       const contextCallId = traceRows.find((row) => row.tool === `score_context:${c.domain}`)?.call_id ?? null;
       const callId =
@@ -95,13 +94,13 @@ export default function AdjacencyGraph({
         key: c.cohort_id || `${c.domain}-${i}`,
         label,
         domain: c.domain,
-        kindLabel: cohortKindLabel(c.kind, c.construction_evidence?.subtype, c.domain),
+        kindLabel: cohortKindLabel(c.kind, c.domain),
         constructionReason: c.construction_reason ?? null,
         rank: c.rank,
         memberCount: c.member_count,
         qualifyingCount: c.qualifying_count ?? null,
         meanAffinity: c.score?.mean_affinity ?? null,
-        members: (c.members ?? []).slice(0, 6).map((m) => ({ name: m.name, affinity: m.affinity })),
+        members: c.members ?? [],
         excludedCount: (c.excluded_members ?? []).length,
         callId,
         role,
@@ -127,9 +126,10 @@ export default function AdjacencyGraph({
     parent.node.members.slice(0, 2).map((member, index) => {
       const angle = parent.angle + (parent.node.members.length > 1 ? (index === 0 ? -0.085 : 0.085) : 0);
       return {
-        key: "member-" + parent.node.key + "-" + member.name + "-" + index,
+        key: "member-" + parent.node.key + "-" + member.entity_id,
         parentKey: parent.node.key,
-        name: member.name,
+        name: normalizeEntityName(member.name) ?? "Name unavailable",
+        member,
         affinity: member.affinity,
         angle,
         x: CX + Math.cos(angle) * 296,
@@ -141,8 +141,9 @@ export default function AdjacencyGraph({
   const rejected = cohorts.rejected ?? [];
   const activeMember = memberNodes.find((member) => member.key === selected) ?? null;
   const active = placed.find((p) => p.node.key === (activeMember?.parentKey ?? selected)) ?? null;
-  const activeTrace = active?.node.callId
-    ? traceRows.find((row) => row.call_id === active.node.callId) ?? null
+  const activeCallId = activeMember?.member.call_id ?? active?.node.callId ?? null;
+  const activeTrace = activeCallId
+    ? traceRows.find((row) => row.call_id === activeCallId) ?? null
     : null;
 
   if (nodes.length === 0) {
@@ -308,6 +309,7 @@ export default function AdjacencyGraph({
                 aria-pressed={isSelected}
                 aria-label={member.name + ", member of " + (placed.find((p) => p.node.key === member.parentKey)?.node.label ?? "a cultural world")}
               >
+                <title>{member.name}</title>
                 <circle cx={member.x} cy={member.y} r={member.affinity == null ? 4.6 : 4.1 + Math.max(0, Math.min(1, member.affinity)) * 2.2} />
                 <text x={labelX} y={labelY} textAnchor={anchor} className="agraph-node-label">
                   {member.name.length > 25 ? member.name.slice(0, 24) + "…" : member.name}
@@ -365,8 +367,8 @@ export default function AdjacencyGraph({
               {!activeMember && <div><dt>Grouping</dt><dd>{active.node.kindLabel}</dd></div>}
               {activeMember && <div><dt>Related world</dt><dd>{active.node.label}</dd></div>}
               {activeMember?.affinity != null && <div><dt>Entity affinity</dt><dd>{activeMember.affinity.toFixed(3)}</dd></div>}
-              {active.node.constructionReason && (
-                <div><dt>Why grouped</dt><dd>{active.node.constructionReason}</dd></div>
+              {active.node.constructionReason && !activeMember && (
+                <div><dt>Grouping note</dt><dd><details><summary>Read provider-backed grouping explanation</summary><p>{active.node.constructionReason}</p></details></dd></div>
               )}
               <div><dt>Members</dt><dd>{active.node.memberCount}</dd></div>
               {active.node.qualifyingCount != null && (
@@ -378,36 +380,62 @@ export default function AdjacencyGraph({
               {active.node.excludedCount > 0 && (
                 <div><dt>Excluded (visible)</dt><dd>{active.node.excludedCount}</dd></div>
               )}
-              {active.node.callId && (
+              {activeCallId && (
                 <div>
                   <dt>Evidence call</dt>
                   <dd className="mono-tiny">
                     {activeTrace ? (
-                      <a href={`#${traceAnchorId(active.node.callId)}`}>
-                        {active.node.callId} · inspect trace
+                      <a href={`#${traceAnchorId(activeCallId)}`}>
+                        {activeCallId} · inspect trace
                       </a>
                     ) : (
-                      <span>{active.node.callId} · no matching trace entry</span>
+                      <span>{activeCallId} · no matching trace entry</span>
                     )}
                   </dd>
                 </div>
               )}
-              {!active.node.callId && (
+              {!activeCallId && (
                 <div><dt>Evidence call</dt><dd>Not linked in this response</dd></div>
               )}
             </dl>
-            {!activeMember && active.node.members.length > 0 && (
+            {activeMember && (
               <>
-                <span className="micro-label">Strongest members</span>
+                <span className="micro-label">Provider evidence</span>
+                <dl className="agraph-facts">
+                  <div><dt>Entity ID</dt><dd className="mono-tiny">{activeMember.member.entity_id}</dd></div>
+                  {activeMember.member.type && <div><dt>Provider type</dt><dd>{activeMember.member.type}</dd></div>}
+                  {activeMember.member.subtype && <div><dt>Provider subtype</dt><dd>{activeMember.member.subtype}</dd></div>}
+                  {activeMember.member.band && <div><dt>Affinity band</dt><dd>{activeMember.member.band}</dd></div>}
+                  {activeMember.member.popularity != null && <div><dt>Popularity</dt><dd>{activeMember.member.popularity}</dd></div>}
+                </dl>
+                <span className="micro-label">Returned tags ({activeMember.member.tags?.length ?? 0})</span>
                 <ul className="agraph-members">
-                  {active.node.members.map((m) => (
-                    <li key={m.name}>
-                      {m.name}
-                      {m.affinity != null && <span className="mono-tiny"> · {m.affinity.toFixed(2)}</span>}
+                  {(activeMember.member.tags ?? []).map((tag, index) => (
+                    <li key={`${tag.tag_id}-${index}`}>
+                      {tag.name || "Unnamed provider tag"}
+                      <span className="mono-tiny"> · {tag.tag_id}</span>
+                      {tag.subtype && <span className="mono-tiny"> · {tag.subtype}</span>}
                     </li>
                   ))}
                 </ul>
               </>
+            )}
+            {!activeMember && active.node.members.length > 0 && (
+              <details className="agraph-evidence-details">
+                <summary>All {active.node.members.length} returned members and evidence tags</summary>
+                <ul className="agraph-members">
+                  {active.node.members.map((m) => (
+                    <li key={m.entity_id}>
+                      <strong>{normalizeEntityName(m.name) ?? "Name unavailable"}</strong>
+                      <span className="mono-tiny"> · {m.entity_id}</span>
+                      {m.affinity != null && <span className="mono-tiny"> · affinity {m.affinity.toFixed(3)}</span>}
+                      {(m.tags ?? []).map((tag, index) => (
+                        <span className="mono-tiny" key={`${tag.tag_id}-${index}`}> · {tag.name || tag.tag_id} [{tag.tag_id}]</span>
+                      ))}
+                    </li>
+                  ))}
+                </ul>
+              </details>
             )}
             <p className="agraph-guard">
               Affinity is cultural similarity — not evidence this audience will watch the film. A fixture is not a live Qloo result.

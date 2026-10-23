@@ -54,6 +54,15 @@ class TestCreatorFixtureDemo:
         assert investigation["questions"]
         assert "hypotheses" in investigation
         assert result["cohorts"]["ranked"]
+        # Provider identity and evidence metadata are serialized as independent
+        # fields. A cohort explanation must never be used as a member name.
+        first_member = result["cohorts"]["ranked"][0]["members"][0]
+        assert first_member["name"]
+        assert first_member["entity_id"]
+        assert first_member["type"]
+        assert isinstance(first_member["tags"], list)
+        assert first_member["call_id"]
+        assert "entities returned for this programme" not in first_member["name"]
 
         synthesis_status = client.get("/creator/synthesis-status")
         assert synthesis_status.status_code == 200

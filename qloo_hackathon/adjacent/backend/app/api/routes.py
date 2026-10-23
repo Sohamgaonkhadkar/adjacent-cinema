@@ -741,10 +741,19 @@ def _build_result(
                     "members": [
                         {
                             "entity_id": m.entity_id,
+                            # Provider identity stays a distinct field; cohort explanations
+                            # and evidence tags are never folded into the entity name.
                             "name": m.name,
+                            "type": m.scored.type,
+                            "subtype": m.scored.subtype,
                             "affinity": m.affinity,
                             "band": m.band.value if hasattr(m.band, 'value') else str(m.band),
                             "popularity": m.popularity,
+                            "tags": [
+                                {"tag_id": tag.tag_id, "name": tag.name, "subtype": tag.subtype}
+                                for tag in m.scored.tags
+                            ],
+                            "call_id": m.call_id,
                         }
                         for m in c.members
                     ],

@@ -70,10 +70,15 @@ export interface TasteDNA {
 
 export interface CohortMember {
   entity_id: string;
-  name: string;
+  /** Provider-supplied entity name only; not a cohort explanation or display label. */
+  name: string | null;
+  type?: string | null;
+  subtype?: string | null;
   affinity: number | null;
   band: string | null;
   popularity: number | null;
+  tags?: { tag_id: string; name: string | null; subtype: string | null }[];
+  call_id?: string | null;
 }
 
 export interface CohortScore {
@@ -96,7 +101,12 @@ export interface RankedCohort {
   domain: string;
   kind?: string;
   construction_reason?: string;
-  construction_evidence?: { subtype?: string; [key: string]: unknown };
+  construction_evidence?: {
+    rule?: string;
+    subtype?: string;
+    shared_tags?: string[];
+    [key: string]: unknown;
+  };
   rank: number;
   member_count: number;
   verdict: string | null;

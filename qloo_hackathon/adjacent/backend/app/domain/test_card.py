@@ -67,17 +67,17 @@ def build_test_card(
         + "."
     )
 
-    # Audience hypothesis — phrased as a testable existence claim, never a
-    # size, attendance, or revenue estimate.
-    others = bet.primary_member_count - 1
-    if others > 0:
-        represented_by = f"{bet.primary_cohort_name} and {others} similar entit{'y' if others == 1 else 'ies'}"
-    else:
-        represented_by = f"{bet.primary_cohort_name} (the single qualifying entity found)"
+    # Keep provider affinity separate from an actual audience claim. These
+    # returned entities are cultural-similarity evidence, not attendance data.
+    scored_members = bet.primary_member_count
+    member_phrase = f"{scored_members} scored {'entity' if scored_members == 1 else 'entities'}"
     audience_hypothesis = (
-        f"A culturally aligned audience exists in the {bet.primary_domain} domain, "
-        f"represented by {represented_by}, "
-        f"with mean cultural affinity {bet.primary_mean_affinity:.2f}."
+        f"Test whether the programme's cultural profile has repeatable affinity with "
+        f"the top-ranked {bet.primary_domain} entity group. In this run, "
+        f"{member_phrase} contributed to a mean cultural affinity of "
+        f"{bet.primary_mean_affinity:.2f}. This describes provider-returned cultural "
+        "similarity; it does not establish that these entities are a local audience, "
+        "that people will attend, or how many tickets a screening could sell."
     )
 
     # Runner-up summary

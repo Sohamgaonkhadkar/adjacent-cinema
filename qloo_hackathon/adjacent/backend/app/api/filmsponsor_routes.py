@@ -47,6 +47,7 @@ from ..domain.filmsponsor_guest_sessions import (
     allowed_origins,
     guest_demo_enabled,
     hash_request_id,
+    normalize_origin,
     secure_cookie_enabled,
 )
 from ..domain.filmsponsor_repository import DuplicateRequest, FilmSponsorRepository
@@ -111,10 +112,27 @@ def reset_filmsponsor_for_tests(db_path: str | Path | None = None) -> None:
 
 
 def _check_guest_origin(request: Request, *, required: bool) -> None:
-    origin = request.headers.get("origin")
+    raw_origin = request.headers.get("origin")
+    origin = normalize_origin(raw_origin)
     origins = allowed_origins()
     fetch_site = request.headers.get("sec-fetch-site", "").lower()
-    if fetch_site == "cross-site" or (required and not origin) or (origin is not None and origin not in origins):
+
+    reason: str | None = None
+    if fetch_site == "cross-site":
+        reason = "cross_site"
+    elif required and raw_origin is None:
+        reason = "missing_origin"
+    elif raw_origin is not None and (origin is None or origin not in origins):
+        reason = "origin_mismatch"
+
+    if reason is not None:
+        # Diagnose configuration mismatches without revealing the allowlist,
+        # session credentials, or CSRF token in logs or responses.
+        logger.warning(
+            "FilmSponsor guest origin rejected: reason=%s allowed_origin_count=%d",
+            reason,
+            len(origins),
+        )
         raise HTTPException(status_code=403, detail="Guest-demo origin is not allowed.")
 
 
