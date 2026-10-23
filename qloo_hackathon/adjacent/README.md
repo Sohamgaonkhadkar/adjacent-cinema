@@ -258,6 +258,8 @@ record).
 
 ## Architecture and status references
 
+- [Zero-cost preview deployment](docs/FREE_DEPLOYMENT.md) — Vercel Hobby + Render Free, with cold-start and ephemeral-data caveats
+
 - [Qloo setup](docs/QLOO_SETUP.md)
 - [Frontend/API contract](docs/FRONTEND_CONTRACT.md)
 - [Deployment topology proposal](docs/adr/006-deployment-topology.md)

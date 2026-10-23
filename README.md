@@ -479,61 +479,40 @@ The CI workflow runs backend lint and fixture-backed tests, the conditional live
 
 ## Deployment guide
 
-Deployment files are prepared; provisioning still happens in a hosting account.
+There are two deployment paths. **If your budget is exactly $0, start with the free preview below.** The default root `render.yaml` is the paid, persistent-disk topology; do not select it for a zero-cost deployment.
 
-### Option A — Render Blueprint
+### Option A — zero-cost preview (recommended for this demo)
+
+Use **Vercel Hobby for the Next.js frontend** and **Render Free for the FastAPI backend**. The separate [`render-free.yaml`](render-free.yaml) defines only one Free public API service; the frontend is hosted by Vercel. Configure Vercel's `ADJACENT_API_ORIGIN` with the Render backend's actual public HTTPS URL, then configure the backend's `ADJACENT_FILMSPONSOR_GUEST_ORIGINS` with the exact Vercel frontend origin.
+
+This is intended for a personal, non-commercial demo. The backend sleeps after 15 minutes idle and its filesystem is ephemeral, so SQLite-saved experiments and FilmSponsor records may disappear. Live Qloo remains off and no Qloo key is needed. See the step-by-step [free deployment runbook](qloo_hackathon/adjacent/docs/FREE_DEPLOYMENT.md).
+
+### Option B — managed Render Blueprint (paid)
 
 The root [`render.yaml`](render.yaml) defines two services:
 
-- **Private FastAPI service** — one worker, with persistent storage for SQLite.
-- **Public Next.js service** — serves the app and proxies same-origin `/api/*` traffic to the private backend.
+- **Private FastAPI service** — one paid instance with persistent storage for SQLite.
+- **Public Next.js service** — a paid instance that serves the app and proxies same-origin `/api/*` traffic to the private backend.
 
-Recommended rollout sequence:
+Use this path only if you approve its costs. The current compute plans and 1 GB disk are billed resources; check the price in your Render dashboard before confirming. Follow the [deployment runbook](qloo_hackathon/adjacent/docs/DEPLOYMENT.md).
 
-1. Review/approve the intended commit and select the correct branch when connecting the repository.
-2. Create a Blueprint from `render.yaml` in the [Render Dashboard](https://dashboard.render.com/). The Blueprint is configuration, not a deployed site by itself.
-3. During initial setup, set `ADJACENT_FILMSPONSOR_GUEST_ORIGINS` to the **exact** frontend origin Render assigns. Do not use a wildcard or the backend origin.
-4. Leave `QLOO_API_KEY` unset and `ADJACENT_PUBLIC_LIVE=0` for the first public fixture/demo rollout.
-5. Review the service plans, persistent disk and expected charges before confirming provisioning.
-6. Wait for both services to become healthy. Test `/`, `/creator`, `/cinema`, `/creator/sponsor` and `/api/health` through the frontend origin.
-7. Run the labelled fixture workflows in a real browser and check server logs, request failures and guest-session isolation before sharing the URL.
+### Option C — Docker Compose + Caddy (host costs extra unless you already own the machine)
 
-See the [Render Blueprint specification](https://render.com/docs/blueprint-spec) and the complete [deployment runbook](qloo_hackathon/adjacent/docs/DEPLOYMENT.md).
+[`qloo_hackathon/adjacent/compose.yaml`](qloo_hackathon/adjacent/compose.yaml) runs backend, frontend and Caddy on one host, with a named volume and HTTPS. This path still requires a Linux host, a domain and internet-reachable ports 80/443; it is not cost-free if you need to rent a VPS or buy a domain.
 
-### Option B — Docker Compose + Caddy
+### Deployment acceptance checklist
 
-[`qloo_hackathon/adjacent/compose.yaml`](qloo_hackathon/adjacent/compose.yaml) runs the backend, frontend and Caddy edge. The backend remains on the private application network; Caddy terminates HTTPS; a named volume holds SQLite and Caddy state.
-
-The host needs Docker Engine and the Compose plugin, a domain whose DNS points to the host, and inbound ports 80/443. On the host:
-
-```bash
-cd qloo_hackathon/adjacent
-cp deploy.env.example .env   # only when there is no existing host .env
-# Edit DOMAIN and exact HTTPS ADJACENT_FILMSPONSOR_GUEST_ORIGINS.
-# Keep QLOO_API_KEY blank for the initial fixture-only rollout.
-chmod 600 .env
-docker compose config --quiet
-docker compose up --build -d
-docker compose ps
-docker compose logs --tail=100 backend frontend caddy
-```
-
-Do not run `docker compose down -v` as a routine restart; it removes named data volumes. Back up the database volume before upgrades. More detail is in the [deployment runbook](qloo_hackathon/adjacent/docs/DEPLOYMENT.md).
-
-### Public-deployment acceptance checklist
-
-- [ ] The intended commit is approved and selected for deployment.
-- [ ] CI for that commit is green, with conditional steps interpreted correctly.
-- [ ] The actual frontend origin is configured exactly; HTTPS and proxy health work.
-- [ ] No Qloo/LLM/YouTube secret is present in frontend-build variables or public artifacts.
+- [ ] CI for the exact commit is green; inspect whether live-Qloo tests passed or were skipped.
+- [ ] Vercel frontend proxy points to the correct Render backend HTTPS origin.
+- [ ] Guest origin is the exact frontend origin; no wildcard is used.
+- [ ] No Qloo/LLM/YouTube secrets are present in frontend build variables or public artifacts.
 - [ ] `/api/health` reports the expected public-demo posture.
-- [ ] All four page routes return healthy HTML and have been inspected in a real browser.
-- [ ] Creator and Cinema fixture submissions complete and preserve the fixture label.
-- [ ] Live routes without a key fail honestly; no silent fixture fallback occurs.
-- [ ] Guest-session isolation, CSRF/Origin behavior and request limits have been tested at the deployed boundary.
-- [ ] SQLite persistence, backup/restore and retention cleanup have been reviewed.
-- [ ] External edge/API-gateway rate limits and operational monitoring are configured before enabling public live Qloo.
-- [ ] The real deployment URL and commit are recorded only after verification.
+- [ ] Homepage, Creator, Cinema and FilmSponsor routes load.
+- [ ] Creator/Cinema fixture submissions complete and keep fixture labels.
+- [ ] A live request without a key fails honestly; no silent fixture fallback occurs.
+- [ ] Mobile UI and graph interactions are inspected in a real browser.
+- [ ] On a free deployment, the user understands the cold-start and ephemeral-storage limitations.
+- [ ] A public URL is recorded only after actual deployment and acceptance checks.
 
 ## Security and known limitations
 
@@ -557,7 +536,8 @@ Do not run `docker compose down -v` as a routine restart; it removes named data 
 | [Frontend/API contract](qloo_hackathon/adjacent/docs/FRONTEND_CONTRACT.md) | Exact payloads, SSE, result invariants and lifecycle routes |
 | [Qloo setup](qloo_hackathon/adjacent/docs/QLOO_SETUP.md) | Credentials, hosts and live checks |
 | [Live-Qloo checklist](qloo_hackathon/adjacent/docs/NEXT_LIVE_CHECKLIST.md) | Current operator checklist; historical reports are not current acceptance |
-| [Deployment runbook](qloo_hackathon/adjacent/docs/DEPLOYMENT.md) | Render and Docker/Caddy deployment details |
+| [Deployment runbook](qloo_hackathon/adjacent/docs/DEPLOYMENT.md) | Paid Render and Docker/Caddy deployment details |
+| [Free deployment runbook](qloo_hackathon/adjacent/docs/FREE_DEPLOYMENT.md) | Vercel Hobby + Render Free preview; costs and data-loss limitations |
 | [Deployment topology ADR](qloo_hackathon/adjacent/docs/adr/006-deployment-topology.md) | Trade-offs behind the proposed topology |
 | [Architecture freeze](qloo_hackathon/adjacent/docs/ARCHITECTURE_FREEZE.md) | Architectural decisions and frozen boundaries |
 | Historical browser QA | [QA_AUDIT_REPORT.md](QA_AUDIT_REPORT.md), [PR6_QA_REPORT.md](PR6_QA_REPORT.md) — older snapshots; not current sign-off |

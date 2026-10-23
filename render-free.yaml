@@ -1,0 +1,29 @@
+# Zero-cost preview backend for Vercel + Render Free.
+# Separate from render.yaml, which defines paid services and a persistent disk.
+services:
+  - type: web
+    name: adjacent-cinema-api-free
+    runtime: python
+    region: oregon
+    plan: free
+    rootDir: qloo_hackathon/adjacent
+    buildCommand: python -m pip install --upgrade pip && python -m pip install -e .
+    startCommand: 'PYTHONPATH=backend uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1'
+    healthCheckPath: /health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.15"
+      - key: ADJACENT_EXPERIMENTS_DB
+        value: /tmp/experiments.db
+      - key: ADJACENT_PUBLIC_DEMO
+        value: "1"
+      - key: ADJACENT_PUBLIC_LIVE
+        value: "0"
+      - key: ADJACENT_FILMSPONSOR_GUEST_DEMO
+        value: "1"
+      - key: ADJACENT_FILMSPONSOR_GUEST_COOKIE_SECURE
+        value: "1"
+      # Set after Vercel assigns the exact stable frontend origin.
+      - key: ADJACENT_FILMSPONSOR_GUEST_ORIGINS
+        sync: false
