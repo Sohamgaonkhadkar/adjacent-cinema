@@ -74,23 +74,35 @@ class RunResponse(BaseModel):
 
 
 @router.post("/run", response_model=RunResponse)
-async def create_run(request: RunRequest) -> RunResponse:
-    """Start a new Adjacent analysis run."""
-    programme = [item.model_dump() for item in request.programme]
+async def create_run(request: RunRequest, http_request: Request) -> RunResponse:
+    """Start a live Cinema analysis, respecting the public live-run gate."""
+    permit = acquire_public_demo_run(http_request, live=True)
+    try:
+        programme = [item.model_dump() for item in request.programme]
 
-    record = run_store.create(
-        city=request.city,
-        venue_name=request.venue_name,
-        programme=programme,
-    )
+        record = run_store.create(
+            city=request.city,
+            venue_name=request.venue_name,
+            programme=programme,
+        )
 
-    # Start the run in the background — store task reference to prevent GC
-    _background_tasks = set()
-    task = asyncio.create_task(_execute_run(record))
-    _background_tasks.add(task)
-    task.add_done_callback(_background_tasks.discard)
+        # Hold the public live-run permit until the background analysis finishes.
+        # This prevents quick HTTP responses from bypassing the live-run quota.
+        _background_tasks: set[asyncio.Task[None]] = set()
+        task = asyncio.create_task(_execute_run(record))
+        _background_tasks.add(task)
 
-    return _record_to_response(record)
+        def finish_run(completed: asyncio.Task[None]) -> None:
+            _background_tasks.discard(completed)
+            if permit is not None:
+                permit.release()
+
+        task.add_done_callback(finish_run)
+        return _record_to_response(record)
+    except Exception:
+        if permit is not None:
+            permit.release()
+        raise
 
 
 # ---------------------------------------------------------------------------
