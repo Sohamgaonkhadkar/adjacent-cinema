@@ -90,12 +90,15 @@ class TestTestCardActionability:
 class TestHypothesisPhrasing:
     def test_multi_member_cohort_phrasing(self) -> None:
         card = build_test_card(bet=_bet(member_count=3), resolved_names=["X"], city="London")
-        assert "and 2 similar entities" in card.audience_hypothesis
+        assert "3 scored entities" in card.audience_hypothesis
+        assert "does not establish that these entities are a local audience" in card.audience_hypothesis
+        assert "audience exists" not in card.audience_hypothesis
 
     def test_single_member_cohort_never_says_zero_similar(self) -> None:
         card = build_test_card(bet=_bet(member_count=1), resolved_names=["X"], city="London")
         assert "0 similar" not in card.audience_hypothesis
-        assert "single qualifying entity" in card.audience_hypothesis
+        assert "1 scored entity contributed" in card.audience_hypothesis
+        assert "does not establish that these entities are a local audience" in card.audience_hypothesis
 
 
 class TestExclusionsSurfaced:
