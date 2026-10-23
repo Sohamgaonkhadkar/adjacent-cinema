@@ -45,9 +45,9 @@ from ..domain.filmsponsor_guest_sessions import (
     GuestSessionRateLimited,
     GuestSessionStore,
     allowed_origins,
-    normalize_origin,
     guest_demo_enabled,
     hash_request_id,
+    normalize_origin,
     secure_cookie_enabled,
 )
 from ..domain.filmsponsor_repository import DuplicateRequest, FilmSponsorRepository
