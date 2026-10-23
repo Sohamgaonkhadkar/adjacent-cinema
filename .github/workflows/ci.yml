@@ -78,8 +78,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Validate Render Blueprint YAML
-        run: ruby -e 'require "yaml"; YAML.load_file("render.yaml")'
+      - name: Validate paid and zero-cost Render Blueprint YAML
+        run: |
+          ruby -e 'require "yaml"; YAML.load_file("render.yaml")'
+          ruby -e 'require "yaml"; d = YAML.load_file("render-free.yaml"); s = d.fetch("services"); abort("free blueprint must define exactly one free web service without a disk") unless s.size == 1 && s[0]["type"] == "web" && s[0]["plan"] == "free" && !s[0].key?("disk")'
       - name: Validate deployment Compose configuration
         working-directory: qloo_hackathon/adjacent
         run: |
