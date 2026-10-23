@@ -124,7 +124,7 @@ class TestPublicDemoBoundary:
         assert started.status_code == 200
         final = _wait(client, started.json()["run_id"])
         assert final["status"] == "failed"
-        assert final["error"] == "synthetic test failure"
+        assert final["error"].startswith("The analysis could not complete")
 
     def test_public_live_creator_requires_explicit_opt_in_and_key(
         self, monkeypatch: pytest.MonkeyPatch
