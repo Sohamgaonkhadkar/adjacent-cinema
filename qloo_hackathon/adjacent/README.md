@@ -185,6 +185,17 @@ must be exact; wildcard and URL paths are not accepted. Insecure cookies are
 allowed only for explicitly configured localhost HTTP development, using
 `ADJACENT_FILMSPONSOR_GUEST_COOKIE_SECURE=0` locally—not on a public host.
 
+If the page says `Guest-demo origin is not allowed.`, copy the origin (scheme
+and host only) from the deployed frontend's address bar and compare it with
+`ADJACENT_FILMSPONSOR_GUEST_ORIGINS` in the Render **backend** environment. The
+origin is the frontend hostname, not the Render API hostname. Prefer the stable
+Vercel domain under Project Settings → Domains; deployment-specific preview
+hostnames change. Multiple trusted origins are comma-separated; wildcards are
+rejected. Backend logs identify `missing_origin`, `origin_mismatch`, or
+`cross_site` without exposing the allowlist. After an environment change,
+redeploy/restart the backend and check `/api/health` for
+`filmsponsor_guest_enabled: true`.
+
 The server issues an eight-hour HttpOnly/SameSite=Strict bearer cookie and a
 CSRF helper cookie. Writes require the CSRF header and an exact allowed Origin.
 Campaigns and their discoveries, drafts, reviews, approvals, exports and

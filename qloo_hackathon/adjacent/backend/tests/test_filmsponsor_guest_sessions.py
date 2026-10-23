@@ -16,6 +16,8 @@ from app.domain.filmsponsor_guest_sessions import (
     SESSION_COOKIE,
     GuestSessionCapacity,
     GuestSessionStore,
+    allowed_origins,
+    normalize_origin,
 )
 from app.main import app
 from fastapi.testclient import TestClient
@@ -39,6 +41,23 @@ def guest_env(tmp_path: Path, monkeypatch):
     monkeypatch.delenv("ADJACENT_FILMSPONSOR_GUEST_DEMO", raising=False)
     monkeypatch.delenv("ADJACENT_FILMSPONSOR_GUEST_ORIGINS", raising=False)
     monkeypatch.delenv("ADJACENT_FILMSPONSOR_GUEST_COOKIE_SECURE", raising=False)
+
+
+def test_allowed_origins_are_canonical_exact_origins(monkeypatch):
+    monkeypatch.setenv(
+        "ADJACENT_FILMSPONSOR_GUEST_ORIGINS",
+        " https://JUDGE.example.test:443/, https://second.example.test:8443, "
+        "https://ignored.example/path, http://remote.example, *, null"
+    )
+    assert allowed_origins() == {
+        "https://judge.example.test",
+        "https://second.example.test:8443",
+    }
+    assert normalize_origin("https://JUDGE.EXAMPLE.TEST:443") == "https://judge.example.test"
+    assert normalize_origin("https://judge.example.test/path") is None
+    assert normalize_origin("https://user@judge.example.test") is None
+    assert normalize_origin("null") is None
+    assert normalize_origin("*") is None
 
 
 def _client() -> TestClient:
@@ -331,6 +350,25 @@ class TestGuestSessionIsolation:
             # guest session cookie is shared with other route families.
             demo = guest.post("/creator/run/demo", json={}, headers=_headers())
             assert demo.status_code == 200, demo.text
+
+    def test_guest_session_accepts_canonical_origin_and_rejects_untrusted(self, guest_env, monkeypatch):
+        monkeypatch.setenv("ADJACENT_FILMSPONSOR_GUEST_ORIGINS", "https://JUDGE.example.test:443/")
+        with _client() as client:
+            accepted = client.post(
+                "/filmsponsor/guest-session",
+                json={},
+                headers=_headers(origin="https://judge.example.test"),
+            )
+            assert accepted.status_code == 200, accepted.text
+            assert accepted.headers.get_list("set-cookie")
+            rejected = client.post(
+                "/filmsponsor/guest-session",
+                json={},
+                headers=_headers(origin="https://attacker.example"),
+            )
+            assert rejected.status_code == 403
+            assert rejected.json()["detail"] == "Guest-demo origin is not allowed."
+
 
     def test_guest_flag_alone_or_missing_origins_does_not_open_surface(self, guest_env, monkeypatch):
         monkeypatch.delenv("ADJACENT_FILMSPONSOR_GUEST_ORIGINS")
