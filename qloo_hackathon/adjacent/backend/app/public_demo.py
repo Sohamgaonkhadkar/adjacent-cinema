@@ -377,6 +377,23 @@ class PublicDemoGuard:
             # Strictly opt-in. Route dependencies enforce the server-issued
             # session, ownership, CSRF token, and allowed Origin for every call.
             body_limit = 16_384
+        elif method == "POST" and path == "/run":
+            # The Cinema UI's live workflow uses POST /run. Keep it available
+            # only when the operator explicitly enables public live Qloo and
+            # configures a backend-only key.
+            if not public_live_requested():
+                await JSONResponse(
+                    {"detail": "Live Cinema runs are disabled in this public demo."},
+                    status_code=403,
+                )(scope, receive, send)
+                return
+            if not qloo_key_configured():
+                await JSONResponse(
+                    {"detail": "Live Qloo is not configured for this public demo."},
+                    status_code=503,
+                )(scope, receive, send)
+                return
+            body_limit = 16_384
         elif method == "POST" and path == "/creator/run":
             query = bytes(scope.get("query_string") or b"")
             is_fixture_demo = b"demo=fixture" in query
