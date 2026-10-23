@@ -1,9 +1,9 @@
 """Opt-in guardrails for an anonymous public demo.
 
 This is intentionally not authentication. Enable ``ADJACENT_PUBLIC_DEMO=1``
-only for the narrow, public-facing demo posture: bounded Creator runs, labelled
-fixture runs, transient run reads, and no shared experiment, YouTube, synthesis,
-or debug access. Public live Creator runs require the separate explicit
+only for the narrow, public-facing demo posture: bounded Cinema and Creator runs, labelled fixture runs, transient run reads,
+and no shared experiment, YouTube, synthesis, or debug access. Public live
+Cinema and Creator runs require the separate explicit
 ``ADJACENT_PUBLIC_LIVE=1`` opt-in plus a server-side Qloo key.
 
 Rate limits are process-local; a multi-worker or replicated deployment must
@@ -39,7 +39,7 @@ def public_demo_enabled() -> bool:
 
 
 def public_live_requested() -> bool:
-    """Whether the owner explicitly allows bounded live Creator runs."""
+    """Whether the owner explicitly allows bounded live Cinema/Creator runs."""
     return _enabled("ADJACENT_PUBLIC_LIVE")
 
 
