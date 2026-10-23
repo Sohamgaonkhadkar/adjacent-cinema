@@ -23,7 +23,7 @@ Rather than turning a synopsis into an unsupported audience prediction, Adjacent
 
 > **Evidence rule:** Qloo affinity is a cultural-similarity signal. It is not audience size, viewing probability, attendance, conversion, sponsorship willingness, revenue or return on investment.
 
-> **Deployment status:** The repository has a Render Blueprint and a Docker Compose deployment path, but no verified public application URL is currently documented. Hosted rollout still requires account-level provisioning and post-deploy acceptance checks.
+> **Live application:** [adjacent-cinema.vercel.app](https://adjacent-cinema.vercel.app). The production Next.js frontend is deployed on Vercel and routes API requests to the FastAPI backend on Render ([health endpoint](https://adjacent-cinema.onrender.com/health)). Live Qloo integration runs through the backend; `QLOO_API_KEY` must remain in the backend environment and is never exposed to browser code. Fixture experiences are explicitly labelled and are not used as a silent fallback when live requests fail.
 
 ---
 
@@ -65,7 +65,7 @@ The application keeps those steps connected without pretending they are intercha
 
 ### Start with the demo
 
-After [running locally](#local-setup), open:
+To try the deployed product, start at [the live application](https://adjacent-cinema.vercel.app). For local development, after [running locally](#local-setup), open:
 
 - `http://localhost:3000/creator?demo=fixture` — labelled Creator fixture demo
 - `http://localhost:3000/cinema` — Cinema Mode; choose its explicit fixture option
@@ -475,11 +475,22 @@ npx tsc --noEmit
 The CI workflow runs backend lint and fixture-backed tests, the conditional live-Qloo test step when the repository secret is configured, a dry-run probe/package check, frontend regression checks and production rendering, plus backend/frontend container builds. A skipped conditional live step is not a pass. A green workflow does not prove a hosted service is configured, a browser has been manually reviewed or a production deployment is healthy.
 
 - [Latest GitHub Actions runs](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions)
-- [Current review branch — PR #7](https://github.com/Sohamgaonkhadkar/adjacent-cinema/pull/7)
+- [Latest merged product and origin-validation changes — PR #9](https://github.com/Sohamgaonkhadkar/adjacent-cinema/pull/9)
 
 ## Deployment guide
 
-Deployment files are prepared; provisioning still happens in a hosting account.
+### Current production deployment
+
+The public application is deployed with a split frontend/API setup:
+
+- **Frontend:** [Vercel production site](https://adjacent-cinema.vercel.app)
+- **Backend:** [Render FastAPI service](https://adjacent-cinema.onrender.com)
+- **Health check:** [`/health`](https://adjacent-cinema.onrender.com/health)
+- **Source branch:** `main` in this repository
+- **API routing:** The Next.js server-side rewrite forwards relative `/api/*` requests to the backend; the browser does not need a direct provider URL or Qloo key.
+- **Live Qloo:** Provider-backed requests require a valid `QLOO_API_KEY` on the Render backend. Keep it out of Vercel client variables, `NEXT_PUBLIC_*` values, docs and commits. Live brand discovery reports unavailable if the backend key or provider access is not available.
+
+The Render Blueprint and Docker Compose options below are alternative deployment topologies, not the current production hosting arrangement.
 
 ### Option A — Render Blueprint
 

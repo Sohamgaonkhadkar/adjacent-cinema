@@ -13,8 +13,10 @@ the same region. The backend has one worker and a persistent disk for SQLite;
 the browser reaches it only through the same-origin Next.js proxy.
 
 1. Connect this GitHub repository in Render and create a Blueprint from
-   `render.yaml`. Select the branch containing the changes you want to deploy;
-   the current implementation is on the open PR branch until it is merged.
+   `render.yaml`. Select the branch you want to deploy. **This Blueprint is an
+   alternative deployment path:** the current production topology uses Vercel
+   for the frontend and Render for the FastAPI backend, with the source tracked
+   from `main`.
 2. When prompted for `ADJACENT_FILMSPONSOR_GUEST_ORIGINS`, enter the exact
    frontend origin assigned by Render (for example, its actual
    `https://…onrender.com` URL). Do not use a wildcard or the backend origin.
