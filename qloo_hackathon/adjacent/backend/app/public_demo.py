@@ -1,9 +1,9 @@
 """Opt-in guardrails for an anonymous public demo.
 
 This is intentionally not authentication. Enable ``ADJACENT_PUBLIC_DEMO=1``
-only for the narrow, public-facing demo posture: bounded Creator runs, labelled
-fixture runs, transient run reads, and no shared experiment, YouTube, synthesis,
-or debug access. Public live Creator runs require the separate explicit
+only for the narrow, public-facing demo posture: bounded Cinema and Creator runs, labelled fixture runs, transient run reads,
+and no shared experiment, YouTube, synthesis, or debug access. Public live
+Cinema and Creator runs require the separate explicit
 ``ADJACENT_PUBLIC_LIVE=1`` opt-in plus a server-side Qloo key.
 
 Rate limits are process-local; a multi-worker or replicated deployment must
@@ -39,7 +39,7 @@ def public_demo_enabled() -> bool:
 
 
 def public_live_requested() -> bool:
-    """Whether the owner explicitly allows bounded live Creator runs."""
+    """Whether the owner explicitly allows bounded live Cinema/Creator runs."""
     return _enabled("ADJACENT_PUBLIC_LIVE")
 
 
@@ -376,6 +376,23 @@ class PublicDemoGuard:
         elif _guest_filmsponsor_request(method, path):
             # Strictly opt-in. Route dependencies enforce the server-issued
             # session, ownership, CSRF token, and allowed Origin for every call.
+            body_limit = 16_384
+        elif method == "POST" and path == "/run":
+            # The Cinema UI's live workflow uses POST /run. Keep it available
+            # only when the operator explicitly enables public live Qloo and
+            # configures a backend-only key.
+            if not public_live_requested():
+                await JSONResponse(
+                    {"detail": "Live Cinema runs are disabled in this public demo."},
+                    status_code=403,
+                )(scope, receive, send)
+                return
+            if not qloo_key_configured():
+                await JSONResponse(
+                    {"detail": "Live Qloo is not configured for this public demo."},
+                    status_code=503,
+                )(scope, receive, send)
+                return
             body_limit = 16_384
         elif method == "POST" and path == "/creator/run":
             query = bytes(scope.get("query_string") or b"")

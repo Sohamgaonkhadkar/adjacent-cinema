@@ -13,6 +13,7 @@ import pytest
 from app import public_demo
 from app.agent.state import AdjacentState
 from app.agent.stop import StopDecision, StopReason
+from app.api import routes as run_routes
 from app.api.routes import run_store
 from app.api.store import RunEvent, RunStatus, RunStore
 from app.main import app
@@ -86,6 +87,44 @@ class TestPublicDemoBoundary:
         synthesis = client.get("/creator/synthesis-status").json()
         assert synthesis["available"] is False
         assert "disabled" in synthesis["blocked_reason"].lower()
+
+    def test_public_live_cinema_requires_explicit_opt_in_and_key(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("ADJACENT_PUBLIC_DEMO", "1")
+        monkeypatch.delenv("ADJACENT_PUBLIC_LIVE", raising=False)
+        monkeypatch.delenv("QLOO_API_KEY", raising=False)
+        client = TestClient(app)
+        body = {
+            "city": "London",
+            "venue_name": "Prince Charles Cinema",
+            "programme": [{"title": "Perfect Days", "year": 2023}],
+        }
+
+        disabled = client.post("/run", json=body)
+        assert disabled.status_code == 403
+        assert "disabled" in disabled.json()["detail"].lower()
+
+        monkeypatch.setenv("ADJACENT_PUBLIC_LIVE", "1")
+        unconfigured = client.post("/run", json=body)
+        assert unconfigured.status_code == 503
+        assert "not configured" in unconfigured.json()["detail"].lower()
+
+        # A synthetic key plus a stubbed runner proves the route is reachable
+        # without making a real Qloo request during tests.
+        monkeypatch.setenv("QLOO_API_KEY", "SYNTHETIC-KEY-CANARY")
+
+        async def fake_execute_run(record) -> None:
+            record.status = RunStatus.FAILED
+            record.error = "synthetic test failure"
+            record.stop_message = record.error
+
+        monkeypatch.setattr(run_routes, "_execute_run", fake_execute_run)
+        started = client.post("/run", json=body)
+        assert started.status_code == 200
+        final = _wait(client, started.json()["run_id"])
+        assert final["status"] == "failed"
+        assert final["error"].startswith("The analysis could not complete")
 
     def test_public_live_creator_requires_explicit_opt_in_and_key(
         self, monkeypatch: pytest.MonkeyPatch

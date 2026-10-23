@@ -269,6 +269,8 @@ export default function Home() {
       if (generation !== requestGenerationRef.current) return;
       setError(err instanceof Error ? err.message : "Failed to start analysis");
       setAnalysing(false);
+      // Surface server rejections immediately: the error panel lives in this section.
+      document.getElementById("field")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }
 

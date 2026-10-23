@@ -164,8 +164,8 @@ Keep `ADJACENT_PUBLIC_DEMO` unset for ordinary local single-user development. Do
 not expose that unauthenticated local mode directly to the internet. Public mode
 is enabled only by `ADJACENT_PUBLIC_DEMO=1`; it blocks shared experiment access,
 YouTube data/write routes, synthesis, debug endpoints and API docs, and allows
-only bounded routes/labelled fixtures. Public live Creator analysis additionally
-requires `ADJACENT_PUBLIC_LIVE=1` and a backend Qloo key. Rate limits are partly
+only bounded routes/labelled fixtures. Public live Cinema and Creator analysis
+additionally require `ADJACENT_PUBLIC_LIVE=1` and a backend Qloo key. Rate limits are partly
 process-local; a public host requires an external edge/API-gateway quota.
 
 Public FilmSponsor guest workspaces are a separate opt-in and remain **off by

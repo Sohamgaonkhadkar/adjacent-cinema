@@ -430,7 +430,7 @@ The authoritative template is [`qloo_hackathon/adjacent/.env.example`](qloo_hack
 | `ADJACENT_API_ORIGIN` | Server-side Next.js proxy target | Local: `http://127.0.0.1:8000`; never use a browser-visible `NEXT_PUBLIC_*` variable |
 | `ADJACENT_EXPERIMENTS_DB` | SQLite location | Use durable single-host storage in hosted environments |
 | `ADJACENT_PUBLIC_DEMO` | Enables the bounded public-demo route allowlist | Leave unset for ordinary local development |
-| `ADJACENT_PUBLIC_LIVE` | Additional public live Creator opt-in | Off by default; requires a backend Qloo key and explicit access/quota approval |
+| `ADJACENT_PUBLIC_LIVE` | Additional public live Cinema/Creator opt-in | Off by default; requires a backend Qloo key and explicit access/quota approval |
 | `ADJACENT_FILMSPONSOR_GUEST_DEMO` | Enables the isolated public guest workspace | Separate opt-in; requires public mode and exact origins |
 | `ADJACENT_FILMSPONSOR_GUEST_ORIGINS` | Allowed frontend origin(s) for guest writes | Exact origins only; no wildcards |
 | `ADJACENT_FILMSPONSOR_GUEST_COOKIE_SECURE` | Secure guest-cookie posture | Keep on for HTTPS; disable only for explicit localhost HTTP testing |
@@ -538,7 +538,7 @@ Do not run `docker compose down -v` as a routine restart; it removes named data 
 ## Security and known limitations
 
 1. **A public fixture demo is not a production multi-tenant app.** The public guard is a route allowlist plus bounded request/rate/in-flight controls. It is not user authentication. The request limiter is process-local and the observed client IP may be shared behind a proxy; add external edge quotas before exposing public live usage.
-2. **Live Qloo must be explicitly authorized.** Keep public live Creator disabled until access policy, quotas, request cost, secret storage and allowed inputs have been reviewed. A key or green health check is not proof of valid live evidence.
+2. **Live Qloo must be explicitly authorized.** Keep public live Cinema/Creator disabled until access policy, quotas, request cost, secret storage and allowed inputs have been reviewed. A key or green health check is not proof of valid live evidence.
 3. **YouTube OAuth is single-connection.** Do not expose it as a multi-user service without per-user sessions, token isolation and an appropriate authentication model.
 4. **LLM grounding has limits.** The synthesis validator can check structure and reference integrity, but it cannot establish full semantic entailment for every generated claim.
 5. **Run history is volatile.** In-memory run records and SSE history disappear on backend restart. Persisted experiments and campaign records are separate.
