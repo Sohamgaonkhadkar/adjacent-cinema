@@ -1,9 +1,13 @@
 # Adjacent Cinema — developer guide
 
-For the judge-facing product story, architecture diagram and feature overview,
-start at the [root README](../../README.md). This guide focuses on running and
-validating the application. It reflects the checked implementation; there is
-**no verified public deployment URL**.
+For the product story, architecture diagram and feature overview, start at the
+[root README](../../README.md). The production application is live at
+[adjacent-cinema.vercel.app](https://adjacent-cinema.vercel.app), with the Next.js
+frontend on Vercel and the FastAPI backend on
+[Render](https://adjacent-cinema.onrender.com). This guide focuses on development,
+configuration and verification. Live Qloo requests are made by the backend and
+require `QLOO_API_KEY` to be configured server-side; it must never be placed in
+browser code or committed to this repository.
 
 The Docker Compose and Render Blueprint deployment paths are documented in
 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md); either requires a connected host or
