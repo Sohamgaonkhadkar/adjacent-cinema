@@ -38,11 +38,11 @@ browser JavaScript.
   production hardening. Creator/Cinema run state is in memory and disappears on
   a backend restart; saved experiment records and FilmSponsor guest workspace
   data live in SQLite.
-- Public live Creator is off by default. Keep `QLOO_API_KEY` blank in this
-  public profile until an external edge quota/access policy is in place and the
-  owner explicitly approves live spend. FilmSponsor guest discovery also uses
-  the backend key when configured; do not add the key to an unprotected public
-  deployment.
+- Public live Cinema and Creator runs require `ADJACENT_PUBLIC_LIVE=1` plus a
+  backend `QLOO_API_KEY`. Keep the flag off until external edge quotas/access
+  controls are in place and the owner explicitly approves live spend. FilmSponsor
+  guest discovery also uses the backend key when configured; never put the key
+  in frontend variables or public source.
 - No Qloo key is needed to render the pages or run the labelled fixture demos.
   Without a key, live FilmSponsor brand discovery responds as unavailable rather
   than fabricating results.
