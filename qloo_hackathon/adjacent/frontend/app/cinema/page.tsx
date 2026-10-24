@@ -17,6 +17,7 @@ import {
   DEMO_PROGRAMME,
   createDemoRun,
   createRun,
+  getHealth,
   getRun,
   streamRun,
   type ProgrammeItemInput,
@@ -257,6 +258,34 @@ export default function CinemaPage() {
       });
   }
 
+  // Live analysis is a server-side decision (public-demo gate + a configured
+  // Qloo key). Ask once so the button reflects it instead of failing on click.
+  const [liveNotice, setLiveNotice] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    getHealth()
+      .then((backend) => {
+        if (!active) return;
+        if (backend.public_demo && backend.live_creator_available === false) {
+          setLiveNotice(
+            "Live analysis is disabled for this deployment. The labelled fixture run stays available and is clearly marked as a fixture.",
+          );
+        } else if (backend.qloo_configured === false) {
+          setLiveNotice(
+            "This backend has no Qloo key configured, so a live analysis will stop with a configuration error. The labelled fixture run is available.",
+          );
+        } else {
+          setLiveNotice(null);
+        }
+      })
+      .catch(() => {
+        if (active) setLiveNotice(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   function startLive() {
     const items = validate();
     if (!items) return;
@@ -436,13 +465,24 @@ export default function CinemaPage() {
               Run labelled fixture
               <ArrowRight size={16} />
             </button>
-            <button type="button" className="btn-ghost" onClick={startLive} disabled={analysing}>
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={startLive}
+              disabled={analysing || liveNotice !== null}
+              aria-disabled={analysing || liveNotice !== null}
+            >
               Analyse programme (live)
             </button>
             <button type="button" className="btn-ghost" onClick={loadSampleProgramme}>
               Load sample programme
             </button>
           </div>
+          {liveNotice && (
+            <p role="status" className="mt-4 max-w-xl text-xs leading-relaxed text-mute">
+              {liveNotice}
+            </p>
+          )}
           <div className="mt-6 flex flex-wrap items-center gap-2">
             <RunChip status={run?.status ?? (analysing ? "running" : "idle")} />
             {mode === "fixture" && <DataChip status="fixture" />}
