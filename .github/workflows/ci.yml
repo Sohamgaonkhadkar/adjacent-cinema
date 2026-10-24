@@ -71,6 +71,8 @@ jobs:
         run: npm run test:creator-ui
       - name: Test Cultural Multiverse selection and policy
         run: npm run test:positioning
+      - name: Test Nightfall concept preview and discoverability
+        run: npm run test:nightfall
       - name: Build frontend
         run: npm run build
       - name: Render primary routes from the production build

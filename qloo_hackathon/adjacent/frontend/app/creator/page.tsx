@@ -592,7 +592,7 @@ export default function CreatorPage() {
         <a href="#intake" className={activeStage === "intake" ? "is-active" : undefined} aria-current={activeStage === "intake" ? "step" : undefined}>01 · Your film</a>
         {result || (failed && !analysing) ? <a href="#analysis" className={activeStage === "analysis" ? "is-active" : undefined} aria-current={activeStage === "analysis" ? "step" : undefined}>02 · Investigation</a> : <span className="is-disabled" aria-disabled="true">02 · Investigation</span>}
         {result?.cohorts || (failed && !analysing) ? <a href="#fingerprint" className={activeStage === "fingerprint" ? "is-active" : undefined} aria-current={activeStage === "fingerprint" ? "step" : undefined}>03 · Cultural Fingerprint</a> : <span className="is-disabled" aria-disabled="true">03 · Cultural Fingerprint</span>}
-        {positioningMultiverse ? <a href="#positioning" className={activeStage === "positioning" ? "is-active" : undefined} aria-current={activeStage === "positioning" ? "step" : undefined}>04 · Positioning Arena</a> : <span className="is-disabled" aria-disabled="true">04 · Positioning Arena</span>}
+        <a href="#positioning" className={activeStage === "positioning" ? "is-active" : undefined} aria-current={activeStage === "positioning" ? "step" : undefined}>04 · Positioning Arena</a>
         {result?.investigation || (failed && !analysing) ? <a href="#brief" className={activeStage === "brief" ? "is-active" : undefined} aria-current={activeStage === "brief" ? "step" : undefined}>05 · Decision Brief</a> : <span className="is-disabled" aria-disabled="true">05 · Decision Brief</span>}
         {card ? <a href="#test-card" className={activeStage === "test-card" ? "is-active" : undefined} aria-current={activeStage === "test-card" ? "step" : undefined}>06 · Test Card</a> : <span className="is-disabled" aria-disabled="true">06 · Test Card</span>}
         <a href="#experiments" className={`is-soft${activeStage === "experiments" ? " is-active" : ""}`} aria-current={activeStage === "experiments" ? "step" : undefined}>07 · Archive</a>
@@ -1162,6 +1162,24 @@ export default function CreatorPage() {
               </article>
             )}
           </div>
+        )}
+
+        {!positioningMultiverse && (
+          <section id="positioning" className="positioning-empty-card" aria-labelledby="positioning-empty-title">
+            <div>
+              <p className="eyebrow"><span>04</span> POSITIONING ARENA / WAITING FOR A COMPLETED RUN</p>
+              <h2 id="positioning-empty-title">The cultural Multiverse<br /><em>starts with evidence.</em></h2>
+              <p>Anchor, Bridge and Frontier become available only when a completed Creator run supplies inspectable source evidence. This stage will not invent a film position or substitute the homepage concept preview.</p>
+              <div className="positioning-empty-actions">
+                <a className="nightfall-button" href="#intake">Enter a film brief <span aria-hidden="true">↑</span></a>
+                <button type="button" className="nightfall-button is-amber" onClick={() => startDemoRun()} disabled={analysing}>
+                  {analysing ? "Fixture run in progress…" : "Run labelled fixture"}
+                </button>
+              </div>
+              <p className="mono-note">FIXTURE RUNS ARE LABELLED · LIVE RUNS REQUIRE CONFIGURED QLOO ACCESS · NO PREDICTION OF AUDIENCE BEHAVIOUR</p>
+            </div>
+            <div className="positioning-empty-mark" aria-hidden="true"><span>ANCHOR</span><i /> <span>BRIDGE</span><i /> <span>FRONTIER</span></div>
+          </section>
         )}
 
         {/* ── 3. Experiment history ──────────────────────────────────── */}

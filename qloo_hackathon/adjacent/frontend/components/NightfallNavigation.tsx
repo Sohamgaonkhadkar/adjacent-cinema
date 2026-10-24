@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/creator", label: "Creator Studio", number: "02" },
   { href: "/cinema", label: "Cinema Mode", number: "03" },
   { href: "/creator/sponsor", label: "FilmSponsor", number: "04" },
+  { href: "/#multiverse", label: "Multiverse", number: "05" },
 ];
 
 export default function NightfallNavigation() {

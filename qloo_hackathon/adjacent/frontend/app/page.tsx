@@ -34,6 +34,7 @@ export default function HomePage() {
               <Link className="nightfall-button is-amber" href="/creator">Enter Creator Studio <span aria-hidden="true">↗</span></Link>
               <Link className="nightfall-button" href="/creator?demo=fixture">Explore labelled fixture</Link>
               <Link className="nightfall-text-link" href="/cinema">Cinema Mode <span aria-hidden="true">→</span></Link>
+              <Link className="nightfall-text-link" href="#multiverse">Cultural Multiverse <span aria-hidden="true">↓</span></Link>
             </div>
           </div>
           <div className="nightfall-home-hero-footer"><span>Evidence before interpretation.</span><a href="https://www.pexels.com/photo/an-empty-cinema-7991486/" target="_blank" rel="noreferrer">Atmospheric image · Tima Miroshnichenko / Pexels</a></div>
