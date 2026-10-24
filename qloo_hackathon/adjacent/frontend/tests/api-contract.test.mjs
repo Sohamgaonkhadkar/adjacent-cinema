@@ -82,8 +82,6 @@ function frontendCalls() {
     /fetchWithTimeout\(\s*"([^"]+)"/g,
     /fetchJsonWithTimeout(?:<[^>]*>)?\(\s*`([^`]+)`/g,
     /fetchJsonWithTimeout(?:<[^>]*>)?\(\s*"([^"]+)"/g,
-    /sponsorFetch(?:Json)?\(\s*`([^`]+)`/g,
-    /sponsorFetch(?:Json)?\(\s*"([^"]+)"/g,
   ];
   for (const pattern of helperPatterns) {
     for (const match of apiSource.matchAll(pattern)) {
@@ -91,6 +89,14 @@ function frontendCalls() {
       const method = window.match(/method:\s*"([A-Z]+)"/);
       record(method ? method[1] : "GET", match[1], match[1].startsWith("/filmsponsor") ? "sponsorFetch" : "fetch");
     }
+  }
+  // These two read helpers encapsulate a fetch, so the route's HTTP method is GET.
+  // Record their call sites directly instead of guessing from nearby code text.
+  for (const match of apiSource.matchAll(/sponsorFetchJson\(\s*`([^`]+)`/g)) {
+    record("GET", match[1], "sponsorFetchJson");
+  }
+  for (const match of apiSource.matchAll(/sponsorFetchJson\(\s*"([^"]+)"/g)) {
+    record("GET", match[1], "sponsorFetchJson");
   }
   for (const match of apiSource.matchAll(/postJson(?:<[^>]*>)?\(\s*`([^`]+)`/g)) {
     record("POST", match[1], "postJson");
