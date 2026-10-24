@@ -1,46 +1,56 @@
-# Arena implementation task — Project Nightfall
+# Arena Task — Faithful Project Nightfall Frontend Port
 
-**Owner instruction:** Continue the Adjacent Cinema implementation using the Project Nightfall Cultural Multiverse / Positioning Arena design as the reference. Do this as an additive port into the existing Next.js product, not as a replacement application.
+**Current work branch:** `arena/nightfall-full-frontend-port`
 
-## Source availability — do not assume
+**Task:** [GitHub issue #15](https://github.com/Sohamgaonkhadkar/adjacent-cinema/issues/15)
 
-The prototype ZIP was inspected in the project-owner session, but the archive bytes and full extracted source tree have not been committed to this repository. The sibling README records this honestly. Do not look for or attempt to decode incomplete archive fragments. If the project owner attaches the ZIP to the Arena session, inspect its actual source and then continue. Otherwise, continue only with the grounded design/behavior inventory below and note which details could not be source-verified.
+The original ZIP is already committed to `main` and the current working branch. Use the actual archive:
+`design-reference/project-nightfall/archives/project-nightfall-frontend-reimagination (1).zip`
 
-## Implement on the current production architecture
+Do not ask the owner to upload the ZIP again, and do not merge the handoff or first-implementation PRs again. They are already merged.
 
-1. Inspect the current Next.js routes and existing UI before editing. Preserve the current app rather than creating a parallel Vite app.
-2. Add a Cultural Multiverse preview to the homepage and add a Positioning Arena section to Creator Studio, positioned after Cultural Fingerprint and before Decision Brief.
-3. Present three clearly differentiated strategic lenses:
-   - **Anchor:** strongest supported direction
-   - **Bridge:** evidence-backed link between cultural worlds
-   - **Frontier:** more exploratory, with uncertainty shown explicitly
-4. Add a What-If Lab with adjustable priorities; visibly distinguish a suggested option from the user's selected option. An “Apply” action must change preview state only, not claim a real experiment has been run.
-5. Include an Evidence Challenge interaction where every displayed evidence item can be traced to actual returned source data. If no valid evidence exists, show an honest empty/blocked state.
-6. Keep Freeze Decision disabled or marked preview-only until there is a real backend contract for persisted strategy snapshots and experiment linkage.
-7. Keep sample concept-film content isolated from the current user's intake and current film state. Do not silently substitute the illustrative “Salt Light” sample for user input.
-8. Preserve the Creator seven-stage flow, Cinema Mode chapters (Cinema, Programme, Cultural field, Opportunity, Test), and FilmSponsor eight-stage workflow and approval prerequisites.
+## 1. Inspect and port the reference code
 
-## Backend/data rules
+Integrity-test the archive, extract it to a temporary directory, and inspect its real source. Important paths:
+- `src/App.tsx`, `src/index.css`
+- `src/pages/Home.tsx`, `src/pages/Creator.tsx`, `src/pages/Cinema.tsx`, `src/pages/Sponsor.tsx`
+- `src/components/Nav.tsx`, `src/components/Multiverse.tsx`, `src/components/PositioningArena.tsx`, `src/components/CulturalFingerprint.tsx`, `src/components/TestCard.tsx`, plus related components/data/utilities.
 
-- Reuse `frontend/lib/api.ts` and `frontend/types/adjacent.ts`; first inspect them and the actual backend before deciding whether a new contract exists.
-- Do not invent API endpoints or send browser requests directly to Render around the adapter.
-- Do not put Qloo keys or other provider secrets in client code.
-- Do not fabricate Qloo-backed evidence, confidence, scores, audience outcomes, experiment records, observations, exports, or success toasts.
-- Distinguish **live**, **fixture**, **concept preview**, and **blocked** states clearly.
-- Keep the prototype's localStorage/mock API behavior out of the real production workflows.
-- Do not run a production deploy until the existing app builds and relevant flows have been validated.
+Port their actual component composition, layouts, styling, and interactions into the existing Next.js App Router product. Do not merely recolor old pages, create a separate Vite website, or copy prototype mock API/localStorage behavior into production flows.
 
-## Acceptance checklist
+## 2. Redesign all four routes visibly
 
-- [ ] Existing routes `/`, `/creator`, `/cinema`, and `/creator/sponsor` continue working.
-- [ ] Existing Creator Studio analysis, Test Card export/edit, archive, experiment/observation history, and YouTube status behaviors remain intact.
-- [ ] Positioning Arena is visibly labeled illustrative/concept-only unless real evidence is contractually available.
-- [ ] What-If controls only modify local preview state; suggested and selected strategies remain distinct.
-- [ ] Freeze Decision cannot imply persisted state until persistence is implemented and tested.
-- [ ] Cinema Mode navigation and FilmSponsor stage gating are preserved.
-- [ ] Type-check/build/tests run successfully; report any unverified checks honestly.
-- [ ] No production deployment is triggered as part of this design-reference handoff.
+- **Home `/`:** faithful Nightfall layout and an easy-to-find Multiverse preview/CTA.
+- **Creator `/creator`:** seven-stage journey—Your film, Investigation, Cultural Fingerprint, Positioning Arena, Decision Brief, Test Card, Archive—with real intake/run/evidence context.
+- **Cinema `/cinema`:** match ZIP composition while preserving Cinema, Programme, Cultural field, Opportunity, and Test.
+- **FilmSponsor `/creator/sponsor`:** match ZIP composition while preserving Intake, Discovery, Evidence, Draft, Review, Approval, Export, and Outreach.
 
-## Related handoff
+Make the typography, colors, spacing, grid, cards, navigation, image treatments, headers, and responsive behaviors consistent across the entire product, not just the homepage.
 
-See [README.md](./README.md) and [issue #12](https://github.com/Sohamgaonkhadkar/adjacent-cinema/issues/12). Keep PR #13 in draft until the integration and validation checklist is complete.
+## 3. Ensure Cultural Multiverse is discoverable and works
+
+- Home preview is visible without running an analysis; label it as concept/illustrative.
+- Creator shows exactly one Positioning Arena instance for the completed current run.
+- Verify `/creator?demo=fixture` starts a labelled fixture run and reveals the Arena once completed.
+- Before a run, show a clear empty/instructional state and a fixture-demo action.
+- Keep fixture/demo, measured/live Qloo, unknown, and blocked states distinct.
+- Preserve ANCHOR, BRIDGE, FRONTIER, What-If Lab, Evidence Challenge, Decision Brief, and validated Freeze Decision behavior.
+- No fake evidence, audience predictions, provider results, saved records, or success states.
+
+## 4. Preserve backend and existing product behavior
+
+Inspect and preserve the real API adapter, types, endpoints, persistence, Test Card edit/export, experiment/observation/evaluation lifecycle, Qloo provenance, Cinema workflow, and FilmSponsor approval/source-review rules. Implement backend changes if required for real functionality, following existing patterns and adding tests. Keep secrets server-side.
+
+## 5. Visual acceptance and testing are mandatory
+
+Compare the extracted source with the actual rendered Next.js preview on desktop and mobile for each of the four routes. Inspect screenshots/pages and fix concrete differences. Do not claim the pages match the ZIP solely because tests pass.
+
+Run frontend typecheck, lint, all relevant tests, production build, route/render checks, backend Python 3.12 lifecycle tests, container build, and `git diff --check`. Report exactly which checks passed or remain blocked; fixture tests do not prove live Qloo behavior.
+
+## 6. Deliverables and safety
+
+Commit and push implementation changes on `arena/nightfall-full-frontend-port`. Open a new **draft PR into `main`**. Provide the latest READY preview URL and a route-by-route visual acceptance report.
+
+Do not merge this follow-up PR, deploy to production, change production secrets, replace Next.js with Vite, force-push, or discard unrelated changes.
+
+**Done means:** all four existing pages visibly and substantially match Project Nightfall, the Multiverse is easy to find and opens through the fixture-demo path, and real backend workflows still work.
