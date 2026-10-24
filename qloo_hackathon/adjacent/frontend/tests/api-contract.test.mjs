@@ -92,10 +92,10 @@ function frontendCalls() {
   }
   // These two read helpers encapsulate a fetch, so the route's HTTP method is GET.
   // Record their call sites directly instead of guessing from nearby code text.
-  for (const match of apiSource.matchAll(/sponsorFetchJson\(\s*`([^`]+)`/g)) {
+  for (const match of apiSource.matchAll(/sponsorFetchJson(?:<[^>]*>)?\(\s*`([^`]+)`/g)) {
     record("GET", match[1], "sponsorFetchJson");
   }
-  for (const match of apiSource.matchAll(/sponsorFetchJson\(\s*"([^"]+)"/g)) {
+  for (const match of apiSource.matchAll(/sponsorFetchJson(?:<[^>]*>)?\(\s*"([^"]+)"/g)) {
     record("GET", match[1], "sponsorFetchJson");
   }
   for (const match of apiSource.matchAll(/postJson(?:<[^>]*>)?\(\s*`([^`]+)`/g)) {
