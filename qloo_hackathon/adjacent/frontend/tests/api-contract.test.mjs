@@ -305,6 +305,27 @@ test("run, experiment, provider and synthesis reads use bounded JSON requests", 
   }
 });
 
+test("JSON bodies remain under the request timeout for write and FilmSponsor responses", () => {
+  const section = (start, end) => {
+    const from = apiSource.indexOf(start);
+    assert.notEqual(from, -1, `function not found: ${start}`);
+    const to = end ? apiSource.indexOf(end, from + start.length) : apiSource.length;
+    assert.notEqual(to, -1, `function boundary not found: ${end}`);
+    return apiSource.slice(from, to);
+  };
+  const postJson = section("async function postJson<T>", "export function createCreatorRun");
+  const sponsorJson = section("async function sponsorFetchJson<T>", "async function postJson<T>");
+  const sponsorGet = section("export async function getSponsorCampaign", "/**\n * Runs live Qloo brand discovery");
+  const sponsorExport = section("export async function exportSponsorCampaign", null);
+  assert.match(postJson, /fetchJsonWithTimeout/);
+  assert.match(sponsorJson, /fetchJsonWithTimeout/);
+  assert.match(sponsorGet, /sponsorFetchJson/);
+  assert.match(sponsorExport, /sponsorFetchJson/);
+  for (const [name, source] of [["postJson", postJson], ["sponsor campaign lookup", sponsorGet], ["sponsor export", sponsorExport]]) {
+    assert.doesNotMatch(source, /await res\.json\(/, `${name} must not parse the body after clearing the timeout`);
+  }
+});
+
 test("the synthesized decision brief is requested by run id", () => {
   assert.match(apiSource, /postJson<SynthesisResponse>\("\/creator\/synthesize", \{ run_id: runId \}/);
   assert.ok(modelFields("SynthesizeRequest").has("run_id"));
