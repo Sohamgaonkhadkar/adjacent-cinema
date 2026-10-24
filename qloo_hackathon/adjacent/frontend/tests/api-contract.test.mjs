@@ -82,8 +82,8 @@ function frontendCalls() {
     /fetchWithTimeout\(\s*"([^"]+)"/g,
     /fetchJsonWithTimeout(?:<[^>]*>)?\(\s*`([^`]+)`/g,
     /fetchJsonWithTimeout(?:<[^>]*>)?\(\s*"([^"]+)"/g,
-    /sponsorFetch\(\s*`([^`]+)`/g,
-    /sponsorFetch\(\s*"([^"]+)"/g,
+    /sponsorFetch(?:Json)?\(\s*`([^`]+)`/g,
+    /sponsorFetch(?:Json)?\(\s*"([^"]+)"/g,
   ];
   for (const pattern of helperPatterns) {
     for (const match of apiSource.matchAll(pattern)) {
