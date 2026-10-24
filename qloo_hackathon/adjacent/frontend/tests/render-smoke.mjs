@@ -138,6 +138,20 @@ test("production build renders every primary web surface", async () => {
         route + " contains a server error page",
       );
       assert.match(html, /<html[\s>]/i, route + " did not render an HTML document");
+
+      // The stylesheet is part of the deliverable: a purge that removes a class
+      // the markup still uses ships an unstyled page and nothing else catches it.
+      const stylesheet = html.match(/href="(\/_next\/static\/[^"]+\.css)"/);
+      assert.ok(stylesheet, route + " did not link a stylesheet");
+      const cssResponse = await fetch(baseUrl + stylesheet[1], { signal: AbortSignal.timeout(10_000) });
+      assert.equal(cssResponse.status, 200, route + " stylesheet returned HTTP " + cssResponse.status);
+      const css = await cssResponse.text();
+      for (const selector of [".paper-card", ".film-gate", ".chip-live", ".btn-primary", ".type-kicker", ".img-frame"]) {
+        assert.ok(css.includes(selector), route + " stylesheet is missing " + selector);
+      }
+      for (const utility of [".bg-ink", ".text-amber", ".font-display"]) {
+        assert.ok(css.includes(utility), route + " stylesheet is missing the utility " + utility);
+      }
     }
   } finally {
     child.kill("SIGTERM");
