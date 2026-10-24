@@ -1,6 +1,6 @@
 # M13.18 — Current Verification Status
 
-**Checkpoint:** 24 October 2026, PR head 9fbeeba6cf3bf38044513519800cb4e46d92ffb7, CI run #225. This records observed local and CI results; it does not certify the full deployed application flow, hosted acceptance, hackathon eligibility, or a submission.
+**Latest follow-up:** 24 October 2026, feature branch `arena/76d901e7-adjacent-cinema`, commit `259ecf0`, GitHub Actions CI run `40106948750` (all jobs successful). The earlier PR-head checkpoint `9fbeeba6cf3bf38044513519800cb4e46d92ffb7` / CI run #225 remains historical below. This records observed local and CI results; it does not certify the deployed application flow, hosted acceptance, hackathon eligibility, or a submission.
 
 ## Changes included in this working tree
 
@@ -29,6 +29,16 @@
 | Hosted production / browser E2E | Not run | **Reserved / pending** | No production setting or deployment was touched. The repository blueprint/docs were inspected read-only. |
 
 The compatibility-scratch result (745 passed, 9 skipped) is supplemental evidence and remains a Python 3.11 scratch run. The latest PR CI run (#225) did run the unmodified backend source with Python 3.12.15: 746 non-live tests passed, and a separate live-marked step passed 8 tests including the direct Qloo explainability response contract. This proves the endpoint contract was observed in CI, but not that the deployed application completes a live Creator/Cinema run through Render.
+
+## Cultural Multiverse / Positioning Arena follow-up (commit `259ecf0`)
+
+- Added a deterministic Creator-side Positioning Arena based only on one completed run's ranked cohorts, verified source inputs, and trace. ANCHOR uses the existing ranking; BRIDGE requires returned shared tags or validated attribution to the same verified source film across distinct domains; FRONTIER requires another eligible cohort in the anchor's exact source scoring context with a higher existing novelty proxy. Unsupported strategies abstain. What-If uses within-context ordinal preferences and reorders only existing candidates; it makes no Qloo request and is not an audience prediction.
+- Cohort serialization now exposes `context_id`, score `call_id`/`context_id`, and bounded member attribution/status details so the browser can audit provenance. These are additive response fields; no database migration was introduced.
+- Creator save stores the selection, all alternatives, original Test Card, source IDs/status, policy/formula version/order and edited protocol/measure/decision/window under `source_bet.cultural_multiverse_snapshot`. Legacy snapshot-less experiments continue to load; observations/evaluations remain append-only.
+- Local frontend verification on the committed source: existing Node suites plus Positioning Arena **26 passed, 0 failed**; `npx tsc --noEmit`, production build, and production-render smoke (**1 passed**) all passed.
+- Local backend verification used a temporary Python 3.11.2 scratch copy with only the existing Python 3.12 `ToolResult[T]` syntax translated to `Generic[T]`: focused creator/experiment/attribution/run API tests **50 passed**; full non-live suite **746 passed, 1 skipped, 8 deselected**; Ruff passed. Do not treat that scratch result as a native runtime check.
+- GitHub Actions CI run `40106948750` for commit `259ecf0` completed successfully: Python 3.12 backend, frontend (including new strategy test/build/render steps), and container build jobs all green. The conditional live-Qloo step is reported successful; it does not establish a hosted Creator run. The detailed remote log download was unavailable at verification time, so no live-test count is recorded here.
+- Hosted judge path remains **unverified / treat as blocked**. No public deployment was inspected or changed, and no browser E2E was run. The owner-approved next step remains read-only confirmation of deployed revisions and `/api/health` via the public frontend, then a bounded live Creator run only under the authorized backend credential/quota process; keep public live mode disabled absent explicit approval.
 
 ## Known remaining gates
 
