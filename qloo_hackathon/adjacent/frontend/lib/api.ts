@@ -399,12 +399,15 @@ export async function revokeSponsorGuestSession(): Promise<void> {
   filmSponsorCsrfToken = null;
 }
 
-async function sponsorFetch(path: string, init: RequestInit = {}): Promise<Response> {
+async function sponsorFetchJson<T>(
+  path: string,
+  init: RequestInit = {}
+): Promise<{ response: Response; data: T | { detail?: string } | null }> {
   const headers = new Headers(init.headers);
   if (filmSponsorCsrfToken && path !== "/filmsponsor/guest-session") {
     headers.set("X-FilmSponsor-CSRF", filmSponsorCsrfToken);
   }
-  const res = await fetchWithTimeout(
+  const result = await fetchJsonWithTimeout<T | { detail?: string }>(
     path,
     {
       ...init,
@@ -413,8 +416,8 @@ async function sponsorFetch(path: string, init: RequestInit = {}): Promise<Respo
     },
     "FilmSponsor request timed out. Check the backend connection and retry."
   );
-  noteGuestSessionExpiry(path, res);
-  return res;
+  noteGuestSessionExpiry(path, result.response);
+  return result;
 }
 
 async function postJson<T>(path: string, body: unknown, label: string): Promise<T> {
@@ -422,10 +425,10 @@ async function postJson<T>(path: string, body: unknown, label: string): Promise<
   if (path.startsWith("/filmsponsor/") && filmSponsorCsrfToken) {
     headers.set("X-FilmSponsor-CSRF", filmSponsorCsrfToken);
   }
-  // Every write goes through the same timeout as the reads: a backend that
-  // accepts the connection and then stalls must surface as an error the caller
-  // can show, not as a button that never finishes.
-  const res = await fetchWithTimeout(
+  // Keep the abort timer active through response-body parsing as well as the
+  // initial connection. A server that sends headers and then stalls must not
+  // leave a write action spinning forever.
+  const { response: res, data } = await fetchJsonWithTimeout<T | { detail?: string }>(
     path,
     {
       method: "POST",
@@ -437,12 +440,11 @@ async function postJson<T>(path: string, body: unknown, label: string): Promise<
   );
   noteGuestSessionExpiry(path, res);
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(
-      typeof err.detail === "string" ? err.detail : `${label} failed (${res.status})`
-    );
+    const detail = data && "detail" in data && typeof data.detail === "string" ? data.detail : res.statusText;
+    throw new Error(detail || `${label} failed (${res.status})`);
   }
-  return res.json();
+  if (data === null) throw new Error(`${label} returned an empty or invalid response.`);
+  return data as T;
 }
 
 export function createCreatorRun(
@@ -787,12 +789,15 @@ export async function listSponsorCampaigns(): Promise<SponsorCampaign[]> {
 }
 
 export async function getSponsorCampaign(campaignId: string): Promise<SponsorCampaignDetail> {
-  const res = await sponsorFetch(`/filmsponsor/campaigns/${campaignId}`);
+  const { response: res, data } = await sponsorFetchJson<SponsorCampaignDetail>(
+    `/filmsponsor/campaigns/${campaignId}`
+  );
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(typeof body.detail === "string" ? body.detail : "Campaign not found");
+    const detail = data && "detail" in data && typeof data.detail === "string" ? data.detail : res.statusText;
+    throw new Error(detail || "Campaign not found");
   }
-  return res.json();
+  if (!data || "detail" in data) throw new Error("The backend returned an invalid campaign response.");
+  return data;
 }
 
 /**
@@ -867,10 +872,13 @@ export function addSponsorOutreach(
 }
 
 export async function exportSponsorCampaign(campaignId: string): Promise<SponsorExportPackage> {
-  const res = await sponsorFetch(`/filmsponsor/campaigns/${campaignId}/export`);
+  const { response: res, data } = await sponsorFetchJson<SponsorExportPackage>(
+    `/filmsponsor/campaigns/${campaignId}/export`
+  );
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(typeof body.detail === "string" ? body.detail : "Export failed");
+    const detail = data && "detail" in data && typeof data.detail === "string" ? data.detail : res.statusText;
+    throw new Error(detail || "Export failed");
   }
-  return res.json();
+  if (!data || "detail" in data) throw new Error("The backend returned an invalid export response.");
+  return data;
 }
