@@ -408,12 +408,35 @@ export default function SponsorPage() {
 
   return (
     <main className="nightfall-route-page">
-      <header className="nightfall-route-title">
+      <header className="nightfall-route-title sponsor-route-title">
         <div>
           <span className="micro-label">ADJACENT · CREATOR MODE · SPONSOR</span>
-          <h1>Sponsorship campaigns with <em>receipts.</em></h1>
+          <h1>A campaign dossier,<br /><em>not a CRM.</em></h1>
+          <p className="sponsor-hero-deck">Intake, live discovery when configured, creator-authored drafts, source review, approval, export, and manually recorded outreach.</p>
+          <span className="sponsor-photo-credit">Atmospheric image · Ron Lach / Pexels</span>
         </div>
       </header>
+
+      <nav className="sponsor-stage-nav" aria-label="FilmSponsor campaign stages">
+        <ol>
+          {[
+            ["Intake", "intake"],
+            ["Discovery", "discovery"],
+            ["Evidence", "discovery"],
+            ["Draft", "drafts"],
+            ["Review", "drafts"],
+            ["Approval", "drafts"],
+            ["Export", "export"],
+            ["Outreach", "outreach"],
+          ].map(([label, target], index) => (
+            <li key={label}>
+              <a href={`#${target}`} aria-label={`${String(index + 1).padStart(2, "0")} ${label}`}>
+                <span>{String(index + 1).padStart(2, "0")}</span>{label}
+              </a>
+            </li>
+          ))}
+        </ol>
+      </nav>
 
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "40px 24px 80px" }}>
         <div className="evidence-panel" role="note" style={{ borderColor: "var(--amber)", marginBottom: 22 }}>

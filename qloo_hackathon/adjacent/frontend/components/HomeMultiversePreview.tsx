@@ -1,106 +1,294 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import {
+  MULTIVERSE_BANNER,
+  previewIndex,
+  strategies,
+  suggestStrategy,
+  type Strategy,
+} from "@/lib/nightfallMultiverseData";
+import { photos, type Photo } from "@/lib/nightfallPhotos";
+import PhotoFrame from "./NightfallPhotoFrame";
+import { cn } from "@/components/u";
+import type { StrategyId } from "@/lib/nightfallMultiverseData";
 
-const LENSES = [
-  {
-    id: "anchor",
-    number: "01",
-    name: "Anchor",
-    phrase: "Stay with the world the evidence can hold.",
-    description: "A restrained direction built from a completed run's strongest eligible cohort. If the evidence gate does not clear, the application abstains.",
-    motif: "One frame · one supported direction",
-  },
-  {
-    id: "bridge",
-    number: "02",
-    name: "Bridge",
-    phrase: "Connect two worlds only when the source connects them.",
-    description: "A cultural link needs a returned relationship or validated source attribution. Similar wording alone is never enough.",
-    motif: "Two fields · a visible join",
-  },
-  {
-    id: "frontier",
-    number: "03",
-    name: "Frontier",
-    phrase: "Explore the edge that still has a source.",
-    description: "A more exploratory alternative is shown only when it clears the evidence gate in the same scoring context; novelty is not effectiveness.",
-    motif: "Open crop · evidence limits in view",
-  },
-] as const;
+const photoFor: Record<StrategyId, Photo> = {
+  anchor: photos.cinemaEmpty,
+  bridge: photos.soho,
+  frontier: photos.projectorLens,
+};
 
-type LensId = (typeof LENSES)[number]["id"];
+const secondPhoto: Record<StrategyId, Photo> = {
+  anchor: photos.editingTable,
+  bridge: photos.urbanPuddle,
+  frontier: photos.reelTape,
+};
 
 export default function HomeMultiversePreview() {
-  const [active, setActive] = useState<LensId>("anchor");
-  const lens = LENSES.find((item) => item.id === active)!;
+  const [id, setId] = useState<StrategyId>("anchor");
+  const [openDossier, setOpenDossier] = useState(false);
+  const [priorities, setPriorities] = useState({ evidence: 80, distinct: 55, range: 25 });
+  const [appliedSuggestion, setAppliedSuggestion] = useState<StrategyId | null>(null);
+
+  const strategy = strategies.find((s) => s.id === id)!;
+  const index = useMemo(() => previewIndex(priorities), [priorities]);
+  const suggestion = useMemo(() => suggestStrategy(priorities), [priorities]);
 
   return (
-    <section className="nightfall-multiverse" id="multiverse-preview" aria-labelledby="nightfall-multiverse-title">
-      <div className="nightfall-content-shell">
-        <div className="nightfall-section-heading">
-          <div>
-            <p className="nightfall-kicker">Cultural Multiverse · design preview</p>
-            <h2 id="nightfall-multiverse-title">Three ways to stand<br /><em>a film</em> in culture.</h2>
+    <section className="relative bg-ink" id="multiverse">
+      <div className="mx-auto max-w-[1440px] px-4 py-20 md:px-8 md:py-28">
+        <div className="flex flex-wrap items-end justify-between gap-6">
+          <div className="max-w-2xl">
+            <p className="type-kicker">Cultural Multiverse</p>
+            <h2 className="font-display mt-4 text-4xl leading-[0.95] md:text-6xl">
+              Three ways to stand
+              <span className="italic text-amber"> a film</span> in culture.
+            </h2>
           </div>
-          <p className="nightfall-section-deck">The Positioning Arena compares defensible directions after a completed Creator investigation. This homepage panel is a design preview—not an analysis of your film.</p>
+          <p className="max-w-sm text-sm leading-relaxed text-mute">
+            A visual, illustrative preview of Anchor, Bridge and Frontier. The evidence-backed strategy arena is available in Creator Studio after a completed run.
+          </p>
         </div>
 
-        <div className="nightfall-concept-banner" role="note">
-          <span className="nightfall-live-dot" aria-hidden="true" />
-          CONCEPT PREVIEW · ILLUSTRATIVE INTERACTION · NOT A LIVE QLOO ANALYSIS
+        <div className="mt-8 border border-amber/40 bg-amber/10 px-4 py-3">
+          <p className="font-mono text-[0.68rem] tracking-[0.14em] uppercase text-amber">
+            {MULTIVERSE_BANNER}
+          </p>
         </div>
 
-        <div className="nightfall-lens-tabs" role="tablist" aria-label="Illustrative positioning lenses">
-          {LENSES.map((item) => (
-            <button
-              key={item.id}
-              id={`home-lens-tab-${item.id}`}
-              type="button"
-              role="tab"
-              aria-selected={active === item.id}
-              aria-controls="home-lens-panel"
-              className={active === item.id ? "is-active" : ""}
-              onClick={() => setActive(item.id)}
-            >
-              <span>{item.number} · {item.motif}</span>
-              <strong>{item.name}</strong>
-              <small>{item.phrase}</small>
-            </button>
+        <div className="mt-10 grid gap-3 md:grid-cols-3">
+          {strategies.map((s) => (
+            <StrategyTab
+              key={s.id}
+              strategy={s}
+              active={s.id === id}
+              onSelect={() => {
+                setId(s.id);
+                setOpenDossier(false);
+              }}
+            />
           ))}
         </div>
 
-        <div className={`nightfall-lens-panel is-${active}`} id="home-lens-panel" role="tabpanel" aria-labelledby={`home-lens-tab-${active}`}>
-          <div className="nightfall-lens-art" aria-label="Schematic illustration, not source evidence" role="img">
-            <div className="nightfall-lens-art-image" />
-            <div className="nightfall-lens-art-shade" />
-            <svg viewBox="0 0 600 380" aria-hidden="true">
-              <path d={active === "bridge" ? "M90 178 C210 70 390 310 510 165" : active === "frontier" ? "M300 190 C350 100 460 100 520 52" : "M300 190 C245 130 175 115 92 88"} />
-              <circle cx="300" cy="190" r="35" className="subject" />
-              <circle cx="300" cy="190" r="54" className="orbit" />
-              <circle cx="92" cy={active === "bridge" ? "178" : "88"} r="10" />
-              {active === "bridge" && <circle cx="510" cy="165" r="10" />}
-              {active === "frontier" && <circle cx="520" cy="52" r="10" />}
-              {active === "anchor" && <circle cx="92" cy="88" r="10" />}
-              <text x="300" y="186" textAnchor="middle">FILM</text>
-              <text x="300" y="203" textAnchor="middle" className="diagram-sub">SCHEMATIC ONLY</text>
-            </svg>
-            <span className="nightfall-art-caption">Cultural field · illustrative diagram</span>
+        <div
+          className={cn(
+            "mt-6 overflow-hidden border border-line",
+            id === "anchor" && "bg-ink-2",
+            id === "bridge" && "bg-ink",
+            id === "frontier" && "bg-ink-3"
+          )}
+        >
+          {id === "anchor" && <AnchorStage strategy={strategy} />}
+          {id === "bridge" && <BridgeStage strategy={strategy} />}
+          {id === "frontier" && <FrontierStage strategy={strategy} />}
+        </div>
+
+        <div className="mt-8 grid gap-8 lg:grid-cols-12">
+          <div className="lg:col-span-7">
+            <p className="type-kicker">Illustrative evidence map</p>
+            <ul className="mt-5 divide-y divide-line border-y border-line">
+              {strategy.evidence.map((row) => (
+                <li key={row.label} className="grid gap-2 py-4 md:grid-cols-[220px_1fr]">
+                  <div>
+                    <p className="text-sm text-paper">{row.label}</p>
+                    <p className="caption mt-1">{row.kind}</p>
+                  </div>
+                  <p className="text-sm leading-relaxed text-mute">{row.note}</p>
+                </li>
+              ))}
+            </ul>
+            <ul className="mt-6 space-y-2">
+              {strategy.risks.map((r) => (
+                <li key={r} className="text-sm text-paper-2 before:mr-3 before:text-amber before:content-['—']">
+                  {r}
+                </li>
+              ))}
+            </ul>
           </div>
-          <div className="nightfall-lens-copy">
-            <p className="nightfall-kicker">{lens.number} / {lens.name} · positioning lens</p>
-            <h3>{lens.phrase}</h3>
-            <p>{lens.description}</p>
-            <dl className="nightfall-limits-list">
-              <div><dt>Input</dt><dd>One completed Creator run</dd></div>
-              <div><dt>Evidence</dt><dd>Returned sources and trace only</dd></div>
-              <div><dt>When unsupported</dt><dd>Show why it abstains</dd></div>
-            </dl>
-            <p className="nightfall-lens-limit">Cultural affinity is similarity evidence—not audience size, viewing probability, attendance, conversion, revenue, or causal lift.</p>
+
+          <div className="lg:col-span-5 border border-line p-5 md:p-6">
+            <p className="type-kicker">What-if lab</p>
+            <p className="mt-3 text-sm text-mute">
+              Moving a slider computes an illustrative index using the published weights below. It
+              does not reorder the stage — the suggestion applies only when you choose “Apply to
+              preview”. It never scores a film and never writes an experiment.
+            </p>
+            <div className="mt-6 space-y-5">
+              {(
+                [
+                  ["evidence", "Evidence strictness"],
+                  ["distinct", "Distinctiveness"],
+                  ["range", "Exploratory range"],
+                ] as const
+              ).map(([key, label]) => (
+                <label key={key} className="block">
+                  <span className="flex justify-between font-mono text-[0.62rem] tracking-[0.14em] uppercase text-amber">
+                    {label}
+                    <span>{priorities[key]}</span>
+                  </span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={priorities[key]}
+                    onChange={(e) =>
+                      setPriorities((p) => ({ ...p, [key]: Number(e.target.value) }))
+                    }
+                    className="mt-2 w-full accent-amber"
+                  />
+                </label>
+              ))}
+            </div>
+            <ul className="mt-5 space-y-1 border border-line bg-ink p-3">
+              {strategies.map((s) => (
+                <li key={s.id} className="flex items-baseline justify-between text-xs">
+                  <span className={s.id === suggestion.id ? "text-amber" : "text-mute"}>
+                    {s.name}
+                  </span>
+                  <span className="font-mono tabular-nums text-paper-2">{index[s.id]}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 text-sm leading-relaxed text-paper-2">
+              Suggested <span className="text-amber">{suggestion.id}</span> · selected{" "}
+              <span className="text-amber">{id}</span>
+              {suggestion.id === id ? " (matching)" : " (distinct)"}. {suggestion.reason}
+            </p>
+            <p className="mt-2 font-mono text-[0.58rem] leading-relaxed text-dim">
+              {suggestion.weights}
+            </p>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <button
+                type="button"
+                className="btn-amber"
+                disabled={suggestion.id === id}
+                onClick={() => {
+                  setId(suggestion.id);
+                  setAppliedSuggestion(suggestion.id);
+                }}
+              >
+                Apply to preview
+              </button>
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => setOpenDossier((v) => !v)}
+                aria-expanded={openDossier}
+              >
+                {openDossier ? "Close dossier" : "Open decision dossier"}
+              </button>
+            </div>
+            <p className="mt-4 caption">
+              Demonstration rule with published weights — not a production ranking model.
+              {appliedSuggestion !== null &&
+                appliedSuggestion !== suggestion.id &&
+                " Suggestion changed since it was applied."}
+            </p>
           </div>
         </div>
-        <p className="nightfall-source-note">This preview is intentionally kept separate from entered film details, measured Qloo evidence, and saved experiments.</p>
+
+        {openDossier && (
+          <div className="drawer-enter mt-8 grid gap-0 border border-line md:grid-cols-2">
+            <div className="p-6 md:p-10">
+              <p className="type-kicker">{strategy.dossier.title}</p>
+              <h3 className="font-display mt-4 text-3xl md:text-4xl">{strategy.dossier.stance}</h3>
+              <p className="mt-6 text-sm leading-relaxed text-mute">{strategy.dossier.imageCrop}</p>
+              <p className="mt-2 text-sm leading-relaxed text-mute">{strategy.dossier.typeTone}</p>
+              <p className="mt-8 caption">
+                This dossier belongs to the concept preview. Creator Studio uses a separate run-linked strategy payload and validated evidence.
+              </p>
+            </div>
+            <PhotoFrame photo={photoFor[id]} className="min-h-[280px]" />
+          </div>
+        )}
       </div>
     </section>
+  );
+}
+
+function StrategyTab({
+  strategy,
+  active,
+  onSelect,
+}: {
+  strategy: Strategy;
+  active: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={active}
+      className={cn(
+        "border px-4 py-5 text-left transition-colors",
+        active ? "border-amber bg-amber/10" : "border-line hover:border-line-strong"
+      )}
+    >
+      <p className="type-meta">{strategy.kicker}</p>
+      <p className="font-display mt-2 text-3xl">{strategy.name}</p>
+      <p className="mt-2 text-sm leading-relaxed text-mute">{strategy.lede}</p>
+    </button>
+  );
+}
+
+function AnchorStage({ strategy }: { strategy: Strategy }) {
+  return (
+    <div className="grid md:grid-cols-12">
+      <div className="flex flex-col justify-end p-6 md:col-span-5 md:p-12">
+        <p className="type-kicker">Anchor</p>
+        <h3 className="font-display mt-4 text-4xl leading-[0.95] md:text-5xl">{strategy.headline}</h3>
+        <p className="mt-6 max-w-md text-sm leading-relaxed text-paper-2">{strategy.body}</p>
+        <p className="caption mt-8">{strategy.visual}</p>
+      </div>
+      <div className="md:col-span-7">
+        <PhotoFrame photo={photos.cinemaEmpty} className="h-full min-h-[320px]" credit={false} />
+      </div>
+    </div>
+  );
+}
+
+function BridgeStage({ strategy }: { strategy: Strategy }) {
+  return (
+    <div className="grid md:grid-cols-2">
+      <div className="relative min-h-[280px]">
+        <PhotoFrame photo={photos.editingTable} className="h-full" credit={false} />
+        <span className="caption absolute bottom-3 left-3 z-10 bg-ink/70 px-2 py-1">
+          {strategy.worlds.a}
+        </span>
+      </div>
+      <div className="relative min-h-[280px]">
+        <PhotoFrame photo={secondPhoto.bridge} className="h-full" credit={false} />
+        <span className="caption absolute bottom-3 left-3 z-10 bg-ink/70 px-2 py-1">
+          {strategy.worlds.b}
+        </span>
+      </div>
+      <div className="border-t border-line p-6 md:col-span-2 md:p-10">
+        <div className="grid gap-8 md:grid-cols-2">
+          <h3 className="font-display text-4xl leading-[0.95]">{strategy.headline}</h3>
+          <p className="text-sm leading-relaxed text-paper-2">{strategy.body}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FrontierStage({ strategy }: { strategy: Strategy }) {
+  return (
+    <div className="relative min-h-[420px] md:min-h-[520px]">
+      <PhotoFrame
+        photo={photos.projectorLens}
+        className="absolute inset-0"
+        imgClassName="object-[20%_center]"
+        credit={false}
+      />
+      <div className="absolute inset-0 bg-gradient-to-r from-ink via-ink/70 to-transparent" />
+      <div className="relative z-10 flex min-h-[420px] max-w-xl flex-col justify-end p-6 md:min-h-[520px] md:p-12">
+        <p className="type-kicker">Frontier</p>
+        <h3 className="font-display mt-4 text-4xl leading-[0.95] md:text-6xl">{strategy.headline}</h3>
+        <p className="mt-6 text-sm leading-relaxed text-paper-2">{strategy.body}</p>
+      </div>
+    </div>
   );
 }
