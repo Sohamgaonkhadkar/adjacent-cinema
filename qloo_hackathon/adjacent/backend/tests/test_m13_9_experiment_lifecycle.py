@@ -8,6 +8,7 @@ repository re-open, and no unprotected side effects on the cinema surface.
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 import pytest
@@ -23,6 +24,28 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     creator_routes.reset_repo_for_tests(tmp_path / "experiments.db")
     yield TestClient(app)
     creator_routes.reset_repo_for_tests(None)
+
+
+def _completed_fixture_run(client: TestClient, title: str = "Night Harbour") -> dict:
+    created = client.post("/creator/run/demo", json={
+        "title": title,
+        "logline": "A night-shift story used only to exercise the labelled fixture contract.",
+        "genre": "drama",
+        "language": "English",
+        "themes": [],
+        "references": [],
+        "release_goal": "offline contract test",
+    })
+    assert created.status_code == 200
+    run_id = created.json()["run_id"]
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
+        current = client.get(f"/run/{run_id}").json()
+        if current["status"] in {"completed", "failed", "insufficient"}:
+            assert current["status"] == "completed", current
+            return current
+        time.sleep(0.01)
+    pytest.fail("fixture Creator run did not reach a terminal state")
 
 
 def _save(client: TestClient, request_id: str = "req-00000001", run_id: str = "run-a") -> dict:
@@ -55,6 +78,103 @@ class TestSaveExperiment:
         assert fetched["experiment"]["provenance"]["primary_call_id"] == "call-1"
         assert fetched["observations"] == []
         assert fetched["evaluations"] == []
+
+    def test_versioned_positioning_snapshot_round_trips_and_survives_appends(self, client: TestClient) -> None:
+        final_run = _completed_fixture_run(client)
+        run_id = final_run["run_id"]
+        result = final_run["result"]
+        source_cohort = result["cohorts"]["ranked"][0]
+        source_member = source_cohort["members"][0]
+        call_id = source_member["call_id"]
+        selected = {
+            "id": "anchor",
+            "type": "ANCHOR",
+            "availability": "available",
+            "source_cohort_ids": [source_cohort["cohort_id"]],
+            "entity_refs": [{
+                "cohort_id": source_cohort["cohort_id"],
+                "entity_id": source_member["entity_id"],
+                "call_id": call_id,
+            }],
+            "evidence_refs": [{
+                "kind": "source_member",
+                "description": "A reference to a returned fixture member.",
+                "call_ids": [call_id],
+                "cohort_ids": [source_cohort["cohort_id"]],
+                "entity_ids": [source_member["entity_id"]],
+            }],
+            "evidence_challenge": {"supporting_call_ids": [call_id], "source_inputs": []},
+            "falsifiable_hypothesis": "Compare the framing using a preselected observable measure.",
+            "creative_direction": "Test the source-backed cultural direction.",
+            "tradeoffs": ["Fixture evidence is not live Qloo data."],
+        }
+        strategies = [
+            selected,
+            {"id": "bridge", "type": "BRIDGE", "availability": "unavailable", "unavailable_reason": "No supported shared evidence.", "source_cohort_ids": [], "entity_refs": [], "evidence_refs": []},
+            {"id": "frontier", "type": "FRONTIER", "availability": "unavailable", "unavailable_reason": "No same-context alternative clears the gate.", "source_cohort_ids": [], "entity_refs": [], "evidence_refs": []},
+        ]
+        card = result["test_card"]
+        design = {
+            "comparison_protocol": card["comparison_protocol"],
+            "primary_measure": card["primary_measure"],
+            "decision_rule": card["decision_rule"],
+            "observation_window": card["observation_window"],
+        }
+        snapshot = {
+            "snapshot_version": "cultural-positioning-snapshot-v1",
+            "calculation_version": "cultural-positioning-v1",
+            "source_run_id": run_id,
+            "original_data_status": "fixture",
+            "selected_strategy_id": "anchor",
+            "selected_strategy": selected,
+            "strategies": strategies,
+            "policy": {"formula_version": "weighted-ordinal-preference-v1", "values": {"fit": 50, "exploration": 25, "breadth": 25}},
+            "original_test_card": card,
+            "experiment_design": design,
+        }
+        payload = {
+            "request_id": "positioning-snapshot-1",
+            "film_title": result["film"]["title"],
+            "hypothesis": selected["falsifiable_hypothesis"],
+            "action_plan": selected["creative_direction"],
+            "observation_window": design["observation_window"],
+            "data_status": "fixture",
+            "source_run_id": run_id,
+            "source_bet": {"primary": result["programme_bet"]["primary"], "cultural_multiverse_snapshot": snapshot},
+        }
+
+        invalid_run = {**payload, "source_bet": {**payload["source_bet"], "cultural_multiverse_snapshot": {**snapshot, "source_run_id": "another-run"}}}
+        assert client.post("/experiments", json={**invalid_run, "request_id": "positioning-bad-run"}).status_code == 422
+        bad_reference = {**selected, "entity_refs": [{**selected["entity_refs"][0], "call_id": "fabricated-call"}]}
+        bad_snapshot = {**snapshot, "selected_strategy": bad_reference, "strategies": [bad_reference, *strategies[1:]]}
+        bad_payload = {**payload, "request_id": "positioning-bad-call", "source_bet": {**payload["source_bet"], "cultural_multiverse_snapshot": bad_snapshot}}
+        assert client.post("/experiments", json=bad_payload).status_code == 422
+
+        response = client.post("/experiments", json=payload)
+        assert response.status_code == 201, response.text
+        experiment = response.json()["experiment"]
+        assert experiment["source_run_id"] == run_id
+        assert experiment["film_title"] == result["film"]["title"]
+        assert experiment["source_bet"]["cultural_multiverse_snapshot"] == snapshot
+        experiment_id = experiment["experiment_id"]
+
+        observation = client.post(f"/experiments/{experiment_id}/observations", json={
+            "request_id": "positioning-observation-1",
+            "kind": "NOTE",
+            "measurement_status": "UNAVAILABLE",
+            "limitations": "No external result was collected.",
+        })
+        evaluation = client.post(f"/experiments/{experiment_id}/evaluations", json={
+            "request_id": "positioning-evaluation-1",
+            "outcome": "INCONCLUSIVE",
+            "rationale": "A saved plan is not evidence that its test ran.",
+        })
+        assert observation.status_code == 201
+        assert evaluation.status_code == 201
+        reopened = client.get(f"/experiments/{experiment_id}").json()
+        assert reopened["experiment"]["source_bet"]["cultural_multiverse_snapshot"] == snapshot
+        assert len(reopened["observations"]) == 1
+        assert reopened["evaluations"][0]["outcome"] == "INCONCLUSIVE"
 
     def test_retry_same_request_id_returns_original(self, client: TestClient) -> None:
         first = _save(client)

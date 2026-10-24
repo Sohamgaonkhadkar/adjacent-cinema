@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import NightfallNavigation from "@/components/NightfallNavigation";
 
 export const metadata: Metadata = {
   title: "Adjacent — Cultural Intelligence for Independent Cinema",
@@ -10,7 +11,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <NightfallNavigation />
+        {children}
+      </body>
     </html>
   );
 }

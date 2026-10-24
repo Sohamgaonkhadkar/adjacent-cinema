@@ -1,190 +1,85 @@
-"use client";
-
 import Link from "next/link";
-
-// ─── Creator-first landing (M13.15) ────────────────────────────────────────
-// Cinematic editorial language adapted from the approved prototype
-// (correct_frontend_source/Qloo) into the existing Next.js app. No invented
-// statistics, no fake confidence: every claim on this page describes what the
-// product actually does, and the demo/fixture labelling rule is stated up
-// front. Cinema Mode is preserved at /cinema.
-
-const HERO_IMAGE = {
-  src: "https://images.pexels.com/photos/7991486/pexels-photo-7991486.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1800&h=1100",
-  photographer: "Tima Miroshnichenko",
-  source: "Pexels",
-  creditUrl: "https://www.pexels.com/photo/an-empty-cinema-7991486/",
-};
+import HomeMultiversePreview from "@/components/HomeMultiversePreview";
 
 const JOURNEY = [
-  {
-    no: "01",
-    title: "Your film",
-    body: "A title, logline, genre, the references that shaped it, and what you want the release to do. Nothing else is assumed.",
-  },
-  {
-    no: "02",
-    title: "Cultural fingerprint",
-    body: "A deterministic agent runs real Qloo operations: your references resolve to entities, a taste profile emerges, adjacent cultural worlds expand and rank — every step recorded with a call id.",
-  },
-  {
-    no: "03",
-    title: "Evidence-grounded brief",
-    body: "Findings are typed FACT, INTERPRETATION, HYPOTHESIS or UNKNOWN. Facts cite the call that produced them. An optional model-written brief must pass claim-level validation or fall back — labelled — to the deterministic account.",
-  },
-  {
-    no: "04",
-    title: "Your experiment",
-    body: "A positioning proposal you edit and explicitly confirm before it is saved. What the model proposed and what you changed stay separately on the record.",
-  },
-  {
-    no: "05",
-    title: "Observation",
-    body: "Record what actually happened — including zero, partial or missing. A missing measurement is never presented as a negative result.",
-  },
-  {
-    no: "06",
-    title: "Honest evaluation",
-    body: "Supported, contradicted or inconclusive against the criteria you pre-registered. Correlation is never dressed up as causation.",
-  },
+  { number: "01", title: "Your film", body: "Title, logline, genre and comparable works. The intake becomes the subject of the investigation—not a source of assumed audience facts.", href: "/creator#intake" },
+  { number: "02", title: "Investigation", body: "Resolve references, inspect the run status and follow the recorded provider trace. Unresolved inputs stay unresolved.", href: "/creator#analysis" },
+  { number: "03", title: "Cultural Fingerprint", body: "Explore returned cohorts, member entities, exclusions and provenance from the completed analysis.", href: "/creator#fingerprint" },
+  { number: "04", title: "Positioning Arena", body: "Compare Anchor, Bridge and Frontier when the evidence supports them; unsupported positions abstain.", href: "/creator#positioning" },
+  { number: "05", title: "Decision Brief", body: "Review evidence-linked claims and limitations. Optional synthesis cannot replace missing evidence.", href: "/creator#brief" },
+  { number: "06", title: "Test Card", body: "Edit a comparison, measure, decision rule and window. Export or save a plan; saving does not execute it.", href: "/creator#test-card" },
+  { number: "07", title: "Archive", body: "Reopen planned experiments, append observations and preserve evaluations without rewriting history.", href: "/creator#experiments" },
 ];
 
 const PRINCIPLES = [
-  {
-    label: "Evidence or abstention",
-    body: "Every factual claim cites the Qloo call that produced it. When evidence is insufficient, the system says so and refuses to force a recommendation — a missing answer is a legitimate result.",
-  },
-  {
-    label: "Affinity is not audience",
-    body: "Cultural affinity measures similarity between expressed interests. It is not proof anyone will watch, enjoy or share your film — the product never predicts views, revenue or virality.",
-  },
-  {
-    label: "A loop, not an oracle",
-    body: "Hypothesis → experiment → observation → evaluation, with append-only history. You can always trace what was decided, on what evidence, and what the outcome actually showed.",
-  },
+  { number: "I", title: "Evidence or abstention", body: "Factual claims must be traceable to returned records. When the gate does not clear, the system says so." },
+  { number: "II", title: "Affinity is not audience", body: "Qloo affinity is cultural similarity only. It is not audience size, viewing probability, attendance, conversion, revenue or causal lift." },
+  { number: "III", title: "A loop, not an oracle", body: "Hypothesis → planned test → observation → evaluation. A plan is not an outcome, and missing data is not zero." },
 ];
 
-const CLAIM_TYPES = [
-  { type: "FACT", note: "Returned by a recorded Qloo call — cites its call id." },
-  { type: "INTERPRETATION", note: "Reasoning over facts — labelled, never sold as source data." },
-  { type: "HYPOTHESIS", note: "A positioning decision to test, not an established truth." },
-  { type: "UNKNOWN", note: "Openly unresolved — never filled with plausible-sounding content." },
-];
-
-export default function Landing() {
+export default function HomePage() {
   return (
-    <div className="landing">
-      <header className="landing-topbar">
-        <Link href="/" className="landing-wordmark">
-          ADJACENT<span className="landing-wordmark-sub">cultural intelligence</span>
-        </Link>
-        <nav className="landing-nav" aria-label="Primary">
-          <Link href="/creator" className="landing-nav-link is-primary">Creator Studio</Link>
-          <Link href="/cinema" className="landing-nav-link">Cinema Mode</Link>
-        </nav>
-      </header>
-
-      <section className="landing-hero">
-        <div className="landing-hero-media">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={HERO_IMAGE.src} alt="" />
-          <a
-            className="landing-photo-credit"
-            href={HERO_IMAGE.creditUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {HERO_IMAGE.photographer} / {HERO_IMAGE.source}
-          </a>
-        </div>
-        <div className="landing-hero-copy">
-          <p className="landing-kicker">Qloo-powered cultural intelligence · for independent filmmakers</p>
-          <h1 className="landing-title">
-            Know which cultural world<br />
-            <em>your film speaks to</em> —<br />
-            before you position it.
-          </h1>
-          <p className="landing-lede">
-            Adjacent investigates your film&rsquo;s real cultural connections through the Qloo
-            API, turns the evidence into a positioning hypothesis you can test, and records
-            what actually happened. No invented audiences. No guaranteed virality. Evidence,
-            or an honest &ldquo;not enough evidence yet.&rdquo;
-          </p>
-          <div className="landing-cta-row">
-            <Link href="/creator" className="landing-cta">Start a film investigation</Link>
-            <Link href="/creator?demo=fixture" className="landing-cta is-ghost">
-              Explore the labelled fixture
-            </Link>
-            <Link href="/cinema" className="landing-cta is-ghost">Enter Cinema Mode</Link>
+    <main className="nightfall-home">
+      <section className="nightfall-home-hero">
+        <div className="nightfall-home-hero-image" aria-hidden="true" />
+        <div className="nightfall-home-hero-shade" aria-hidden="true" />
+        <div className="nightfall-film-grain" aria-hidden="true" />
+        <div className="nightfall-home-hero-inner">
+          <div className="nightfall-volume-line"><span>VOL. 01 · THE CULTURE ROOM</span><span>INDEPENDENT CINEMA / CULTURAL INTELLIGENCE</span></div>
+          <div className="nightfall-home-title-block">
+            <p className="nightfall-kicker">An evidence-led working room for film</p>
+            <h1>Every film belongs<br />to more than <em>one world.</em></h1>
+            <p className="nightfall-home-lede">Investigate cultural relationships, inspect their sources, and develop a positioning hypothesis worth testing. No invented audiences. No guaranteed outcomes.</p>
+            <div className="nightfall-home-actions">
+              <Link className="nightfall-button is-amber" href="/creator">Enter Creator Studio <span aria-hidden="true">↗</span></Link>
+              <Link className="nightfall-button" href="/creator?demo=fixture">Explore labelled fixture</Link>
+              <Link className="nightfall-text-link" href="/cinema">Cinema Mode <span aria-hidden="true">→</span></Link>
+            </div>
           </div>
-          <p className="landing-hero-note">
-            Runs without live Qloo credentials use clearly labelled fixture demonstrations —
-            never presented as live results.
-          </p>
+          <div className="nightfall-home-hero-footer"><span>Evidence before interpretation.</span><a href="https://www.pexels.com/photo/an-empty-cinema-7991486/" target="_blank" rel="noreferrer">Atmospheric image · Tima Miroshnichenko / Pexels</a></div>
         </div>
       </section>
 
-      <section className="landing-section">
-        <div className="landing-shell">
-          <p className="landing-kicker">The journey</p>
-          <h2 className="landing-h2">From film brief to <em>measured learning.</em></h2>
-          <div className="landing-journey">
+      <section className="nightfall-journey-section" id="journey">
+        <div className="nightfall-content-shell nightfall-journey-grid">
+          <div className="nightfall-journey-intro">
+            <p className="nightfall-kicker">The seven-stage Creator journey</p>
+            <h2>From film brief<br />to <em>measured learning.</em></h2>
+            <p>Each stage uses the current film and completed analysis context. Fixture demonstrations stay labelled; only persisted records appear in the archive.</p>
+            <Link className="nightfall-text-link" href="/creator">Open Creator Studio <span aria-hidden="true">→</span></Link>
+          </div>
+          <ol className="nightfall-journey-list">
             {JOURNEY.map((step) => (
-              <article key={step.no} className="landing-step">
-                <span className="landing-step-no">{step.no}</span>
-                <h3>{step.title}</h3>
-                <p>{step.body}</p>
+              <li key={step.number}>
+                <span className="nightfall-step-number">{step.number}</span>
+                <div><h3><Link href={step.href}>{step.title}</Link></h3><p>{step.body}</p></div>
+                <span className="nightfall-step-arrow" aria-hidden="true">↗</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <HomeMultiversePreview />
+
+      <section className="nightfall-principles-section">
+        <div className="nightfall-content-shell">
+          <p className="nightfall-kicker">The evidence boundary</p>
+          <h2>Three rules the product<br /><em>cannot break.</em></h2>
+          <div className="nightfall-principles-grid">
+            {PRINCIPLES.map((principle) => (
+              <article key={principle.number}>
+                <span>{principle.number}</span><h3>{principle.title}</h3><p>{principle.body}</p>
               </article>
             ))}
           </div>
-        </div>
-      </section>
-
-      <section className="landing-section is-dark">
-        <div className="landing-shell">
-          <p className="landing-kicker">Why this is not another analytics dashboard</p>
-          <h2 className="landing-h2">Three rules the product <em>cannot break.</em></h2>
-          <div className="landing-principles">
-            {PRINCIPLES.map((p) => (
-              <article key={p.label} className="landing-principle">
-                <h3>{p.label}</h3>
-                <p>{p.body}</p>
-              </article>
-            ))}
+          <div className="nightfall-route-links">
+            <Link href="/cinema"><span>01</span><strong>Cinema Mode</strong><small>Five chapters · programme, cultural field, opportunity, test</small><b aria-hidden="true">↗</b></Link>
+            <Link href="/creator/sponsor"><span>02</span><strong>FilmSponsor</strong><small>Eight stages · source review and approval prerequisites</small><b aria-hidden="true">↗</b></Link>
           </div>
         </div>
       </section>
-
-      <section className="landing-section">
-        <div className="landing-shell">
-          <p className="landing-kicker">Reading the evidence</p>
-          <h2 className="landing-h2">Every claim tells you <em>what it is.</em></h2>
-          <div className="landing-claims">
-            {CLAIM_TYPES.map((c) => (
-              <div key={c.type} className="landing-claim">
-                <span className="micro-label">{c.type}</span>
-                <p>{c.note}</p>
-              </div>
-            ))}
-          </div>
-          <div className="landing-closing">
-            <p>
-              The agent decides with a fixed, auditable plan — resolve, analyse, expand, rank —
-              and stops when the evidence runs out. The model may propose. The evidence
-              constrains it. You decide. The experiment records what happened.
-            </p>
-            <Link href="/creator" className="landing-cta">Investigate your film</Link>
-          </div>
-        </div>
-      </section>
-
-      <footer className="landing-footer">
-        <span>Adjacent — cultural-intelligence decision support for independent film.</span>
-        <span className="landing-footer-links">
-          <Link href="/creator">Creator Studio</Link>
-          <Link href="/cinema">Cinema Mode</Link>
-        </span>
-      </footer>
-    </div>
+      <footer className="nightfall-home-footer"><span>ADJACENT · CULTURAL INTELLIGENCE FOR INDEPENDENT CINEMA</span><span>Concept preview is not live Qloo evidence.</span></footer>
+    </main>
   );
 }

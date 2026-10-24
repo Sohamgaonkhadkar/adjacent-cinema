@@ -360,7 +360,11 @@ export default function Home() {
             </a>
             <a href="/creator" style={{ color: "var(--amber)" }}>
               <span className="nav-index">✦</span>
-              Creator Mode
+              Creator Studio
+            </a>
+            <a href="/creator/sponsor" style={{ color: "var(--amber)" }}>
+              <span className="nav-index">✦</span>
+              FilmSponsor
             </a>
           {NAV_ITEMS.map((item, i) => (
             <a

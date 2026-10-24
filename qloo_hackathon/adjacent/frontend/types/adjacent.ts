@@ -85,6 +85,8 @@ export interface CohortMember {
 }
 
 export interface CohortScore {
+  call_id?: string | null;
+  context_id?: string | null;
   mean_affinity: number | null;
   max_affinity: number | null;
   novelty_proxy: number | null;
@@ -104,6 +106,7 @@ export interface RankedCohort {
   domain: string;
   kind?: string;
   construction_reason?: string;
+  context_id?: string | null;
   construction_evidence?: {
     rule?: string;
     subtype?: string;

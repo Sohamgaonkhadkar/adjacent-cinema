@@ -793,9 +793,170 @@ def _sanitize_snapshot(
     return trimmed
 
 
+def _validate_cultural_positioning_snapshot(payload: dict[str, Any]) -> None:
+    """Validate a new frozen strategy against the completed source run before persistence.
+
+    Legacy experiments without this optional snapshot keep the existing contract.
+    The completed run store is volatile, so freeze is only accepted while its
+    source trace/result is still available; the resulting experiment JSON itself
+    is persisted independently in the existing repository.
+    """
+    source_bet = payload.get("source_bet")
+    if not isinstance(source_bet, dict) or "cultural_multiverse_snapshot" not in source_bet:
+        return
+    snapshot = source_bet.get("cultural_multiverse_snapshot")
+
+    def reject(message: str, status_code: int = 422) -> None:
+        raise HTTPException(status_code=status_code, detail=f"Cultural positioning snapshot rejected: {message}")
+
+    if not isinstance(snapshot, dict):
+        reject("snapshot must be an object")
+    if snapshot.get("snapshot_version") != "cultural-positioning-snapshot-v1":
+        reject("unsupported snapshot_version")
+    if snapshot.get("calculation_version") != "cultural-positioning-v1":
+        reject("unsupported calculation_version")
+    run_id = payload.get("source_run_id")
+    if not isinstance(run_id, str) or not run_id or snapshot.get("source_run_id") != run_id:
+        reject("snapshot source_run_id must match the experiment source_run_id")
+    record = run_store.get(run_id)
+    if record is None:
+        reject("completed source run is no longer available for verification", 409)
+    if record.status != RunStatus.COMPLETED or not isinstance(record.result, dict):
+        reject("source run is not completed", 409)
+
+    result = record.result
+    source_status = result.get("data_status")
+    if source_status not in {"measured", "fixture"}:
+        reject("source run has no usable measured/fixture data status")
+    if payload.get("data_status") != source_status or snapshot.get("original_data_status") != source_status:
+        reject("data status does not match the completed source run")
+    film = result.get("film") if isinstance(result.get("film"), dict) else {}
+    source_title = film.get("title")
+    if not isinstance(source_title, str) or payload.get("film_title") != source_title:
+        reject("experiment film title does not match the completed source run")
+    if snapshot.get("original_test_card") != result.get("test_card"):
+        reject("original Test Card does not match the completed source run")
+
+    strategies = snapshot.get("strategies")
+    if not isinstance(strategies, list) or len(strategies) != 3:
+        reject("snapshot must preserve all three strategy alternatives")
+    strategy_by_id = {
+        strategy.get("id"): strategy
+        for strategy in strategies
+        if isinstance(strategy, dict) and isinstance(strategy.get("id"), str)
+    }
+    if set(strategy_by_id) != {"anchor", "bridge", "frontier"}:
+        reject("strategy alternatives must contain anchor, bridge and frontier exactly once")
+    selected_id = snapshot.get("selected_strategy_id")
+    selected = snapshot.get("selected_strategy")
+    if not isinstance(selected_id, str) or selected_id not in strategy_by_id or not isinstance(selected, dict):
+        reject("selected strategy is missing from the alternatives")
+    if strategy_by_id[selected_id] != selected or selected.get("availability") != "available":
+        reject("selected strategy must exactly match an available alternative")
+    if payload.get("hypothesis") != selected.get("falsifiable_hypothesis"):
+        reject("saved hypothesis does not match the selected strategy")
+    if payload.get("action_plan") != selected.get("creative_direction"):
+        reject("saved action plan does not match the selected strategy")
+
+    policy = snapshot.get("policy")
+    if not isinstance(policy, dict) or policy.get("formula_version") != "weighted-ordinal-preference-v1":
+        reject("unsupported or missing What-If formula version")
+    values = policy.get("values")
+    if not isinstance(values, dict) or set(values) != {"fit", "exploration", "breadth"}:
+        reject("policy must preserve fit, exploration and breadth priorities")
+    if any(not isinstance(value, int) or isinstance(value, bool) or not 0 <= value <= 100 for value in values.values()):
+        reject("policy priorities must be integers from 0 through 100")
+
+    trace_call_ids = {
+        row.get("call_id") for row in (record.trace or [])
+        if isinstance(row, dict) and isinstance(row.get("call_id"), str) and row.get("call_id")
+    }
+    ranked = result.get("cohorts", {}).get("ranked", []) if isinstance(result.get("cohorts"), dict) else []
+    source_members: dict[tuple[str, str], str] = {}
+    ranked_ids: set[str] = set()
+    for cohort in ranked if isinstance(ranked, list) else []:
+        if not isinstance(cohort, dict) or not isinstance(cohort.get("cohort_id"), str):
+            continue
+        cohort_id = cohort["cohort_id"]
+        ranked_ids.add(cohort_id)
+        for member in cohort.get("members", []):
+            if isinstance(member, dict) and isinstance(member.get("entity_id"), str) and isinstance(member.get("call_id"), str):
+                source_members[(cohort_id, member["entity_id"])] = member["call_id"]
+    input_entity_ids: set[str] = set()
+    programme = result.get("programme", {})
+    for item in programme.get("items", []) if isinstance(programme, dict) else []:
+        if not isinstance(item, dict) or item.get("resolved") is not True:
+            continue
+        resolution = item.get("resolution_evidence") if isinstance(item.get("resolution_evidence"), dict) else {}
+        entity_id = resolution.get("qloo_entity_id") or item.get("qloo_entity_id")
+        if isinstance(entity_id, str) and entity_id:
+            input_entity_ids.add(entity_id)
+
+    def check_call_ids(value: Any) -> None:
+        if not isinstance(value, list) or any(not isinstance(call_id, str) or call_id not in trace_call_ids for call_id in value):
+            reject("snapshot contains a call reference absent from the source run trace")
+
+    for strategy in strategies:
+        if not isinstance(strategy, dict):
+            reject("strategy alternative must be an object")
+        availability = strategy.get("availability")
+        if availability not in {"available", "unavailable"}:
+            reject("strategy availability must be explicit")
+        cohort_ids = strategy.get("source_cohort_ids", [])
+        entity_refs = strategy.get("entity_refs", [])
+        if not isinstance(cohort_ids, list) or any(not isinstance(cohort_id, str) or cohort_id not in ranked_ids for cohort_id in cohort_ids):
+            reject("strategy references a cohort outside the source run")
+        if not isinstance(entity_refs, list) or (availability == "available" and not entity_refs):
+            reject("available strategy has no source-linked entities")
+        if availability == "available" and not cohort_ids:
+            reject("available strategy has no source cohort")
+        for entity in entity_refs:
+            if not isinstance(entity, dict):
+                reject("strategy entity reference must be an object")
+            cohort_id = entity.get("cohort_id")
+            entity_id = entity.get("entity_id")
+            call_id = entity.get("call_id")
+            if not all(isinstance(value, str) for value in (cohort_id, entity_id, call_id)):
+                reject("strategy entity reference is missing a string cohort, entity, or call ID")
+            key = (cohort_id, entity_id)
+            if key not in source_members or source_members[key] != call_id:
+                reject("strategy entity/call reference does not match a returned source member")
+            check_call_ids([call_id])
+        evidence_refs = strategy.get("evidence_refs", [])
+        if not isinstance(evidence_refs, list):
+            reject("strategy evidence_refs must be a list")
+        for evidence in evidence_refs:
+            if not isinstance(evidence, dict):
+                reject("evidence reference must be an object")
+            check_call_ids(evidence.get("call_ids", []))
+            evidence_cohorts = evidence.get("cohort_ids", [])
+            evidence_entities = evidence.get("entity_ids", [])
+            if not isinstance(evidence_cohorts, list) or any(not isinstance(cohort_id, str) or cohort_id not in ranked_ids for cohort_id in evidence_cohorts):
+                reject("evidence reference names a cohort outside the source run")
+            if not isinstance(evidence_entities, list) or any(not isinstance(entity_id, str) or (entity_id not in input_entity_ids and not any(member_id == entity_id for _, member_id in source_members)) for entity_id in evidence_entities):
+                reject("evidence reference names an entity outside the source run")
+            seed_id = evidence.get("source_seed_id")
+            if seed_id is not None and (not isinstance(seed_id, str) or seed_id not in input_entity_ids):
+                reject("attribution reference does not match a resolved source input")
+        challenge = strategy.get("evidence_challenge", {})
+        if isinstance(challenge, dict):
+            check_call_ids(challenge.get("supporting_call_ids", []))
+            challenge_inputs = challenge.get("source_inputs", [])
+            if not isinstance(challenge_inputs, list):
+                reject("evidence challenge source_inputs must be a list")
+            for input_ref in challenge_inputs:
+                if isinstance(input_ref, dict):
+                    check_call_ids(input_ref.get("call_ids", []))
+
+    design = snapshot.get("experiment_design")
+    if not isinstance(design, dict) or design.get("observation_window") != payload.get("observation_window"):
+        reject("experiment protocol must preserve the saved observation window")
+
+
 @router.post("/experiments", status_code=201)
 async def save_experiment(request: SaveExperimentRequest) -> dict[str, Any]:
     payload = request.model_dump()
+    _validate_cultural_positioning_snapshot(payload)
     summary = payload.pop("investigation_summary", None)
     refs = payload.pop("evidence_refs", [])
     provenance = dict(payload.get("provenance") or {})
