@@ -1,6 +1,6 @@
 # M13.17 — Judge Demo, Safe Fallback, and Owner/ChatGPT Handoff
 
-**Status:** local code and offline checks only. This is an operator checklist, not a deployment record. No live Qloo or hosted-production validation was performed in this work session.
+**Status:** review branch/CI evidence only; this is an operator checklist, not a deployment record. PR CI run #225 passed native Python 3.12 offline tests and 8 live-marked Qloo contract tests, including the direct explainability response shape. No hosted-production or browser acceptance was performed in this work session.
 
 ## Read-only deployment compatibility notes
 
@@ -29,7 +29,7 @@
 
 ## ChatGPT / authorized owner live-integration handoff
 
-The remaining live Qloo and hosted-production acceptance is deliberately reserved to ChatGPT/the authorized owner. Use the trusted current runtime; never put a key in chat, a repository file, a browser bundle, screenshots, command history, or logs.
+The direct Qloo endpoint contract has passed in PR CI, but integrated live application-path and hosted-production acceptance remain reserved to ChatGPT/the authorized owner. Use the trusted current runtime; never put a key in chat, a repository file, a browser bundle, screenshots, command history, or logs.
 
 ### A. Live Qloo acceptance (backend only)
 
