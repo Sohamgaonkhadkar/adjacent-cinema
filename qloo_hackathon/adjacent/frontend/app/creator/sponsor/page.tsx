@@ -309,7 +309,7 @@ export default function SponsorPage() {
         supersedes_id: editingDraftId,
       };
       const response = await saveSponsorDraft(detail.campaign.campaign_id, {
-        request_id: stableRequestId("spd-draft", draftPayload),
+        request_id: stableRequestId(`spd-draft-${detail.campaign.campaign_id}`, draftPayload),
         ...draftPayload,
       });
       setDraftNotice(
@@ -404,7 +404,7 @@ export default function SponsorPage() {
         notes: outreachNotes.trim() || null,
       };
       const response = await addSponsorOutreach(detail.campaign.campaign_id, {
-        request_id: stableRequestId("spd-out", outreachPayload),
+        request_id: stableRequestId(`spd-out-${detail.campaign.campaign_id}`, outreachPayload),
         ...outreachPayload,
       });
       setOutreachNotice(
