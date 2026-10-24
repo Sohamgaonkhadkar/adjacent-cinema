@@ -283,6 +283,28 @@ test("run, fixture, session-revoke and YouTube-disconnect writes use bounded req
   }
 });
 
+test("run, experiment, provider and synthesis reads use bounded JSON requests", () => {
+  const section = (start, end) => {
+    const from = apiSource.indexOf(start);
+    assert.notEqual(from, -1, `function not found: ${start}`);
+    const to = apiSource.indexOf(end, from + start.length);
+    assert.notEqual(to, -1, `function boundary not found: ${end}`);
+    return apiSource.slice(from, to);
+  };
+  const reads = [
+    ["getRun", section("export async function getRun", "/**\n * Start the explicitly labelled fixture demo run")],
+    ["getExperiment", section("export async function getExperiment", "// ---------------------------------------------------------------------------\n// YouTube integration")],
+    ["youtubeStatus", section("export async function youtubeStatus", "/** Begins the consent flow")],
+    ["youtubeVideos", section("export async function youtubeVideos", "export async function youtubeMetrics")],
+    ["youtubeMetrics", section("export async function youtubeMetrics", "export async function recordYouTubeObservation")],
+    ["getSynthesisStatus", section("export async function getSynthesisStatus", "export function synthesizeRun")],
+  ];
+  for (const [name, source] of reads) {
+    assert.match(source, /fetchJsonWithTimeout/, `${name} must use the bounded JSON request helper`);
+    assert.doesNotMatch(source, /await fetch\(/, `${name} must not bypass the abort-aware timeout helper`);
+  }
+});
+
 test("the synthesized decision brief is requested by run id", () => {
   assert.match(apiSource, /postJson<SynthesisResponse>\("\/creator\/synthesize", \{ run_id: runId \}/);
   assert.ok(modelFields("SynthesizeRequest").has("run_id"));
