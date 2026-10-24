@@ -262,6 +262,27 @@ test("parsed request bodies only use fields the backend models declare", () => {
   );
 });
 
+test("run, fixture, session-revoke and YouTube-disconnect writes use bounded requests", () => {
+  const section = (start, end) => {
+    const from = apiSource.indexOf(start);
+    assert.notEqual(from, -1, `function not found: ${start}`);
+    const to = apiSource.indexOf(end, from + start.length);
+    assert.notEqual(to, -1, `function boundary not found: ${end}`);
+    return apiSource.slice(from, to);
+  };
+  const createRun = section("export async function createRun", "export async function getRun");
+  const createDemoRun = section("export async function createDemoRun", "export function streamRun");
+  const revokeGuest = section("export async function revokeSponsorGuestSession", "async function sponsorFetch");
+  const disconnectYouTube = section("export async function disconnectYouTube", "// ── Role-B synthesis");
+  assert.match(createRun, /fetchJsonWithTimeout/);
+  assert.match(createDemoRun, /fetchJsonWithTimeout/);
+  assert.match(revokeGuest, /fetchWithTimeout/);
+  assert.match(disconnectYouTube, /fetchJsonWithTimeout/);
+  for (const [name, source] of [["createRun", createRun], ["createDemoRun", createDemoRun], ["revoke guest", revokeGuest], ["disconnect YouTube", disconnectYouTube]]) {
+    assert.doesNotMatch(source, /await fetch\(/, `${name} must not bypass the abort-aware timeout helpers`);
+  }
+});
+
 test("the synthesized decision brief is requested by run id", () => {
   assert.match(apiSource, /postJson<SynthesisResponse>\("\/creator\/synthesize", \{ run_id: runId \}/);
   assert.ok(modelFields("SynthesizeRequest").has("run_id"));
