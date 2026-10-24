@@ -10,7 +10,6 @@
 // fabricates brands, affinity values, programmes, or outcomes.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import {
   addSponsorOutreach,
   addSponsorSourceReview,
@@ -202,13 +201,12 @@ export default function SponsorPage() {
           ? "This guest workspace expired or was revoked. Start a new isolated workspace to continue."
           : guestAccessError || "FilmSponsor could not initialize. Please retry.";
     return (
-      <main style={{ background: "var(--void)", minHeight: "100vh", color: "var(--paper)" }}>
-        <header style={{ padding: "20px 32px", borderBottom: "1px solid var(--rule)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+      <main className="nightfall-route-page">
+        <header className="nightfall-route-title">
           <div>
             <span className="micro-label">ADJACENT · CREATOR MODE · SPONSOR</span>
-            <h1 style={{ fontFamily: "var(--display)", fontSize: 28, fontWeight: 400, margin: "4px 0 0" }}>Sponsorship campaigns with <em style={{ color: "#bcb4a7" }}>receipts.</em></h1>
+            <h1>Sponsorship campaigns with <em>receipts.</em></h1>
           </div>
-          <Link href="/creator" className="intake-sample-btn" style={{ textDecoration: "none" }}>← Creator</Link>
         </header>
         <section role="status" aria-live="polite" className="evidence-panel" style={{ maxWidth: 760, margin: "48px auto", padding: 24, borderColor: guestAccess === "blocked" ? "var(--amber)" : "var(--rule)" }}>
           <strong className="mono-note">{guestAccess === "blocked" ? "GUEST WORKSPACE UNAVAILABLE" : guestAccess === "expired" ? "SESSION ENDED" : guestAccess === "checking" ? "SECURE WORKSPACE" : "WORKSPACE ERROR"}</strong>
@@ -409,32 +407,12 @@ export default function SponsorPage() {
   const report = latestDiscovery?.report ?? null;
 
   return (
-    <main style={{ background: "var(--void)", minHeight: "100vh", color: "var(--paper)" }}>
-      <header
-        style={{
-          padding: "20px 32px",
-          borderBottom: "1px solid var(--rule)",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: 12,
-        }}
-      >
+    <main className="nightfall-route-page">
+      <header className="nightfall-route-title">
         <div>
           <span className="micro-label">ADJACENT · CREATOR MODE · SPONSOR</span>
-          <h1 style={{ fontFamily: "var(--display)", fontSize: 28, fontWeight: 400, margin: "4px 0 0" }}>
-            Sponsorship campaigns with <em style={{ color: "#bcb4a7" }}>receipts.</em>
-          </h1>
+          <h1>Sponsorship campaigns with <em>receipts.</em></h1>
         </div>
-        <span style={{ display: "flex", gap: 8 }}>
-          <Link href="/creator" className="intake-sample-btn" style={{ textDecoration: "none" }}>
-            ← Creator
-          </Link>
-          <Link href="/" className="intake-sample-btn" style={{ textDecoration: "none" }}>
-            Home
-          </Link>
-        </span>
       </header>
 
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "40px 24px 80px" }}>

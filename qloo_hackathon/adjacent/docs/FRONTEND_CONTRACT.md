@@ -61,10 +61,12 @@ Built by `_build_result()`; TypeScript mirror: `AdjacentRunResult` in
     "tag_count": int
   },
   "cohorts": {
-    "ranked": [ { "cohort_id", "domain": "urn:entity:…", "rank": 1, "member_count": int,
+    "ranked": [ { "cohort_id", "domain": "urn:entity:…", "context_id", "rank": 1, "member_count": int,
                   "verdict": "strong|…|null",
-                  "score": { "mean_affinity", "max_affinity", "novelty_proxy" } | null,
-                  "members": [ { "entity_id", "name", "affinity", "band", "popularity" } ] } ],
+                  "score": { "call_id", "context_id", "mean_affinity", "max_affinity", "novelty_proxy" } | null,
+                  "members": [ { "entity_id", "name", "affinity", "band", "popularity", "call_id",
+                                 "qloo_attributions": [{"entity_id", "score"}],
+                                 "qloo_attribution_status": "returned|missing|unsupported|not_requested_limit|not_requested_budget" } ] } ],
     "rejected": [ { "cohort_id", "domain", "rejection_reason", "rejection_detail" } ]
   },
   "geography": {                                // present only when the heatmap step ran
@@ -149,6 +151,14 @@ run; the same `GET /api/run/{id}`, `/stream`, `/trace` endpoints watch it.
 test_card.provenance.primary_cohort_id`). `data_status` is `"fixture"` on demo runs and
 `"measured"` on successful live-Qloo runs; a failed live run has no result. Creator
 success criteria never predict views/retention/revenue.
+
+### Positioning Arena (derived from an existing completed Creator response)
+
+Positioning Arena adds no provider route and makes no new Qloo request. The Creator browser derives ANCHOR, BRIDGE, and FRONTIER candidates from `result.cohorts.ranked`, verified `programme.items`, and the run's `trace` call IDs. It refuses candidates without a strong/moderate verdict, at least two trace-linked members at or above Qloo's Medium band, finite source scores, and a matching data status. BRIDGE requires a Qloo-returned shared tag or validated attribution to the same verified source entity across distinct domains; otherwise it abstains. FRONTIER requires a different eligible cohort in the anchor's same scoring context with a higher, non-missing `novelty_proxy`.
+
+The existing `novelty_proxy` is `1 - median_popularity` from the source cohort. It is an exploratory proxy only. Fit and novelty What-If priorities use ordinal positions only inside each source scoring context; BRIDGE's cross-context fit/novelty dimensions are explicitly unavailable. Breadth counts distinct returned entity domains. The weighted ordinal preference index is an operator preference aid, not a calibrated score or behaviour prediction. Every strategy retains measured/fixture status and source call/cohort/entity IDs.
+
+When the creator saves the selected strategy, it is added as `source_bet.cultural_multiverse_snapshot` inside the existing experiment JSON snapshot, alongside the original Test Card, alternatives, selection, policy/formula version, limitations, and exact edited experiment design. No SQLite migration or parallel experiment store is introduced. Older records without this optional key continue to load; observations/evaluations remain append-only. The browser-side strategy contract is in `frontend/lib/positioningArena.ts` and its matching TypeScript types/components/tests.
 
 ## 6. Experiment lifecycle routes (M13.9)
 

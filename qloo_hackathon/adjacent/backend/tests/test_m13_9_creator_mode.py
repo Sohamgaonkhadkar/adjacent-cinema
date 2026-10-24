@@ -62,6 +62,12 @@ class TestCreatorFixtureDemo:
         assert first_member["type"]
         assert isinstance(first_member["tags"], list)
         assert first_member["call_id"]
+        assert isinstance(first_member["qloo_attributions"], list)
+        assert first_member["qloo_attribution_status"] in {
+            "returned", "missing", "unsupported", "not_requested_limit", "not_requested_budget"
+        }
+        source_call_ids = {row["call_id"] for row in final["trace"]}
+        assert first_member["call_id"] in source_call_ids
         assert "entities returned for this programme" not in first_member["name"]
 
         synthesis_status = client.get("/creator/synthesis-status")

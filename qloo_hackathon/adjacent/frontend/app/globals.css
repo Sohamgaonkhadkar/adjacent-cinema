@@ -1574,3 +1574,301 @@ summary:focus-visible,
 @media (max-width: 760px) {
   .agraph-inspector { max-height: none; overflow: visible; }
 }
+
+/* ─── Project Nightfall port · shared application shell ─────────────────── */
+:root { --void: var(--ink); --ink-2: #11100e; --ink-3: #1c1a17; --ink-4: #2a2723; --amber-2: #a67f52; --sage: #8a9478; }
+
+.nightfall-site-header {
+  position: sticky; z-index: 70; top: 0; width: 100%;
+  border-bottom: 1px solid rgba(233,228,218,.12);
+  background: rgba(9,9,9,.93); backdrop-filter: blur(16px);
+}
+.nightfall-site-header-inner {
+  width: min(100%, 1740px); min-height: 66px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between; gap: 28px;
+  padding: 12px clamp(18px, 5vw, 84px);
+}
+.nightfall-wordmark {
+  display: inline-flex; align-items: center; gap: 13px;
+  color: #f0ebe2; font-family: var(--display); font-size: 25px; line-height: 1;
+  letter-spacing: .005em; white-space: nowrap;
+}
+.nightfall-wordmark span {
+  padding-left: 12px; border-left: 1px solid rgba(234,227,215,.3);
+  color: #a9a399; font-family: var(--mono); font-size: 7px; letter-spacing: .1em;
+  line-height: 1.5; text-transform: uppercase;
+}
+.nightfall-site-nav { display: flex; align-items: center; gap: clamp(12px,2.4vw,38px); }
+.nightfall-site-nav a {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 40px;
+  color: rgba(228,222,211,.68); font-size: 9px; letter-spacing: .12em;
+  text-transform: uppercase; transition: color .18s ease;
+}
+.nightfall-site-nav a:hover,.nightfall-site-nav a.is-current { color: var(--paper); }
+.nightfall-site-nav a.is-current { box-shadow: inset 0 -1px var(--amber); }
+.nightfall-site-nav small { color: #817a6e; font-family: var(--mono); font-size: 8px; }
+.nightfall-menu-toggle { display: none; width: 42px; height: 42px; border: 1px solid var(--rule); align-items: center; justify-content: center; flex-direction: column; gap: 6px; }
+.nightfall-menu-toggle span { width: 18px; height: 1px; background: var(--paper); }
+.nightfall-mobile-nav { display: none; }
+
+/* ─── Project Nightfall port · homepage ─────────────────────────────────── */
+.nightfall-home { overflow: clip; background: var(--ink); color: var(--paper); }
+.nightfall-home-hero { position: relative; min-height: min(820px, calc(100svh - 66px)); min-height: max(680px, calc(100svh - 66px)); isolation: isolate; background: #151310; }
+.nightfall-home-hero-image,.nightfall-home-hero-shade,.nightfall-film-grain { position: absolute; inset: 0; }
+.nightfall-home-hero-image { z-index: -3; background: url("https://images.pexels.com/photos/7991486/pexels-photo-7991486.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=2200&h=1450") center 54%/cover; filter: saturate(.62); }
+.nightfall-home-hero-shade { z-index: -2; background: linear-gradient(90deg,rgba(7,7,7,.91) 0%,rgba(7,7,7,.65) 43%,rgba(7,7,7,.18) 100%),linear-gradient(0deg,rgba(7,7,7,.72),transparent 46%,rgba(7,7,7,.24)); }
+.nightfall-film-grain { z-index: -1; pointer-events: none; opacity: .1; mix-blend-mode: soft-light; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.45'/%3E%3C/svg%3E"); }
+.nightfall-home-hero-inner { width: min(100%,1740px); min-height: inherit; margin: auto; padding: 24px clamp(18px,7.2vw,124px) 26px; display: flex; flex-direction: column; }
+.nightfall-volume-line,.nightfall-home-hero-footer { display:flex; justify-content:space-between; gap:18px; color:rgba(232,226,213,.65); font-family:var(--mono); font-size:8px; letter-spacing:.13em; text-transform:uppercase; }
+.nightfall-home-title-block { margin: auto 0; padding: 72px 0 84px; max-width: 980px; }
+.nightfall-kicker { margin:0; color:var(--amber); font-family:var(--mono); font-size:9px; letter-spacing:.18em; line-height:1.6; text-transform:uppercase; }
+.nightfall-home-title-block h1,.nightfall-section-heading h2,.nightfall-journey-intro h2,.nightfall-principles-section h2 {
+  margin:20px 0 0; color:#f0eadf; font-family:var(--display); font-size:clamp(58px,8vw,116px); font-weight:400; letter-spacing:-.045em; line-height:.86; text-wrap:balance;
+}
+.nightfall-home-title-block h1 em,.nightfall-section-heading h2 em,.nightfall-journey-intro h2 em,.nightfall-principles-section h2 em { color:#c9bda9; font-weight:400; }
+.nightfall-home-lede { max-width:440px; margin:28px 0 0; color:rgba(235,229,218,.83); font-size:14px; line-height:1.85; }
+.nightfall-home-actions { display:flex; align-items:center; gap:12px 22px; flex-wrap:wrap; margin-top:29px; }
+.nightfall-button { display:inline-flex; align-items:center; justify-content:center; gap:14px; min-height:45px; padding:0 17px; border:1px solid rgba(232,226,213,.36); color:var(--paper); font-family:var(--mono); font-size:9px; letter-spacing:.1em; text-transform:uppercase; transition:background .18s,border-color .18s,color .18s; }
+.nightfall-button:hover { border-color:var(--amber); background:rgba(194,154,110,.08); }
+.nightfall-button.is-amber { border-color:var(--amber); background:var(--amber); color:#15120f; }
+.nightfall-button.is-amber:hover { background:#d0aa7d; }
+.nightfall-text-link { display:inline-flex; align-items:center; gap:13px; padding-bottom:5px; border-bottom:1px solid rgba(232,226,213,.42); color:var(--paper); font-size:10px; letter-spacing:.12em; text-transform:uppercase; }
+.nightfall-text-link span { color:var(--amber); font-size:17px; transition:transform .2s; }
+.nightfall-text-link:hover span { transform:translateX(4px); }
+.nightfall-home-hero-footer a { text-align:right; }
+.nightfall-home-hero-footer a:hover { color:var(--amber); }
+.nightfall-content-shell { width:min(100%,1740px); margin:0 auto; padding:clamp(66px,9vw,132px) clamp(18px,7.2vw,124px); }
+.nightfall-journey-section { border-top:1px solid var(--rule); background:#0b0b0a; }
+.nightfall-journey-grid { display:grid; grid-template-columns:minmax(250px,.78fr) minmax(0,1.22fr); gap:clamp(44px,8vw,130px); }
+.nightfall-journey-intro h2,.nightfall-principles-section h2 { font-size:clamp(48px,5.8vw,82px); }
+.nightfall-journey-intro>p:not(.nightfall-kicker) { max-width:370px; margin:25px 0 27px; color:#aaa59b; font-size:13px; line-height:1.85; }
+.nightfall-journey-list { list-style:none; padding:0; margin:0; }
+.nightfall-journey-list li { display:grid; grid-template-columns:52px minmax(0,1fr) 20px; gap:18px; align-items:start; padding:22px 0; border-top:1px solid var(--rule); }
+.nightfall-step-number { padding-top:6px; color:var(--amber); font-family:var(--mono); font-size:10px; letter-spacing:.13em; }
+.nightfall-journey-list h3 { margin:0; font-family:var(--display); font-size:26px; font-weight:400; }
+.nightfall-journey-list h3 a:hover { color:var(--amber); }
+.nightfall-journey-list p { max-width:560px; margin:6px 0 0; color:#969188; font-size:12px; line-height:1.7; }
+.nightfall-step-arrow { color:#756d62; }
+.nightfall-principles-section { border-top:1px solid var(--rule); background:#11100e; }
+.nightfall-principles-section h2 { margin-bottom:48px; }
+.nightfall-principles-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; }
+.nightfall-principles-grid article { border-top:1px solid rgba(194,154,110,.5); padding:20px 4px 24px; }
+.nightfall-principles-grid article>span { color:var(--amber); font-family:var(--mono); font-size:10px; }
+.nightfall-principles-grid h3 { margin:17px 0 8px; font-family:var(--display); font-size:28px; font-weight:400; }
+.nightfall-principles-grid p { max-width:370px; margin:0; color:#a29d94; font-size:12px; line-height:1.8; }
+.nightfall-route-links { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); margin-top:42px; border:1px solid var(--rule); }
+.nightfall-route-links a { display:grid; grid-template-columns:38px minmax(0,1fr) 25px; gap:4px 12px; padding:20px; }
+.nightfall-route-links a+a { border-left:1px solid var(--rule); }
+.nightfall-route-links a:hover { background:rgba(194,154,110,.05); }
+.nightfall-route-links a>span { grid-row:1/3; color:var(--amber); font-family:var(--mono); font-size:9px; }
+.nightfall-route-links strong { font-family:var(--display); font-size:23px; font-weight:400; }
+.nightfall-route-links small { grid-column:2; color:#928d83; font-size:10px; line-height:1.5; }
+.nightfall-route-links b { grid-column:3; grid-row:1/3; align-self:center; color:var(--amber); font-weight:400; }
+.nightfall-home-footer { display:flex; justify-content:space-between; gap:18px; padding:20px clamp(18px,7.2vw,124px); border-top:1px solid var(--rule); color:#817c73; font-family:var(--mono); font-size:8px; letter-spacing:.08em; text-transform:uppercase; }
+
+/* ─── Project Nightfall port · homepage Multiverse concept preview ──────── */
+.nightfall-multiverse { border-top:1px solid var(--rule); background:#0d0d0c; }
+.nightfall-section-heading { display:flex; justify-content:space-between; align-items:end; gap:34px; margin-bottom:34px; }
+.nightfall-section-heading h2 { font-size:clamp(48px,6.5vw,92px); }
+.nightfall-section-deck { max-width:350px; margin:0 0 8px; color:#a19b91; font-size:12px; line-height:1.8; }
+.nightfall-concept-banner { display:flex; align-items:center; gap:10px; min-height:42px; padding:10px 14px; border:1px solid rgba(194,154,110,.35); background:rgba(194,154,110,.07); color:#d4ad7c; font-family:var(--mono); font-size:8px; letter-spacing:.13em; line-height:1.5; }
+.nightfall-live-dot { width:6px; height:6px; border-radius:50%; background:var(--amber); box-shadow:0 0 0 4px rgba(194,154,110,.1); }
+.nightfall-lens-tabs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1px; margin-top:22px; background:var(--rule); border:1px solid var(--rule); }
+.nightfall-lens-tabs button { display:grid; gap:10px; min-height:146px; padding:20px; background:#10100e; text-align:left; cursor:pointer; }
+.nightfall-lens-tabs button:hover,.nightfall-lens-tabs button.is-active { background:#171511; }
+.nightfall-lens-tabs button.is-active { box-shadow:inset 0 2px var(--amber); }
+.nightfall-lens-tabs button span { color:#a08769; font-family:var(--mono); font-size:8px; letter-spacing:.1em; text-transform:uppercase; }
+.nightfall-lens-tabs button strong { font-family:var(--display); font-size:34px; font-weight:400; }
+.nightfall-lens-tabs button small { color:#9b958a; font-size:11px; line-height:1.5; }
+.nightfall-lens-panel { display:grid; grid-template-columns:minmax(0,1.12fr) minmax(300px,.88fr); min-height:380px; border:1px solid var(--rule); border-top:0; background:#11100e; }
+.nightfall-lens-art { position:relative; min-height:380px; overflow:hidden; background:#181510; isolation:isolate; }
+.nightfall-lens-art-image,.nightfall-lens-art-shade { position:absolute; inset:0; z-index:-2; }
+.nightfall-lens-art-image { background:url("https://images.pexels.com/photos/5515483/pexels-photo-5515483.jpeg?auto=compress&cs=tinysrgb&w=1400") center/cover; filter:grayscale(.7) brightness(.6); }
+.nightfall-lens-panel.is-bridge .nightfall-lens-art-image { background-image:url("https://images.pexels.com/photos/19374140/pexels-photo-19374140.jpeg?auto=compress&cs=tinysrgb&w=1400"); }
+.nightfall-lens-panel.is-frontier .nightfall-lens-art-image { background-image:url("https://images.pexels.com/photos/5515483/pexels-photo-5515483.jpeg?auto=compress&cs=tinysrgb&w=1400"); background-position:70% center; }
+.nightfall-lens-art-shade { z-index:-1; background:linear-gradient(0deg,rgba(8,8,8,.78),rgba(8,8,8,.16) 60%,rgba(8,8,8,.12)); }
+.nightfall-lens-art svg { display:block; width:100%; height:100%; min-height:380px; }
+.nightfall-lens-art svg path { fill:none; stroke:rgba(194,154,110,.65); stroke-width:1.1; stroke-dasharray:4 5; }
+.nightfall-lens-art svg circle { fill:#11100e; stroke:var(--amber); stroke-width:1.2; }
+.nightfall-lens-art svg circle.subject { fill:rgba(194,154,110,.14); stroke-width:1; }
+.nightfall-lens-art svg circle.orbit { fill:none; stroke:rgba(194,154,110,.2); stroke-dasharray:2 5; }
+.nightfall-lens-art svg text { fill:#f0eadf; font-family:var(--mono); font-size:10px; letter-spacing:2px; }
+.nightfall-lens-art svg text.diagram-sub { fill:#c29a6e; font-size:5px; letter-spacing:1px; }
+.nightfall-art-caption { position:absolute; left:16px; bottom:14px; color:#d0c5b4; font-family:var(--mono); font-size:8px; letter-spacing:.1em; text-transform:uppercase; }
+.nightfall-lens-copy { display:flex; flex-direction:column; justify-content:center; padding:clamp(24px,4vw,54px); border-left:1px solid var(--rule); }
+.nightfall-lens-copy h3 { margin:14px 0 0; font-family:var(--display); font-size:clamp(33px,4vw,52px); font-weight:400; line-height:.98; }
+.nightfall-lens-copy>p:not(.nightfall-kicker):not(.nightfall-lens-limit) { color:#aaa49a; font-size:12px; line-height:1.8; }
+.nightfall-limits-list { margin:20px 0 0; border-top:1px solid var(--rule); }
+.nightfall-limits-list div { display:grid; grid-template-columns:105px 1fr; gap:12px; padding:9px 0; border-bottom:1px solid rgba(233,228,218,.08); }
+.nightfall-limits-list dt { color:#a28767; font-family:var(--mono); font-size:8px; letter-spacing:.1em; text-transform:uppercase; }
+.nightfall-limits-list dd { margin:0; color:#c4beb4; font-size:10px; }
+.nightfall-lens-limit { margin:18px 0 0; color:#7f796f; font-size:10px; line-height:1.6; }
+.nightfall-source-note { margin:12px 0 0; color:#706b63; font-family:var(--mono); font-size:8px; letter-spacing:.06em; line-height:1.5; text-transform:uppercase; }
+
+/* ─── Seven-stage Creator workflow ──────────────────────────────────────── */
+.step-nav { top:66px; z-index:60; }
+#intake,#analysis,#fingerprint,#positioning,#brief,#test-card,#experiments { scroll-margin-top:126px; }
+.positioning-stage { margin:30px 0; scroll-margin-top:128px; }
+.positioning-stage-heading { display:flex; align-items:end; justify-content:space-between; gap:24px; margin:0 0 14px; }
+.positioning-stage-heading h2 { margin:7px 0 0; font-family:var(--display); font-size:clamp(34px,4vw,56px); font-weight:400; line-height:.96; }
+.positioning-stage-heading p { max-width:370px; margin:0; color:#99948a; font-size:11px; line-height:1.7; }
+
+@media(max-width:900px) {
+  .nightfall-site-header-inner { min-height:60px; }
+  .nightfall-site-nav { display:none; }
+  .nightfall-menu-toggle { display:flex; }
+  .nightfall-mobile-nav { position:absolute; top:100%; left:0; right:0; z-index:71; display:grid; padding:8px 18px 16px; border-bottom:1px solid var(--rule); background:#090909; }
+  .nightfall-mobile-nav a { display:grid; grid-template-columns:42px 1fr 18px; align-items:center; min-height:52px; border-bottom:1px solid rgba(233,228,218,.1); color:var(--paper); font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; }
+  .nightfall-mobile-nav a span:first-child { color:var(--amber); font-size:8px; }
+  .nightfall-mobile-nav a span:last-child { color:var(--amber); font-size:14px; text-align:right; }
+  .nightfall-home-hero { min-height:calc(100svh - 60px); }
+  .nightfall-home-title-block h1 { font-size:clamp(56px,12vw,90px); }
+  .nightfall-journey-grid { grid-template-columns:1fr; gap:42px; }
+  .nightfall-section-heading { display:block; }
+  .nightfall-section-deck { margin-top:22px; }
+  .nightfall-lens-panel { grid-template-columns:1fr; }
+  .nightfall-lens-copy { border-left:0; border-top:1px solid var(--rule); }
+}
+@media(max-width:600px) {
+  .nightfall-wordmark { font-size:22px; }
+  .nightfall-wordmark span { font-size:6px; }
+  .nightfall-volume-line span:last-child { display:none; }
+  .nightfall-home-hero-footer { align-items:end; font-size:7px; }
+  .nightfall-home-actions { align-items:stretch; flex-direction:column; }
+  .nightfall-button { width:100%; }
+  .nightfall-text-link { width:fit-content; }
+  .nightfall-journey-list li { grid-template-columns:36px minmax(0,1fr) 15px; gap:10px; }
+  .nightfall-journey-list h3 { font-size:24px; }
+  .nightfall-principles-grid { grid-template-columns:1fr; gap:3px; }
+  .nightfall-route-links { grid-template-columns:1fr; }
+  .nightfall-route-links a+a { border-left:0; border-top:1px solid var(--rule); }
+  .nightfall-lens-tabs { grid-template-columns:1fr; }
+  .nightfall-lens-tabs button { min-height:unset; padding:16px; }
+  .nightfall-lens-art,.nightfall-lens-art svg { min-height:300px; }
+  .nightfall-home-footer { flex-direction:column; }
+  .positioning-stage-heading { display:block; }
+  .positioning-stage-heading p { margin-top:12px; }
+}
+
+/* ─── Positioning Arena · adapted from Project Nightfall / real run data ── */
+.positioning-arena { margin:0; padding:clamp(18px,3.5vw,38px); border:1px solid var(--rule); background:#10100e; color:var(--paper); }
+.positioning-arena-header { display:flex; align-items:end; justify-content:space-between; gap:24px; padding-bottom:22px; border-bottom:1px solid var(--rule); }
+.positioning-arena-header h3 { margin:10px 0 0; font-family:var(--display); font-size:clamp(36px,5vw,64px); font-weight:400; letter-spacing:-.035em; line-height:.9; }
+.positioning-arena-source { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px 14px; max-width:360px; color:#8f897f; font-family:var(--mono); font-size:8px; letter-spacing:.08em; overflow-wrap:anywhere; }
+.positioning-status-chip,.positioning-badge { display:inline-flex; align-items:center; padding:4px 7px; border:1px solid rgba(194,154,110,.36); color:#d1aa7a; font-family:var(--mono); font-size:8px; letter-spacing:.09em; text-transform:uppercase; }
+.positioning-status-chip.is-fixture { color:#d0a878; border-color:rgba(194,154,110,.5); }
+.positioning-status-chip.is-unknown { color:#aaa49a; border-color:var(--rule); }
+.positioning-arena-intro { max-width:780px; margin:18px 0 26px; color:#a39d93; font-size:12px; line-height:1.8; }
+.positioning-whatif { padding:clamp(16px,2.5vw,26px); border:1px solid rgba(194,154,110,.32); background:#0b0b0a; }
+.positioning-subhead { display:flex; align-items:end; justify-content:space-between; gap:18px; }
+.positioning-subhead h4 { margin:8px 0 0; font-family:var(--display); font-size:clamp(27px,3.5vw,42px); font-weight:400; line-height:.95; }
+.positioning-formula-tag { color:#887b68; font-family:var(--mono); font-size:8px; letter-spacing:.1em; }
+.positioning-priority-fields { display:grid; gap:12px; margin:22px 0 0; padding:0; border:0; }
+.positioning-priority-row { display:grid; grid-template-columns:minmax(155px,.8fr) minmax(120px,1.2fr) 35px; align-items:center; gap:16px; color:#c9c2b6; }
+.positioning-priority-label { font-size:11px; }
+.positioning-priority-label small { display:block; margin-top:3px; color:#777269; font-size:9px; line-height:1.4; }
+.positioning-priority-row input { width:100%; accent-color:var(--amber); }
+.positioning-priority-row.is-unavailable { color:#716d65; }
+.positioning-priority-value { color:var(--amber); font-family:var(--mono); font-size:9px; text-align:right; }
+.positioning-order-notes { margin:17px 0; color:#7f7a71; font-family:var(--mono); font-size:8px; line-height:1.65; }
+.positioning-suggestion-panel { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(250px,.8fr); border:1px solid var(--rule); }
+.positioning-order-list { padding:18px; }
+.positioning-order-list ol { list-style:none; margin:10px 0 0; padding:0; }
+.positioning-order-list li { display:grid; grid-template-columns:30px minmax(90px,.5fr) minmax(110px,.6fr); gap:4px 10px; padding:11px 7px; border-top:1px solid rgba(233,228,218,.08); }
+.positioning-order-list li.is-suggested { background:rgba(194,154,110,.07); }
+.positioning-order-rank { color:var(--amber); font-family:var(--mono); font-size:9px; }
+.positioning-order-name { display:flex; align-items:center; gap:7px; font-family:var(--mono); font-size:9px; letter-spacing:.08em; }
+.positioning-order-name small { color:#d8b789; font-size:7px; text-transform:uppercase; }
+.positioning-order-delta { color:#8c877e; font-family:var(--mono); font-size:7px; text-align:right; }
+.positioning-order-list li p { grid-column:2/4; margin:0; color:#89847b; font-size:9px; line-height:1.5; }
+.positioning-order-list li p.positioning-order-unavailable { color:#c29a6e; }
+.positioning-empty { color:#aaa49a; font-size:11px; line-height:1.7; }
+.positioning-apply-panel { display:flex; flex-direction:column; justify-content:center; padding:20px; border-left:1px solid var(--rule); background:#14130f; }
+.positioning-apply-panel>p { margin:9px 0 16px; color:#b1aa9f; font-size:11px; line-height:1.7; }
+.positioning-apply-panel>p strong { color:#eee7dc; font-weight:500; }
+.positioning-preview-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.positioning-apply-panel>small { display:block; margin-top:12px; color:#777269; font-size:9px; line-height:1.6; }
+.positioning-action-primary,.positioning-action-secondary { display:inline-flex; align-items:center; justify-content:center; min-height:36px; padding:0 12px; border:1px solid rgba(194,154,110,.45); color:#d4b186; font-family:var(--mono); font-size:8px; letter-spacing:.09em; text-transform:uppercase; cursor:pointer; transition:background .18s,color .18s; }
+.positioning-action-primary { background:rgba(194,154,110,.12); }
+.positioning-action-primary:hover:not(:disabled),.positioning-action-secondary:hover { background:var(--amber); color:#111; }
+.positioning-action-primary:disabled { opacity:.48; cursor:not-allowed; }
+.positioning-action-secondary { background:transparent; border-color:var(--rule); color:#c1baaf; }
+.positioning-compare-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1px; margin-top:14px; background:var(--rule); border:1px solid var(--rule); }
+.positioning-compare-grid article { padding:16px; background:#12110e; }
+.positioning-compare-grid article.is-suggested { box-shadow:inset 0 2px var(--amber); }
+.positioning-compare-grid article.is-match { box-shadow:inset 0 2px #8a9478; }
+.positioning-compare-grid h5 { margin:8px 0; font-family:var(--display); font-size:26px; font-weight:400; }
+.positioning-compare-grid p:not(.micro-label) { margin:0; color:#b2aca1; font-size:10px; line-height:1.6; }
+.positioning-compare-grid small { display:block; margin-top:10px; color:#7e786e; font-family:var(--mono); font-size:8px; overflow-wrap:anywhere; }
+.positioning-applied-preview { margin-top:14px; padding:15px 17px; border-left:2px solid var(--amber); background:rgba(194,154,110,.05); }
+.positioning-applied-preview h5 { margin:8px 0; font-family:var(--display); font-size:25px; font-weight:400; }
+.positioning-applied-preview p:last-child { color:#99938a; font-size:10px; line-height:1.65; }
+.positioning-strategy-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-top:16px; align-items:start; }
+.positioning-strategy-card { min-width:0; padding:18px; border:1px solid var(--rule); background:#12110e; }
+.positioning-strategy-card.is-selected { border-color:rgba(194,154,110,.63); }
+.positioning-strategy-card.is-suggested:not(.is-selected) { box-shadow:inset 0 2px rgba(194,154,110,.75); }
+.positioning-strategy-card.is-unavailable { opacity:.75; background:#0d0d0c; }
+.positioning-strategy-topline { display:flex; justify-content:space-between; align-items:flex-start; gap:9px; padding-bottom:14px; border-bottom:1px solid rgba(233,228,218,.09); }
+.positioning-strategy-topline h4 { margin:4px 0 0; color:#b7b0a4; font-family:var(--mono); font-size:8px; font-weight:400; letter-spacing:.1em; text-transform:uppercase; }
+.positioning-card-badges { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:4px; }
+.positioning-badge.is-selected { color:#d7b88e; border-color:rgba(194,154,110,.55); }
+.positioning-badge.is-suggested { color:#d4b186; border-style:dashed; }
+.positioning-badge.is-preview { color:#b2c19f; border-color:rgba(138,148,120,.5); }
+.positioning-strategy-card>h5 { margin:16px 0 10px; font-family:var(--display); font-size:25px; font-weight:400; line-height:1.03; }
+.positioning-creative-direction,.positioning-unavailable-reason { color:#a49e94; font-size:10px; line-height:1.7; }
+.positioning-provenance { margin:14px 0; color:#817b72; font-family:var(--mono); font-size:7px; line-height:1.6; overflow-wrap:anywhere; }
+.positioning-entity-list { list-style:none; margin:0; padding:0; border-top:1px solid rgba(233,228,218,.09); }
+.positioning-entity-list li { display:grid; gap:4px; padding:9px 0; border-bottom:1px solid rgba(233,228,218,.07); }
+.positioning-entity-list strong { color:#d2ccc1; font-size:10px; font-weight:500; }
+.positioning-entity-list span,.positioning-entity-list code { color:#878177; font-family:var(--mono); font-size:7px; line-height:1.5; overflow-wrap:anywhere; }
+.positioning-dimensions { display:grid; gap:5px; margin-top:13px; }
+.positioning-dimensions div { display:grid; grid-template-columns:48px 1fr; gap:8px; color:#a49e94; font-size:8px; line-height:1.5; }
+.positioning-dimensions span { color:#bd9b70; font-family:var(--mono); font-size:7px; letter-spacing:.08em; }
+.positioning-rationale { color:#aaa49a; font-size:9px; line-height:1.65; }
+.positioning-rationale strong { color:#d3c9ba; font-weight:500; }
+.positioning-evidence-challenge { margin:14px 0; padding:10px 0; border-top:1px solid var(--rule); border-bottom:1px solid var(--rule); }
+.positioning-evidence-challenge summary { color:#c2a076; font-family:var(--mono); font-size:8px; letter-spacing:.08em; text-transform:uppercase; cursor:pointer; }
+.positioning-evidence-challenge p,.positioning-evidence-challenge li { color:#9e988e; font-size:9px; line-height:1.65; }
+.positioning-evidence-challenge ul { padding-left:17px; }
+.positioning-evidence-refs { display:grid; gap:8px; }
+.positioning-evidence-refs p { margin:0; padding:8px 0; border-bottom:1px solid rgba(233,228,218,.07); color:#a19b91; font-size:8px; line-height:1.6; }
+.positioning-evidence-refs p>span { display:block; margin-bottom:3px; color:#c5a174; font-family:var(--mono); font-size:7px; text-transform:uppercase; }
+.positioning-evidence-refs small { display:block; margin-top:4px; color:#757067; font-family:var(--mono); font-size:7px; overflow-wrap:anywhere; }
+.positioning-strategy-card>.positioning-action-secondary { margin-top:14px; }
+.positioning-brief { display:grid; grid-template-columns:1fr 1fr; gap:10px 24px; margin-top:16px; padding:clamp(18px,3vw,30px); border:1px solid rgba(194,154,110,.34); background:#15130f; }
+.positioning-brief>div:first-child { grid-row:span 2; }
+.positioning-brief h4 { margin:10px 0 0; font-family:var(--display); font-size:clamp(28px,3.5vw,42px); font-weight:400; line-height:.97; }
+.positioning-brief p { margin:0 0 9px; color:#b2aca1; font-size:10px; line-height:1.7; }
+.positioning-brief p strong { color:#e0d7c9; font-weight:500; }
+.positioning-brief-note { grid-column:1/-1; padding-top:10px; border-top:1px solid var(--rule); color:#7e786e!important; font-family:var(--mono); font-size:8px!important; }
+.visually-hidden { position:absolute!important; width:1px!important; height:1px!important; padding:0!important; margin:-1px!important; overflow:hidden!important; clip:rect(0,0,0,0)!important; white-space:nowrap!important; border:0!important; }
+
+/* Route-title hierarchy and responsive evidence grids. */
+.creator-page-heading,.nightfall-route-title { display:flex; align-items:end; justify-content:space-between; gap:18px; padding:clamp(22px,4vw,48px) clamp(18px,5vw,80px); border-bottom:1px solid var(--rule); }
+.creator-page-heading h1,.nightfall-route-title h1 { margin:6px 0 0; color:var(--paper); font-family:var(--display); font-size:clamp(32px,5vw,58px); font-weight:400; letter-spacing:-.025em; line-height:.95; }
+.creator-page-heading h1 em,.nightfall-route-title h1 em { color:#c6b9a5; font-weight:400; }
+.creator-page-status { padding:6px 9px; border:1px solid var(--rule); color:#aaa398; font-family:var(--mono); font-size:8px; letter-spacing:.1em; text-transform:uppercase; }
+.nightfall-route-title>div { flex:1; }
+.nightfall-route-title p { margin:0; color:#a49e94; }
+
+@media(max-width:1060px) {
+  .positioning-strategy-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .positioning-strategy-card:last-child { grid-column:1/-1; }
+}
+@media(max-width:720px) {
+  .positioning-arena-header { display:block; }
+  .positioning-arena-source { justify-content:flex-start; margin-top:15px; }
+  .positioning-priority-row { grid-template-columns:1fr 30px; gap:6px 12px; }
+  .positioning-priority-label { grid-column:1/-1; }
+  .positioning-priority-row input { grid-column:1; grid-row:2; }
+  .positioning-priority-value { grid-column:2; grid-row:2; }
+  .positioning-suggestion-panel { grid-template-columns:1fr; }
+  .positioning-apply-panel { border-top:1px solid var(--rule); border-left:0; }
+  .positioning-order-list li { grid-template-columns:26px minmax(78px,.5fr) minmax(90px,.6fr); gap:4px 6px; }
+  .positioning-compare-grid,.positioning-strategy-grid { grid-template-columns:1fr; }
+  .positioning-strategy-card:last-child { grid-column:auto; }
+  .positioning-brief { grid-template-columns:1fr; }
+  .positioning-brief>div:first-child { grid-row:auto; }
+  .positioning-brief-note { grid-column:auto; }
+  .nightfall-route-title,.creator-page-heading { align-items:flex-start; flex-direction:column; }
+}
