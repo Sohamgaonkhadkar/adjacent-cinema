@@ -14,6 +14,7 @@ import type { AdjacentRunResult, HeatmapCell } from "@/types/adjacent";
 import IntakeForm from "@/components/IntakeForm";
 import AdjacencyGraph from "@/components/AdjacencyGraph";
 import { downloadTextFile, formatTestCardText, safeTextFilename } from "@/lib/testCardExport";
+import { createTestDesign, testDesignExportSections, updateTestDesign } from "@/lib/testCardDesign";
 
 // ─── Editorial sample strip (illustrative photography, NOT a live analysis) ──
 
@@ -75,6 +76,12 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [request, setRequest] = useState<{ city: string; venue: string; programme: ProgrammeItemInput[] } | null>(null);
   const [requestMode, setRequestMode] = useState<"live" | "fixture" | null>(null);
+  const [testDesign, setTestDesign] = useState<{
+    comparison_protocol: string;
+    primary_measure: string;
+    decision_rule: string;
+    observation_window: string;
+  } | null>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
   const runPollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestGenerationRef = useRef(0);
@@ -131,6 +138,14 @@ export default function Home() {
   const bet = result?.programme_bet ?? null;
   const testCard = result?.test_card ?? null;
   const evidence = result?.evidence ?? null;
+
+  useEffect(() => {
+    if (!testCard) {
+      setTestDesign(null);
+      return;
+    }
+    setTestDesign(createTestDesign(testCard));
+  }, [runId, testCard]);
   const progItems = programme?.items ?? [];
 
   // Map active chapter to nav id
@@ -157,7 +172,7 @@ export default function Home() {
         { label: "Primary evidence", value: testCard.primary_evidence },
         { label: "Runner-up direction", value: testCard.runner_up },
         { label: "Observable success criteria", value: testCard.success_criteria },
-        { label: "Observation window", value: testCard.observation_window },
+        ...testDesignExportSections(testDesign ?? createTestDesign(testCard)),
         { label: "Falsification condition", value: testCard.falsification_condition },
       ],
       provenance: testCard.provenance,
@@ -1023,12 +1038,59 @@ export default function Home() {
                       <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, margin: 0 }}>{testCard.success_criteria}</p>
                     </div>
                   )}
-                  {testCard.observation_window && (
-                    <div>
-                      <span className="micro-label" style={{ marginBottom: 8, display: "block" }}>OBSERVATION WINDOW</span>
-                      <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, margin: 0 }}>{testCard.observation_window}</p>
-                    </div>
-                  )}
+                  <label style={{ display: "grid", gap: 8 }}>
+                    <span className="micro-label">COMPARISON PROTOCOL · EDIT BEFORE EXPORT</span>
+                    <textarea
+                      className="intake-input"
+                      aria-label="Cinema comparison protocol"
+                      rows={4}
+                      maxLength={2000}
+                      value={testDesign?.comparison_protocol ?? testCard.comparison_protocol ?? ""}
+                      onChange={(event) => setTestDesign((current) =>
+                        updateTestDesign(current, testCard, "comparison_protocol", event.target.value)
+                      )}
+                    />
+                  </label>
+                  <label style={{ display: "grid", gap: 8 }}>
+                    <span className="micro-label">PRIMARY MEASURE · EDIT BEFORE EXPORT</span>
+                    <textarea
+                      className="intake-input"
+                      aria-label="Cinema primary measure"
+                      rows={4}
+                      maxLength={2000}
+                      value={testDesign?.primary_measure ?? testCard.primary_measure ?? ""}
+                      onChange={(event) => setTestDesign((current) =>
+                        updateTestDesign(current, testCard, "primary_measure", event.target.value)
+                      )}
+                    />
+                  </label>
+                  <label style={{ display: "grid", gap: 8 }}>
+                    <span className="micro-label">DECISION RULE · PROPOSED PROMPT, SET BEFORE SCREENING</span>
+                    <textarea
+                      className="intake-input"
+                      aria-label="Cinema decision rule"
+                      rows={4}
+                      maxLength={2000}
+                      value={testDesign?.decision_rule ?? testCard.decision_rule ?? ""}
+                      onChange={(event) => setTestDesign((current) =>
+                        updateTestDesign(current, testCard, "decision_rule", event.target.value)
+                      )}
+                    />
+                    <span className="mono-note">Adjacent suggests no numerical threshold. Enter a threshold only if the venue has selected one before the screening.</span>
+                  </label>
+                  <label style={{ display: "grid", gap: 8 }}>
+                    <span className="micro-label">OBSERVATION WINDOW · EDIT BEFORE EXPORT</span>
+                    <textarea
+                      className="intake-input"
+                      aria-label="Cinema observation window"
+                      rows={3}
+                      maxLength={2000}
+                      value={testDesign?.observation_window ?? testCard.observation_window ?? ""}
+                      onChange={(event) => setTestDesign((current) =>
+                        updateTestDesign(current, testCard, "observation_window", event.target.value)
+                      )}
+                    />
+                  </label>
                   {testCard.provenance && (
                     <div>
                       <span className="micro-label" style={{ marginBottom: 8, display: "block" }}>PROVENANCE</span>

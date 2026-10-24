@@ -86,10 +86,15 @@ The result can include:
 - rejected or insufficient worlds with reasons preserved;
 - an interactive **Cultural Fingerprint** based on returned cohorts and their real members;
 - an explainable **Programme Bet** with a primary and, where supported, runner-up direction;
-- a **Test Card** with a hypothesis, evidence, success criteria, an observation window and a falsification condition;
+- a **Test Card** with a hypothesis, evidence, a comparison protocol, a primary measure, a user-set decision rule, an observation window and a falsification condition;
+- bounded **Qloo per-seed explainability** on scoring calls with at most 12 candidate entities: where Qloo returns attribution, inspect which verified reference works contributed to a scored result. Larger scoring contexts omit this optional metadata to keep response size bounded; absence is not a zero contribution;
 - a lifecycle for saving the plan, recording observations and evaluating what happened.
 
 The fingerprint is an evidence map, not an automatic recommendation list. Selecting a node reveals its associated details; it does not assert that the named entity will attract an audience.
+
+Where bounded scoring requests include Qloo's documented `feature.explainability`, each result may also expose Qloo's per-seed attribution weights. These are provider-returned explanations of model contribution—not causal effects, audience counts, or guarantees—and the UI keeps them linked to the scoring call. Broad contexts above the configured candidate limit omit this optional metadata to bound response size.
+
+The Test Card now includes an experiment design rather than only a desired outcome: a suggested comparison, one primary observable measure, and an explicit instruction for the creator to set a practically meaningful decision threshold before launch. Creator tests recommend a randomized split only when the publishing platform supports it; otherwise the result must be described as exploratory. The app supplies no sample-size or success threshold, and missing or incomparable observations remain inconclusive.
 
 ### 2. Cinema Mode — programme context, not just a venue label
 
@@ -567,6 +572,11 @@ Do not run `docker compose down -v` as a routine restart; it removes named data 
 | [Developer guide](qloo_hackathon/adjacent/README.md) | Concise local setup, modes, testing and storage |
 | [Frontend/API contract](qloo_hackathon/adjacent/docs/FRONTEND_CONTRACT.md) | Exact payloads, SSE, result invariants and lifecycle routes |
 | [Qloo setup](qloo_hackathon/adjacent/docs/QLOO_SETUP.md) | Credentials, hosts and live checks |
+| [Qloo attribution and test protocol](qloo_hackathon/adjacent/docs/QLOO_ATTRIBUTION_AND_TEST_PROTOCOL.md) | Bounded Qloo explainability and the experiment-design contract |
+| [Fresh hackathon competitor scorecard](qloo_hackathon/adjacent/docs/M13_16_FRESH_HACKATHON_COMPETITOR_SCORECARD.md) | Ten current public repositories scored equally against the official four criteria; not an official ranking |
+| [Judge demo and owner live handoff](qloo_hackathon/adjacent/docs/M13_17_OWNER_DEMO_AND_LIVE_HANDOFF.md) | Fixture fallback, read-only deployment notes, and reserved live Qloo/production acceptance steps |
+| [Current verification status](qloo_hackathon/adjacent/docs/M13_18_CURRENT_VERIFICATION_STATUS.md) | Observed frontend/backend results and environment/live-test limits |
+| [Eligibility audit](qloo_hackathon/adjacent/docs/M13_11_HACKATHON_ELIGIBILITY_AUDIT.md) | Exact official wording and unresolved “Qloo 4after” organizer clarification; no eligibility conclusion |
 | [Live-Qloo checklist](qloo_hackathon/adjacent/docs/NEXT_LIVE_CHECKLIST.md) | Current operator checklist; historical reports are not current acceptance |
 | [Deployment runbook](qloo_hackathon/adjacent/docs/DEPLOYMENT.md) | Render and Docker/Caddy deployment details |
 | [Deployment topology ADR](qloo_hackathon/adjacent/docs/adr/006-deployment-topology.md) | Trade-offs behind the proposed topology |

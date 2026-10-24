@@ -86,6 +86,16 @@ class TestTestCardActionability:
         for forbidden in ("will increase", "expected attendance", "conversion", "revenue", "%"):
             assert forbidden not in text
 
+    def test_protocol_requires_user_baseline_and_pre_registered_threshold(self) -> None:
+        card = build_test_card(bet=_bet(), resolved_names=["Chungking Express"], city="London")
+        payload = card.to_dict()
+        assert "own recent, comparable baseline" in payload["comparison_protocol"]
+        assert "not a randomized trial" in payload["comparison_protocol"]
+        assert "choose one primary observed measure" in payload["primary_measure"]
+        assert "set the smallest difference" in payload["decision_rule"]
+        assert "supplies no threshold" in payload["decision_rule"]
+        assert "inconclusive" in payload["decision_rule"]
+
 
 class TestHypothesisPhrasing:
     def test_multi_member_cohort_phrasing(self) -> None:

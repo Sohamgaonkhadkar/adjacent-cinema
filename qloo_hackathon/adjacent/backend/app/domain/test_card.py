@@ -30,6 +30,12 @@ class TestCard:
     success_criteria: str = ""
     #: A practical, bounded window for running and judging the experiment.
     observation_window: str = ""
+    #: A comparison design that separates the proposed framing from its baseline.
+    comparison_protocol: str = ""
+    #: The primary observable outcome; never an inferred audience forecast.
+    primary_measure: str = ""
+    #: A user-set decision threshold and rule; Adjacent must not invent one.
+    decision_rule: str = ""
     provenance: dict[str, Any] = field(default_factory=dict)
     data_status: str = "measured"
 
@@ -46,6 +52,9 @@ class TestCard:
             "falsification_condition": self.falsification_condition,
             "success_criteria": self.success_criteria,
             "observation_window": self.observation_window,
+            "comparison_protocol": self.comparison_protocol,
+            "primary_measure": self.primary_measure,
+            "decision_rule": self.decision_rule,
             "provenance": self.provenance,
             "data_status": self.data_status,
         }
@@ -110,6 +119,28 @@ def build_test_card(
         "observations but do not change the falsification condition."
     )
 
+    comparison_protocol = (
+        "Compare the test screening or strand with the venue's own recent, "
+        "comparable baseline. Keep day/time, price, promotion effort and capacity "
+        "as similar as practical; record every difference. This is observational, "
+        "not a randomized trial, so do not attribute a difference to cultural "
+        "positioning alone. If no comparable baseline exists, record that as "
+        "unavailable rather than inventing one."
+    )
+    primary_measure = (
+        "Before screening, choose one primary observed measure available to your "
+        "venue (for example tickets sold divided by available seats, or a directly "
+        "collected audience response about how they found the screening). Record "
+        "the numerator, denominator, source and collection date. Keep attendance, "
+        "audience feedback and promotional reach as separate measures."
+    )
+    decision_rule = (
+        "Before the test, set the smallest difference that would matter to your "
+        "venue and the observation date. Compare only like-for-like records; if "
+        "the measure, denominator or baseline is missing, classify the result as "
+        "inconclusive. Adjacent supplies no threshold and does not infer causality."
+    )
+
     # Provenance — links the card back to the exact bet and its Qloo calls.
     provenance: dict[str, Any] = {
         "primary_call_id": bet.primary_call_id,
@@ -131,6 +162,9 @@ def build_test_card(
         falsification_condition=bet.falsification_condition,
         success_criteria=success_criteria,
         observation_window=observation_window,
+        comparison_protocol=comparison_protocol,
+        primary_measure=primary_measure,
+        decision_rule=decision_rule,
         provenance=provenance,
         data_status=bet.data_status,
     )

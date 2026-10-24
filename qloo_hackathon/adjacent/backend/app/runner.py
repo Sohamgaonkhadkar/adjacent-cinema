@@ -433,9 +433,15 @@ async def _rank(client: Any, run: AdjacentState, budget: Budget) -> None:
         run.cohorts = [
             c for c in run.cohorts if c.domain in sorted({x.domain for x in run.cohorts})[:remaining]
         ]
-    ranker = CohortRanker(client, programme_ids=run.resolved_ids)
+    contexts_needed = len({c.domain for c in run.cohorts})
+    fallback_capacity = max(0, budget.remaining_calls - contexts_needed)
+    ranker = CohortRanker(
+        client,
+        programme_ids=run.resolved_ids,
+        max_explainability_fallbacks=fallback_capacity,
+    )
     run.ranking = await ranker.build_and_rank_cohorts(run.cohorts)
-    budget.record_calls(len(run.ranking.contexts))
+    budget.record_calls(run.ranking.qloo_calls_made)
     run.ranked = list(run.ranking.ranked)
     run.rejected = list(run.ranking.rejected)
     for cohort_id in run.ranking.unscored_member_ids:

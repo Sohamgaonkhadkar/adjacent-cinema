@@ -402,6 +402,9 @@ def build_investigation(
             "action_plan": test_card.programming_direction,
             "success_criteria": test_card.success_criteria,
             "observation_window": test_card.observation_window,
+            "comparison_protocol": test_card.comparison_protocol,
+            "primary_measure": test_card.primary_measure,
+            "decision_rule": test_card.decision_rule,
             "falsification": test_card.falsification_condition,
         }
     else:
