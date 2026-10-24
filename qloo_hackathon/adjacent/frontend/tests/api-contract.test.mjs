@@ -296,6 +296,6 @@ test("writes are idempotent on content, so a retry cannot duplicate a record", a
   }
   assert.match(archive, /stableRequestId\(`obs-\$\{experiment\.experiment_id\}`/);
   assert.match(archive, /stableRequestId\(`eval-\$\{experiment\.experiment_id\}`/);
-  assert.match(sponsorPage, /stableRequestId\("spd-draft"/);
-  assert.match(sponsorPage, /stableRequestId\("spd-out"/);
+  assert.match(sponsorPage, /stableRequestId\(`spd-draft-\$\{detail\.campaign\.campaign_id\}`/);
+  assert.match(sponsorPage, /stableRequestId\(`spd-out-\$\{detail\.campaign\.campaign_id\}`/);
 });
