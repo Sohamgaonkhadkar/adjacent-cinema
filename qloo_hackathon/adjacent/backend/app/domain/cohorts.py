@@ -25,6 +25,7 @@ members came from. Nothing here invents, adjusts or interpolates a measurement.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
@@ -66,6 +67,8 @@ class MemberEvidence:
     scored: ScoredEntity
     call_id: str
     is_marginal: bool  # Medium band (< High) — near the threshold, worth flagging
+    qloo_attribution_status: str = "requested"
+    allowed_qloo_seed_ids: tuple[str, ...] | None = None
 
     @property
     def entity_id(self) -> str:
@@ -87,7 +90,63 @@ class MemberEvidence:
     def band(self) -> str:
         return self.scored.band.value
 
+    def qloo_attributions(self) -> list[dict[str, Any]]:
+        """Return only validated per-seed attribution from Qloo's raw response.
+
+        The provider's explainability object can vary or be absent. Preserve the
+        evidence only when its shape, entity IDs and finite 0–1 scores validate;
+        never infer a contribution from affinity alone.
+        """
+        raw = self.scored.raw if isinstance(self.scored.raw, dict) else {}
+        query = raw.get("query") if isinstance(raw.get("query"), dict) else {}
+        explanation = query.get("explainability") if isinstance(query.get("explainability"), dict) else {}
+        values = explanation.get("signal.interests.entities")
+        if not isinstance(values, list):
+            return []
+
+        valid: list[tuple[str, float]] = []
+        allowed_seed_ids = (
+            {seed_id.casefold() for seed_id in self.allowed_qloo_seed_ids}
+            if self.allowed_qloo_seed_ids is not None
+            else None
+        )
+        for item in values:
+            if not isinstance(item, dict):
+                continue
+            entity_id = item.get("entity_id")
+            score = item.get("score")
+            if not isinstance(entity_id, str) or not entity_id.strip():
+                continue
+            entity_id = entity_id.strip()
+            if allowed_seed_ids is not None and entity_id.casefold() not in allowed_seed_ids:
+                continue
+            if isinstance(score, bool) or not isinstance(score, (int, float)):
+                continue
+            try:
+                numeric_score = float(score)
+            except (OverflowError, ValueError):
+                continue
+            if not math.isfinite(numeric_score) or not 0 <= numeric_score <= 1:
+                continue
+            valid.append((entity_id, numeric_score))
+
+        # Conflicting/repeated provider entries are ambiguous. Drop every copy
+        # rather than letting response order silently select a contribution.
+        counts: dict[str, int] = {}
+        for entity_id, _ in valid:
+            normalized_id = entity_id.casefold()
+            counts[normalized_id] = counts.get(normalized_id, 0) + 1
+        return [
+            {"entity_id": entity_id, "score": round(score, 6)}
+            for entity_id, score in valid
+            if counts[entity_id.casefold()] == 1
+        ]
+
     def to_dict(self) -> dict[str, Any]:
+        attributions = self.qloo_attributions()
+        attribution_status = self.qloo_attribution_status
+        if attribution_status == "requested":
+            attribution_status = "returned" if attributions else "missing"
         return {
             "entity_id": self.entity_id,
             "name": self.name,
@@ -99,6 +158,8 @@ class MemberEvidence:
             "is_marginal": self.is_marginal,
             "tags": [t.tag_id for t in self.scored.tags],
             "call_id": self.call_id,
+            "qloo_attributions": attributions,
+            "qloo_attribution_status": attribution_status,
         }
 
 

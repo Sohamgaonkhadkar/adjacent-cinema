@@ -332,6 +332,7 @@ class QlooClient:
                         call.set_result(status=200, result_count=_count_results(payload))
                         return payload, call.call_id
                     last_error = self._classify(response, endpoint)
+                    last_error.call_id = call.call_id
 
                 call.set_result(status=call.status)
                 retryable = bool(last_error and last_error.retryable)

@@ -79,6 +79,9 @@ export interface CohortMember {
   popularity: number | null;
   tags?: { tag_id: string; name: string | null; subtype: string | null }[];
   call_id?: string | null;
+  /** Qloo's normalized per-input contribution, when requested and returned. */
+  qloo_attributions?: { entity_id: string; score: number }[];
+  qloo_attribution_status?: "returned" | "missing" | "unsupported" | "not_requested_limit" | "not_requested_budget" | string;
 }
 
 export interface CohortScore {
@@ -212,6 +215,9 @@ export interface TestCardData {
   falsification_condition: string;
   success_criteria?: string;
   observation_window?: string;
+  comparison_protocol?: string;
+  primary_measure?: string;
+  decision_rule?: string;
   provenance: Record<string, string | null>;
   data_status: string;
 }

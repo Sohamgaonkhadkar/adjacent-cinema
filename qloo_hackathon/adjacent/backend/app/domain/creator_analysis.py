@@ -267,10 +267,32 @@ def build_creator_test_card(
     )
 
     observation_window = (
-        "Observe for the first two weeks after release (most short-film attention "
-        "arrives in the first days), then record what you saw. Re-run this "
-        "analysis on your next work within one comparable cycle to confirm or "
-        "falsify the adjacency."
+        "Choose and record a fixed observation window before launch. If comparing "
+        "release copy, use the same channel and a pre-set period for both versions; "
+        "do not extend the window after seeing early results."
+    )
+
+    comparison_protocol = (
+        "Draft two versions: A, your current framing; B, the proposed cultural-world "
+        "framing. Keep the creative asset, use the same channel, and hold audience "
+        "eligibility, spend and timing constant. Use a platform's randomized split "
+        "if available. If you "
+        "cannot randomize or hold exposure comparable, label the comparison "
+        "exploratory; do not claim the wording caused a difference."
+    )
+    primary_measure = (
+        "Choose one primary action before launch (for example a qualified film-page "
+        "visit, screening-page click or sign-up) and report it per eligible exposure "
+        "for each version. Record the raw counts, denominator, channel and dates. "
+        "Treat comments or stated cultural references as qualitative context, not "
+        "as a substitute for the primary measure or proof of audience size."
+    )
+    decision_rule = (
+        "Before launch, set the minimum difference that would change your decision, "
+        "the observation window and the exposure needed to make the comparison "
+        "useful. Adjacent does not supply statistical thresholds. If exposure is "
+        "too small, assignment is not comparable, or the primary measure is "
+        "missing, report the result as inconclusive."
     )
 
     provenance: dict[str, Any] = {
@@ -293,6 +315,9 @@ def build_creator_test_card(
         falsification_condition=bet.falsification_condition,
         success_criteria=success_criteria,
         observation_window=observation_window,
+        comparison_protocol=comparison_protocol,
+        primary_measure=primary_measure,
+        decision_rule=decision_rule,
         provenance=provenance,
         data_status=bet.data_status,
     )

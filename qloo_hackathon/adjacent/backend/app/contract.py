@@ -30,9 +30,9 @@ is the in-process object, `contract.CandidateCohort` is its wire form.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from .agent.state import AdjacentState
 from .agent.stop import StopReason
@@ -125,6 +125,11 @@ class ProgrammeProfile(ContractModel):
 # ---------------------------------------------------------------------------
 
 
+class QlooAttributionView(ContractModel):
+    entity_id: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=512)]
+    score: float = Field(ge=0, le=1, allow_inf_nan=False)
+
+
 class CohortMemberView(ContractModel):
     entity_id: str
     name: str | None = None
@@ -134,6 +139,8 @@ class CohortMemberView(ContractModel):
     popularity: float | None = None
     is_marginal: bool = False
     call_id: str
+    qloo_attributions: list[QlooAttributionView] = Field(default_factory=list)
+    qloo_attribution_status: str | None = None
 
 
 class ExcludedMemberView(ContractModel):
@@ -209,6 +216,7 @@ class ScoringContextView(ContractModel):
     requested: int = 0
     returned: int = 0
     data_status: Literal["measured", "fixture"]
+    explainability_status: str = "not_requested_limit"
 
 
 class RankingResult(ContractModel):
@@ -222,6 +230,7 @@ class RankingResult(ContractModel):
     operation_call_id: str | None = None
     scoring_call_ids: list[str] = Field(default_factory=list)
     contexts: list[ScoringContextView] = Field(default_factory=list)
+    qloo_calls_made: int = 0
     scored_entity_count: int = 0
     cross_context_tiebreak_used: bool = False
     ranked_cohort_ids: list[str] = Field(default_factory=list)
@@ -454,6 +463,10 @@ def _tag(tag: Any, call_id: str) -> TasteSignal:
 
 
 def _member(member: Any) -> CohortMemberView:
+    attributions = member.qloo_attributions()
+    attribution_status = member.qloo_attribution_status
+    if attribution_status == "requested":
+        attribution_status = "returned" if attributions else "missing"
     return CohortMemberView(
         entity_id=member.entity_id,
         name=member.name,
@@ -463,6 +476,8 @@ def _member(member: Any) -> CohortMemberView:
         popularity=member.popularity,
         is_marginal=bool(member.is_marginal),
         call_id=member.call_id,
+        qloo_attributions=attributions,
+        qloo_attribution_status=attribution_status,
     )
 
 
@@ -584,9 +599,11 @@ def build_analysis_run(state: AdjacentState) -> AnalysisRun:
                     requested=len(context.requested_ids),
                     returned=len(context.scored),
                     data_status=context.data_status,
+                    explainability_status=context.explainability_status,
                 )
                 for context in state.ranking.contexts
             ],
+            qloo_calls_made=state.ranking.qloo_calls_made,
             scored_entity_count=state.ranking.scored_entity_count,
             cross_context_tiebreak_used=bool(state.ranking.cross_context_tiebreak_used),
             ranked_cohort_ids=[c.cohort_id for c in state.ranked],
@@ -698,6 +715,7 @@ __all__ = [
     "ProgrammeHypothesis",
     "ProgrammeProfile",
     "ProvenanceAudit",
+    "QlooAttributionView",
     "QlooTrace",
     "QlooTraceRow",
     "RankingResult",

@@ -37,6 +37,7 @@ import AdjacencyGraph from "@/components/AdjacencyGraph";
 import { EvidenceReferences, EvidenceTraceLog } from "@/components/EvidenceTrace";
 import { watchRunWithRecovery } from "@/lib/runRecovery";
 import { downloadTextFile, formatTestCardText, safeTextFilename } from "@/lib/testCardExport";
+import { createTestDesign, readSavedTestDesign, testDesignExportSections, updateTestDesign } from "@/lib/testCardDesign";
 
 // Small helpers shared with the cinema page's visual language.
 const mono = { fontFamily: "var(--mono)" } as const;
@@ -88,6 +89,12 @@ export default function CreatorPage() {
   const [analysing, setAnalysing] = useState(false);
   const [requestMode, setRequestMode] = useState<"live" | "fixture" | null>(null);
   const [events, setEvents] = useState<SSEEvent[]>([]);
+  const [experimentDesign, setExperimentDesign] = useState<{
+    comparison_protocol: string;
+    primary_measure: string;
+    decision_rule: string;
+    observation_window: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const stopStream = useRef<(() => void) | null>(null);
   const runGeneration = useRef(0);
@@ -137,6 +144,15 @@ export default function CreatorPage() {
   const insufficient = run?.status === "insufficient";
   const failed = run?.status === "failed";
   const resultTone = statusTone(failed || insufficient ? null : result?.data_status ?? null);
+
+  useEffect(() => {
+    const card = result?.test_card;
+    if (!card) {
+      setExperimentDesign(null);
+      return;
+    }
+    setExperimentDesign(createTestDesign(card));
+  }, [runId, result?.test_card]);
 
   const refreshExperiments = useCallback(async () => {
     const requestId = ++experimentListRequest.current;
@@ -390,11 +406,19 @@ export default function CreatorPage() {
         film_title: (result.film as { title?: string } | undefined)?.title ?? title,
         hypothesis: card.audience_hypothesis,
         success_criteria: card.success_criteria ?? "",
-        observation_window: card.observation_window ?? "",
+        observation_window: experimentDesign?.observation_window ?? card.observation_window ?? "",
         action_plan: card.programming_direction,
         data_status: card.data_status,
         source_run_id: runId,
-        source_bet: (result.programme_bet ?? {}) as Record<string, unknown>,
+        source_bet: {
+          ...((result.programme_bet ?? {}) as Record<string, unknown>),
+          experiment_design: {
+            comparison_protocol: experimentDesign?.comparison_protocol ?? card.comparison_protocol ?? null,
+            primary_measure: experimentDesign?.primary_measure ?? card.primary_measure ?? null,
+            decision_rule: experimentDesign?.decision_rule ?? card.decision_rule ?? null,
+            observation_window: experimentDesign?.observation_window ?? card.observation_window ?? null,
+          },
+        },
         provenance: (card.provenance ?? {}) as Record<string, unknown>,
         film_context: (result.film ?? {}) as Record<string, unknown>,
         // M13.12: trace the saved decision back to the investigation itself.
@@ -449,6 +473,15 @@ export default function CreatorPage() {
   const tasteTags = result?.taste_dna?.tags ?? [];
   const progItems = result?.programme?.items ?? [];
   const themeInputs = result?.theme_inputs ?? [];
+  const seedNamesById = new Map(
+    progItems.flatMap((item) => {
+      const resolution = item.resolution_evidence;
+      const id = resolution?.qloo_entity_id ?? item.qloo_entity_id;
+      if (!id) return [];
+      const name = resolution?.qloo_name ?? item.qloo_name ?? item.title;
+      return [[id.toLowerCase(), name] as const];
+    }),
+  );
 
   function handleExportTestCard() {
     if (!card) return;
@@ -466,7 +499,7 @@ export default function CreatorPage() {
         { label: "Primary evidence", value: card.primary_evidence },
         { label: "Runner-up direction", value: card.runner_up },
         { label: "Observable success criteria", value: card.success_criteria },
-        { label: "Observation window", value: card.observation_window },
+        ...testDesignExportSections(experimentDesign ?? createTestDesign(card)),
         { label: "Falsification condition", value: card.falsification_condition },
       ],
       provenance: card.provenance,
@@ -827,9 +860,12 @@ export default function CreatorPage() {
             {ranked.length > 0 && (
               <div className="evidence-panel">
                 <h3>Adjacent cultural worlds, ranked</h3>
-                <span className="mono-note" style={{ display: "block", marginBottom: 12 }}>
+                <span className="mono-note" style={{ display: "block", marginBottom: 8 }}>
                   {ranked.length} RANKED · {rejected.length} REJECTED WITH REASONS
                 </span>
+                <p style={{ color: "#88837a", fontSize: 11, lineHeight: 1.65, margin: "0 0 14px" }}>
+                  When Qloo returns per-seed explainability for a bounded scoring call, open a result to inspect which resolved reference works contributed. These normalized attribution weights are provider explanations, not causal effects; missing attribution is not a zero score.
+                </p>
                 <div style={{ display: "grid", gap: 14 }}>
                   {ranked.map((cohort) => (
                     <div key={cohort.cohort_id} style={{ padding: "14px 16px", border: "1px solid var(--rule)", borderRadius: 7 }}>
@@ -844,12 +880,43 @@ export default function CreatorPage() {
                       </div>
                       <div style={{ display: "grid", gap: 6 }}>
                         {cohort.members.slice(0, 5).map((m, mi) => (
-                          <div className="bar-row" key={m.entity_id || mi} style={{ gridTemplateColumns: "minmax(140px, 1.2fr) 2fr auto" }}>
-                            <span className="bar-label">{m.name}</span>
-                            <div className="bar-track">
-                              <div className="bar-fill adjacent" style={{ width: `${Math.max(0, Math.min(1, m.affinity ?? 0)) * 100}%` }} />
+                          <div key={m.entity_id || mi}>
+                            <div className="bar-row" style={{ gridTemplateColumns: "minmax(140px, 1.2fr) 2fr auto" }}>
+                              <span className="bar-label">{m.name}</span>
+                              <div className="bar-track">
+                                <div className="bar-fill adjacent" style={{ width: `${Math.max(0, Math.min(1, m.affinity ?? 0)) * 100}%` }} />
+                              </div>
+                              <span className="bar-value">{typeof m.affinity === "number" ? m.affinity.toFixed(2) : "—"}{m.band ? ` · ${m.band}` : ""}</span>
                             </div>
-                            <span className="bar-value">{typeof m.affinity === "number" ? m.affinity.toFixed(2) : "—"}{m.band ? ` · ${m.band}` : ""}</span>
+                            {(m.qloo_attributions?.length ?? 0) > 0 ? (
+                              <details style={{ margin: "2px 0 6px 8px" }}>
+                                <summary className="mono-note" style={{ cursor: "pointer" }}>
+                                  QLOO INPUT ATTRIBUTION · {m.qloo_attributions?.length} SEED(S) · SCORE CALL {m.call_id ?? "UNAVAILABLE"}
+                                </summary>
+                                <p style={{ color: "#88837a", fontSize: 10, margin: "5px 0 5px 10px" }}>
+                                  Provider-reported contribution weights, not causal effects or audience-size evidence. Omitted seeds are unknown, not zero.
+                                </p>
+                                <div style={{ display: "grid", gap: 3, margin: "6px 0 8px 10px" }}>
+                                  {m.qloo_attributions?.map((attribution) => (
+                                    <div key={attribution.entity_id} style={{ color: "#a7a39b", fontSize: 11 }}>
+                                      {seedNamesById.get(attribution.entity_id.toLowerCase()) ?? attribution.entity_id}
+                                      <span className="mono-note" style={{ marginLeft: 8 }}>WEIGHT {attribution.score.toFixed(3)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </details>
+                            ) : m.qloo_attribution_status ? (
+                              <p className="mono-note" style={{ margin: "3px 0 7px 8px", color: "#88837a" }}>
+                                {m.qloo_attribution_status === "unsupported"
+                                  ? "OPTIONAL QLOO EXPLAINABILITY UNSUPPORTED · CORE SCORE KEPT · SCORE CALL "
+                                  : m.qloo_attribution_status === "not_requested_limit"
+                                    ? "ATTRIBUTION NOT REQUESTED · CANDIDATE LIMIT · SCORE CALL "
+                                    : m.qloo_attribution_status === "not_requested_budget"
+                                      ? "ATTRIBUTION NOT REQUESTED · RETRY BUDGET RESERVED FOR CORE SCORING · SCORE CALL "
+                                      : "NO VALID ATTRIBUTION RETURNED · ABSENCE IS NOT ZERO · SCORE CALL "}
+                                {m.call_id ?? "UNAVAILABLE"}
+                              </p>
+                            ) : null}
                           </div>
                         ))}
                       </div>
@@ -961,7 +1028,6 @@ export default function CreatorPage() {
                     ["PRIMARY EVIDENCE", card.primary_evidence],
                     ["RUNNER-UP DIRECTION", card.runner_up],
                     ["SUCCESS CRITERIA (OBSERVABLE)", card.success_criteria],
-                    ["OBSERVATION WINDOW", card.observation_window],
                   ] as [string, string | undefined][]).filter(([, v]) => v).map(([label, value]) => (
                     <div key={label}>
                       <span className="micro-label" style={{ marginBottom: 6, display: "block" }}>{label}</span>
@@ -985,6 +1051,33 @@ export default function CreatorPage() {
                         </div>
                       ))}
                     </div>
+                  </div>
+                </div>
+                <div style={{ marginTop: 22, padding: 16, border: "1px solid rgba(194,154,110,0.25)", borderRadius: 7, background: "rgba(194,154,110,0.04)" }}>
+                  <span className="micro-label" style={{ color: "var(--amber)" }}>PERSONALISE THE TEST BEFORE SAVING</span>
+                  <p style={{ color: "#a7a39b", fontSize: 12, lineHeight: 1.7, margin: "6px 0 14px" }}>
+                    These are starting prompts, not a completed experiment. Replace them with your actual comparison, one measure you can collect, your decision threshold, and observation window before launch. Your edits are included in the export and in a newly saved snapshot; saving does not execute the test.
+                  </p>
+                  <div style={{ display: "grid", gap: 12 }}>
+                    {([
+                      ["Comparison protocol", "comparison_protocol"],
+                      ["Primary measure and denominator", "primary_measure"],
+                      ["Your decision rule / meaningful threshold", "decision_rule"],
+                      ["Observation window", "observation_window"],
+                    ] as const).map(([label, key]) => (
+                      <label key={key} className="micro-label" style={{ display: "grid", gap: 6 }}>
+                        {label.toUpperCase()}
+                        <textarea
+                          className="intake-input"
+                          rows={3}
+                          maxLength={key === "observation_window" ? 300 : 2000}
+                          value={experimentDesign?.[key] ?? card[key] ?? ""}
+                          onChange={(event) => setExperimentDesign((current) =>
+                            updateTestDesign(current, card, key, event.target.value)
+                          )}
+                        />
+                      </label>
+                    ))}
                   </div>
                 </div>
                 <div className="test-card-footer-actions">
@@ -1114,6 +1207,7 @@ function ExperimentDetail({
   onChanged: () => Promise<void>;
 }) {
   const { experiment, observations, evaluations } = detail;
+  const savedDesign = readSavedTestDesign(experiment.source_bet, experiment.observation_window);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [sourceTrace, setSourceTrace] = useState<TraceRow[]>([]);
@@ -1233,11 +1327,25 @@ function ExperimentDetail({
             <span className="mono-note">SUCCESS CRITERIA: </span>{experiment.success_criteria}
           </p>
         )}
-        {experiment.observation_window && (
-          <p style={{ color: "#8a847a", fontSize: 12, lineHeight: 1.7, margin: "4px 0 0" }}>
-            <span className="mono-note">WINDOW: </span>{experiment.observation_window}
-          </p>
-        )}
+        <section aria-label="Saved experiment design" style={{ marginTop: 10, padding: "10px 12px", border: "1px solid var(--rule)", borderRadius: 6 }}>
+          <span className="micro-label">SAVED TEST DESIGN · SNAPSHOT · NOT EXECUTED</span>
+          {([
+            ["Comparison protocol", "comparison_protocol"],
+            ["Primary measure and denominator", "primary_measure"],
+            ["Decision rule", "decision_rule"],
+            ["Observation window", "observation_window"],
+          ] as const).map(([label, key]) => {
+            const value = savedDesign[key];
+            return (
+              <p key={key} style={{ color: "#b3aea4", fontSize: 12, lineHeight: 1.7, margin: "6px 0 0" }}>
+                <span className="mono-note">{label.toUpperCase()}: </span>
+                {value === null
+                  ? "Not recorded in this saved experiment (older or partial snapshot)."
+                  : value || "Blank when this snapshot was saved."}
+              </p>
+            );
+          })}
+        </section>
         <p className="mono-note" style={{ marginTop: 6 }}>
           SOURCE RUN: {experiment.source_run_id ?? "—"} · DATA STATUS: {String(experiment.data_status).toUpperCase()}
         </p>

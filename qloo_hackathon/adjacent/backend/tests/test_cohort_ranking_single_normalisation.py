@@ -143,6 +143,21 @@ def _cohort(cohort_id: str, domain: str, member_ids: list[str]) -> CandidateCoho
     )
 
 
+def test_qloo_explainability_is_bounded_for_large_scoring_contexts():
+    domain = "urn:entity:artist"
+    member_ids = [f"{domain}-{index}" for index in range(13)]
+    cohort = _cohort("large-context", domain, member_ids)
+    client = _FixedClient(
+        affinities=dict.fromkeys(member_ids, 0.65),
+        popularities=dict.fromkeys(member_ids, 0.5),
+    )
+
+    asyncio.run(CohortRanker(client, programme_ids=["programme-1"]).build_and_rank_cohorts([cohort]))
+
+    assert len(client.calls) == 1
+    assert "feature_explainability" not in client.calls[0]
+
+
 def test_identical_safe_keys_across_contexts_raise_the_tiebreak_flag():
     """Two cohorts in different contexts with identical band strength, identical
     novelty and identical member counts: the ordering would need raw affinity to
@@ -166,6 +181,7 @@ def test_identical_safe_keys_across_contexts_raise_the_tiebreak_flag():
 
     assert len(result.contexts) == 2
     assert len(result.scoring_call_ids) == 2
+    assert all(call["feature_explainability"] is True for call in client.calls)
     assert result.ranked, "both cohorts clear the evidence gate in this construct"
     assert result.cross_context_tiebreak_used is True, (
         "identical safe keys in different normalisations must raise the flag rather "

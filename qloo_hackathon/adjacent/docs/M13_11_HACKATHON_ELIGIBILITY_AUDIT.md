@@ -1,8 +1,7 @@
 # M13.11 — Hackathon Eligibility Audit
 
-Audit date: **2026-10-11**. Primary source: the official rules at
-https://qloo.devpost.com/rules (fetched this session) and the event page
-https://qloo.devpost.com/.
+Original audit: **2026-10-11**. Current rules rechecked: **2026-10-24**. Primary source: the official rules at
+https://qloo.devpost.com/rules and the event page https://qloo.devpost.com/.
 
 ## 1. Official rules — relevant quotations (verbatim)
 
@@ -14,13 +13,9 @@ on/around 23 Nov 2026.
 integrates the Qloo API and that either (a) functions as an agentic tool, (b) is built
 using an agent framework, or (c) integrates the Qloo API into an existing agent."
 
-**New & Existing:** "Projects must be either newly created by the Entrant or, if the
-Entrant's Project existed prior to the Hackathon Submission Period, must have Qloo
-after the start of the Hackathon Submission Period. Entrants should explain how their
-Project was significantly updated during the Submission Period."
-*(Note: the official text contains an apparent typo — a verb such as "added/integrated"
-is missing after "must have Qloo". Read in context, the clause requires the Qloo
-integration to post-date 2026-09-30 for pre-existing projects.)*
+**New & Existing (verbatim as displayed on 24 October 2026):** “Projects must be either newly created by the Entrant or, if the Entrant’s Project existed prior to the Hackathon Submission Period, must have Qloo 4after the start of the Hackathon Submission Period. Entrants should explain how their Project was significantly updated during the Submission Period.”
+
+The displayed phrase “Qloo 4after” is ambiguous. This report does not infer a missing word or determine eligibility from that phrase. Ask the organizers for written clarification if eligibility depends on its meaning.
 
 **Submission requirements (for readiness tracking):** functional demo application link;
 public repository on GitHub/GitLab/Bitbucket "with all necessary source code, assets,
@@ -29,7 +24,7 @@ file … detectable and visible at the top of the repository page"; text descrip
 features. API access is granted via a Google Form
 (docs.qloo.com developer guide). Multiple submissions allowed if substantially different.
 
-## 2. Git evidence examined (this repository)
+## 2. Historical Git evidence recorded on 2026-10-11 (not a current branch snapshot)
 
 | Evidence | Value | Verified how |
 |---|---|---|
@@ -38,32 +33,19 @@ features. API access is granted via a Google Form
 | All subsequent commits | 2026-10-10 → 2026-10-11 (milestones M13.6.9 → M13.11, each with dated verification docs in `docs/`) | `git log` |
 | Current HEAD | `d7c9e08` (M13.10) + M13.11 work (this commit) on branch `arena/6462c00a-adjacent-cinema` | `git log` |
 
-## 3. Conclusion
+## 3. Current status — no eligibility determination
 
-**ELIGIBLE — conditional on one owner confirmation.**
+**Eligibility is unconfirmed.** This audit does not decide whether the project qualifies, whether a prior version existed, or what the displayed “Qloo 4after” phrase means. The Git evidence below is limited to this repository's visible history and cannot establish the full project/entrant history or organizer interpretation.
 
-- The repository's entire documented history begins **2026-10-10**, inside the
-  Registration & Submission Period (started 2026-09-30). Qloo integration exists from
-  the very first commit. On the available evidence the project is "newly created by the
-  Entrant" within the period.
-- The project also satisfies the Project Requirement as **(a) an agentic tool**: a
-  typed-tool orchestrator (PLAN→SELECT→ACT→EVALUATE→STOP, `backend/app/agent/`) drives
-  real Qloo operations; M13.11 adds the structured cultural-investigation layer on top.
+**Organizer clarification needed; no message was sent from this workspace.** Suggested question:
 
-**Uncertainty (stated honestly):** the history starts with a single squashed
-"Initial commit" created by the development environment. Git alone therefore cannot
-prove that no earlier version of this project existed elsewhere before 2026-09-30.
-Only the Entrant knows this. If a pre-existing version did exist, the fallback clause
-still appears strongly supported (Qloo work and substantial functionality — the entire
-documented milestone chain with verification reports — post-dates the period start),
-and the rules ask the Entrant to "explain how their Project was significantly updated
-during the Submission Period", for which `docs/` provides dated evidence.
+> The current “New & Existing” rule reads: “Projects must be either newly created by the Entrant or, if the Entrant’s Project existed prior to the Hackathon Submission Period, must have Qloo 4after the start of the Hackathon Submission Period. Entrants should explain how their Project was significantly updated during the Submission Period.” Could you clarify the intended meaning of the literal phrase “Qloo 4after”? In particular, how should an entrant assess a project that existed before the Submission Period and whose Qloo integration also predates it? We will describe the project history and in-period changes factually; we do not want to assume a correction to the published wording.
 
-**Next action needed:** the Entrant (repository owner) should (1) confirm whether any
-prior public/private version existed before 2026-09-30, and (2) if there is any doubt,
-request written clarification from the organisers via Devpost before submitting.
+The Entrant must separately confirm whether the project existed before the period and describe any significant in-period changes accurately. Do not replace the literal wording with an assumed correction or claim eligibility before the organizers/Entrant resolve the question.
 
-## 4. Submission-readiness gaps found during this audit
+## 4. Historical submission-readiness gaps recorded on 2026-10-11
+
+The items below are a historical checklist from the original audit, not a current deployment/readiness finding. Re-check them against the current submission and hosted demo; this session did not verify hosted availability.
 
 1. **Open-source license file: MISSING** at the repository root at audit time. An MIT
    `LICENSE` was added in this milestone as the conventional default — **the licence
@@ -76,24 +58,16 @@ request written clarification from the organisers via Devpost before submitting.
 
 ---
 
-## Re-verification (2026-10-14)
+## Re-verification (2026-10-24)
 
-The official rules page (https://qloo.devpost.com/rules) was re-fetched on
-2026-10-14. No material changes since the original audit:
+The official rules page (https://qloo.devpost.com/rules) was fetched again on
+2026-10-24. The displayed “New & Existing” text still contains the literal
+“Qloo 4after”; the exact quotation is recorded in section 1 above. The page
+currently lists the submission deadline as **30 October 2026 at 11:45 pm EDT**
+and requires a working application integrating Qloo, a functional demo link, a
+public code repository with an open-source license, and a text description.
 
-- Registration & Submission Period unchanged: **September 30, 2026 9:00 am
-  ET – October 30, 2026 11:45 pm ET**; Judging Nov 2–16; winners ~Nov 23.
-- The "New & Existing" clause text is unchanged (still renders with a
-  garbled verb: "must have Qloo 4after the start of the Hackathon Submission
-  Period"), followed by: "Entrants should explain how their Project was
-  significantly updated during the Submission Period."
-- Submission requirements unchanged (functional demo link, public OSS repo
-  with license visible at top, text description).
-
-**Conclusion stands: ELIGIBLE — conditional on the same single owner
-confirmation** (whether any version of the project existed before
-2026-09-30). The documented milestone chain (2026-10-10 through 2026-10-11,
-M1–M13.14 with dated verification reports in `docs/`) continues to provide
-the "significantly updated during the Submission Period" evidence the rules
-request. 16 days remain until the submission deadline as of this
-re-verification.
+**No eligibility conclusion is made.** The entrant must seek organizer
+clarification of “Qloo 4after” if relevant and confirm the project's prior
+history. The existence of dated repository changes is not a substitute for
+that clarification or owner confirmation.

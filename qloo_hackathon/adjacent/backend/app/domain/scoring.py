@@ -32,12 +32,14 @@ Nothing in this module invents, scales or adjusts a measurement.
 from __future__ import annotations
 
 import itertools
+import json
 import statistics
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
 from .. import evidence
+from ..qloo.errors import QlooError
 from ..qloo.models import BAND_MEDIUM, ScoredEntity
 from .cohorts import POPULARITY_CEILING, CandidateCohort, MemberEvidence
 from .reasons import Exclusion, ExclusionCode, Rejection, RejectionCode
@@ -89,6 +91,7 @@ class ScoringContext:
     data_status: str
     requested_ids: tuple[str, ...]
     scored: Mapping[str, ScoredEntity]
+    explainability_status: str = "not_requested_limit"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -99,6 +102,7 @@ class ScoringContext:
             "data_status": self.data_status,
             "requested": len(self.requested_ids),
             "returned": len(self.scored),
+            "explainability_status": self.explainability_status,
         }
 
 
@@ -112,6 +116,7 @@ class RankingResult:
     ordering: list[dict[str, Any]] = field(default_factory=list)
     cross_context_tiebreak_used: bool = False
     scoring_call_ids: list[str] = field(default_factory=list)
+    qloo_calls_made: int = 0
     unscored_member_ids: list[str] = field(default_factory=list)
 
     @property
@@ -125,6 +130,37 @@ def _mean(values: Sequence[float]) -> float | None:
 
 def _median(values: Sequence[float]) -> float | None:
     return round(statistics.median(values), 6) if values else None
+
+
+def _is_explainability_parameter_rejection(error: QlooError) -> bool:
+    """Return true only for an explicit 4xx rejection of this optional field."""
+    if error.status not in {400, 422} or error.endpoint != "/v2/insights":
+        return False
+    detail = error.detail
+    if isinstance(detail, (dict, list)):
+        message = json.dumps(detail, ensure_ascii=False).lower()
+    else:
+        message = str(detail or "").lower()
+    if "feature.explainability" not in message:
+        return False
+    return any(
+        marker in message
+        for marker in (
+            "unsupported",
+            "unknown parameter",
+            "unknown field",
+            "unexpected",
+            "unrecognized",
+            "not allowed",
+            "not supported",
+            "invalid parameter",
+            "invalid value",
+            "validation",
+            "must be",
+            "expected",
+            "valid boolean",
+        )
+    )
 
 
 class CohortRanker:
@@ -141,6 +177,7 @@ class CohortRanker:
         programme_ids: Sequence[str],
         take: int = 50,
         tool: str = "build_and_rank_cohorts",
+        max_explainability_fallbacks: int | None = None,
     ) -> None:
         if not programme_ids:
             raise ValueError("CohortRanker requires at least one programme entity id as a signal")
@@ -148,6 +185,7 @@ class CohortRanker:
         self.programme_ids = list(programme_ids)
         self.take = take
         self.tool = tool
+        self.max_explainability_fallbacks = max_explainability_fallbacks
 
     # -- the single logical operation --------------------------------------
     async def build_and_rank_cohorts(self, cohorts: Sequence[CandidateCohort]) -> RankingResult:
@@ -161,6 +199,12 @@ class CohortRanker:
             by_domain.setdefault(cohort.domain, []).append(cohort)
 
         result = RankingResult(operation_call_id="", all_cohorts=list(cohorts))
+        fallback_limit = (
+            len(by_domain)
+            if self.max_explainability_fallbacks is None
+            else max(0, self.max_explainability_fallbacks)
+        )
+        fallbacks_remaining = min(fallback_limit, len(by_domain))
 
         with recorder.record(
             tool=self.tool,
@@ -187,15 +231,45 @@ class CohortRanker:
                             requested.append(entity_id)
 
                 context_id = f"ctx:{domain}"
-                # ONE call scores every cohort in this domain. This is the
-                # `filter.results.entities` shape the live implementation uses.
-                response = await self.client.insights(
-                    filter_type=domain,
-                    signal_interests_entities=self.programme_ids,
-                    filter_results_entities=requested,
-                    take=self.take,
-                    tool=f"score_context:{domain}",
-                )
+                # Enable the optional field only when a single bounded retry can
+                # be afforded. This preserves the run's call budget and keeps
+                # ordinary scoring available when no fallback capacity remains.
+                if len(requested) > 12:
+                    explainability_status = "not_requested_limit"
+                elif fallbacks_remaining <= 0:
+                    explainability_status = "not_requested_budget"
+                else:
+                    explainability_status = "requested"
+                explainability_requested = explainability_status == "requested"
+                request_args = {
+                    "filter_type": domain,
+                    "signal_interests_entities": self.programme_ids,
+                    "filter_results_entities": requested,
+                    "take": self.take,
+                    "tool": f"score_context:{domain}",
+                }
+                if explainability_requested:
+                    request_args["feature_explainability"] = True
+                try:
+                    response = await self.client.insights(**request_args)
+                except QlooError as exc:
+                    if not (
+                        explainability_requested
+                        and fallbacks_remaining > 0
+                        and _is_explainability_parameter_rejection(exc)
+                    ):
+                        raise
+                    fallbacks_remaining -= 1
+                    result.qloo_calls_made += 1
+                    explainability_status = "unsupported"
+                    operation.add_note(
+                        f"optional feature.explainability rejected for {domain} "
+                        f"by call {exc.call_id or 'unknown'} (HTTP {exc.status}); retried once without it. "
+                        "Scoring remains measured; per-seed attribution is unavailable."
+                    )
+                    request_args.pop("feature_explainability", None)
+                    response = await self.client.insights(**request_args)
+                result.qloo_calls_made += 1
                 scored = {e.entity_id: e for e in response.results if e.entity_id}
                 context = ScoringContext(
                     context_id=context_id,
@@ -205,6 +279,7 @@ class CohortRanker:
                     data_status=response.data_status,
                     requested_ids=tuple(requested),
                     scored=scored,
+                    explainability_status=explainability_status,
                 )
                 result.contexts.append(context)
                 result.scoring_call_ids.append(response.call_id)
@@ -240,6 +315,8 @@ class CohortRanker:
                     scored=entity,
                     call_id=context.call_id,
                     is_marginal=entity.affinity < evidence.BAND_HIGH,
+                    qloo_attribution_status=context.explainability_status,
+                    allowed_qloo_seed_ids=tuple(self.programme_ids),
                 )
             )
         # Deterministic member order: affinity desc, then entity id.

@@ -82,6 +82,12 @@ class TestCreatorFixtureDemo:
         assert card["success_criteria"]
         assert card["observation_window"]
         assert "predicts no view counts" in card["success_criteria"]
+        assert "randomized split" in card["comparison_protocol"]
+        assert "same channel" in card["comparison_protocol"]
+        assert "raw counts, denominator" in card["primary_measure"]
+        assert "Adjacent does not supply statistical thresholds" in card["decision_rule"]
+        assert "inconclusive" in card["decision_rule"]
+        assert result["investigation"]["experiment"]["comparison_protocol"] == card["comparison_protocol"]
 
         # Exclusions surfaced (annotations, never deletions)
         for cohort in result["cohorts"]["ranked"]:
@@ -120,16 +126,27 @@ class TestCreatorExperimentJourney:
             assert card["data_status"] == "fixture"
             assert card["audience_hypothesis"]
 
+            # Stand in for values edited in the Creator controls; the backend
+            # must persist this exact snapshot without rewriting its meaning.
+            experiment_design = {
+                "comparison_protocol": "Edited A/B protocol; hold channel and timing constant.",
+                "primary_measure": "Qualified visits / eligible exposures, raw counts recorded.",
+                "decision_rule": "Review only if the preselected 2-point difference is met.",
+                "observation_window": "Record from 1–14 November, fixed before launch.",
+            }
             saved = client.post("/experiments", json={
                 "request_id": f"journey-save-{run_id}",
                 "film_title": result["film"]["title"],
                 "hypothesis": card["audience_hypothesis"],
                 "success_criteria": card["success_criteria"],
-                "observation_window": card["observation_window"],
+                "observation_window": experiment_design["observation_window"],
                 "action_plan": card["programming_direction"],
                 "data_status": card["data_status"],
                 "source_run_id": run_id,
-                "source_bet": result["programme_bet"],
+                "source_bet": {
+                    **result["programme_bet"],
+                    "experiment_design": experiment_design,
+                },
                 "provenance": card["provenance"],
                 "film_context": result["film"],
             })
@@ -138,6 +155,13 @@ class TestCreatorExperimentJourney:
             assert experiment["status"] == "PLANNED"
             assert experiment["source_run_id"] == run_id
             assert experiment["data_status"] == "fixture"
+            assert experiment["source_bet"]["experiment_design"] == experiment_design
+            assert experiment["observation_window"] == experiment_design["observation_window"]
+
+            reopened = client.get(f"/experiments/{experiment['experiment_id']}")
+            assert reopened.status_code == 200
+            assert reopened.json()["experiment"]["source_bet"]["experiment_design"] == experiment_design
+            assert reopened.json()["experiment"]["observation_window"] == experiment_design["observation_window"]
 
             observed = client.post(
                 f"/experiments/{experiment['experiment_id']}/observations",
