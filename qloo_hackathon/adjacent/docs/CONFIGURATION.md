@@ -82,6 +82,7 @@ is ever returned by an API response, a trace row or a log line.
 |---|---|---|
 | `NODE_VERSION` | — | Render/Vercel build image pin (`22`) |
 | `PYTHON_VERSION` | — | Render backend image pin (`3.12.15`) |
+| `ADJACENT_DEV_ORIGINS` | empty | **`next dev` only**, comma-separated origins allowed to fetch dev resources (HMR, chunks) cross-origin — needed for sandbox previews and tunnels, e.g. `3000-abc.e2b.app,localhost:3000`. Never set on a deployed service; the production build ignores it |
 
 ---
 
