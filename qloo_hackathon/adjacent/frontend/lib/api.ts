@@ -100,16 +100,21 @@ export interface SSEEvent {
 // ─── API Calls ──────────────────────────────────────────────────────────────
 
 export async function createRun(request: RunRequest): Promise<RunResponse> {
-  const res = await fetch(`${API_BASE}/run`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
-  });
+  const { response: res, data } = await fetchJsonWithTimeout<RunResponse | { detail?: string }>(
+    "/run",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    },
+    "Analysis start timed out. The backend may have accepted the request; check run status before retrying."
+  );
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || "Failed to create run");
+    const detail = data && "detail" in data && typeof data.detail === "string" ? data.detail : res.statusText;
+    throw new Error(detail || "Failed to create run");
   }
-  return res.json();
+  if (!data || !("run_id" in data)) throw new Error("The backend returned an invalid run response.");
+  return data;
 }
 
 export async function getRun(runId: string): Promise<RunResponse> {
@@ -124,12 +129,17 @@ export async function getRun(runId: string): Promise<RunResponse> {
  * always show that labelling. This never replaces a live request.
  */
 export async function createDemoRun(): Promise<RunResponse> {
-  const res = await fetch(`${API_BASE}/run/demo`, { method: "POST" });
+  const { response: res, data } = await fetchJsonWithTimeout<RunResponse | { detail?: string }>(
+    "/run/demo",
+    { method: "POST" },
+    "Fixture run start timed out. The backend may have accepted the request; check run status before retrying."
+  );
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || "Failed to start fixture demo run");
+    const detail = data && "detail" in data && typeof data.detail === "string" ? data.detail : res.statusText;
+    throw new Error(detail || "Failed to start fixture demo run");
   }
-  return res.json();
+  if (!data || !("run_id" in data)) throw new Error("The backend returned an invalid fixture-run response.");
+  return data;
 }
 
 export function streamRun(
@@ -370,11 +380,16 @@ export async function initializeSponsorGuestSession(): Promise<{ expires_at: str
 }
 
 export async function revokeSponsorGuestSession(): Promise<void> {
-  const res = await fetch(`${API_BASE}/filmsponsor/guest-session`, {
-    method: "DELETE",
-    credentials: "same-origin",
-    headers: { "X-FilmSponsor-CSRF": filmSponsorCsrfToken ?? "" },
-  });
+  const res = await fetchWithTimeout(
+    "/filmsponsor/guest-session",
+    {
+      method: "DELETE",
+      credentials: "same-origin",
+      headers: { "X-FilmSponsor-CSRF": filmSponsorCsrfToken ?? "" },
+    },
+    "Ending the FilmSponsor workspace timed out. The session may already be revoked; recheck workspace status before retrying."
+  );
+  noteGuestSessionExpiry("/filmsponsor/guest-session", res);
   if (!res.ok) throw new Error("Could not end guest session.");
   filmSponsorCsrfToken = null;
 }
@@ -593,17 +608,23 @@ export async function disconnectYouTube(): Promise<{
   youtube_observations_deleted: number;
   experiments_tombstoned: number;
 }> {
-  const res = await fetch(`${API_BASE}/youtube/disconnect`, { method: "POST" });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(typeof body?.detail === "string" ? body.detail : "Could not disconnect");
-  }
-  return body as {
+  type DisconnectResponse = {
     revoked_upstream: boolean;
     credentials_deleted: boolean;
     youtube_observations_deleted: number;
     experiments_tombstoned: number;
-  };
+  } | { detail?: string };
+  const { response: res, data: body } = await fetchJsonWithTimeout<DisconnectResponse>(
+    "/youtube/disconnect",
+    { method: "POST" },
+    "YouTube disconnect timed out. The backend may have completed it; refresh connection status before retrying."
+  );
+  if (!res.ok) {
+    const detail = body && "detail" in body && typeof body.detail === "string" ? body.detail : res.statusText;
+    throw new Error(detail || "Could not disconnect");
+  }
+  if (!body || !("revoked_upstream" in body)) throw new Error("The backend returned an invalid disconnect response.");
+  return body;
 }
 
 // ── Role-B synthesis (M13.13): optional, provider-gated decision briefs ────
