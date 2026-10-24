@@ -1080,22 +1080,7 @@ export default function CreatorPage() {
               </div>
             )}
 
-            {positioningMultiverse && positioningOrdering && (
-              <PositioningArena
-                multiverse={positioningMultiverse}
-                policy={positioningPolicy}
-                ordering={positioningOrdering}
-                selectedId={selectedPositioningId}
-                onPolicyChange={setPositioningPolicy}
-                onSelect={(strategyId) => {
-                  setSelectedPositioningId(strategyId);
-                  const strategy = positioningMultiverse.strategies.find((item) => item.id === strategyId);
-                  if (strategy?.availability === "available") setExperimentDesign(strategy.suggested_test);
-                }}
-              />
-            )}
-
-            {/* ── Test Card → experiment ─────────────────────────────── */}
+{/* ── Test Card → experiment ─────────────────────────────── */}
             {card && (
               <article id="test-card" className="test-card-sheet" style={{ padding: 28, border: "1px solid var(--rule)", borderRadius: 8, background: "rgba(232,226,213,0.02)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
