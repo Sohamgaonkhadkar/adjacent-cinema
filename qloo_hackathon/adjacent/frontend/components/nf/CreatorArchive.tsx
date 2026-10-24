@@ -31,6 +31,7 @@ import {
   type YouTubeVideo,
 } from "@/lib/api";
 import type { TraceRow } from "@/types/adjacent";
+import { stableRequestId } from "@/lib/requestId";
 import { readSavedPositioningSnapshot } from "@/lib/positioningArena";
 import { readSavedTestDesign } from "@/lib/testCardDesign";
 import { EvidenceReferences, EvidenceTraceLog } from "@/components/EvidenceTrace";
@@ -316,16 +317,21 @@ function ExperimentDetail({
     const metrics: Record<string, number | null> = {};
     if (views.trim() !== "") metrics.views = Number(views);
     if (watchMinutes.trim() !== "") metrics.watch_time_minutes = Number(watchMinutes);
+    const payload = {
+      kind,
+      measurement_status: measurement,
+      observed_on: observedOn || null,
+      metrics,
+      interpretation: interpretation || null,
+      limitations: limitations || null,
+      source: "creator-reported",
+    };
     try {
       const response = await addObservation(experiment.experiment_id, {
-        request_id: `obs-${experiment.experiment_id}-${Date.now()}`,
-        kind,
-        measurement_status: measurement,
-        observed_on: observedOn || null,
-        metrics,
-        interpretation: interpretation || null,
-        limitations: limitations || null,
-        source: "creator-reported",
+        // Content-derived id: a retry after a timeout resolves to the record the
+        // backend already stored instead of logging the same measurement twice.
+        request_id: stableRequestId(`obs-${experiment.experiment_id}`, payload),
+        ...payload,
       });
       setMessage(
         response.duplicate ? "That observation was already recorded." : "Observation recorded.",
@@ -350,15 +356,22 @@ function ExperimentDetail({
     }
     setBusy(true);
     setMessage(null);
+    const payload = {
+      outcome,
+      rationale: rationale.trim(),
+      observation_ids: observations.map((observation) => observation.observation_id),
+      unknowns: unknowns || null,
+    };
     try {
-      await addEvaluation(experiment.experiment_id, {
-        request_id: `eval-${experiment.experiment_id}-${Date.now()}`,
-        outcome,
-        rationale: rationale.trim(),
-        observation_ids: observations.map((observation) => observation.observation_id),
-        unknowns: unknowns || null,
+      const response = await addEvaluation(experiment.experiment_id, {
+        request_id: stableRequestId(`eval-${experiment.experiment_id}`, payload),
+        ...payload,
       });
-      setMessage("Evaluation recorded. Earlier evaluations remain in the history.");
+      setMessage(
+        response.duplicate
+          ? "That evaluation was already recorded; the history is unchanged."
+          : "Evaluation recorded. Earlier evaluations remain in the history.",
+      );
       setRationale("");
       setUnknowns("");
       await onChanged();
@@ -873,11 +886,16 @@ function YouTubePanel({
     setBusy(true);
     setMessage(null);
     try {
-      const response = await recordYouTubeObservation(experimentId, {
-        request_id: `obs-yt-${experimentId}-${Date.now()}`,
+      const payload = {
         video_id: videoId,
         start_date: startDate,
         end_date: endDate,
+      };
+      const response = await recordYouTubeObservation(experimentId, {
+        // Same video and window => same request, so a retry cannot create a
+        // second observation for one analytics fetch.
+        request_id: stableRequestId(`obs-yt-${experimentId}`, payload),
+        ...payload,
       });
       setMessage(
         response.duplicate

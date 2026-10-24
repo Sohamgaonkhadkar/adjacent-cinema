@@ -5,6 +5,14 @@ on one host. Caddy terminates HTTPS; the FastAPI backend has no public host
 port; Next.js proxies same-origin `/api/*` requests to the private backend
 network. The SQLite workspace uses a persistent Docker volume.
 
+## Environment variables
+
+Every variable, which service owns it, and what happens when it is unset are
+listed in [`docs/CONFIGURATION.md`](CONFIGURATION.md), together with the final
+live-verification runbook. Nothing there is required for the application to run
+or be reviewed: without credentials the product serves labelled fixture runs and
+reports each provider-gated feature as unavailable.
+
 ## Render Blueprint option
 
 The repository also contains a root-level `render.yaml` for a managed-host

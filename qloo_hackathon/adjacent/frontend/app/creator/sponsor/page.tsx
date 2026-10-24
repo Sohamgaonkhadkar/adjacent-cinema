@@ -43,6 +43,7 @@ import { photos } from "@/lib/photos";
 import { PhotoFrame } from "@/components/nf/PhotoFrame";
 import { Field, TextArea, TextInput } from "@/components/nf/Field";
 import { DataChip } from "@/components/nf/Chips";
+import { stableRequestId } from "@/lib/requestId";
 import { cn } from "@/lib/cn";
 
 const STEPS = [
@@ -99,7 +100,6 @@ export default function SponsorPage() {
   const [goals, setGoals] = useState("");
   const [intakeError, setIntakeError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
-  const createRequest = useRef<{ signature: string; requestId: string } | null>(null);
 
   // Selected campaign
   const [detail, setDetail] = useState<SponsorCampaignDetail | null>(null);
@@ -110,6 +110,7 @@ export default function SponsorPage() {
   const [discovering, setDiscovering] = useState(false);
   const [discoveryError, setDiscoveryError] = useState<string | null>(null);
   const [discoveryUnavailable, setDiscoveryUnavailable] = useState<string | null>(null);
+  const [discoveryNotice, setDiscoveryNotice] = useState<string | null>(null);
 
   // Drafts
   const [draftBrand, setDraftBrand] = useState("");
@@ -117,6 +118,7 @@ export default function SponsorPage() {
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
   const [draftBusy, setDraftBusy] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
+  const [draftNotice, setDraftNotice] = useState<string | null>(null);
 
   // Source review
   const [reviewDraftId, setReviewDraftId] = useState<string | null>(null);
@@ -142,6 +144,7 @@ export default function SponsorPage() {
   const [outreachNotes, setOutreachNotes] = useState("");
   const [outreachBusy, setOutreachBusy] = useState(false);
   const [outreachError, setOutreachError] = useState<string | null>(null);
+  const [outreachNotice, setOutreachNotice] = useState<string | null>(null);
 
   // Export
   const [exportPkg, setExportPkg] = useState<SponsorExportPackage | null>(null);
@@ -243,15 +246,12 @@ export default function SponsorPage() {
         themes,
         goals: goals.trim(),
       };
-      const signature = JSON.stringify(payload);
-      if (!createRequest.current || createRequest.current.signature !== signature) {
-        createRequest.current = { signature, requestId: `spc-${crypto.randomUUID()}` };
-      }
       const result = await createSponsorCampaign({
-        request_id: createRequest.current.requestId,
+        // Content-derived: a retry of the same intake returns the campaign the
+        // backend already created instead of opening a second one.
+        request_id: stableRequestId("spc", payload),
         ...payload,
       });
-      createRequest.current = null;
       setFilmTitle("");
       setFilmYear("");
       setImdbId("");
@@ -273,9 +273,18 @@ export default function SponsorPage() {
     setDiscovering(true);
     setDiscoveryError(null);
     setDiscoveryUnavailable(null);
+    setDiscoveryNotice(null);
     try {
-      await runSponsorDiscovery(detail.campaign.campaign_id, `spd-${Date.now()}`);
+      const response = await runSponsorDiscovery(
+        detail.campaign.campaign_id,
+        stableRequestId("spd", { campaign: detail.campaign.campaign_id }),
+      );
       await reloadDetail(detail.campaign.campaign_id);
+      if (response.duplicate) {
+        setDiscoveryNotice("Discovery for this campaign was already recorded — showing the stored run.");
+      } else {
+        setDiscoveryNotice(null);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Brand discovery failed.";
       if (/not configured|could not complete|discovery is unavailable/i.test(message)) {
@@ -292,13 +301,20 @@ export default function SponsorPage() {
     if (!detail || !draftBrand.trim()) return;
     setDraftBusy(true);
     setDraftError(null);
+    setDraftNotice(null);
     try {
-      await saveSponsorDraft(detail.campaign.campaign_id, {
-        request_id: `spd-draft-${Date.now()}`,
+      const draftPayload = {
         brand_name: draftBrand.trim(),
         pitch: draftPitch.trim(),
         supersedes_id: editingDraftId,
+      };
+      const response = await saveSponsorDraft(detail.campaign.campaign_id, {
+        request_id: stableRequestId("spd-draft", draftPayload),
+        ...draftPayload,
       });
+      setDraftNotice(
+        response.duplicate ? "That draft was already saved — nothing new was written." : null,
+      );
       setDraftBrand("");
       setDraftPitch("");
       setEditingDraftId(null);
@@ -328,12 +344,15 @@ export default function SponsorPage() {
     setReviewBusy(true);
     setReviewError(null);
     try {
-      await addSponsorSourceReview(detail.campaign.campaign_id, draftId, {
-        request_id: `spd-rev-${Date.now()}`,
+      const reviewPayload = {
         source_url: reviewUrl.trim(),
         claim_checked: reviewClaim.trim(),
         verification_status: reviewStatus,
         notes: reviewNotes.trim() || null,
+      };
+      await addSponsorSourceReview(detail.campaign.campaign_id, draftId, {
+        request_id: stableRequestId(`spd-rev-${draftId}`, reviewPayload),
+        ...reviewPayload,
       });
       setReviewDraftId(null);
       setReviewUrl("");
@@ -370,12 +389,12 @@ export default function SponsorPage() {
     }
     setOutreachBusy(true);
     setOutreachError(null);
+    setOutreachNotice(null);
     try {
       const metrics: Record<string, number | null> = {};
       if (outreachReplies.trim() !== "") metrics.replies = Number(outreachReplies);
       if (outreachMeetings.trim() !== "") metrics.meetings = Number(outreachMeetings);
-      await addSponsorOutreach(detail.campaign.campaign_id, {
-        request_id: `spd-out-${Date.now()}`,
+      const outreachPayload = {
         contact_status: outreachStatus,
         measurement_status: outreachMeasurement,
         draft_id: outreachDraftId || null,
@@ -383,7 +402,14 @@ export default function SponsorPage() {
         metrics,
         outcome: outreachOutcome.trim() || null,
         notes: outreachNotes.trim() || null,
+      };
+      const response = await addSponsorOutreach(detail.campaign.campaign_id, {
+        request_id: stableRequestId("spd-out", outreachPayload),
+        ...outreachPayload,
       });
+      setOutreachNotice(
+        response.duplicate ? "That outreach record already exists — nothing new was written." : null,
+      );
       setOutreachStatus("");
       setOutreachMeasurement("");
       setOutreachOutcome("");
@@ -732,6 +758,11 @@ export default function SponsorPage() {
                       {discoveryError}
                     </p>
                   )}
+                  {discoveryNotice && (
+                    <p role="status" className="mt-4 text-sm text-paper-2">
+                      {discoveryNotice}
+                    </p>
+                  )}
                 </>
               )}
             </div>
@@ -903,6 +934,11 @@ export default function SponsorPage() {
                     {draftError && (
                       <p role="alert" className="mt-3 text-sm text-warn">
                         {draftError}
+                      </p>
+                    )}
+                    {draftNotice && (
+                      <p role="status" className="mt-3 text-sm text-paper-2">
+                        {draftNotice}
                       </p>
                     )}
                     <div className="mt-4 flex flex-wrap gap-3">
@@ -1377,6 +1413,11 @@ export default function SponsorPage() {
                   {outreachError && (
                     <p role="alert" className="mt-3 text-sm text-warn">
                       {outreachError}
+                    </p>
+                  )}
+                  {outreachNotice && (
+                    <p role="status" className="mt-3 text-sm text-paper-2">
+                      {outreachNotice}
                     </p>
                   )}
                   <button

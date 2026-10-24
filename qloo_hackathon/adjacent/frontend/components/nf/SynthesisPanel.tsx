@@ -111,6 +111,9 @@ export function SynthesisPanel({
     try {
       const proposal = brief.synthesis.experiment_proposal;
       const response = await saveExperiment({
+        // Deliberately the same key the Creator page uses for this run: the
+        // backend allows exactly one saved decision per source run, so a second
+        // save must resolve to the stored record instead of opening another.
         request_id: `exp-${runId}`,
         film_title: filmTitle,
         hypothesis: draft.hypothesis,
@@ -162,7 +165,7 @@ export function SynthesisPanel({
       setDraft(null);
       setAdoptMessage(
         response.duplicate
-          ? "This analysis run already has a saved decision — showing the original. Nothing was overwritten."
+          ? "This analysis run already has exactly one saved decision, so the adopted proposal was NOT stored. The original decision — and the model's proposal as shown above — are unchanged."
           : proposal.kind === "information_gathering"
             ? "Saved as an information-gathering plan (no positioning hypothesis was supported). It has not been executed."
             : "Saved as a planned experiment from the adopted proposal. This records intent; it does not execute the experiment.",

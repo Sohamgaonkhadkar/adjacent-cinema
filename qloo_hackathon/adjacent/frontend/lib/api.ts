@@ -402,12 +402,19 @@ async function postJson<T>(path: string, body: unknown, label: string): Promise<
   if (path.startsWith("/filmsponsor/") && filmSponsorCsrfToken) {
     headers.set("X-FilmSponsor-CSRF", filmSponsorCsrfToken);
   }
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: "POST",
-    credentials: "same-origin",
-    headers,
-    body: JSON.stringify(body),
-  });
+  // Every write goes through the same timeout as the reads: a backend that
+  // accepts the connection and then stalls must surface as an error the caller
+  // can show, not as a button that never finishes.
+  const res = await fetchWithTimeout(
+    path,
+    {
+      method: "POST",
+      credentials: "same-origin",
+      headers,
+      body: JSON.stringify(body),
+    },
+    `${label} timed out. The request may not have been recorded — reload before retrying.`
+  );
   noteGuestSessionExpiry(path, res);
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
@@ -516,8 +523,13 @@ export interface YouTubeMetricsPreview {
 
 export async function youtubeStatus(): Promise<YouTubeStatus> {
   const res = await fetch(`${API_BASE}/youtube/status`);
-  if (!res.ok) throw new Error("Could not load YouTube connection status");
-  return res.json();
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(
+      typeof body?.detail === "string" ? body.detail : "Could not load YouTube connection status"
+    );
+  }
+  return body as YouTubeStatus;
 }
 
 /** Begins the consent flow in the top-level window (Google requires it). */
@@ -582,8 +594,16 @@ export async function disconnectYouTube(): Promise<{
   experiments_tombstoned: number;
 }> {
   const res = await fetch(`${API_BASE}/youtube/disconnect`, { method: "POST" });
-  if (!res.ok) throw new Error("Could not disconnect");
-  return res.json();
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(typeof body?.detail === "string" ? body.detail : "Could not disconnect");
+  }
+  return body as {
+    revoked_upstream: boolean;
+    credentials_deleted: boolean;
+    youtube_observations_deleted: number;
+    experiments_tombstoned: number;
+  };
 }
 
 // ── Role-B synthesis (M13.13): optional, provider-gated decision briefs ────
