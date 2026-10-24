@@ -61,6 +61,13 @@ async function fetchJsonWithTimeout<T>(
   }
 }
 
+function responseDetail(value: unknown): string | null {
+  if (typeof value !== "object" || value === null || !("detail" in value)) return null;
+  const detail = (value as { detail?: unknown }).detail;
+  return typeof detail === "string" ? detail : null;
+}
+
+
 // ─── Programme Input ────────────────────────────────────────────────────────
 
 export interface ProgrammeItemInput {
@@ -440,7 +447,7 @@ async function postJson<T>(path: string, body: unknown, label: string): Promise<
   );
   noteGuestSessionExpiry(path, res);
   if (!res.ok) {
-    const detail = data && "detail" in data && typeof data.detail === "string" ? data.detail : res.statusText;
+    const detail = responseDetail(data);
     throw new Error(detail || `${label} failed (${res.status})`);
   }
   if (data === null) throw new Error(`${label} returned an empty or invalid response.`);
@@ -793,11 +800,21 @@ export async function getSponsorCampaign(campaignId: string): Promise<SponsorCam
     `/filmsponsor/campaigns/${campaignId}`
   );
   if (!res.ok) {
-    const detail = data && "detail" in data && typeof data.detail === "string" ? data.detail : res.statusText;
+    const detail = responseDetail(data);
     throw new Error(detail || "Campaign not found");
   }
-  if (!data || "detail" in data) throw new Error("The backend returned an invalid campaign response.");
-  return data;
+  if (
+    !data ||
+    typeof data !== "object" ||
+    !("campaign" in data) ||
+    !("discoveries" in data) ||
+    !("drafts" in data) ||
+    !("source_reviews" in data) ||
+    !("outreach" in data)
+  ) {
+    throw new Error("The backend returned an invalid campaign response.");
+  }
+  return data as SponsorCampaignDetail;
 }
 
 /**
@@ -876,9 +893,18 @@ export async function exportSponsorCampaign(campaignId: string): Promise<Sponsor
     `/filmsponsor/campaigns/${campaignId}/export`
   );
   if (!res.ok) {
-    const detail = data && "detail" in data && typeof data.detail === "string" ? data.detail : res.statusText;
+    const detail = responseDetail(data);
     throw new Error(detail || "Export failed");
   }
-  if (!data || "detail" in data) throw new Error("The backend returned an invalid export response.");
-  return data;
+  if (
+    !data ||
+    typeof data !== "object" ||
+    !("campaign" in data) ||
+    !("export_ready" in data) ||
+    !("approved_drafts" in data) ||
+    !("excluded_drafts" in data)
+  ) {
+    throw new Error("The backend returned an invalid export response.");
+  }
+  return data as SponsorExportPackage;
 }
