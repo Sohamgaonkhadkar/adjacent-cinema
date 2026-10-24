@@ -1,225 +1,312 @@
 "use client";
 
+/**
+ * Creator Studio — composition ported from the source ZIP (`pages/Creator.tsx`):
+ * seven numbered chapters, a sticky journey rail, editorial intake with a
+ * dossier aside, a stage ledger, the cultural fingerprint, the multiverse
+ * arena, the decision brief, the paper Test Card and the archive.
+ *
+ * Everything result-bearing is bound to this application's real backend:
+ * `createCreatorRun` / `createCreatorDemoRun`, the run SSE stream,
+ * `buildPositioningMultiverse` over the returned cohorts, `saveExperiment`, the
+ * observations/evaluations API and the optional provider-gated synthesis.
+ * The ZIP's local timers and `saltLight*` fixtures are not used: the only
+ * fixture that can appear is the backend's own labelled demo run.
+ */
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { ArrowRight, Plus, Trash2 } from "lucide-react";
 import {
-  addEvaluation,
-  addObservation,
-  beginYouTubeAuthorization,
   createCreatorDemoRun,
   createCreatorRun,
-  disconnectYouTube,
-  getExperiment,
   getHealth,
   getRun,
   listExperiments,
-  recordYouTubeObservation,
   saveExperiment,
   streamRun,
-  getSynthesisStatus,
-  synthesizeRun,
-  type SynthesisResponse,
-  type SynthesisStatus,
-  youtubeStatus,
-  youtubeVideos,
   type BackendHealth,
-  type EvaluationRecord,
+  type CreatorRunRequest,
   type ExperimentRecord,
-  type ObservationRecord,
   type RunResponse,
   type SSEEvent,
-  type YouTubeStatus,
-  type YouTubeVideo,
-  type CreatorRunRequest,
 } from "@/lib/api";
-import type { AdjacentRunResult, InvestigationData, ProgrammeFilm, TraceRow } from "@/types/adjacent";
-import AdjacencyGraph from "@/components/AdjacencyGraph";
-import PositioningArena from "@/components/PositioningArena";
-import { EvidenceReferences, EvidenceTraceLog } from "@/components/EvidenceTrace";
+import type { AdjacentRunResult, InvestigationData, TraceRow } from "@/types/adjacent";
 import { watchRunWithRecovery } from "@/lib/runRecovery";
-import { downloadTextFile, formatTestCardText, safeTextFilename } from "@/lib/testCardExport";
-import { createTestDesign, readSavedTestDesign, testDesignExportSections, updateTestDesign } from "@/lib/testCardDesign";
 import {
-  buildPositioningMultiverse,
+  createTestDesign,
+  readSavedTestDesign,
+  testDesignExportSections,
+  updateTestDesign,
+  type TestDesign,
+  type TestDesignField,
+} from "@/lib/testCardDesign";
+import { downloadTextFile, formatTestCardText, safeTextFilename } from "@/lib/testCardExport";
+import {
   DEFAULT_POSITIONING_POLICY,
+  buildPositioningMultiverse,
   orderPositioningStrategies,
   readSavedPositioningSnapshot,
   type PositioningPolicy,
   type PositioningStrategy,
 } from "@/lib/positioningArena";
+import { buildFingerprintNodes, buildStageViews, filmTitleOf, stageStatusLabel } from "@/lib/nfData";
+import { photos } from "@/lib/photos";
+import { PhotoFrame } from "@/components/nf/PhotoFrame";
+import { Field, TextArea, TextInput } from "@/components/nf/Field";
+import { CulturalFingerprint } from "@/components/nf/CulturalFingerprint";
+import { PositioningArena } from "@/components/nf/PositioningArena";
+import { TestCard } from "@/components/nf/TestCard";
+import { CreatorArchive } from "@/components/nf/CreatorArchive";
+import { SynthesisPanel } from "@/components/nf/SynthesisPanel";
+import { ClaimChip, DataChip, RunChip } from "@/components/nf/Chips";
+import { EvidenceReferences, EvidenceTraceLog } from "@/components/EvidenceTrace";
+import { cn } from "@/lib/cn";
 
-// Small helpers shared with the cinema page's visual language.
-const mono = { fontFamily: "var(--mono)" } as const;
+type SectionId = "film" | "investigation" | "fingerprint" | "arena" | "brief" | "test" | "archive";
 
-function statusLabel(status: string | null): string {
-  if (status === "measured") return "MEASURED QLOO DATA";
-  if (status === "fixture") return "FIXTURE DEMONSTRATION — NOT LIVE DATA";
-  return "DATA STATUS UNKNOWN";
-}
+const SECTIONS: { id: SectionId; label: string; needsRun: boolean }[] = [
+  { id: "film", label: "Your film", needsRun: false },
+  { id: "investigation", label: "Investigation", needsRun: true },
+  { id: "fingerprint", label: "Cultural fingerprint", needsRun: true },
+  { id: "arena", label: "Cultural multiverse", needsRun: true },
+  { id: "brief", label: "Decision brief", needsRun: true },
+  { id: "test", label: "Test card", needsRun: true },
+  { id: "archive", label: "Archive", needsRun: false },
+];
 
-function statusTone(status: string | null) {
-  if (status === "measured") {
-    return { color: "#7aba8a", background: "rgba(62,122,76,0.12)", border: "rgba(62,122,76,0.3)" };
-  }
-  if (status === "fixture") {
-    return { color: "#c29a6e", background: "rgba(194,154,110,0.12)", border: "rgba(194,154,110,0.3)" };
-  }
-  return { color: "#a7a39b", background: "rgba(232,226,213,0.04)", border: "rgba(232,226,213,0.18)" };
-}
+type Brief = {
+  title: string;
+  logline: string;
+  genre: string;
+  language: string;
+  themes: string;
+  comparables: { title: string; year: string }[];
+  releaseGoal: string;
+  location: string;
+};
 
-function resolutionCallLabel(evidence: NonNullable<ProgrammeFilm["resolution_evidence"]>): string {
-  const callIds = [evidence.call_id, ...evidence.related_call_ids].filter(
-    (callId): callId is string => Boolean(callId),
-  );
-  return callIds.length
-    ? ` · CALL${callIds.length === 1 ? "" : "S"} ${callIds.join(", ")}`
-    : "";
-}
+/** Pre-registration fields, in the exported and frozen order. */
+const DESIGN_FIELDS: [string, TestDesignField][] = [
+  ["Comparison protocol", "comparison_protocol"],
+  ["Primary measure and denominator", "primary_measure"],
+  ["Your decision rule / meaningful threshold", "decision_rule"],
+  ["Observation window", "observation_window"],
+];
+
+const emptyBrief: Brief = {
+  title: "",
+  logline: "",
+  genre: "",
+  language: "",
+  themes: "",
+  comparables: [{ title: "", year: "" }],
+  releaseGoal: "",
+  location: "",
+};
+
+/** The labelled backend fixture demo's own sample brief (never sent as live). */
+const fixtureBrief: Brief = {
+  title: "Neon Harbour",
+  logline: "A dockside night-shift romance told in three silent vignettes.",
+  genre: "drama",
+  language: "English",
+  themes: "isolation, night workers, coastal towns",
+  comparables: [
+    { title: "Chungking Express", year: "1994" },
+    { title: "In the Mood for Love", year: "2000" },
+  ],
+  releaseGoal: "YouTube premiere after festival window",
+  location: "Portland, Oregon",
+};
 
 export default function CreatorPage() {
-  // ── intake state (values persist through failures) ──────────────────────
-  const [title, setTitle] = useState("");
-  const [logline, setLogline] = useState("");
-  const [genre, setGenre] = useState("");
-  const [language, setLanguage] = useState("");
-  const [themesText, setThemesText] = useState("");
-  const [referenceRows, setReferenceRows] = useState<{ title: string; year: string }[]>([
-    { title: "", year: "" },
-    { title: "", year: "" },
-  ]);
-  const [releaseGoal, setReleaseGoal] = useState("");
-  const [city, setCity] = useState("");
+  const [brief, setBrief] = useState<Brief>(emptyBrief);
+  const [isFixtureMode, setIsFixtureMode] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [isFixtureMode, setIsFixtureMode] = useState<boolean>(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
-  // ── run state ────────────────────────────────────────────────────────────
   const [runId, setRunId] = useState<string | null>(null);
   const [run, setRun] = useState<RunResponse | null>(null);
+  const [events, setEvents] = useState<SSEEvent[]>([]);
   const [analysing, setAnalysing] = useState(false);
   const [requestMode, setRequestMode] = useState<"live" | "fixture" | null>(null);
-  const [events, setEvents] = useState<SSEEvent[]>([]);
-  const [experimentDesign, setExperimentDesign] = useState<{
-    comparison_protocol: string;
-    primary_measure: string;
-    decision_rule: string;
-    observation_window: string;
-  } | null>(null);
-  const [positioningPolicy, setPositioningPolicy] = useState<PositioningPolicy>({ ...DEFAULT_POSITIONING_POLICY });
-  const [selectedPositioningId, setSelectedPositioningId] = useState<PositioningStrategy["id"] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [backendHealth, setBackendHealth] = useState<BackendHealth | null>(null);
+
+  const [experimentDesign, setExperimentDesign] = useState<TestDesign | null>(null);
+  const [editingCard, setEditingCard] = useState(false);
+  const [saveState, setSaveState] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [savingPlan, setSavingPlan] = useState(false);
+  const [savedStrategyId, setSavedStrategyId] = useState<string | null>(null);
+  const [savedSnapshot, setSavedSnapshot] = useState<Record<string, unknown> | null>(null);
+  const [savedDesign, setSavedDesign] = useState<Record<TestDesignField, string | null> | null>(null);
+
+  const [positioningPolicy, setPositioningPolicy] = useState<PositioningPolicy>({
+    ...DEFAULT_POSITIONING_POLICY,
+  });
+  const [selectedPositioningId, setSelectedPositioningId] = useState<PositioningStrategy["id"] | null>(
+    null,
+  );
+
+  const [activeSection, setActiveSection] = useState<SectionId>("film");
+
+  const [experiments, setExperiments] = useState<ExperimentRecord[]>([]);
+  const [experimentsLoading, setExperimentsLoading] = useState(false);
+  const [experimentsError, setExperimentsError] = useState<string | null>(null);
+
   const stopStream = useRef<(() => void) | null>(null);
   const runGeneration = useRef(0);
   const activeRunId = useRef<string | null>(null);
-  const experimentDetailRequest = useRef(0);
-  const experimentListRequest = useRef(0);
-
-  // ── experiment state ─────────────────────────────────────────────────────
-  const [experiments, setExperiments] = useState<ExperimentRecord[]>([]);
-  const [experimentsLoading, setExperimentsLoading] = useState(true);
-  const [experimentsError, setExperimentsError] = useState<string | null>(null);
-  const [saveState, setSaveState] = useState<string | null>(null);
-  const [openExpId, setOpenExpId] = useState<string | null>(null);
-  const [loadingExpId, setLoadingExpId] = useState<string | null>(null);
-  const [expDetailError, setExpDetailError] = useState<string | null>(null);
-  const [expDetail, setExpDetail] = useState<{
-    experiment: ExperimentRecord;
-    observations: ObservationRecord[];
-    evaluations: EvaluationRecord[];
-  } | null>(null);
-  const [expError, setExpError] = useState<string | null>(null);
-  const [ytBanner, setYtBanner] = useState<string | null>(null);
-  const [backendHealth, setBackendHealth] = useState<BackendHealth | null>(null);
 
   const result: AdjacentRunResult | null = (run?.result as AdjacentRunResult | null) ?? null;
-  const [activeStage, setActiveStage] = useState("intake");
-  useEffect(() => {
-    const stageIds = ["intake", "analysis", "fingerprint", "positioning", "brief", "test-card", "experiments"];
-    const targets = stageIds
-      .map((id) => document.getElementById(id))
-      .filter((target): target is HTMLElement => target instanceof HTMLElement);
-    if (!targets.length || !("IntersectionObserver" in window)) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible?.target instanceof HTMLElement) setActiveStage(visible.target.id);
-      },
-      { rootMargin: "-12% 0px -65% 0px", threshold: [0, 0.2, 0.5] },
-    );
-    targets.forEach((target) => observer.observe(target));
-    return () => observer.disconnect();
-  }, [result, run?.status]);
+  const validResult =
+    result && (result.data_status === "measured" || result.data_status === "fixture") ? result : null;
+  const completed = run?.status === "completed" && Boolean(validResult);
+  const failed = run?.status === "failed";
+  const insufficient = run?.status === "insufficient";
   const traceRows: TraceRow[] = run?.trace ?? [];
+  const filmTitle = filmTitleOf(validResult, brief.title);
+
   const positioningMultiverse = useMemo(
-    () => run?.status === "completed"
-      ? buildPositioningMultiverse(result, traceRows, runId, run.status)
-      : null,
-    [result, traceRows, run?.status, runId],
+    () =>
+      completed && validResult
+        ? buildPositioningMultiverse(validResult, traceRows, runId, run?.status ?? null)
+        : null,
+    [completed, validResult, traceRows, runId, run?.status],
   );
   const positioningOrdering = useMemo(
-    () => positioningMultiverse ? orderPositioningStrategies(positioningMultiverse, positioningPolicy) : null,
+    () =>
+      positioningMultiverse
+        ? orderPositioningStrategies(positioningMultiverse, positioningPolicy)
+        : null,
     [positioningMultiverse, positioningPolicy],
   );
-  const selectedPositioningStrategy = positioningMultiverse?.strategies.find(
-    (strategy) => strategy.id === selectedPositioningId && strategy.availability === "available",
-  ) ?? null;
+  const selectedStrategy =
+    positioningMultiverse?.strategies.find(
+      (strategy) => strategy.id === selectedPositioningId && strategy.availability === "available",
+    ) ?? null;
+
+  const fingerprintNodes = useMemo(
+    () => (completed ? buildFingerprintNodes(validResult, filmTitle, traceRows) : []),
+    [completed, validResult, filmTitle, traceRows],
+  );
+
+  const stages = useMemo(
+    () => buildStageViews({ started: Boolean(runId), status: run?.status ?? null, events }),
+    [runId, run?.status, events],
+  );
+
   useEffect(() => {
     if (!positioningMultiverse) return;
     setPositioningPolicy({ ...DEFAULT_POSITIONING_POLICY });
-    const anchor = positioningMultiverse.strategies.find((strategy) => strategy.id === "anchor" && strategy.availability === "available");
-    const firstAvailable = positioningMultiverse.strategies.find((strategy) => strategy.availability === "available");
+    const anchor = positioningMultiverse.strategies.find(
+      (strategy) => strategy.id === "anchor" && strategy.availability === "available",
+    );
+    const firstAvailable = positioningMultiverse.strategies.find(
+      (strategy) => strategy.availability === "available",
+    );
     setSelectedPositioningId(anchor?.id ?? firstAvailable?.id ?? null);
-  }, [runId, positioningMultiverse?.source_run_id, run?.status]);
-  const insufficient = run?.status === "insufficient";
-  const failed = run?.status === "failed";
-  const resultTone = statusTone(failed || insufficient ? null : result?.data_status ?? null);
+  }, [positioningMultiverse]);
 
   useEffect(() => {
-    const card = result?.test_card;
+    const card = validResult?.test_card;
     if (!card) {
       setExperimentDesign(null);
       return;
     }
     setExperimentDesign(createTestDesign(card));
-  }, [runId, result?.test_card]);
+  }, [runId, validResult?.test_card]);
+
+  useEffect(() => {
+    const targets = SECTIONS.map((section) => document.getElementById(section.id)).filter(
+      (element): element is HTMLElement => element instanceof HTMLElement,
+    );
+    if (!targets.length || !("IntersectionObserver" in window)) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target instanceof HTMLElement) setActiveSection(visible.target.id as SectionId);
+      },
+      { rootMargin: "-25% 0px -60% 0px", threshold: [0, 0.2, 0.5] },
+    );
+    targets.forEach((target) => observer.observe(target));
+    return () => observer.disconnect();
+  }, [runId, run?.status]);
+
+  const publicDemo = Boolean(backendHealth?.public_demo);
+  const liveDisabled = Boolean(backendHealth?.public_demo && !backendHealth.live_creator_available);
 
   const refreshExperiments = useCallback(async () => {
-    const requestId = ++experimentListRequest.current;
+    if (publicDemo) return;
     setExperimentsLoading(true);
     setExperimentsError(null);
     try {
-      // Check the public boundary before ever requesting shared experiment rows.
-      const health = await getHealth();
-      if (requestId !== experimentListRequest.current) return;
-      setBackendHealth(health);
-      if (health.public_demo) {
-        setExperiments([]);
-        setExperimentsError("Shared experiment storage is disabled in public-demo mode.");
-        return;
-      }
-
-      const saved = await listExperiments();
-      if (requestId === experimentListRequest.current) setExperiments(saved);
-    } catch (err) {
-      if (requestId === experimentListRequest.current) {
-        setExperimentsError(err instanceof Error ? err.message : "Could not load saved experiments");
-      }
+      setExperiments(await listExperiments());
+    } catch (reason) {
+      setExperimentsError(
+        reason instanceof Error ? reason.message : "Could not load the research log.",
+      );
     } finally {
-      if (requestId === experimentListRequest.current) setExperimentsLoading(false);
+      setExperimentsLoading(false);
     }
-  }, []);
+  }, [publicDemo]);
 
   useEffect(() => {
-    void refreshExperiments();
+    void getHealth()
+      .then((health) => {
+        setBackendHealth(health);
+      })
+      .catch(() => setBackendHealth(null));
     return () => {
-      experimentListRequest.current += 1;
       runGeneration.current += 1;
       activeRunId.current = null;
       stopStream.current?.();
       stopStream.current = null;
     };
+  }, []);
+
+  useEffect(() => {
+    if (backendHealth && !backendHealth.public_demo) void refreshExperiments();
+  }, [backendHealth, refreshExperiments]);
+
+  const watchRun = useCallback((id: string) => {
+    const generation = ++runGeneration.current;
+    activeRunId.current = id;
+    stopStream.current?.();
+    setRunId(id);
+    setAnalysing(true);
+    setEvents([]);
+    setSaveState(null);
+    setSaveError(null);
+    setSavedStrategyId(null);
+
+    const isCurrent = () => runGeneration.current === generation && activeRunId.current === id;
+    stopStream.current = watchRunWithRecovery(id, {
+      isCurrent,
+      stream: streamRun,
+      fetchRun: getRun,
+      onEvent: (event) => {
+        if (isCurrent()) setEvents((previous) => [...previous, event]);
+      },
+      onRun: (response) => {
+        if (!isCurrent()) return;
+        setRun(response);
+        if (["completed", "failed", "insufficient"].includes(response.status)) {
+          setAnalysing(false);
+          void refreshExperiments();
+        }
+      },
+      onExhausted: () => {
+        if (!isCurrent()) return;
+        setError(
+          "The stream disconnected and the run status could not be confirmed. Retry loading this run.",
+        );
+        setAnalysing(false);
+      },
+    });
   }, [refreshExperiments]);
 
   const cancelRunWatch = useCallback(() => {
@@ -229,140 +316,71 @@ export default function CreatorPage() {
     stopStream.current = null;
   }, []);
 
-  const watchRun = useCallback((id: string) => {
-    const generation = ++runGeneration.current;
-    activeRunId.current = id;
-    stopStream.current?.();
-    stopStream.current = null;
-    setRunId(id);
-    setAnalysing(true);
-    setEvents([]);
-
-    const isCurrent = () =>
-      runGeneration.current === generation && activeRunId.current === id;
-    stopStream.current = watchRunWithRecovery(id, {
-      isCurrent,
-      stream: streamRun,
-      fetchRun: getRun,
-      onEvent: (event) => {
-        if (isCurrent()) setEvents((prev) => [...prev, event]);
-      },
-      onRun: (response) => {
-        if (!isCurrent()) return;
-        setRun(response);
-        if (["completed", "failed", "insufficient"].includes(response.status)) {
-          setAnalysing(false);
-        }
-      },
-      onExhausted: () => {
-        if (!isCurrent()) return;
-        setError("The stream disconnected and run status could not be confirmed. Retry loading this run.");
-        setAnalysing(false);
-      },
-    });
-  }, []);
-
-  const exitFixtureMode = useCallback(() => {
-    setIsFixtureMode(false);
-    setRequestMode(null);
-    const params = new URLSearchParams(window.location.search);
-    params.delete("demo");
-    const query = params.toString();
-    window.history.replaceState(
-      {},
-      "",
-      `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`
-    );
-  }, []);
-
-  const startDemoRun = useCallback((customPayload?: CreatorRunRequest) => {
-    cancelRunWatch();
-    setError(null);
-    setRun(null);
-    setSaveState(null);
-    setFormError(null);
-    setIsFixtureMode(true);
-    setRequestMode("fixture");
-    setAnalysing(true);
-
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("demo") !== "fixture") {
-      params.set("demo", "fixture");
-      const query = params.toString();
-      window.history.replaceState(
-        {},
-        "",
-        `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`
-      );
-    }
-
-    createCreatorDemoRun(customPayload)
-      .then((r) => watchRun(r.run_id))
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : "Failed to start the fixture demo");
-        setAnalysing(false);
-      });
-  }, [watchRun, cancelRunWatch]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const yt = params.get("yt");
-    const startFixture = params.get("demo") === "fixture";
-
-    if (yt === "connected") setYtBanner("YouTube account connected. Pick a video inside a saved experiment to record real analytics.");
-    else if (yt === "denied") setYtBanner("Authorization was declined — no data was accessed. You can reconnect any time.");
-    else if (yt === "error") setYtBanner(`YouTube authorization failed (${params.get("reason") ?? "unknown reason"}). No connection was stored.`);
-
-    if (yt) {
-      params.delete("yt");
-      params.delete("reason");
-      const query = params.toString();
-      window.history.replaceState(
-        {},
-        "",
-        `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`
-      );
-    }
-
-    if (startFixture) {
+  const startDemoRun = useCallback(
+    (payload?: CreatorRunRequest) => {
+      cancelRunWatch();
+      setError(null);
+      setRun(null);
+      setRunId(null);
+      setSaveState(null);
+      setSaveError(null);
       setIsFixtureMode(true);
       setRequestMode("fixture");
-      setTitle((t) => t || "Sample Short — 'Neon Harbour'");
-      setLogline((l) => l || "A dockside night-shift romance told in three silent vignettes.");
-      setGenre((g) => g || "drama");
-      setLanguage((lang) => lang || "English");
-      setThemesText((th) => th || "isolation, night workers, coastal towns");
-      setReferenceRows((refs) => (refs.some((r) => r.title.trim()) ? refs : [
-        { title: "Chungking Express", year: "1994" },
-        { title: "In the Mood for Love", year: "2000" },
-      ]));
-      setReleaseGoal((rg) => rg || "YouTube premiere after festival window");
-      setCity((c) => c || "Portland, Oregon");
+      setAnalysing(true);
+
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("demo") !== "fixture") {
+        params.set("demo", "fixture");
+        const query = params.toString();
+        window.history.replaceState({}, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
+      }
+
+      createCreatorDemoRun(payload)
+        .then((response) => watchRun(response.run_id))
+        .catch((reason: unknown) => {
+          setError(
+            reason instanceof Error ? reason.message : "Failed to start the labelled fixture run",
+          );
+          setAnalysing(false);
+        });
+    },
+    [cancelRunWatch, watchRun],
+  );
+
+  // URL intent: the home page links to /creator?demo=fixture.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("demo") === "fixture") {
+      setBrief((current) => (current.title ? current : fixtureBrief));
       startDemoRun();
     }
-  }, [startDemoRun]);
+    // Intentionally runs once for the initial URL intent.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  function handleAnalyse() {
-    cancelRunWatch();
-    setError(null);
-    setRun(null);
-    setSaveState(null);
-    const refs = referenceRows
-      .map((r) => ({ title: r.title.trim(), year: r.year.trim() ? Number(r.year) : null }))
-      .filter((r) => r.title);
-    const badYear = referenceRows.some(
-      (r) => r.year.trim() && (!Number.isInteger(Number(r.year)) || Number(r.year) < 1888 || Number(r.year) > 2100)
-    );
-    if (!title.trim()) {
-      setFormError("Give your film a working title.");
+  function startLiveInvestigation() {
+    setIsFixtureMode(false);
+    if (!brief.title.trim()) {
+      setFormError("A working title is required before a live investigation.");
       return;
     }
+    const references = brief.comparables
+      .map((row) => ({ title: row.title.trim(), year: row.year.trim() ? Number(row.year) : null }))
+      .filter((row) => row.title);
+    const themes = brief.themes
+      .split(",")
+      .map((theme) => theme.trim())
+      .filter(Boolean);
+    const badYear = brief.comparables.some(
+      (row) =>
+        row.year.trim() &&
+        (!Number.isInteger(Number(row.year)) || Number(row.year) < 1888 || Number(row.year) > 2100),
+    );
     if (badYear) {
       setFormError("Reference years must be between 1888 and 2100.");
       return;
     }
-    const themes = themesText.split(",").map((t) => t.trim()).filter(Boolean);
-    if (refs.length > 5) {
+    if (references.length > 5) {
       setFormError("Use at most five reference works.");
       return;
     }
@@ -374,186 +392,204 @@ export default function CreatorPage() {
       setFormError("Each theme must be 120 characters or fewer.");
       return;
     }
-    if (refs.some((ref) => ref.title.length > 160)) {
+    if (references.some((reference) => reference.title.length > 160)) {
       setFormError("Each reference title must be 160 characters or fewer.");
       return;
     }
-    if (!isFixtureMode && refs.length === 0 && themes.length === 0) {
+    if (references.length === 0 && themes.length === 0) {
       setFormError("Add at least one reference work or theme — the analysis needs cultural seeds.");
       return;
     }
+
     setFormError(null);
-    setRequestMode(isFixtureMode ? "fixture" : "live");
+    setError(null);
+    setNotice(null);
+    cancelRunWatch();
+    setRun(null);
+    setRunId(null);
+    setSaveState(null);
+    setSaveError(null);
+    setRequestMode("live");
     setAnalysing(true);
 
     const payload: CreatorRunRequest = {
-      title: title.trim(),
-      logline: logline.trim(),
-      genre: genre.trim(),
-      language: language.trim(),
+      title: brief.title.trim(),
+      logline: brief.logline.trim(),
+      genre: brief.genre.trim(),
+      language: brief.language.trim(),
       themes,
-      references: refs,
-      release_goal: releaseGoal.trim(),
-      city: city.trim(),
+      references,
+      release_goal: brief.releaseGoal.trim(),
+      city: brief.location.trim(),
     };
 
-    const runCall = isFixtureMode
-      ? createCreatorDemoRun(payload)
-      : createCreatorRun(payload);
-
-    runCall
-      .then((r) => watchRun(r.run_id))
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : "Failed to start analysis");
+    createCreatorRun(payload)
+      .then((response) => watchRun(response.run_id))
+      .catch((reason: unknown) => {
+        setError(reason instanceof Error ? reason.message : "Failed to start the analysis");
         setAnalysing(false);
       });
   }
 
-  async function handleSaveExperiment() {
-    if (!result?.test_card || !runId) return;
-    if (backendHealth?.public_demo) {
-      setExpError("Saving shared experiments is disabled in public-demo mode. The run is temporary.");
-      return;
+  function runFixture() {
+    setFormError(null);
+    setError(null);
+    setNotice(null);
+    setBrief((current) => (current.title ? current : fixtureBrief));
+    startDemoRun({
+      title: brief.title.trim() || fixtureBrief.title,
+      logline: brief.logline.trim(),
+      genre: brief.genre.trim(),
+      language: brief.language.trim(),
+      themes: brief.themes
+        .split(",")
+        .map((theme) => theme.trim())
+        .filter(Boolean),
+      references: brief.comparables
+        .filter((row) => row.title.trim())
+        .map((row) => ({ title: row.title.trim(), year: row.year.trim() ? Number(row.year) : null })),
+      release_goal: brief.releaseGoal.trim(),
+      city: brief.location.trim(),
+    });
+  }
+
+  async function savePlan(source: "test-card" | "arena" = "test-card"): Promise<boolean> {
+    if (!validResult || !runId) {
+      setSaveError("A completed investigation is required before a plan can be saved.");
+      return false;
     }
-    setExpError(null);
+    if (publicDemo) {
+      setSaveError(
+        "Saving shared experiments is disabled in public-demo mode. This run remains temporary.",
+      );
+      return false;
+    }
+    const card = validResult.test_card;
+    if (!card) {
+      setSaveError("This run did not return a Test Card, so there is no plan to save.");
+      return false;
+    }
+
+    setSavingPlan(true);
+    setSaveError(null);
+    setSaveState(null);
     try {
-      const card = result.test_card;
-      const inv = result.investigation as Record<string, unknown> | undefined;
-      const invHyp = ((inv?.hypotheses as Record<string, unknown> | undefined)?.primary ??
-        null) as Record<string, unknown> | null;
-      const invSummary = inv
+      const investigation = validResult.investigation as Record<string, unknown> | undefined;
+      const investigationHypothesis = ((investigation?.hypotheses as Record<string, unknown> | undefined)
+        ?.primary ?? null) as Record<string, unknown> | null;
+      const investigationSummary = investigation
         ? {
-            investigation_id: inv.investigation_id,
-            data_status: inv.data_status,
-            primary_hypothesis: invHyp?.statement ?? null,
-            limitations: (inv.limitations as string[]) ?? [],
-            open_questions: (inv.open_questions as string[]) ?? [],
+            investigation_id: investigation.investigation_id,
+            data_status: investigation.data_status,
+            primary_hypothesis: investigationHypothesis?.statement ?? null,
+            limitations: (investigation.limitations as string[]) ?? [],
+            open_questions: (investigation.open_questions as string[]) ?? [],
           }
         : null;
-      const invEvidenceRefs = ((inv?.provenance as Record<string, unknown> | undefined)
-        ?.call_ids ?? []) as string[];
-      const frozenTestDesign = {
+      const investigationRefs =
+        ((investigation?.provenance as Record<string, unknown> | undefined)?.call_ids ?? []) as string[];
+      const frozenDesign = {
         comparison_protocol: experimentDesign?.comparison_protocol ?? card.comparison_protocol ?? null,
         primary_measure: experimentDesign?.primary_measure ?? card.primary_measure ?? null,
         decision_rule: experimentDesign?.decision_rule ?? card.decision_rule ?? null,
         observation_window: experimentDesign?.observation_window ?? card.observation_window ?? null,
       };
-      const positioningSnapshot = positioningMultiverse && positioningOrdering && selectedPositioningStrategy
-        ? {
-            snapshot_version: "cultural-positioning-snapshot-v1",
-            calculation_version: positioningMultiverse.calculation_version,
-            source_run_id: runId,
-            original_data_status: result.data_status,
-            original_test_card: card,
-            strategies: positioningMultiverse.strategies,
-            selected_strategy_id: selectedPositioningStrategy.id,
-            selected_strategy: selectedPositioningStrategy,
-            policy: {
-              formula_version: positioningOrdering.formula_version,
-              values: positioningOrdering.policy,
-              ordering: positioningOrdering.entries,
-              notes: positioningOrdering.notes,
-            },
-            experiment_design: frozenTestDesign,
-            limitations: positioningMultiverse.source_limitations,
-          }
-        : null;
-      const resp = await saveExperiment({
-        request_id: `exp-${runId}`, // one saved decision per analysis run — retry-safe
-        film_title: (result.film as { title?: string } | undefined)?.title ?? title,
-        hypothesis: selectedPositioningStrategy?.falsifiable_hypothesis ?? card.audience_hypothesis,
-        success_criteria: selectedPositioningStrategy
+      const positioningSnapshot =
+        positioningMultiverse && positioningOrdering && selectedStrategy
+          ? {
+              snapshot_version: "cultural-positioning-snapshot-v1",
+              calculation_version: positioningMultiverse.calculation_version,
+              source_run_id: runId,
+              original_data_status: validResult.data_status,
+              original_test_card: card,
+              strategies: positioningMultiverse.strategies,
+              selected_strategy_id: selectedStrategy.id,
+              selected_strategy: selectedStrategy,
+              policy: {
+                formula_version: positioningOrdering.formula_version,
+                values: positioningOrdering.policy,
+                ordering: positioningOrdering.entries,
+                notes: positioningOrdering.notes,
+              },
+              experiment_design: frozenDesign,
+              limitations: positioningMultiverse.source_limitations,
+            }
+          : null;
+
+      const response = await saveExperiment({
+        request_id: `exp-${runId}`,
+        film_title: filmTitle || brief.title,
+        hypothesis: selectedStrategy?.falsifiable_hypothesis ?? card.audience_hypothesis,
+        success_criteria: selectedStrategy
           ? "Evaluate only against the creator-selected primary measure and pre-set decision rule. Missing or non-comparable observations remain inconclusive."
           : card.success_criteria ?? "",
-        observation_window: frozenTestDesign.observation_window ?? "",
-        action_plan: selectedPositioningStrategy?.creative_direction ?? card.programming_direction,
-        data_status: result.data_status,
+        observation_window: frozenDesign.observation_window ?? "",
+        action_plan: selectedStrategy?.creative_direction ?? card.programming_direction,
+        data_status: validResult.data_status,
         source_run_id: runId,
         source_bet: {
-          ...((result.programme_bet ?? {}) as Record<string, unknown>),
-          experiment_design: frozenTestDesign,
+          ...((validResult.programme_bet ?? {}) as Record<string, unknown>),
+          experiment_design: frozenDesign,
           ...(positioningSnapshot ? { cultural_multiverse_snapshot: positioningSnapshot } : {}),
         },
         provenance: (card.provenance ?? {}) as Record<string, unknown>,
-        film_context: (result.film ?? {}) as Record<string, unknown>,
-        // M13.12: trace the saved decision back to the investigation itself.
-        ...(invSummary
-          ? { investigation_summary: invSummary, evidence_refs: invEvidenceRefs }
+        film_context: (validResult.film ?? {}) as Record<string, unknown>,
+        ...(investigationSummary
+          ? { investigation_summary: investigationSummary, evidence_refs: investigationRefs }
           : {}),
       });
-      setSaveState(
-        resp.duplicate
-          ? "Already saved from this analysis — showing the original decision."
-          : "Saved as a planned experiment. Record what actually happens below."
+      // Read the frozen decision back from the stored record, not from local state.
+      setSavedSnapshot(readSavedPositioningSnapshot(response.experiment.source_bet));
+      setSavedDesign(
+        readSavedTestDesign(response.experiment.source_bet, response.experiment.observation_window),
       );
-      refreshExperiments();
-    } catch (err) {
-      setExpError(err instanceof Error ? err.message : "Could not save the experiment");
-    }
-  }
-
-  async function loadExperimentDetail(id: string) {
-    const requestId = ++experimentDetailRequest.current;
-    setLoadingExpId(id);
-    setExpDetailError(null);
-    try {
-      const detail = await getExperiment(id);
-      if (requestId === experimentDetailRequest.current) setExpDetail(detail);
-    } catch (err) {
-      if (requestId === experimentDetailRequest.current) {
-        setExpDetailError(err instanceof Error ? err.message : "Could not load experiment");
-      }
+      if (selectedStrategy) setSavedStrategyId(selectedStrategy.id);
+      setSaveState(
+        response.duplicate
+          ? "This run already has a saved decision — showing the original. Nothing was overwritten."
+          : source === "arena"
+            ? "Decision frozen: strategy, policy and experiment design saved as a planned experiment."
+            : "Saved as a planned experiment. Record what actually happens in the archive.",
+      );
+      void refreshExperiments();
+      return true;
+    } catch (reason) {
+      setSaveError(reason instanceof Error ? reason.message : "Could not save the plan");
+      return false;
     } finally {
-      if (requestId === experimentDetailRequest.current) setLoadingExpId(null);
+      setSavingPlan(false);
     }
   }
 
-  async function openExperiment(id: string) {
-    setExpError(null);
-    if (id === openExpId) {
-      experimentDetailRequest.current += 1;
-      setOpenExpId(null);
-      setLoadingExpId(null);
-      setExpDetailError(null);
-      return;
-    }
-    setOpenExpId(id);
-    await loadExperimentDetail(id);
-  }
-
-  const bet = result?.programme_bet ?? null;
-  const card = result?.test_card ?? null;
-  const ranked = result?.cohorts?.ranked ?? [];
-  const rejected = result?.cohorts?.rejected ?? [];
-  const tasteTags = result?.taste_dna?.tags ?? [];
-  const progItems = result?.programme?.items ?? [];
-  const themeInputs = result?.theme_inputs ?? [];
-  const seedNamesById = new Map(
-    progItems.flatMap((item) => {
-      const resolution = item.resolution_evidence;
-      const id = resolution?.qloo_entity_id ?? item.qloo_entity_id;
-      if (!id) return [];
-      const name = resolution?.qloo_name ?? item.qloo_name ?? item.title;
-      return [[id.toLowerCase(), name] as const];
-    }),
-  );
-
-  function handleExportTestCard() {
-    if (!card) return;
-    const filmName = (result?.film as { title?: string } | undefined)?.title ?? title ?? "Your film";
+  function exportTestCard() {
+    if (!validResult?.test_card) return;
+    const card = validResult.test_card;
+    const activeDesign = experimentDesign ?? createTestDesign(card);
     const text = formatTestCardText({
-      title: selectedPositioningStrategy ? `${selectedPositioningStrategy.type} strategy · ${card.title}` : card.title,
-      context: "FILM: " + filmName,
-      dataStatus: result?.data_status ?? card.data_status,
+      title: selectedStrategy ? `${selectedStrategy.type} strategy · ${card.title}` : card.title,
+      context: "FILM: " + (filmTitle || brief.title || "Unsaved brief"),
+      dataStatus: validResult.data_status,
       sections: [
-        ...(selectedPositioningStrategy ? [
-          { label: "Selected cultural strategy", value: selectedPositioningStrategy.thesis },
-          { label: "Creative direction", value: selectedPositioningStrategy.creative_direction },
-          { label: "Falsifiable hypothesis", value: selectedPositioningStrategy.falsifiable_hypothesis },
-          { label: "Strategy evidence", value: selectedPositioningStrategy.evidence_refs.map((item) => `${item.description} Calls: ${item.call_ids.join(", ")}.`).join(" ") },
-          { label: "Policy formula and priorities", value: positioningOrdering ? `${positioningOrdering.formula_version}; fit=${positioningOrdering.policy.fit}, exploration=${positioningOrdering.policy.exploration}, breadth=${positioningOrdering.policy.breadth}. The preference index is not a prediction.` : "Unavailable" },
-          { label: "Strategy limitations", value: selectedPositioningStrategy.tradeoffs.join(" ") },
-        ] : []),
+        ...(selectedStrategy
+          ? [
+              { label: "Selected cultural strategy", value: selectedStrategy.thesis },
+              { label: "Creative direction", value: selectedStrategy.creative_direction },
+              { label: "Falsifiable hypothesis", value: selectedStrategy.falsifiable_hypothesis },
+              {
+                label: "Strategy evidence",
+                value: selectedStrategy.evidence_refs
+                  .map((item) => `${item.description} Calls: ${item.call_ids.join(", ")}.`)
+                  .join(" "),
+              },
+              {
+                label: "Policy formula and priorities",
+                value: positioningOrdering
+                  ? `${positioningOrdering.formula_version}; fit=${positioningOrdering.policy.fit}, exploration=${positioningOrdering.policy.exploration}, breadth=${positioningOrdering.policy.breadth}. The preference index is not a prediction.`
+                  : "Unavailable",
+              },
+              { label: "Strategy limitations", value: selectedStrategy.tradeoffs.join(" ") },
+            ]
+          : []),
         { label: "Programme context", value: card.programme_context },
         { label: "Audience hypothesis", value: card.audience_hypothesis },
         { label: "Cultural bridge", value: card.cultural_bridge },
@@ -562,1830 +598,991 @@ export default function CreatorPage() {
         { label: "Primary evidence", value: card.primary_evidence },
         { label: "Runner-up direction", value: card.runner_up },
         { label: "Observable success criteria", value: card.success_criteria },
-        ...testDesignExportSections(experimentDesign ?? createTestDesign(card)),
+        ...testDesignExportSections(activeDesign),
         { label: "Falsification condition", value: card.falsification_condition },
       ],
       provenance: {
         ...(card.provenance ?? {}),
-        ...(selectedPositioningStrategy ? {
-          selected_strategy_id: selectedPositioningStrategy.id,
-          strategy_source_cohort_ids: selectedPositioningStrategy.source_cohort_ids.join(", "),
-          strategy_supporting_call_ids: selectedPositioningStrategy.evidence_challenge.supporting_call_ids.join(", "),
-        } : {}),
+        ...(selectedStrategy
+          ? {
+              selected_strategy_id: selectedStrategy.id,
+              strategy_source_cohort_ids: selectedStrategy.source_cohort_ids.join(", "),
+              strategy_supporting_call_ids:
+                selectedStrategy.evidence_challenge.supporting_call_ids.join(", "),
+            }
+          : {}),
       },
-      footerNote: `${result?.data_status === "fixture" ? "Fixture demonstration, not a live provider result. " : ""}Cultural affinity is not a forecast of views, attendance, revenue, or audience demand. ${selectedPositioningStrategy?.tradeoffs.join(" ") ?? ""}`,
+      footerNote: `${
+        validResult.data_status === "fixture"
+          ? "Fixture demonstration, not a live provider result. "
+          : ""
+      }Cultural affinity is not a forecast of views, attendance, revenue, or audience demand. ${
+        selectedStrategy?.tradeoffs.join(" ") ?? ""
+      }`,
     });
     downloadTextFile(safeTextFilename(card.title) + ".txt", text);
+    setNotice("Test card exported as plain text. A file was created in your browser.");
   }
 
+  const card = validResult?.test_card ?? null;
+  const bet = validResult?.programme_bet ?? null;
+  const investigation = (validResult?.investigation ?? null) as InvestigationData | null;
+  const showUnavailablePanels = (failed || insufficient) && !analysing;
+
+  // A failed or insufficient run stays navigable so its honest "unavailable"
+  // panel can be read, but a step is never offered before its evidence exists.
+  const canInvestigate = result || (failed && !analysing);
+  const canFingerprint = result?.cohorts || (failed && !analysing);
+  const canBrief = result?.investigation || (failed && !analysing);
+  const sectionAvailability: Partial<Record<SectionId, boolean>> = {
+    investigation: Boolean(canInvestigate),
+    fingerprint: Boolean(canFingerprint),
+    arena: Boolean(positioningMultiverse),
+    brief: Boolean(canBrief),
+    test: Boolean(card),
+  };
+
   return (
-    <main style={{ background: "var(--void)", minHeight: "100vh", color: "var(--paper)" }}>
-      <header className="creator-page-heading">
-        <div>
-          <span className="micro-label">ADJACENT · CREATOR STUDIO</span>
-          <h1>Position your film in its <em>cultural world.</em></h1>
+    <div className="bg-ink">
+      <header className="border-b border-line">
+        <div className="mx-auto flex max-w-[1440px] flex-wrap items-end justify-between gap-4 px-4 py-8 md:px-8">
+          <div>
+            <p className="type-kicker">Creator Studio</p>
+            <h1 className="font-display mt-2 text-4xl md:text-6xl">
+              Position your film in its <span className="italic text-amber">cultural world.</span>
+            </h1>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <RunChip status={run?.status ?? (analysing ? "running" : "idle")} />
+            {requestMode === "fixture" && <DataChip status="fixture" />}
+            {validResult && <DataChip status={validResult.data_status} />}
+          </div>
         </div>
-        <span className="creator-page-status">{run?.status ? String(run.status).replaceAll("_", " ").toUpperCase() : "READY FOR INTAKE"}</span>
       </header>
 
-      <nav className="step-nav" aria-label="Creator Studio · seven stages">
-        <a href="#intake" className={activeStage === "intake" ? "is-active" : undefined} aria-current={activeStage === "intake" ? "step" : undefined}>01 · Your film</a>
-        {result || (failed && !analysing) ? <a href="#analysis" className={activeStage === "analysis" ? "is-active" : undefined} aria-current={activeStage === "analysis" ? "step" : undefined}>02 · Investigation</a> : <span className="is-disabled" aria-disabled="true">02 · Investigation</span>}
-        {result?.cohorts || (failed && !analysing) ? <a href="#fingerprint" className={activeStage === "fingerprint" ? "is-active" : undefined} aria-current={activeStage === "fingerprint" ? "step" : undefined}>03 · Cultural Fingerprint</a> : <span className="is-disabled" aria-disabled="true">03 · Cultural Fingerprint</span>}
-        {positioningMultiverse ? <a href="#positioning" className={activeStage === "positioning" ? "is-active" : undefined} aria-current={activeStage === "positioning" ? "step" : undefined}>04 · Positioning Arena</a> : <span className="is-disabled" aria-disabled="true">04 · Positioning Arena</span>}
-        {result?.investigation || (failed && !analysing) ? <a href="#brief" className={activeStage === "brief" ? "is-active" : undefined} aria-current={activeStage === "brief" ? "step" : undefined}>05 · Decision Brief</a> : <span className="is-disabled" aria-disabled="true">05 · Decision Brief</span>}
-        {card ? <a href="#test-card" className={activeStage === "test-card" ? "is-active" : undefined} aria-current={activeStage === "test-card" ? "step" : undefined}>06 · Test Card</a> : <span className="is-disabled" aria-disabled="true">06 · Test Card</span>}
-        <a href="#experiments" className={`is-soft${activeStage === "experiments" ? " is-active" : ""}`} aria-current={activeStage === "experiments" ? "step" : undefined}>07 · Archive</a>
+      <nav
+        className="sticky top-[64px] z-40 border-b border-line bg-ink/95 backdrop-blur"
+        aria-label="Creator journey"
+      >
+        <div className="mx-auto flex max-w-[1440px] gap-1 overflow-x-auto px-4 py-2 md:px-8">
+          {SECTIONS.map((section, index) => {
+            const enabled = !section.needsRun || sectionAvailability[section.id] !== false;
+            const content = (
+              <>
+                <span className="text-amber">{String(index + 1).padStart(2, "0")}</span>
+                {section.label}
+              </>
+            );
+            return enabled ? (
+              <button
+                key={section.id}
+                type="button"
+                onClick={() =>
+                  document
+                    .getElementById(section.id)
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }
+                aria-current={activeSection === section.id ? "true" : undefined}
+                className={cn(
+                  "flex shrink-0 items-center gap-2 border-b-2 px-3 py-2 font-mono text-[0.62rem] uppercase tracking-[0.14em] transition-colors",
+                  activeSection === section.id
+                    ? "border-amber text-paper"
+                    : "border-transparent text-mute hover:text-paper-2",
+                )}
+              >
+                {content}
+              </button>
+            ) : (
+              <span
+                key={section.id}
+                aria-disabled="true"
+                className="flex shrink-0 cursor-not-allowed items-center gap-2 border-b-2 border-transparent px-3 py-2 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-dim opacity-60"
+              >
+                {content}
+              </span>
+            );
+          })}
+        </div>
       </nav>
 
-      <div className="creator-content-shell">
-        {ytBanner && (
-          <div className="evidence-panel" style={{ borderColor: "var(--amber)", marginBottom: 20 }}>
-            <span className="mono-note">{ytBanner}</span>
-          </div>
-        )}
-        {backendHealth?.public_demo && (
-          <div className="evidence-panel" role="status" style={{ borderColor: "var(--amber)", marginBottom: 20 }}>
-            <strong className="mono-note" style={{ display: "block", color: "var(--amber)" }}>
-              PUBLIC DEMO MODE · FIXTURE DATA IS LABELLED
-            </strong>
-            <p style={{ color: "#b3aea4", fontSize: 12, lineHeight: 1.7, margin: "8px 0 0" }}>
-              {backendHealth.live_creator_available
-                ? "Bounded live Creator requests are enabled; upstream Qloo may still fail honestly."
-                : "Live Creator requests are disabled. Use the labelled offline fixture demo."}
-              {" Shared experiments, YouTube and synthesis are unavailable. Run records are temporary and expire."}
-            </p>
-          </div>
-        )}
-        {/* ── 1. Film intake ─────────────────────────────────────────── */}
-        <div className="evidence-panel" id="intake">
-          {isFixtureMode && (
-            <div
-              className="evidence-panel"
-              role="status"
-              style={{
-                borderColor: "#c29a6e",
-                background: "rgba(194,154,110,0.08)",
-                marginBottom: 16,
-                padding: "10px 14px",
-              }}
-            >
-              <strong className="mono-note" style={{ display: "block", color: "#c29a6e", letterSpacing: "0.08em" }}>
-                FIXTURE DEMO MODE ACTIVE · OFFLINE DETERMINISTIC ANALYSIS
-              </strong>
-              <p style={{ color: "#d5cfc5", fontSize: 12, lineHeight: 1.6, margin: "6px 0 0" }}>
-                Form submissions run against labelled fixture evidence without calling upstream Qloo. Results are never presented as live data.
+      {publicDemo && (
+        <div className="border-b border-amber/30 bg-amber/10">
+          <p className="mx-auto max-w-[1440px] px-4 py-3 text-sm text-amber md:px-8">
+            PUBLIC DEMO MODE ·{" "}
+            {backendHealth?.live_creator_available
+              ? "bounded live Creator requests are enabled; upstream Qloo may still fail honestly."
+              : "live Creator requests are disabled on this deployment."}{" "}
+            Shared experiments, synthesis and YouTube storage are unavailable; run records are
+            temporary.
+          </p>
+        </div>
+      )}
+
+      {(notice || error || formError) && (
+        <div className="border-b border-amber/30 bg-amber/10" role="status" aria-live="polite">
+          <p className="mx-auto max-w-[1440px] px-4 py-3 text-sm text-amber md:px-8">
+            {formError ?? error ?? notice}
+          </p>
+        </div>
+      )}
+
+      {/* 01 — YOUR FILM */}
+      <section id="film" className="scroll-mt-36 border-b border-line">
+        <div className="mx-auto grid max-w-[1440px] gap-10 px-4 py-14 md:grid-cols-12 md:px-8">
+          <div className="md:col-span-7">
+            {isFixtureMode && (
+              <div className="mb-6 border border-amber/40 bg-amber/10 px-4 py-3" role="status">
+                <strong className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-amber">
+                  FIXTURE DEMO MODE ACTIVE · OFFLINE DETERMINISTIC ANALYSIS
+                </strong>
+                <p className="mt-2 text-sm leading-relaxed text-paper-2">
+                  Requests here run against the backend&apos;s labelled fixture evidence without
+                  calling upstream Qloo. Results are never presented as live data.
+                </p>
+              </div>
+            )}
+
+            <div className="border border-line p-5 md:p-8">
+              <p className="type-kicker">The film</p>
+              <p className="mt-2 text-xs text-dim">
+                Only the title is required. Everything else strengthens the evidence.
               </p>
-            </div>
-          )}
-          <h3>Your film</h3>
-          <span className="mono-note" style={{ display: "block", marginBottom: 16 }}>
-            ONLY THE TITLE IS REQUIRED · EVERYTHING ELSE STRENGTHENS THE EVIDENCE
-          </span>
-          <div style={{ display: "grid", gap: 12 }}>
-            <label className="micro-label" style={{ display: "grid", gap: 6 }}>
-              WORKING TITLE *
-              <input className="intake-input" maxLength={160} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Neon Harbour" />
-            </label>
-            <label className="micro-label" style={{ display: "grid", gap: 6 }}>
-              LOGLINE / DESCRIPTION
-              <textarea className="intake-input" rows={2} maxLength={2000} value={logline} onChange={(e) => setLogline(e.target.value)} placeholder="A dockside night-shift romance told in three silent vignettes." />
-            </label>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-              <label className="micro-label" style={{ display: "grid", gap: 6 }}>
-                GENRE
-                <input className="intake-input" maxLength={120} value={genre} onChange={(e) => setGenre(e.target.value)} placeholder="drama" />
-              </label>
-              <label className="micro-label" style={{ display: "grid", gap: 6 }}>
-                LANGUAGE
-                <input className="intake-input" maxLength={80} value={language} onChange={(e) => setLanguage(e.target.value)} placeholder="English" />
-              </label>
-            </div>
-            <label className="micro-label" style={{ display: "grid", gap: 6 }}>
-              THEMES (COMMA-SEPARATED)
-              <input className="intake-input" maxLength={604} value={themesText} onChange={(e) => setThemesText(e.target.value)} placeholder="isolation, night workers, coastal towns" />
-            </label>
-            <fieldset style={{ border: "1px solid var(--rule)", borderRadius: 6, padding: 12, margin: 0 }}>
-              <legend className="micro-label" style={{ padding: "0 6px" }}>COMPARABLE WORKS / REFERENCES</legend>
-              {referenceRows.map((row, i) => (
-                <div key={i} style={{ display: "grid", gridTemplateColumns: "minmax(0, 3fr) minmax(72px, 1fr) auto", gap: 8, marginBottom: 8 }}>
-                  <input className="intake-input" maxLength={160} value={row.title} placeholder="Film, artist, book, game…"
-                    aria-label={`Reference work ${i + 1}`}
-                    onChange={(e) => setReferenceRows((rows) => rows.map((r, ri) => (ri === i ? { ...r, title: e.target.value } : r)))} />
-                  <input className="intake-input" maxLength={4} value={row.year} placeholder="year" inputMode="numeric"
-                    aria-label={`Reference year ${i + 1}`}
-                    onChange={(e) => setReferenceRows((rows) => rows.map((r, ri) => (ri === i ? { ...r, year: e.target.value } : r)))} />
-                  <button type="button" className="intake-sample-btn" aria-label={`Remove reference ${i + 1}`}
-                    onClick={() => setReferenceRows((rows) => rows.filter((_, ri) => ri !== i))}>✕</button>
+              <div className="mt-8 space-y-7">
+                <Field label="Working title *">
+                  <TextInput
+                    required
+                    maxLength={160}
+                    value={brief.title}
+                    onChange={(event) => setBrief({ ...brief, title: event.target.value })}
+                    placeholder="Neon Harbour"
+                  />
+                </Field>
+                <Field
+                  label="Logline"
+                  hint="Used as context, never as a substitute for resolved entities."
+                >
+                  <TextArea
+                    maxLength={2000}
+                    value={brief.logline}
+                    onChange={(event) => setBrief({ ...brief, logline: event.target.value })}
+                    placeholder="A dockside night-shift romance told in three silent vignettes."
+                  />
+                </Field>
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <Field label="Genre">
+                    <TextInput
+                      maxLength={120}
+                      value={brief.genre}
+                      onChange={(event) => setBrief({ ...brief, genre: event.target.value })}
+                    />
+                  </Field>
+                  <Field label="Language">
+                    <TextInput
+                      maxLength={80}
+                      value={brief.language}
+                      onChange={(event) => setBrief({ ...brief, language: event.target.value })}
+                    />
+                  </Field>
                 </div>
-              ))}
-              <button type="button" className="intake-sample-btn" disabled={referenceRows.length >= 5}
-                onClick={() => setReferenceRows((rows) => rows.length < 5 ? [...rows, { title: "", year: "" }] : rows)}>
-                {referenceRows.length >= 5 ? "5 reference limit reached" : "+ Add reference"}
-              </button>
-            </fieldset>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-              <label className="micro-label" style={{ display: "grid", gap: 6 }}>
-                RELEASE GOAL
-                <input className="intake-input" maxLength={300} value={releaseGoal} onChange={(e) => setReleaseGoal(e.target.value)} placeholder="YouTube premiere after festival window" />
-              </label>
-              <label className="micro-label" style={{ display: "grid", gap: 6 }}>
-                RELEASE LOCATION (OPTIONAL — ENABLES GEOGRAPHY)
-                <input className="intake-input" maxLength={120} value={city} onChange={(e) => setCity(e.target.value)} placeholder="Lisbon, Portugal" />
-              </label>
+              </div>
             </div>
-            {formError && <p className="intake-form-error" role="alert">{formError}</p>}
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+
+            <div className="mt-6 border border-line p-5 md:p-8">
+              <p className="type-kicker">Cultural references</p>
+              <div className="mt-8 space-y-7">
+                <Field
+                  label="Themes"
+                  hint="Comma-separated concepts. Resolved as tags, never as extra film titles."
+                >
+                  <TextInput
+                    maxLength={604}
+                    value={brief.themes}
+                    onChange={(event) => setBrief({ ...brief, themes: event.target.value })}
+                    placeholder="isolation, night workers, coastal towns"
+                  />
+                </Field>
+                <div>
+                  <span className="field-label">Comparable works</span>
+                  <p className="mb-4 text-xs text-dim">
+                    Title and year where known. Unresolved titles stay unresolved.
+                  </p>
+                  <ul className="space-y-3">
+                    {brief.comparables.map((row, index) => (
+                      <li key={index} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_6rem_2.5rem]">
+                        <TextInput
+                          aria-label={`Comparable title ${index + 1}`}
+                          maxLength={160}
+                          placeholder="Chungking Express"
+                          value={row.title}
+                          onChange={(event) => {
+                            const next = [...brief.comparables];
+                            next[index] = { ...row, title: event.target.value };
+                            setBrief({ ...brief, comparables: next });
+                          }}
+                        />
+                        <TextInput
+                          aria-label={`Year ${index + 1}`}
+                          maxLength={4}
+                          placeholder="1994"
+                          inputMode="numeric"
+                          value={row.year}
+                          onChange={(event) => {
+                            const next = [...brief.comparables];
+                            next[index] = { ...row, year: event.target.value };
+                            setBrief({ ...brief, comparables: next });
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="flex h-10 items-center justify-center text-mute hover:text-blood"
+                          aria-label={`Remove comparable ${index + 1}`}
+                          onClick={() =>
+                            setBrief({
+                              ...brief,
+                              comparables: brief.comparables.filter(
+                                (_, rowIndex) => rowIndex !== index,
+                              ),
+                            })
+                          }
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    type="button"
+                    className="btn-ghost mt-4"
+                    disabled={brief.comparables.length >= 5}
+                    onClick={() =>
+                      setBrief({
+                        ...brief,
+                        comparables:
+                          brief.comparables.length < 5
+                            ? [...brief.comparables, { title: "", year: "" }]
+                            : brief.comparables,
+                      })
+                    }
+                  >
+                    <Plus size={14} />
+                    {brief.comparables.length >= 5 ? "5 reference limit reached" : "Add reference"}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 border border-line p-5 md:p-8">
+              <p className="type-kicker">Release context</p>
+              <div className="mt-8 grid gap-6 sm:grid-cols-2">
+                <Field label="Release goal">
+                  <TextInput
+                    maxLength={300}
+                    value={brief.releaseGoal}
+                    onChange={(event) => setBrief({ ...brief, releaseGoal: event.target.value })}
+                    placeholder="Festival, then limited theatrical"
+                  />
+                </Field>
+                <Field
+                  label="Location (optional)"
+                  hint="Enables geography only when the run returns usable place data."
+                >
+                  <TextInput
+                    maxLength={120}
+                    value={brief.location}
+                    onChange={(event) => setBrief({ ...brief, location: event.target.value })}
+                    placeholder="Portland, Oregon"
+                  />
+                </Field>
+              </div>
+            </div>
+
+            <div className="mt-8 flex flex-wrap gap-3">
               <button
-                onClick={handleAnalyse}
-                disabled={analysing || Boolean(!isFixtureMode && backendHealth?.public_demo && !backendHealth.live_creator_available)}
-                className="intake-submit"
+                type="button"
+                className="btn-primary"
+                disabled={analysing || (!isFixtureMode && liveDisabled)}
+                onClick={() => (isFixtureMode ? runFixture() : startLiveInvestigation())}
               >
                 {analysing
                   ? "Analysing…"
                   : isFixtureMode
                     ? "Analyse cultural position (fixture demo)"
-                    : backendHealth?.public_demo && !backendHealth.live_creator_available
+                    : liveDisabled
                       ? "Live Creator disabled in public demo"
                       : "Analyse cultural position"}
+                <ArrowRight size={16} />
               </button>
               {isFixtureMode ? (
                 <button
                   type="button"
-                  onClick={exitFixtureMode}
+                  className="btn-ghost"
                   disabled={analysing}
-                  className="intake-sample-btn"
+                  onClick={() => setIsFixtureMode(false)}
                 >
                   Switch to live analysis
                 </button>
               ) : (
-                <button onClick={() => startDemoRun()} disabled={analysing} className="intake-sample-btn">
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  disabled={analysing}
+                  onClick={runFixture}
+                >
                   View labelled fixture demo (offline)
                 </button>
               )}
+              <button type="button" className="btn-ghost" onClick={() => setBrief(fixtureBrief)}>
+                Load sample brief
+              </button>
             </div>
-            {error && (
-              <div className="intake-form-error" role="alert" style={{ padding: 12, border: "1px solid rgba(138,80,72,0.4)", borderRadius: 6 }}>
-                <strong style={{ display: "block", marginBottom: 4, ...mono, fontSize: 9 }}>
-                  ANALYSIS ERROR — YOUR ENTRIES ARE PRESERVED ABOVE
-                </strong>
-                {error}
-              </div>
-            )}
-            {analysing && (
-              <div className="progress-rail" role="status" aria-live="polite" style={{ marginTop: 8 }}>
-                {events.filter((e) => e.event === "trace").slice(-5).map((e, i) => (
-                  <div className="progress-line" key={i}>
-                    <span className="phase">{String(e.data?.phase ?? "…")}</span>
-                    <span>{String(e.data?.message ?? "")}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+            <p className="caption mt-4">
+              The fixture and the live path are separate requests. A failed live request never falls
+              back to fixture data.
+            </p>
           </div>
+
+          <aside className="md:col-span-5">
+            <PhotoFrame photo={photos.screenplay} className="aspect-[4/5]" />
+            <div className="mt-6 border border-line p-5">
+              <p className="type-kicker">Dossier summary</p>
+              <dl className="mt-4 space-y-3 text-sm">
+                <Row k="Title" v={brief.title || "—"} />
+                <Row k="Genre / lang." v={`${brief.genre || "—"} · ${brief.language || "—"}`} />
+                <Row
+                  k="Comparables"
+                  v={
+                    brief.comparables
+                      .filter((row) => row.title)
+                      .map((row) => row.title)
+                      .join(", ") || "—"
+                  }
+                />
+                <Row k="Location" v={brief.location || "not set"} />
+              </dl>
+              <p className="caption mt-6">
+                Live never becomes fixture silently. Fixture runs stay labelled at every layer.
+              </p>
+            </div>
+          </aside>
         </div>
+      </section>
 
-        {/* ── insufficiency / failure panels ─────────────────────────── */}
-        {run && !analysing && insufficient && (
-          <div className="insufficient-panel" style={{ marginTop: 24 }}>
-            <h3>Not enough cultural evidence yet</h3>
-            <p>{run.stop_message || "Qloo did not return enough verified signal for these seeds. Add more comparable works or themes — a refusal is an honest result."}</p>
+      {/* 02 — INVESTIGATION */}
+      <section id="investigation" className="scroll-mt-36 border-b border-line">
+        <div className="mx-auto max-w-[1440px] px-4 py-14 md:px-8">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="type-kicker">02 · Investigation</p>
+              <h2 className="font-display mt-2 text-3xl md:text-5xl">
+                {!runId && "No run yet."}
+                {analysing && "The room is working."}
+                {completed && "Investigation complete."}
+                {insufficient && "Not enough evidence."}
+                {failed && "The run failed."}
+                {run?.status === "cancelled" && "The run was interrupted."}
+              </h2>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <RunChip status={run?.status ?? (analysing ? "running" : "idle")} />
+              {validResult && <DataChip status={validResult.data_status} />}
+              {runId && <span className="caption">Run {runId}</span>}
+            </div>
           </div>
-        )}
-        {run && !analysing && failed && (
-          <>
-            <div className="insufficient-panel" role="alert" style={{ marginTop: 24, borderColor: "rgba(138,80,72,0.45)", background: "rgba(138,80,72,0.08)" }}>
-              <h3 style={{ color: "#d4a89e" }}>The analysis could not complete</h3>
-              <p>{run.error || run.stop_message || result?.evidence?.stop_message || "Unknown failure."}</p>
-              {result && <p>Any partial evidence below is not a completed positioning result.</p>}
-            </div>
-            {traceRows.length > 0 && <EvidenceTraceLog rows={traceRows} />}
-            {!result && (
-              <div style={{ display: "grid", gap: 12, marginTop: 18 }}>
-                <section className="evidence-panel" id="analysis" aria-labelledby="analysis-unavailable-title">
-                  <h3 id="analysis-unavailable-title">Investigation unavailable</h3>
-                  <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.7, marginBottom: 0 }}>
-                    The run failed before a structured investigation could be produced. No findings or hypotheses are being inferred from a failed run. Retry after the backend failure has been diagnosed.
-                  </p>
-                </section>
-                <section className="evidence-panel" id="fingerprint" aria-labelledby="fingerprint-unavailable-title">
-                  <h3 id="fingerprint-unavailable-title">Cultural fingerprint unavailable</h3>
-                  <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.7, marginBottom: 0 }}>
-                    A fingerprint requires verified cultural cohorts from a completed analysis. This failed run produced no result, so no substitute or fixture fingerprint is shown.
-                  </p>
-                </section>
-                <section className="evidence-panel" id="brief" aria-labelledby="brief-unavailable-title">
-                  <h3 id="brief-unavailable-title">Decision brief unavailable</h3>
-                  <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.7, marginBottom: 0 }}>
-                    The decision brief depends on the structured investigation above. It will become available after a successful run; optional language-model synthesis is not used to replace missing evidence.
-                  </p>
-                </section>
-              </div>
-            )}
-          </>
-        )}
 
-        {/* ── 2. Cultural analysis ───────────────────────────────────── */}
-        {result && (
-          <div style={{ marginTop: 32 }}>
-            <div style={{ marginBottom: 20, padding: "10px 14px", borderRadius: 6,
-              background: resultTone.background,
-              border: `1px solid ${resultTone.border}` }}>
-              <span style={{ ...mono, fontSize: 9, letterSpacing: "0.1em", color: resultTone.color }}>
-                {failed
-                  ? `ANALYSIS FAILED · ${statusLabel(result.data_status ?? null)} · PARTIAL OUTPUT ONLY`
-                  : insufficient
-                    ? `INSUFFICIENT EVIDENCE · ${statusLabel(result.data_status ?? null)}`
-                    : statusLabel(result.data_status ?? null)}
-                {requestMode === "fixture" ? " · FIXTURE DEMO REQUESTED" : ""}
-              </span>
-            </div>
+          {requestMode === "fixture" && (
+            <p className="mt-3 text-sm text-amber">
+              FIXTURE DEMONSTRATION — NOT A LIVE QLOO ANALYSIS · no live Qloo calls are being made.
+            </p>
+          )}
 
-            <div className="evidence-panel" id="analysis">
-              <h3>What was analysed</h3>
-              <span className="mono-note" style={{ display: "block", marginBottom: 12 }}>
-                {result.programme?.resolved_count ?? 0}/{result.programme?.total_count ?? 0} FILM REFERENCES VERIFIED AGAINST QLOO · UNRESOLVED REFERENCES ARE EXCLUDED, NEVER GUESSED
-              </span>
-              <div style={{ display: "grid", gap: 6 }}>
-                {progItems.map((item, i) => (
-                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, flexWrap: "wrap" }}>
-                    <span style={{ color: item.resolved ? "#7aba8a" : "#c97a6a" }}>{item.resolved ? "✓" : "✕"}</span>
-                    <span>{item.title}</span>
-                    {item.year != null && <span style={{ color: "#88837a" }}>({item.year})</span>}
-                    {!item.resolved && <span className="mono-note">UNRESOLVED — EXCLUDED FROM EVIDENCE</span>}
-                    {item.resolution_evidence && (
-                      <span className="mono-note" style={{ color: item.resolved ? "#7aba8a" : "#c29a6e" }}>
-                        {item.resolution_evidence.match_status}
-                        {item.resolution_evidence.match_method ? ` · VIA ${item.resolution_evidence.match_method.toUpperCase()}` : ""}
-                        {item.resolution_evidence.qloo_name ? ` · QLOO ${item.resolution_evidence.qloo_name}` : ""}
-                        {item.resolution_evidence.qloo_year != null ? ` (${item.resolution_evidence.qloo_year})` : ""}
-                        {item.resolution_evidence.qloo_entity_id ? ` · ENTITY ${item.resolution_evidence.qloo_entity_id}` : ""}
-                        {resolutionCallLabel(item.resolution_evidence)}
-                      </span>
-                    )}
-                    {(item.resolution_evidence?.verification_notes.length ?? 0) > 0 && (
-                      <span className="mono-note" style={{ color: "#a7a39b" }}>
-                        {item.resolution_evidence?.verification_notes.join(" · ")}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {(result.film?.themes?.length ?? 0) > 0 && (
-              <div className="evidence-panel">
-                <h3>Creator theme inputs</h3>
-                <span className="mono-note" style={{ display: "block", marginBottom: 12 }}>
-                  EXACT QLOO TAG MATCHES ARE USED AS SIGNALS · UNMATCHED THEMES ARE EXCLUDED
-                </span>
-                <div style={{ display: "grid", gap: 8 }}>
-                  {result.film?.themes?.map((theme, i) => {
-                    const evidence = themeInputs.find((item) => item.input === theme);
-                    const matched = evidence?.status === "matched";
-                    return (
-                      <div key={`${theme}-${i}`} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 12 }}>
-                        <span style={{ color: matched ? "#7aba8a" : "#c29a6e" }}>
-                          {matched ? "✓ MATCHED" : evidence?.status === "ambiguous" ? "⚠ AMBIGUOUS" : "✕ NOT USED"}
-                        </span>
-                        <span>{theme}</span>
-                        {matched && evidence?.qloo_name && <span className="mono-note">QLOO TAG: {evidence.qloo_name}</span>}
-                        {matched && evidence?.qloo_tag_id && <span className="mono-note">TAG ID: {evidence.qloo_tag_id}</span>}
-                        {!matched && <span className="mono-note">No exact unique Qloo tag match; excluded from analysis signals.</span>}
-                        {evidence?.call_id && <EvidenceReferences refs={[evidence.call_id]} traceRows={traceRows} />}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {tasteTags.length > 0 && (
-              <div className="evidence-panel">
-                <h3>Expressed cultural profile</h3>
-                <span className="mono-note" style={{ display: "block", marginBottom: 12 }}>
-                  QLOO AFFINITY 0–1 · SIMILARITY, NOT POPULARITY OR DEMAND
-                </span>
-                <div style={{ display: "grid", gap: 6 }}>
-                  {tasteTags.slice(0, 10).map((tag, i) => (
-                    <div className="bar-row" key={tag.tag_id || i}>
-                      <span className="bar-label">{tag.name}</span>
-                      <div className="bar-track">
-                        <div className="bar-fill" style={{ width: `${Math.max(0, Math.min(1, tag.affinity ?? 0)) * 100}%` }} />
-                      </div>
-                      <span className="bar-value">{typeof tag.affinity === "number" ? tag.affinity.toFixed(2) : "—"}{tag.band ? ` · ${tag.band}` : ""}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {result.cohorts && (
-              <div className="evidence-panel" id="fingerprint">
-                <div className="fingerprint-heading">
-                  <div>
-                    <p className="eyebrow"><span>03</span> CULTURAL FIELD / {result.data_status === "fixture" ? "MOCK DATA" : result.data_status === "measured" ? "LIVE QLOO DATA" : "DATA STATUS UNKNOWN"}</p>
-                    <h3 id="fingerprint-title" className="fingerprint-title">A programme is<br /><em>a cultural fingerprint.</em></h3>
-                  </div>
-                  <p className="fingerprint-intro">
-                    Follow the relationships outward. The useful signal is not a recommendation; it is a cultural territory your film could choose to enter.
-                  </p>
-                </div>
-                <span className="mono-note" style={{ display: "block", marginBottom: 12 }}>
-                  RANKED CULTURAL WORLDS AND RELATED ENTITIES · DRAWN ONLY FROM THIS RUN’S EVIDENCE
-                </span>
-                <AdjacencyGraph
-                  filmTitle={(result.film as { title?: string } | undefined)?.title ?? title ?? "Your film"}
-                  cohorts={result.cohorts}
-                  bet={result.programme_bet}
-                  dataStatus={result.data_status}
-                  traceRows={traceRows}
-                />
-              </div>
-            )}
-
-            {ranked.length > 0 && (
-              <div className="evidence-panel">
-                <h3>Adjacent cultural worlds, ranked</h3>
-                <span className="mono-note" style={{ display: "block", marginBottom: 8 }}>
-                  {ranked.length} RANKED · {rejected.length} REJECTED WITH REASONS
-                </span>
-                <p style={{ color: "#88837a", fontSize: 11, lineHeight: 1.65, margin: "0 0 14px" }}>
-                  When Qloo returns per-seed explainability for a bounded scoring call, open a result to inspect which resolved reference works contributed. These normalized attribution weights are provider explanations, not causal effects; missing attribution is not a zero score.
-                </p>
-                <div style={{ display: "grid", gap: 14 }}>
-                  {ranked.map((cohort) => (
-                    <div key={cohort.cohort_id} style={{ padding: "14px 16px", border: "1px solid var(--rule)", borderRadius: 7 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
-                        <span style={{ fontFamily: "var(--display)", fontSize: 20 }}>
-                          <span style={{ ...mono, fontSize: 10, color: "var(--amber)", marginRight: 8 }}>0{cohort.rank}</span>
-                          {cohort.domain.replace("urn:entity:", "")}
-                        </span>
-                        <span className="mono-note">
-                          {cohort.member_count} MEMBERS · MEAN AFFINITY {typeof cohort.score?.mean_affinity === "number" ? cohort.score.mean_affinity.toFixed(2) : "—"}
-                        </span>
-                      </div>
-                      <div style={{ display: "grid", gap: 6 }}>
-                        {cohort.members.slice(0, 5).map((m, mi) => (
-                          <div key={m.entity_id || mi}>
-                            <div className="bar-row" style={{ gridTemplateColumns: "minmax(140px, 1.2fr) 2fr auto" }}>
-                              <span className="bar-label">{m.name}</span>
-                              <div className="bar-track">
-                                <div className="bar-fill adjacent" style={{ width: `${Math.max(0, Math.min(1, m.affinity ?? 0)) * 100}%` }} />
-                              </div>
-                              <span className="bar-value">{typeof m.affinity === "number" ? m.affinity.toFixed(2) : "—"}{m.band ? ` · ${m.band}` : ""}</span>
-                            </div>
-                            {(m.qloo_attributions?.length ?? 0) > 0 ? (
-                              <details style={{ margin: "2px 0 6px 8px" }}>
-                                <summary className="mono-note" style={{ cursor: "pointer" }}>
-                                  QLOO INPUT ATTRIBUTION · {m.qloo_attributions?.length} SEED(S) · SCORE CALL {m.call_id ?? "UNAVAILABLE"}
-                                </summary>
-                                <p style={{ color: "#88837a", fontSize: 10, margin: "5px 0 5px 10px" }}>
-                                  Provider-reported contribution weights, not causal effects or audience-size evidence. Omitted seeds are unknown, not zero.
-                                </p>
-                                <div style={{ display: "grid", gap: 3, margin: "6px 0 8px 10px" }}>
-                                  {m.qloo_attributions?.map((attribution) => (
-                                    <div key={attribution.entity_id} style={{ color: "#a7a39b", fontSize: 11 }}>
-                                      {seedNamesById.get(attribution.entity_id.toLowerCase()) ?? attribution.entity_id}
-                                      <span className="mono-note" style={{ marginLeft: 8 }}>WEIGHT {attribution.score.toFixed(3)}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </details>
-                            ) : m.qloo_attribution_status ? (
-                              <p className="mono-note" style={{ margin: "3px 0 7px 8px", color: "#88837a" }}>
-                                {m.qloo_attribution_status === "unsupported"
-                                  ? "OPTIONAL QLOO EXPLAINABILITY UNSUPPORTED · CORE SCORE KEPT · SCORE CALL "
-                                  : m.qloo_attribution_status === "not_requested_limit"
-                                    ? "ATTRIBUTION NOT REQUESTED · CANDIDATE LIMIT · SCORE CALL "
-                                    : m.qloo_attribution_status === "not_requested_budget"
-                                      ? "ATTRIBUTION NOT REQUESTED · RETRY BUDGET RESERVED FOR CORE SCORING · SCORE CALL "
-                                      : "NO VALID ATTRIBUTION RETURNED · ABSENCE IS NOT ZERO · SCORE CALL "}
-                                {m.call_id ?? "UNAVAILABLE"}
-                              </p>
-                            ) : null}
-                          </div>
-                        ))}
-                      </div>
-                      {(cohort.excluded_members?.length ?? 0) > 0 && (
-                        <details style={{ marginTop: 8 }}>
-                          <summary className="mono-note" style={{ cursor: "pointer" }}>
-                            {cohort.qualifying_count ?? cohort.members.length} OF {cohort.member_count} QUALIFY · {cohort.excluded_members?.length} EXCLUDED — AND WHY
-                          </summary>
-                          <div style={{ display: "grid", gap: 4, marginTop: 6 }}>
-                            {cohort.excluded_members?.map((ex, ei) => (
-                              <div key={ex.entity_id || ei} style={{ color: "#8a847a", fontSize: 11 }}>
-                                {ex.name ?? ex.entity_id} — {ex.reason_code}
-                              </div>
-                            ))}
-                          </div>
-                        </details>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                {rejected.length > 0 && (
-                  <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--rule)" }}>
-                    <span className="micro-label">REJECTED — AND WHY</span>
-                    <div style={{ display: "grid", gap: 4, marginTop: 6 }}>
-                      {rejected.map((r, ri) => (
-                        <div key={r.cohort_id || ri} style={{ color: "#8a847a", fontSize: 11 }}>
-                          {r.domain.replace("urn:entity:", "")} — {r.rejection_reason ?? "rejected"}{r.rejection_detail ? ` (${r.rejection_detail})` : ""}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {result.investigation && <InvestigationPanel inv={result.investigation} traceRows={traceRows} />}
-            {!result.investigation && traceRows.length > 0 && <EvidenceTraceLog rows={traceRows} />}
-
-            {positioningMultiverse && positioningOrdering && (
-              <div id="positioning" className="positioning-stage">
-                <div className="positioning-stage-heading">
-                  <div><p className="eyebrow"><span>04</span> POSITIONING ARENA / {result.data_status.toUpperCase()}</p><h2>Choose a direction<br /><em>the evidence can support.</em></h2></div>
-                  <p>For {String((result.film as { title?: string } | undefined)?.title ?? title ?? "this film")}. Strategy rows reuse this completed run; unsupported positions stay unavailable.</p>
-                </div>
-                <PositioningArena
-                  multiverse={positioningMultiverse}
-                  policy={positioningPolicy}
-                  ordering={positioningOrdering}
-                  selectedId={selectedPositioningId}
-                  onPolicyChange={setPositioningPolicy}
-                  onSelect={(strategyId) => {
-                    setSelectedPositioningId(strategyId);
-                    const strategy = positioningMultiverse.strategies.find((item) => item.id === strategyId);
-                    if (strategy?.availability === "available") setExperimentDesign(strategy.suggested_test);
-                  }}
-                />
-              </div>
-            )}
-
-            {result.investigation && runId && (
-              <SynthesisBriefPanel
-                runId={runId}
-                filmTitle={(result.film as { title?: string } | undefined)?.title ?? title}
-                inv={result.investigation}
-                traceRows={traceRows}
-                onSaved={(msg) => { setSaveState(msg); refreshExperiments(); }}
-              />
-            )}
-
-            {/* ── Positioning Bet ────────────────────────────────────── */}
-            {bet && (
-              <div style={{ marginBottom: 24, padding: 24, background: "rgba(194,154,110,0.06)", border: "1px solid rgba(194,154,110,0.25)", borderRadius: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
-                  <span className="eyebrow" style={{ color: "var(--amber)" }}>&#127919; POSITIONING BET</span>
-                  <span style={{ ...mono, fontSize: 8, color: statusTone(bet.data_status ?? null).color }}>
-                    DATA STATUS: {String(bet.data_status ?? "unknown").toUpperCase()}
-                  </span>
-                </div>
-                <h3 style={{ fontFamily: "var(--display)", fontSize: 30, fontWeight: 400, margin: "0 0 8px" }}>
-                  The {bet.primary?.domain.replace("urn:entity:", "")} world — via {bet.primary?.cohort_name}
-                </h3>
-                <p style={{ color: "#a7a39b", fontSize: 12, lineHeight: 1.7, marginBottom: 14 }}>
-                  {bet.primary?.member_count} entities
-                  {typeof bet.primary?.mean_affinity === "number" ? ` · mean affinity ${bet.primary.mean_affinity.toFixed(2)}` : ""}
-                  {bet.primary?.call_id ? ` · call ${bet.primary.call_id}` : ""}
-                  {bet.primary?.cohort_id ? ` · built from ranked cohort ${bet.primary.cohort_id} above` : ""}
-                </p>
-                <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, marginBottom: 12 }}>{bet.why}</p>
-                {bet.primary?.call_id && (
-                  <div style={{ marginBottom: 12 }}>
-                    <span className="micro-label" style={{ marginBottom: 4 }}>PRIMARY EVIDENCE TRACE</span>
-                    <EvidenceReferences refs={[bet.primary.call_id]} traceRows={traceRows} />
-                  </div>
-                )}
-                {bet.cultural_bridge && (
-                  <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, marginBottom: 12 }}>
-                    <span className="micro-label" style={{ display: "inline", marginRight: 8 }}>BRIDGE</span>{bet.cultural_bridge}
-                  </p>
-                )}
-                {bet.programming_direction && (
-                  <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, marginBottom: 12 }}>
-                    <span className="micro-label" style={{ display: "inline", marginRight: 8 }}>DIRECTION</span>{bet.programming_direction}
-                  </p>
-                )}
-                {bet.geographic_signal && (
-                  <p style={{ color: "#8a847a", fontSize: 12, lineHeight: 1.7, marginBottom: 12 }}>{bet.geographic_signal}</p>
-                )}
-                {bet.falsification_condition && (
-                  <div style={{ marginTop: 12, padding: "12px 14px", background: "rgba(138,80,72,0.1)", border: "1px solid rgba(138,80,72,0.25)", borderRadius: 6 }}>
-                    <span className="micro-label" style={{ color: "#c97a6a", marginBottom: 6, display: "block" }}>&#9888; FALSIFICATION CONDITION</span>
-                    <p style={{ color: "#d4a89e", fontSize: 12, lineHeight: 1.7, margin: 0 }}>{bet.falsification_condition}</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-{/* ── Test Card → experiment ─────────────────────────────── */}
-            {card && (
-              <article id="test-card" className="test-card-sheet" style={{ padding: 28, border: "1px solid var(--rule)", borderRadius: 8, background: "rgba(232,226,213,0.02)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
-                  <span className="micro-label">EXPERIMENT · TEST CARD</span>
-                  <span className="mono-note">DATA STATUS: {String(card.data_status ?? "unknown").toUpperCase()}</span>
-                </div>
-                <h3 style={{ fontFamily: "var(--display)", fontSize: 28, fontWeight: 400, margin: "0 0 20px" }}>{card.title}</h3>
-                <div style={{ display: "grid", gap: 18 }}>
-                  {([
-                    ["PROGRAMME CONTEXT", card.programme_context],
-                    ["AUDIENCE HYPOTHESIS", card.audience_hypothesis],
-                    ["CULTURAL BRIDGE", card.cultural_bridge],
-                    ["POSITIONING DIRECTION", card.programming_direction],
-                    ["PRIMARY EVIDENCE", card.primary_evidence],
-                    ["RUNNER-UP DIRECTION", card.runner_up],
-                    ["SUCCESS CRITERIA (OBSERVABLE)", card.success_criteria],
-                  ] as [string, string | undefined][]).filter(([, v]) => v).map(([label, value]) => (
-                    <div key={label}>
-                      <span className="micro-label" style={{ marginBottom: 6, display: "block" }}>{label}</span>
-                      <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, margin: 0 }}>{value}</p>
-                    </div>
-                  ))}
-                  {card.falsification_condition && (
-                    <div style={{ padding: "12px 14px", background: "rgba(138,80,72,0.1)", border: "1px solid rgba(138,80,72,0.25)", borderRadius: 6 }}>
-                      <span className="micro-label" style={{ color: "#c97a6a", marginBottom: 6, display: "block" }}>&#9888; FALSIFICATION CONDITION</span>
-                      <p className="test-card-caution" style={{ color: "#d4a89e", fontSize: 12, lineHeight: 1.7, margin: 0 }}>{card.falsification_condition}</p>
-                    </div>
+          <ol className="mt-10 grid gap-x-8 md:grid-cols-2">
+            {stages.map((stage) => (
+              <li key={stage.id} className="grid grid-cols-[5.5rem_1fr] gap-4 border-t border-line py-4">
+                <span
+                  className={cn(
+                    "font-mono text-[0.62rem] tracking-[0.14em]",
+                    stage.state === "now" && "text-amber",
+                    stage.state === "done" && "text-sage",
+                    stage.state === "wait" && "text-dim",
+                    stage.state === "skipped" && "text-blood",
                   )}
-                  <div>
-                    <span className="micro-label" style={{ marginBottom: 6, display: "block" }}>PROVENANCE</span>
-                    <div style={{ display: "grid", gap: 4 }}>
-                      {Object.entries(card.provenance ?? {}).map(([k, v]) => (
-                        <div key={k} className="mono-note">
-                          {k.toUpperCase()}: {k.endsWith("call_id") && typeof v === "string"
-                            ? <EvidenceReferences refs={[v]} traceRows={traceRows} />
-                            : String(v ?? "—")}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                >
+                  {stageStatusLabel(stage.state)}
+                </span>
+                <div>
+                  <p className="text-paper">{stage.label}</p>
+                  <p className="mt-1 text-sm text-mute">{stage.detail}</p>
                 </div>
-                <div style={{ marginTop: 22, padding: 16, border: "1px solid rgba(194,154,110,0.25)", borderRadius: 7, background: "rgba(194,154,110,0.04)" }}>
-                  <span className="micro-label" style={{ color: "var(--amber)" }}>PERSONALISE THE TEST BEFORE SAVING</span>
-                  <p style={{ color: "#a7a39b", fontSize: 12, lineHeight: 1.7, margin: "6px 0 14px" }}>
-                    These are starting prompts, not a completed experiment. Replace them with your actual comparison, one measure you can collect, your decision threshold, and observation window before launch. Your edits are included in the export and in a newly saved snapshot; saving does not execute the test.
+              </li>
+            ))}
+          </ol>
+
+          {analysing && (
+            <p className="mt-6 text-sm text-mute" role="status" aria-live="polite">
+              Waiting for the backend to report progress. Stages mark the first unobserved step as
+              current; the backend does not stream a per-stage phase.
+            </p>
+          )}
+
+          <div className="mt-8 grid gap-6 lg:grid-cols-2">
+            <div className="border border-line p-5">
+              <p className="type-kicker">Run status</p>
+              <dl className="mt-4 space-y-2 text-sm">
+                <Row k="Status" v={run?.status ?? "idle"} />
+                <Row k="Data status" v={validResult?.data_status ?? "not returned"} />
+                <Row k="Stop reason" v={run?.stop_reason ?? "—"} />
+                <Row k="Qloo calls" v={String(validResult?.evidence?.qloo_calls ?? "—")} />
+                <Row k="Trace rows" v={String(validResult?.evidence?.trace_rows ?? traceRows.length)} />
+              </dl>
+              {run?.stop_message && (
+                <p className="mt-4 text-sm leading-relaxed text-paper-2">{run.stop_message}</p>
+              )}
+              {(failed || insufficient || run?.status === "cancelled") && (
+                <p className="mt-4 text-sm leading-relaxed text-mute">
+                  Failure is a legitimate terminal state. Nothing was substituted, and no fixture
+                  result was promoted to a measured one.
+                </p>
+              )}
+            </div>
+
+            <div className="border border-line p-5">
+              <p className="type-kicker">Recorded trace</p>
+              <p className="mt-2 text-xs leading-relaxed text-mute">
+                Provider calls are recorded server-side with redacted parameters. {events.length}{" "}
+                live event(s) received.
+              </p>
+              {traceRows.length > 0 ? (
+                <div className="mt-3 max-h-[320px] overflow-auto pr-1">
+                  <EvidenceTraceLog rows={traceRows} scope="creator-run" />
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-mute">
+                  No trace rows are attached yet. An empty trace is not a successful call record.
+                </p>
+              )}
+            </div>
+          </div>
+
+          {error && (
+            <div role="alert" className="mt-6 border border-blood/40 bg-blood/10 p-4">
+              <p className="text-sm leading-relaxed text-paper-2">{error}</p>
+              {runId && (
+                <button
+                  type="button"
+                  className="btn-ghost mt-3"
+                  onClick={() => {
+                    setError(null);
+                    watchRun(runId);
+                  }}
+                >
+                  Retry loading this run
+                </button>
+              )}
+            </div>
+          )}
+
+          {showUnavailablePanels && (
+            <section
+              id="analysis"
+              aria-labelledby="analysis-unavailable-title"
+              className="mt-8 border border-blood/40 bg-blood/5 p-5"
+            >
+              <h3 id="analysis-unavailable-title" className="font-display text-2xl">
+                Investigation unavailable
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-paper-2">
+                The run failed before a structured investigation could be produced. No findings or
+                hypotheses are being inferred from a failed run. You can retry the analysis or run
+                the labelled fixture deliberately.
+              </p>
+            </section>
+          )}
+        </div>
+      </section>
+
+      {/* 03 — CULTURAL FINGERPRINT */}
+      <section className="scroll-mt-36 border-b border-line">
+        <div className="mx-auto max-w-[1440px] px-4 py-14 md:px-8">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="type-kicker">03 · Cultural fingerprint</p>
+              <h2 className="font-display mt-2 text-3xl md:text-5xl">{filmTitle || "Your film"}</h2>
+            </div>
+            {validResult && <DataChip status={validResult.data_status} />}
+          </div>
+
+          {completed ? (
+            <div id="fingerprint">
+              <CulturalFingerprint
+                nodes={fingerprintNodes}
+                filmTitle={filmTitle || "Your film"}
+                dataStatus={validResult?.data_status}
+              />
+
+              {(validResult?.cohorts.ranked.length ?? 0) > 0 && (
+                <div className="mt-10 border border-line p-5 md:p-6">
+                  <p className="type-kicker">Cohort members · provider attribution</p>
+                  <p className="mt-2 max-w-2xl text-xs leading-relaxed text-mute">
+                    Member affinities are the scores this run actually returned. Qloo input
+                    attribution is provider-reported contribution weight, not causal effects or
+                    audience-size evidence. A member without attribution is unknown rather than
+                    absent — missing attribution is not a zero score.
                   </p>
-                  <div style={{ display: "grid", gap: 12 }}>
-                    {([
-                      ["Comparison protocol", "comparison_protocol"],
-                      ["Primary measure and denominator", "primary_measure"],
-                      ["Your decision rule / meaningful threshold", "decision_rule"],
-                      ["Observation window", "observation_window"],
-                    ] as const).map(([label, key]) => (
-                      <label key={key} className="micro-label" style={{ display: "grid", gap: 6 }}>
-                        {label.toUpperCase()}
-                        <textarea
-                          className="intake-input"
-                          rows={3}
-                          maxLength={key === "observation_window" ? 300 : 2000}
-                          value={experimentDesign?.[key] ?? card[key] ?? ""}
-                          onChange={(event) => setExperimentDesign((current) =>
-                            updateTestDesign(current, card, key, event.target.value)
-                          )}
-                        />
-                      </label>
+                  <div className="mt-5 grid gap-6 md:grid-cols-2">
+                    {validResult?.cohorts.ranked.slice(0, 2).map((cohort) => (
+                      <div key={cohort.cohort_id}>
+                        <p className="font-display text-xl">
+                          {cohort.domain.replace("urn:entity:", "")}
+                        </p>
+                        <p className="caption mt-1">
+                          {cohort.member_count} members · mean affinity{" "}
+                          {typeof cohort.score?.mean_affinity === "number"
+                            ? cohort.score.mean_affinity.toFixed(2)
+                            : "—"}
+                        </p>
+                        <ul className="mt-3 space-y-2">
+                          {cohort.members.slice(0, 5).map((member) => (
+                            <li key={member.entity_id} className="border-t border-line pt-2 text-sm">
+                              <div className="flex items-baseline justify-between gap-3">
+                                <span className="text-paper-2">
+                                  {member.name ?? member.entity_id}
+                                </span>
+                                <span className="font-mono text-[0.62rem] text-dim">
+                                  {typeof member.affinity === "number"
+                                    ? member.affinity.toFixed(2)
+                                    : "—"}
+                                  {member.band ? ` · ${member.band}` : ""}
+                                </span>
+                              </div>
+                              {(member.qloo_attributions?.length ?? 0) > 0 ? (
+                                <details className="mt-1">
+                                  <summary className="cursor-pointer font-mono text-[0.58rem] uppercase tracking-[0.12em] text-amber">
+                                    QLOO INPUT ATTRIBUTION · {member.qloo_attributions?.length}{" "}
+                                    SEED(S) · SCORE CALL {member.call_id ?? "UNAVAILABLE"}
+                                  </summary>
+                                  <ul className="mt-1 space-y-1">
+                                    {member.qloo_attributions?.map((attribution) => (
+                                      <li
+                                        key={attribution.entity_id}
+                                        className="font-mono text-[0.58rem] text-mute"
+                                      >
+                                        {attribution.entity_id} · WEIGHT{" "}
+                                        {attribution.score.toFixed(3)}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </details>
+                              ) : (
+                                <p className="mt-1 font-mono text-[0.58rem] uppercase tracking-[0.12em] text-dim">
+                                  {member.qloo_attribution_status === "unsupported"
+                                    ? "OPTIONAL QLOO EXPLAINABILITY UNSUPPORTED · CORE SCORE KEPT · SCORE CALL "
+                                    : "NO ATTRIBUTION RETURNED · ABSENCE IS NOT ZERO · SCORE CALL "}
+                                  {member.call_id ?? "UNAVAILABLE"}
+                                </p>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     ))}
                   </div>
                 </div>
-                <div className="test-card-footer-actions">
-                  <button type="button" className="test-card-export" onClick={handleExportTestCard}>
-                    <span>Export test card</span><small>PLAIN TEXT · .TXT</small><span aria-hidden="true">↓</span>
-                  </button>
-                  <button onClick={handleSaveExperiment} className="intake-submit" disabled={backendHealth?.public_demo}>
-                    {backendHealth?.public_demo ? "Saving disabled in public demo" : "Save as planned experiment"}
-                  </button>
-                  {saveState && <span className="mono-note" role="status" aria-live="polite">{saveState}</span>}
-                  {expError && <span className="intake-form-error" role="alert">{expError}</span>}
-                </div>
-              </article>
-            )}
-          </div>
-        )}
-
-        {/* ── 3. Experiment history ──────────────────────────────────── */}
-        <div className="evidence-panel" style={{ marginTop: 32 }}>
-          <h3 id="experiments">Your experiments</h3>
-          <span className="mono-note" style={{ display: "block", marginBottom: 14 }}>
-            PLANNED DECISIONS · SAVING DOES NOT EXECUTE · REAL OBSERVATIONS · HONEST EVALUATIONS · HISTORY IS NEVER REWRITTEN
-          </span>
-          {backendHealth?.public_demo ? (
-            <p role="status" style={{ color: "#88837a", fontSize: 13, lineHeight: 1.8 }}>
-              Shared experiment history is intentionally unavailable in this public demo; no shared records are read or written.
-            </p>
-          ) : experimentsError && (
-            <div role="alert" className="intake-form-error" style={{ marginBottom: 12 }}>
-              <p style={{ margin: 0 }}>
-                The Research Log could not be loaded. {experiments.length > 0
-                  ? "Showing the last successfully loaded records."
-                  : "Saved records have not been checked, so this is not an empty-log result."}
-                {` ${experimentsError}`}
-              </p>
-              <button type="button" className="intake-sample-btn" onClick={() => void refreshExperiments()} disabled={experimentsLoading} style={{ marginTop: 8 }}>
-                {experimentsLoading ? "Retrying…" : "Retry Research Log"}
-              </button>
-            </div>
-          )}
-          {experimentsLoading && experiments.length === 0 && (
-            <p role="status" aria-live="polite" style={{ color: "#88837a", fontSize: 13 }}>
-              Loading saved experiments…
-            </p>
-          )}
-          {experimentsLoading && experiments.length > 0 && (
-            <p role="status" aria-live="polite" className="mono-note">Refreshing the Research Log…</p>
-          )}
-          {!experimentsLoading && !experimentsError && experiments.length === 0 && (
-            <p style={{ color: "#88837a", fontSize: 13, lineHeight: 1.8 }}>
-              No saved experiments were returned. Run an analysis (or the labelled fixture demo)
-              and explicitly save its test card as a planned experiment. After release, record what
-              genuinely happened — saving a plan does not execute it.
-            </p>
-          )}
-          {experiments.length > 0 && (
-            <div style={{ display: "grid", gap: 10 }}>
-              {experiments.map((exp) => (
-                <div key={exp.experiment_id} style={{ border: "1px solid var(--rule)", borderRadius: 7, padding: "12px 14px" }}>
-                  <button
-                    onClick={() => openExperiment(exp.experiment_id)}
-                    aria-expanded={openExpId === exp.experiment_id}
-                    aria-controls={`experiment-detail-${exp.experiment_id}`}
-                    style={{ cursor: "pointer", display: "block", width: "100%", textAlign: "left", padding: 0, border: 0, background: "transparent", color: "inherit", font: "inherit" }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                      <span style={{ color: "#e9e3d8", fontSize: 14 }}>{exp.film_title}</span>
-                      <span className="mono-note">
-                        {String(exp.data_status).toUpperCase()}
-                        {exp.latest_evaluation ? ` · ${exp.latest_evaluation}` : " · NO EVALUATION YET"}
-                        {" · "}{exp.observation_count ?? 0} OBSERVATION(S)
-                      </span>
-                    </div>
-                    <p style={{ color: "#8a847a", fontSize: 12, margin: "6px 0 0", lineHeight: 1.6 }}>
-                      {exp.hypothesis.slice(0, 160)}{exp.hypothesis.length > 160 ? "…" : ""}
-                    </p>
-                  </button>
-                  <div
-                    id={`experiment-detail-${exp.experiment_id}`}
-                    hidden={openExpId !== exp.experiment_id}
-                  >
-                    {openExpId === exp.experiment_id && (
-                      <>
-                        {loadingExpId === exp.experiment_id && (
-                          <p role="status" aria-live="polite" className="mono-note" style={{ marginTop: 10 }}>
-                            Loading the saved decision, observations, and evaluation history…
-                          </p>
-                        )}
-                        {expDetailError && (
-                          <div role="alert" className="intake-form-error" style={{ marginTop: 10 }}>
-                            Could not load this experiment: {expDetailError}
-                            <button type="button" className="intake-sample-btn" onClick={() => void loadExperimentDetail(exp.experiment_id)} style={{ marginTop: 8 }}>
-                              Retry loading this experiment
-                            </button>
-                          </div>
-                        )}
-                        {expDetail && expDetail.experiment.experiment_id === exp.experiment_id && (
-                          <ExperimentDetail
-                            key={exp.experiment_id}
-                            detail={expDetail}
-                            onChanged={async () => {
-                              setExpDetail(await getExperiment(exp.experiment_id));
-                              refreshExperiments();
-                            }}
-                          />
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </main>
-  );
-}
-
-// ─── Experiment detail: observations + evaluation, append-only ───────────────
-
-function ExperimentDetail({
-  detail,
-  onChanged,
-}: {
-  detail: { experiment: ExperimentRecord; observations: ObservationRecord[]; evaluations: EvaluationRecord[] };
-  onChanged: () => Promise<void>;
-}) {
-  const { experiment, observations, evaluations } = detail;
-  const savedDesign = readSavedTestDesign(experiment.source_bet, experiment.observation_window);
-  const savedPositioning = readSavedPositioningSnapshot(experiment.source_bet);
-  const savedStrategy = savedPositioning?.selected_strategy && typeof savedPositioning.selected_strategy === "object"
-    ? savedPositioning.selected_strategy as Record<string, unknown>
-    : null;
-  const savedStrategies = Array.isArray(savedPositioning?.strategies)
-    ? savedPositioning.strategies.filter((strategy): strategy is Record<string, unknown> => Boolean(strategy) && typeof strategy === "object" && !Array.isArray(strategy))
-    : [];
-  const savedPolicy = savedPositioning?.policy && typeof savedPositioning.policy === "object"
-    ? savedPositioning.policy as Record<string, unknown>
-    : null;
-  const savedPolicyValues = savedPolicy?.values && typeof savedPolicy.values === "object"
-    ? savedPolicy.values as Record<string, unknown>
-    : null;
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [sourceTrace, setSourceTrace] = useState<TraceRow[]>([]);
-  const [sourceTraceLoading, setSourceTraceLoading] = useState(Boolean(experiment.source_run_id));
-  const [sourceTraceError, setSourceTraceError] = useState<string | null>(
-    experiment.source_run_id ? null : "No source run reference was saved with this experiment."
-  );
-  const sourceTraceRequest = useRef(0);
-  const sourceTraceScope = `research-${experiment.experiment_id}`;
-
-  const loadSourceTrace = useCallback(async () => {
-    const requestId = ++sourceTraceRequest.current;
-    if (!experiment.source_run_id) {
-      setSourceTrace([]);
-      setSourceTraceLoading(false);
-      setSourceTraceError("No source run reference was saved with this experiment.");
-      return;
-    }
-    setSourceTrace([]);
-    setSourceTraceLoading(true);
-    setSourceTraceError(null);
-    try {
-      const runResponse = await getRun(experiment.source_run_id);
-      if (requestId === sourceTraceRequest.current) setSourceTrace(runResponse.trace ?? []);
-    } catch (err) {
-      if (requestId === sourceTraceRequest.current) {
-        setSourceTraceError(err instanceof Error ? err.message : "Could not load the source run trace");
-      }
-    } finally {
-      if (requestId === sourceTraceRequest.current) setSourceTraceLoading(false);
-    }
-  }, [experiment.source_run_id]);
-
-  useEffect(() => {
-    void loadSourceTrace();
-    return () => { sourceTraceRequest.current += 1; };
-  }, [loadSourceTrace]);
-
-  // observation form
-  const [oKind, setOKind] = useState("ANALYTICS");
-  const [oStatus, setOStatus] = useState("OBSERVED");
-  const [oDate, setODate] = useState("");
-  const [oViews, setOViews] = useState("");
-  const [oWatchMin, setOWatchMin] = useState("");
-  const [oInterp, setOInterp] = useState("");
-  const [oLimits, setOLimits] = useState("");
-
-  // evaluation form
-  const [eOutcome, setEOutcome] = useState<"SUPPORTED" | "CONTRADICTED" | "INCONCLUSIVE">("INCONCLUSIVE");
-  const [eRationale, setERationale] = useState("");
-  const [eUnknowns, setEUnknowns] = useState("");
-
-  async function submitObservation() {
-    setBusy(true);
-    setMsg(null);
-    const metrics: Record<string, number | null> = {};
-    if (oViews.trim() !== "") metrics.views = Number(oViews);
-    if (oWatchMin.trim() !== "") metrics.watch_time_minutes = Number(oWatchMin);
-    try {
-      const resp = await addObservation(experiment.experiment_id, {
-        request_id: `obs-${experiment.experiment_id}-${Date.now()}`,
-        kind: oKind,
-        measurement_status: oStatus,
-        observed_on: oDate || null,
-        metrics,
-        interpretation: oInterp || null,
-        limitations: oLimits || null,
-        source: oKind === "ANALYTICS" ? "creator-reported" : "creator-reported",
-      });
-      setMsg(resp.duplicate ? "That observation was already recorded." : "Observation recorded.");
-      setOViews(""); setOWatchMin(""); setOInterp(""); setOLimits(""); setODate("");
-      await onChanged();
-    } catch (err) {
-      setMsg(err instanceof Error ? err.message : "Could not record observation");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function submitEvaluation() {
-    if (!eRationale.trim()) {
-      setMsg("An evaluation needs a rationale — what did the observations actually show?");
-      return;
-    }
-    setBusy(true);
-    setMsg(null);
-    try {
-      await addEvaluation(experiment.experiment_id, {
-        request_id: `eval-${experiment.experiment_id}-${Date.now()}`,
-        outcome: eOutcome,
-        rationale: eRationale.trim(),
-        observation_ids: observations.map((o) => o.observation_id),
-        unknowns: eUnknowns || null,
-      });
-      setMsg("Evaluation recorded (previous evaluations are kept in history).");
-      setERationale(""); setEUnknowns("");
-      await onChanged();
-    } catch (err) {
-      setMsg(err instanceof Error ? err.message : "Could not record evaluation");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--rule)", display: "grid", gap: 18 }}>
-      <div>
-        <span className="micro-label">SAVED DECISION (SNAPSHOT — NEVER REWRITTEN · NOT EXECUTED)</span>
-        <p style={{ color: "#b3aea4", fontSize: 12, lineHeight: 1.7, margin: "6px 0 0" }}>{experiment.hypothesis}</p>
-        {experiment.action_plan && (
-          <p style={{ color: "#b3aea4", fontSize: 12, lineHeight: 1.7, margin: "6px 0 0" }}>
-            <span className="mono-note">PLANNED ACTION: </span>{experiment.action_plan}
-          </p>
-        )}
-        {experiment.success_criteria && (
-          <p style={{ color: "#8a847a", fontSize: 12, lineHeight: 1.7, margin: "6px 0 0" }}>
-            <span className="mono-note">SUCCESS CRITERIA: </span>{experiment.success_criteria}
-          </p>
-        )}
-        {savedPositioning && (
-          <section aria-label="Frozen cultural strategy snapshot" style={{ marginTop: 10, padding: "10px 12px", border: "1px solid var(--rule)", borderRadius: 6 }}>
-            <span className="micro-label">FROZEN CULTURAL POSITIONING · SNAPSHOT · NOT EXECUTED</span>
-            <p className="mono-note">SNAPSHOT: {String(savedPositioning.snapshot_version ?? "unknown")} · CALCULATION: {String(savedPositioning.calculation_version ?? "unknown")} · SOURCE STATUS: {String(savedPositioning.original_data_status ?? experiment.data_status).toUpperCase()}</p>
-            <p style={{ color: "#d1cbc0", lineHeight: 1.65 }}>{String(savedStrategy?.thesis ?? "Selected strategy details were not recorded.")}</p>
-            <p className="mono-note">SELECTED: {String(savedPositioning.selected_strategy_id ?? "not recorded")} · POLICY: {String(savedPolicy?.formula_version ?? "unknown")} · FIT {String(savedPolicyValues?.fit ?? "—")} · EXPLORATION {String(savedPolicyValues?.exploration ?? "—")} · BREADTH {String(savedPolicyValues?.breadth ?? "—")}</p>
-            {typeof savedStrategy?.falsifiable_hypothesis === "string" && <p className="mono-note">HYPOTHESIS: {savedStrategy.falsifiable_hypothesis}</p>}
-            <ul style={{ color: "#9b968d", fontSize: 11, lineHeight: 1.6 }}>
-              {savedStrategies.map((strategy, index) => (
-                <li key={`${String(strategy.id ?? index)}-${index}`}>
-                  {String(strategy.type ?? "strategy")} · {String(strategy.availability ?? "unknown")}
-                  {typeof strategy.unavailable_reason === "string" ? ` · ${strategy.unavailable_reason}` : ""}
-                  {typeof strategy.thesis === "string" ? ` · ${strategy.thesis}` : ""}
-                </li>
-              ))}
-            </ul>
-            {Array.isArray(savedPositioning.limitations) && <p className="mono-note">LIMITS: {savedPositioning.limitations.map(String).join(" ")}</p>}
-          </section>
-        )}
-        <section aria-label="Saved experiment design" style={{ marginTop: 10, padding: "10px 12px", border: "1px solid var(--rule)", borderRadius: 6 }}>
-          <span className="micro-label">SAVED TEST DESIGN · SNAPSHOT · NOT EXECUTED</span>
-          {([
-            ["Comparison protocol", "comparison_protocol"],
-            ["Primary measure and denominator", "primary_measure"],
-            ["Decision rule", "decision_rule"],
-            ["Observation window", "observation_window"],
-          ] as const).map(([label, key]) => {
-            const value = savedDesign[key];
-            return (
-              <p key={key} style={{ color: "#b3aea4", fontSize: 12, lineHeight: 1.7, margin: "6px 0 0" }}>
-                <span className="mono-note">{label.toUpperCase()}: </span>
-                {value === null
-                  ? "Not recorded in this saved experiment (older or partial snapshot)."
-                  : value || "Blank when this snapshot was saved."}
-              </p>
-            );
-          })}
-        </section>
-        <p className="mono-note" style={{ marginTop: 6 }}>
-          SOURCE RUN: {experiment.source_run_id ?? "—"} · DATA STATUS: {String(experiment.data_status).toUpperCase()}
-        </p>
-      </div>
-
-      <DecisionSummary
-        detail={detail}
-        traceRows={sourceTrace}
-        traceScope={sourceTraceScope}
-        traceAvailability={sourceTraceLoading ? "loading" : sourceTraceError ? "unavailable" : undefined}
-      />
-      {sourceTraceLoading && (
-        <p role="status" aria-live="polite" className="mono-note">
-          Loading the source run&apos;s recorded evidence trace…
-        </p>
-      )}
-      {sourceTraceError && (
-        <div role="status" className="evidence-trace-empty">
-          <p style={{ margin: 0 }}>
-            The source run trace is unavailable here. Saved call IDs remain identifiers, not independently inspectable evidence in this view.
-            {` ${sourceTraceError}`}
-          </p>
-          {experiment.source_run_id && (
-            <button type="button" className="intake-sample-btn" onClick={() => void loadSourceTrace()} style={{ marginTop: 8 }}>
-              Retry source trace
-            </button>
-          )}
-        </div>
-      )}
-      {!sourceTraceLoading && !sourceTraceError && (
-        <EvidenceTraceLog rows={sourceTrace} scope={sourceTraceScope} />
-      )}
-
-      {/* observations */}
-      <div>
-        <span className="micro-label">OBSERVATIONS ({observations.length}) — ZERO IS A RESULT, EMPTY IS NOT</span>
-        <div style={{ display: "grid", gap: 6, margin: "8px 0 12px" }}>
-          {observations.map((o) => (
-            <div key={o.observation_id} style={{ border: "1px solid var(--rule)", borderRadius: 6, padding: "8px 10px", fontSize: 12, color: "#b3aea4" }}>
-              <span className="mono-note">{o.kind} · {o.measurement_status}{o.observed_on ? ` · ${o.observed_on}` : ""}{o.supersedes_id ? " · CORRECTION" : ""}</span>
-              <div style={{ marginTop: 4 }}>
-                {Object.entries(o.metrics ?? {}).map(([k, v]) => (
-                  <span key={k} style={{ marginRight: 12 }}>{k}: {v === null ? "—" : String(v)}</span>
-                ))}
-                {Object.keys(o.metrics ?? {}).length === 0 && <span style={{ color: "#8a847a" }}>no metrics recorded</span>}
-              </div>
-              {o.interpretation && <div style={{ marginTop: 4, color: "#c29a6e" }}>creator interpretation: {o.interpretation}</div>}
-              {o.limitations && <div style={{ marginTop: 2, color: "#8a847a" }}>limitations: {o.limitations}</div>}
-            </div>
-          ))}
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
-          <select className="intake-input" value={oKind} onChange={(e) => setOKind(e.target.value)} aria-label="Observation kind">
-            <option value="ANALYTICS">Analytics</option>
-            <option value="SCREENING">Screening</option>
-            <option value="FEEDBACK">Feedback</option>
-            <option value="NOTE">Note</option>
-          </select>
-          <select className="intake-input" value={oStatus} onChange={(e) => setOStatus(e.target.value)} aria-label="Measurement status">
-            <option value="OBSERVED">Observed</option>
-            <option value="PARTIAL">Partial</option>
-            <option value="MISSING">Missing</option>
-            <option value="UNAVAILABLE">Unavailable</option>
-            <option value="FAILED">Measurement failed</option>
-          </select>
-          <input className="intake-input" type="date" value={oDate} onChange={(e) => setODate(e.target.value)} aria-label="Observation date" />
-          <input className="intake-input" value={oViews} onChange={(e) => setOViews(e.target.value)} placeholder="views (leave empty if unknown)" inputMode="numeric" aria-label="Views" />
-          <input className="intake-input" value={oWatchMin} onChange={(e) => setOWatchMin(e.target.value)} placeholder="watch time minutes (optional)" inputMode="numeric" aria-label="Watch time" />
-          <input className="intake-input" value={oInterp} onChange={(e) => setOInterp(e.target.value)} placeholder="your interpretation (kept separate)" aria-label="Interpretation" />
-        </div>
-        <input className="intake-input" style={{ marginTop: 8 }} value={oLimits} onChange={(e) => setOLimits(e.target.value)} placeholder="limitations / what's missing" aria-label="Limitations" />
-        <button onClick={submitObservation} disabled={busy} className="intake-sample-btn" style={{ marginTop: 8 }}>
-          Record observation
-        </button>
-        <YouTubePanel experimentId={experiment.experiment_id} onChanged={onChanged} />
-      </div>
-
-      {/* evaluations */}
-      <div>
-        <span className="micro-label">EVALUATIONS ({evaluations.length}) — APPEND-ONLY; CORRECTIONS SUPERSEDE</span>
-        <div style={{ display: "grid", gap: 6, margin: "8px 0 12px" }}>
-          {evaluations.map((ev) => (
-            <div key={ev.evaluation_id} style={{ border: "1px solid var(--rule)", borderRadius: 6, padding: "8px 10px", fontSize: 12 }}>
-              <span className="mono-note" style={{ color: ev.outcome === "SUPPORTED" ? "#7aba8a" : ev.outcome === "CONTRADICTED" ? "#c97a6a" : "#c29a6e" }}>
-                {ev.outcome}{ev.supersedes_id ? " · SUPERSEDES EARLIER EVALUATION" : ""}
-              </span>
-              <p style={{ color: "#b3aea4", margin: "4px 0 0", lineHeight: 1.6 }}>{ev.rationale}</p>
-              {ev.unknowns && <p style={{ color: "#8a847a", margin: "4px 0 0" }}>unknown: {ev.unknowns}</p>}
-            </div>
-          ))}
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8 }}>
-          <select className="intake-input" value={eOutcome} onChange={(e) => setEOutcome(e.target.value as typeof eOutcome)} aria-label="Evaluation outcome">
-            <option value="SUPPORTED">Supported</option>
-            <option value="CONTRADICTED">Contradicted</option>
-            <option value="INCONCLUSIVE">Inconclusive</option>
-          </select>
-          <input className="intake-input" value={eRationale} onChange={(e) => setERationale(e.target.value)} placeholder="what did the observations actually show?" aria-label="Evaluation rationale" />
-        </div>
-        <input className="intake-input" style={{ marginTop: 8 }} value={eUnknowns} onChange={(e) => setEUnknowns(e.target.value)} placeholder="what remains unknown" aria-label="Unknowns" />
-        <button onClick={submitEvaluation} disabled={busy} className="intake-sample-btn" style={{ marginTop: 8 }}>
-          Record evaluation
-        </button>
-      </div>
-
-      {msg && <p className="mono-note" role="status" aria-live="polite">{msg}</p>}
-    </div>
-  );
-}
-
-function parseEvidenceRef(raw: string | null): {
-  provider?: string;
-  data_status?: string;
-  video_id?: string;
-  period?: { start_date?: string; end_date?: string };
-  retrieved_at?: string;
-  row_count?: number;
-} | null {
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
-function DecisionSummary({
-  detail,
-  traceRows,
-  traceScope,
-  traceAvailability,
-}: {
-  detail: { experiment: ExperimentRecord; observations: ObservationRecord[]; evaluations: EvaluationRecord[] };
-  traceRows: TraceRow[];
-  traceScope: string;
-  traceAvailability?: "loading" | "unavailable";
-}) {
-  const { experiment, observations, evaluations } = detail;
-  const bet = experiment.source_bet as {
-    primary?: { cohort_id?: string; cohort_name?: string };
-  } | null;
-  const provenance = experiment.provenance ?? {};
-  const synthesisSnapshot =
-    provenance.synthesis_snapshot && typeof provenance.synthesis_snapshot === "object" && !Array.isArray(provenance.synthesis_snapshot)
-      ? provenance.synthesis_snapshot as Record<string, unknown>
-      : null;
-  const adoptedProposal =
-    provenance.adopted_proposal && typeof provenance.adopted_proposal === "object" && !Array.isArray(provenance.adopted_proposal)
-      ? provenance.adopted_proposal as Record<string, unknown>
-      : null;
-  const readRefs = (value: unknown): string[] =>
-    Array.isArray(value) ? value.filter((ref): ref is string => typeof ref === "string") : [];
-  const evidenceRefs = [...new Set([
-    ...readRefs(provenance.evidence_refs),
-    ...readRefs(synthesisSnapshot?.evidence_refs),
-  ])];
-  const unresolvedEvidenceRefs = [...new Set([
-    ...readRefs(provenance.unresolved_evidence_refs),
-    ...readRefs(synthesisSnapshot?.unresolved_evidence_refs),
-  ])];
-  const creatorEdits = Array.isArray(provenance.creator_edits)
-    ? provenance.creator_edits.filter((field): field is string => typeof field === "string")
-    : [];
-  const originalHypothesis = typeof adoptedProposal?.hypothesis === "string" ? adoptedProposal.hypothesis : null;
-  const originalActionPlan = typeof adoptedProposal?.action_plan === "string" ? adoptedProposal.action_plan : null;
-  const originalSuccessCriteria = typeof adoptedProposal?.success_criteria === "string" ? adoptedProposal.success_criteria : null;
-  const originalObservationWindow = typeof adoptedProposal?.observation_window === "string" ? adoptedProposal.observation_window : null;
-  const synthesisMethod = typeof synthesisSnapshot?.method === "string" ? synthesisSnapshot.method : null;
-  // Evaluations append as a superseding chain; the last record is current and
-  // earlier records remain in the history below rather than being re-selected.
-  const current = evaluations.length > 0 ? evaluations[evaluations.length - 1] : null;
-  const youtubeObs = observations.filter((o) =>
-    (o.source ?? "").includes("youtube")
-  );
-  const otherObs = observations.filter((o) => !(o.source ?? "").includes("youtube") && o.source !== "policy_deletion");
-  const periods = youtubeObs
-    .map((o) => parseEvidenceRef(o.evidence_ref)?.period)
-    .filter((p): p is { start_date?: string; end_date?: string } => Boolean(p));
-
-  return (
-    <div style={{ border: "1px solid var(--rule)", borderRadius: 8, padding: "12px 14px" }}>
-      <span className="micro-label">DECISION SUMMARY — HYPOTHESIZED · OBSERVED · CONCLUDED</span>
-      <dl style={{ display: "grid", gap: 8, margin: "10px 0 0", fontSize: 12 }}>
-        <div>
-          <dt className="mono-note" style={{ color: "#8a847a" }}>HYPOTHESIZED (SAVED PLAN — NOT EXECUTED)</dt>
-          <dd style={{ color: "#b3aea4", margin: "2px 0 0", lineHeight: 1.6 }}>
-            {experiment.hypothesis}
-            {bet?.primary?.cohort_name && (
-              <span className="mono-note"> · BET COHORT: {bet.primary.cohort_name}</span>
-            )}
-            <span className="mono-note"> · EVIDENCE: {String(experiment.data_status).toUpperCase()}</span>
-          </dd>
-        </div>
-        {adoptedProposal && (
-          <div style={{ marginLeft: 10, paddingLeft: 10, borderLeft: "1px solid var(--rule)" }}>
-            <dt className="mono-note" style={{ color: "#8a847a" }}>ORIGINAL PROPOSAL (SAVED SEPARATELY FROM YOUR EDITS)</dt>
-            <dd style={{ color: "#b3aea4", margin: "2px 0 0", lineHeight: 1.6 }}>
-              {originalHypothesis && <div>Original hypothesis: {originalHypothesis}</div>}
-              {originalActionPlan && <div>Original action plan: {originalActionPlan}</div>}
-              {originalSuccessCriteria && <div>Original success criteria: {originalSuccessCriteria}</div>}
-              {originalObservationWindow && <div>Original observation window: {originalObservationWindow}</div>}
-              <div className="mono-note">
-                CREATOR-EDITED FIELDS: {creatorEdits.length > 0
-                  ? creatorEdits.join(", ")
-                  : "none recorded for hypothesis, action plan, success criteria, or observation window"}
-                {synthesisMethod ? ` · SYNTHESIS METHOD: ${synthesisMethod}` : ""}
-              </div>
-            </dd>
-          </div>
-        )}
-        <div>
-          <dt className="mono-note" style={{ color: "#8a847a" }}>SAVED EVIDENCE REFERENCES</dt>
-          <dd className="mono-note" style={{ color: "#b3aea4", margin: "2px 0 0", lineHeight: 1.6 }}>
-            {experiment.source_run_id && <div>SOURCE RUN: {experiment.source_run_id}</div>}
-              {evidenceRefs.length > 0
-                ? <div>CALL IDS: <EvidenceReferences
-                    refs={evidenceRefs}
-                    traceRows={traceRows}
-                    scope={traceScope}
-                    availability={traceAvailability}
-                  /></div>
-                : <div>No call references are present in this saved provenance.</div>}
-            {typeof synthesisSnapshot?.evidence_ref_status === "string" && (
-              <div>REFERENCE STATUS: {synthesisSnapshot.evidence_ref_status}</div>
-            )}
-            {unresolvedEvidenceRefs.length > 0 && (
-              <div className="evidence-trace-unresolved">
-                UNRESOLVED — NOT STORED AS PROOF: {unresolvedEvidenceRefs.join(", ")}
-              </div>
-            )}
-          </dd>
-        </div>
-        <div>
-          <dt className="mono-note" style={{ color: "#8a847a" }}>OBSERVED (measured, never predicted)</dt>
-          <dd style={{ color: "#b3aea4", margin: "2px 0 0", lineHeight: 1.6 }}>
-            {observations.length === 0 && "Nothing observed yet."}
-            {youtubeObs.length > 0 && (
-              <span>
-                {youtubeObs.length} YouTube observation(s)
-                {periods.length > 0 && (
-                  <span className="mono-note">
-                    {" "}· PERIOD(S): {periods.map((p) => `${p.start_date}→${p.end_date}`).join(", ")}
-                  </span>
-                )}
-              </span>
-            )}
-            {youtubeObs.length > 0 && otherObs.length > 0 && <span> · </span>}
-            {otherObs.length > 0 && <span>{otherObs.length} manually recorded observation(s)</span>}
-          </dd>
-        </div>
-        <div>
-          <dt className="mono-note" style={{ color: "#8a847a" }}>CONCLUDED (latest evaluation, corrections kept)</dt>
-          <dd style={{ margin: "2px 0 0", lineHeight: 1.6 }}>
-            {current ? (
-              <>
-                <span style={{ color: current.outcome === "SUPPORTED" ? "#7aba8a" : current.outcome === "CONTRADICTED" ? "#c97a6a" : "#c29a6e" }}>
-                  {current.outcome}
-                </span>
-                <span style={{ color: "#b3aea4" }}> — {current.rationale}</span>
-              </>
-            ) : (
-              <span style={{ color: "#b3aea4" }}>Not yet evaluated — record observations first.</span>
-            )}
-          </dd>
-        </div>
-        <div>
-          <dt className="mono-note" style={{ color: "#8a847a" }}>STILL MISSING</dt>
-          <dd style={{ color: "#b3aea4", margin: "2px 0 0", lineHeight: 1.6 }}>
-            {experiment.success_criteria
-              ? `Success criteria to evaluate: ${experiment.success_criteria}`
-              : "No success criteria recorded."}
-            {current?.unknowns ? ` · Unknown: ${current.unknowns}` : ""}
-          </dd>
-        </div>
-      </dl>
-      <p className="mono-note" style={{ marginTop: 8, color: "#8a847a" }}>
-        MEASUREMENTS ARE OBSERVATIONS, NOT PROOF OF CAUSE — CULTURAL AFFINITY ≠ VIEWERSHIP.
-      </p>
-    </div>
-  );
-}
-
-function YouTubePanel({ experimentId, onChanged }: { experimentId: string; onChanged: () => Promise<void> }) {
-  const [status, setStatus] = useState<YouTubeStatus | null>(null);
-  const [statusLoading, setStatusLoading] = useState(true);
-  const [statusError, setStatusError] = useState<string | null>(null);
-  const [videos, setVideos] = useState<YouTubeVideo[] | null>(null);
-  const [videosLoading, setVideosLoading] = useState(false);
-  const [videosError, setVideosError] = useState<string | null>(null);
-  const [videosNote, setVideosNote] = useState<string | null>(null);
-  const [videoId, setVideoId] = useState("");
-  const today = new Date().toISOString().slice(0, 10);
-  const twoWeeksAgo = new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10);
-  const [startDate, setStartDate] = useState(twoWeeksAgo);
-  const [endDate, setEndDate] = useState(today);
-  const [variantLabel, setVariantLabel] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  const statusRequest = useRef(0);
-  const videosRequest = useRef(0);
-
-  const loadStatus = useCallback(async () => {
-    const requestId = ++statusRequest.current;
-    setStatusLoading(true);
-    setStatus(null);
-    setStatusError(null);
-    try {
-      const nextStatus = await youtubeStatus();
-      if (requestId === statusRequest.current) setStatus(nextStatus);
-    } catch (err) {
-      if (requestId === statusRequest.current) {
-        setStatus(null);
-        setStatusError(err instanceof Error ? err.message : "Could not load YouTube connection status");
-      }
-    } finally {
-      if (requestId === statusRequest.current) setStatusLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadStatus();
-    return () => { statusRequest.current += 1; };
-  }, [loadStatus]);
-
-  const loadVideos = useCallback(async () => {
-    const requestId = ++videosRequest.current;
-    if (!status?.connected) {
-      setVideos(null);
-      setVideosLoading(false);
-      setVideosError(null);
-      setVideosNote(null);
-      return;
-    }
-    setVideos(null);
-    setVideosLoading(true);
-    setVideosError(null);
-    setVideosNote(null);
-    try {
-      const response = await youtubeVideos();
-      if (requestId === videosRequest.current) {
-        setVideos(response.videos);
-        setVideosNote(response.note || null);
-      }
-    } catch (err) {
-      if (requestId === videosRequest.current) {
-        setVideos(null);
-        setVideosError(err instanceof Error ? err.message : "Could not load uploads");
-      }
-    } finally {
-      if (requestId === videosRequest.current) setVideosLoading(false);
-    }
-  }, [status?.connected, status?.mode]);
-
-  useEffect(() => {
-    void loadVideos();
-    return () => { videosRequest.current += 1; };
-  }, [loadVideos]);
-
-  async function record() {
-    if (!videoId) {
-      setMsg("Select the published video that corresponds to this experiment.");
-      return;
-    }
-    setBusy(true);
-    setMsg(null);
-    try {
-      const resp = await recordYouTubeObservation(experimentId, {
-        request_id: `obs-yt-${experimentId}-${Date.now()}`,
-        video_id: videoId,
-        start_date: startDate,
-        end_date: endDate,
-        variant_label: variantLabel.trim() || null,
-      });
-      setMsg(
-        resp.duplicate
-          ? "That fetch was already recorded (duplicate request)."
-          : resp.observation.measurement_status === "OBSERVED"
-            ? "Analytics recorded as an observation with full provenance."
-            : "YouTube returned no rows — recorded as PARTIAL (ambiguous, not zero)."
-      );
-      await onChanged();
-    } catch (err) {
-      setMsg(err instanceof Error ? err.message : "Could not record YouTube observation");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function disconnect() {
-    setBusy(true);
-    setMsg(null);
-    try {
-      const res = await disconnectYouTube();
-      setMsg(
-        `Disconnected. Credentials deleted; ${res.youtube_observations_deleted} YouTube-sourced observation(s) deleted per YouTube policy (tombstones kept).`
-      );
-      await onChanged();
-    } catch (err) {
-      setMsg(err instanceof Error ? err.message : "Could not disconnect");
-    } finally {
-      setBusy(false);
-      loadStatus();
-    }
-  }
-
-  return (
-    <div style={{ marginTop: 14, border: "1px dashed var(--rule)", borderRadius: 8, padding: "12px 14px" }}>
-      {statusLoading && (
-        <p role="status" aria-live="polite" className="mono-note" style={{ margin: "6px 0 0" }}>
-          Checking YouTube connection status…
-        </p>
-      )}
-      {!statusLoading && statusError && (
-        <div role="alert" className="intake-form-error" style={{ marginTop: 8 }}>
-          Connection status could not be checked. No authorization state is assumed. {statusError}
-          <button type="button" className="intake-sample-btn" onClick={() => void loadStatus()} style={{ marginTop: 8 }}>
-            Retry YouTube status
-          </button>
-        </div>
-      )}
-      {!statusLoading && !statusError && !status && (
-        <p role="status" className="mono-note" style={{ marginTop: 8 }}>
-          No YouTube connection status was returned; no authorization action is offered.
-        </p>
-      )}
-      {!statusLoading && !statusError && status?.mode === "mock" && (
-        <p className="mono-note" style={{ color: "#c29a6e", margin: "6px 0 0" }}>
-          MOCK MODE — DEMO DATA, NOT REAL YOUTUBE ANALYTICS
-        </p>
-      )}
-
-      {!statusLoading && !statusError && status && !status.connected && status.mode !== "mock" && (
-        <>
-          {!status.disabled_reason && (
-            <p style={{ color: "#b3aea4", fontSize: 12, lineHeight: 1.6, margin: "6px 0 8px" }}>
-              Connect your own YouTube channel (read-only: youtube.readonly +
-              yt-analytics.readonly) to attach real per-video analytics to this
-              experiment. Nothing is accessed without your explicit consent, and
-              disconnecting deletes the stored data.
-            </p>
-          )}
-          {status.disabled_reason ? (
-            <p role="status" className="mono-note" style={{ color: "#8a847a" }}>
-              {status.disabled_reason}
-            </p>
-          ) : status.mode === "not_configured" ? (
-            <p className="mono-note" style={{ color: "#8a847a" }}>
-              OAUTH NOT CONFIGURED ON THIS DEPLOYMENT — SEE
-              DOCS/M13_10_YOUTUBE_ANALYTICS_INTEGRATION.MD
-            </p>
-          ) : (
-            <button className="intake-sample-btn" onClick={beginYouTubeAuthorization}>
-              Connect YouTube channel
-            </button>
-          )}
-        </>
-      )}
-
-      {!statusLoading && !statusError && status?.connected && (
-        <>
-          <p className="mono-note" style={{ margin: "6px 0 8px" }}>
-            CONNECTED: {status.connection?.channel_title ?? "channel"} ·{" "}
-            {status.connection?.days_since_connection ?? 0} DAY(S)
-            {status.connection?.reauthorization_recommended
-              ? " · REAUTHORIZATION RECOMMENDED (30-DAY POLICY)"
-              : ""}
-          </p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
-            <select
-              className="intake-input"
-              value={videoId}
-              onChange={(e) => setVideoId(e.target.value)}
-              aria-label="Published video"
-            >
-              <option value="">
-                {videosLoading
-                  ? "Loading uploads…"
-                  : videosError
-                    ? "Uploads unavailable"
-                    : videos?.length
-                      ? "Select the published video…"
-                      : videos
-                        ? "No uploads returned"
-                        : "Uploads not checked"}
-              </option>
-              {(videos ?? []).map((v) => (
-                <option key={v.video_id} value={v.video_id}>
-                  {v.title ?? v.video_id}
-                </option>
-              ))}
-            </select>
-            <input
-              className="intake-input"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              aria-label="Period start"
-            />
-            <input
-              className="intake-input"
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              aria-label="Period end"
-            />
-          </div>
-          {videosError && (
-            <div role="alert" className="intake-form-error" style={{ marginTop: 8 }}>
-              Could not load uploads: {videosError}
-              <button type="button" className="intake-sample-btn" onClick={() => void loadVideos()} style={{ marginTop: 8 }}>
-                Retry uploads
-              </button>
-            </div>
-          )}
-          {!videosLoading && !videosError && videos?.length === 0 && (
-            <p role="status" className="mono-note" style={{ marginTop: 6 }}>
-              {videosNote ?? "No uploads were returned for this channel."}
-            </p>
-          )}
-          {videosNote && videos?.length !== 0 && (
-            <p className="mono-note" style={{ marginTop: 6 }}>{videosNote}</p>
-          )}
-          <input
-            className="intake-input"
-            style={{ marginTop: 8 }}
-            value={variantLabel}
-            onChange={(e) => setVariantLabel(e.target.value)}
-            placeholder="variant label if A/B testing (e.g. 'title A') — optional"
-            aria-label="Variant label"
-          />
-          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <button className="intake-sample-btn" onClick={record} disabled={busy || videosLoading || Boolean(videosError) || !videoId}>
-              Fetch analytics &amp; record observation
-            </button>
-            <button
-              className="intake-sample-btn"
-              onClick={disconnect}
-              disabled={busy}
-              style={{ borderColor: "#6a4a42" }}
-            >
-              Disconnect
-            </button>
-          </div>
-          <p className="mono-note" style={{ marginTop: 8, color: "#8a847a" }}>
-            FETCHES ONE VIDEO&apos;S VIEWS, WATCH TIME AND AVERAGE VIEW DURATION FOR
-            THE SELECTED PERIOD — NEVER CHANNEL TOTALS, NEVER PREDICTIONS.
-          </p>
-        </>
-      )}
-
-      {msg && <p className="mono-note" role="status" aria-live="polite" style={{ marginTop: 8 }}>{msg}</p>}
-    </div>
-  );
-}
-
-// ── Decision brief (M13.13): on-demand Role-B synthesis, honestly labelled ──
-// Minimal integration wiring only — no visual redesign (separate workstream).
-function SynthesisBriefPanel({
-  runId,
-  filmTitle,
-  inv,
-  traceRows,
-  onSaved,
-}: {
-  runId: string;
-  filmTitle: string;
-  inv: InvestigationData;
-  traceRows: TraceRow[];
-  onSaved: (msg: string) => void;
-}) {
-  const [status, setStatus] = useState<SynthesisStatus | null>(null);
-  const [statusLoading, setStatusLoading] = useState(true);
-  const [statusError, setStatusError] = useState<string | null>(null);
-  const [brief, setBrief] = useState<SynthesisResponse | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // Adoption draft (M13.14): a proposal becomes a saved experiment ONLY
-  // through an explicit, editable, confirmed draft — never silently.
-  const [draft, setDraft] = useState<{
-    hypothesis: string;
-    action_plan: string;
-    success_criteria: string;
-    observation_window: string;
-  } | null>(null);
-  const [adoptMsg, setAdoptMsg] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setStatusLoading(true);
-    setStatus(null);
-    setStatusError(null);
-    setBrief(null);
-    setDraft(null);
-    setAdoptMsg(null);
-    setError(null);
-    getSynthesisStatus()
-      .then((st) => { if (!cancelled) setStatus(st); })
-      .catch((err) => {
-        if (!cancelled) {
-          setStatus(null);
-          setStatusError(err instanceof Error ? err.message : "Synthesis availability could not be checked");
-        }
-      })
-      .finally(() => { if (!cancelled) setStatusLoading(false); });
-    return () => { cancelled = true; };
-  }, [runId]);
-
-  function generate() {
-    setBusy(true);
-    setError(null);
-    synthesizeRun(runId)
-      .then(setBrief)
-      .catch((err) => setError(err instanceof Error ? err.message : "Could not generate the brief"))
-      .finally(() => setBusy(false));
-  }
-
-  function startAdoption() {
-    if (!brief) return;
-    const prop = brief.synthesis.experiment_proposal;
-    setAdoptMsg(null);
-    setDraft({
-      hypothesis:
-        prop.kind === "test"
-          ? prop.hypothesis
-          : "No supported hypothesis yet — this is an information-gathering step, not a positioning test.",
-      action_plan: prop.action_plan,
-      success_criteria: prop.success_criteria,
-      observation_window: prop.observation_window,
-    });
-  }
-
-  async function confirmAdoption() {
-    if (!brief || !draft) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const prop = brief.synthesis.experiment_proposal;
-      const resp = await saveExperiment({
-        request_id: `exp-${runId}`, // one saved decision per run — replay-safe
-        film_title: filmTitle,
-        hypothesis: draft.hypothesis,
-        success_criteria: draft.success_criteria,
-        observation_window: draft.observation_window,
-        action_plan: draft.action_plan,
-        data_status: inv.data_status,
-        source_run_id: runId,
-        source_bet: {},
-        provenance: {},
-        film_context: (inv.film ?? {}) as Record<string, unknown>,
-        investigation_summary: {
-          investigation_id: inv.investigation_id,
-          data_status: inv.data_status,
-          primary_hypothesis: inv.hypotheses.primary?.statement ?? null,
-          limitations: inv.limitations ?? [],
-          open_questions: inv.open_questions ?? [],
-        },
-        evidence_refs: inv.provenance?.call_ids ?? [],
-        // Immutable snapshot of the synthesis that informed this decision.
-        synthesis_snapshot: {
-          investigation_id: inv.investigation_id,
-          source_run_id: runId,
-          schema_version: brief.metadata.schema_version,
-          method: brief.metadata.method,
-          provider_kind: brief.metadata.provider_kind,
-          model: brief.metadata.model,
-          validation: brief.metadata.validation,
-          summary: brief.synthesis.summary,
-          hypothesis_restated: brief.synthesis.hypothesis_restated,
-          claims: brief.synthesis.claims,
-          caveats: brief.synthesis.caveats,
-          limitations: inv.limitations ?? [],
-          evidence_refs: inv.provenance?.call_ids ?? [],
-          data_status: inv.data_status,
-          experiment_proposal: prop,
-        },
-        // The model's ORIGINAL proposal, kept distinct from the saved fields
-        // so the creator's manual edits are attributable to the creator.
-        adopted_proposal: {
-          kind: prop.kind,
-          hypothesis: prop.hypothesis,
-          action_plan: prop.action_plan,
-          success_criteria: prop.success_criteria,
-          observation_window: prop.observation_window,
-          falsification: prop.falsification,
-          relevant_metrics: prop.relevant_metrics,
-          assumptions: prop.assumptions,
-          limitations: prop.limitations,
-        },
-      });
-      setDraft(null);
-      setAdoptMsg(
-        resp.duplicate
-          ? "This analysis run already has a saved decision — showing the original. Nothing was overwritten."
-          : prop.kind === "information_gathering"
-            ? "Saved as an information-gathering plan (no positioning hypothesis was supported). It has not been executed."
-            : "Saved as a planned experiment from the adopted proposal. This records intent; it does not execute the experiment."
-      );
-      onSaved(resp.duplicate ? "Existing saved decision retained." : "Adopted proposal saved as the planned experiment.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the adopted experiment");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const method = brief?.metadata.method;
-  const methodLabel =
-    method === "live_llm" ? "LIVE MODEL SYNTHESIS"
-    : method === "stub" ? "STUB PROVIDER — NOT A REAL MODEL RESULT"
-    : method === "deterministic_fallback" ? "DETERMINISTIC FALLBACK — MODEL OUTPUT UNAVAILABLE OR REJECTED"
-    : null;
-
-  return (
-    <section id="brief" style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--rule)" }}>
-      <h3>Decision brief (optional)</h3>
-      {statusLoading && <p style={{ color: "#8a847a", fontSize: 12 }}>Checking synthesis availability…</p>}
-      {!statusLoading && statusError && (
-        <p role="alert" style={{ color: "#8a847a", fontSize: 12 }}>
-          Availability could not be checked — {statusError}. The investigation above remains available; no model result is assumed.
-        </p>
-      )}
-      {!statusLoading && !statusError && !status && (
-        <p style={{ color: "#8a847a", fontSize: 12 }}>No synthesis availability status was returned.</p>
-      )}
-      {!statusLoading && status && !status.available && (
-        <p style={{ color: "#8a847a", fontSize: 12 }}>
-          Unavailable — {status.blocked_reason ?? "no provider configured."} The investigation
-          above is complete and does not depend on it.
-        </p>
-      )}
-      {!statusLoading && status?.available && !brief && (
-        <button type="button" onClick={generate} disabled={busy}>
-          {busy ? "Generating…" : "Generate decision brief"}
-        </button>
-      )}
-      {error && <p role="alert" style={{ color: "#b4553f", fontSize: 12 }}>{error}</p>}
-      {brief && (
-        <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
-          {methodLabel && <span className="micro-label">{methodLabel}</span>}
-          {brief.metadata.llm_error && (
-            <p style={{ color: "#8a847a", fontSize: 12 }}>Reason: {brief.metadata.llm_error}</p>
-          )}
-          <p style={{ fontSize: 13 }}>{brief.synthesis.summary}</p>
-          <p style={{ fontSize: 13 }}><strong>Hypothesis:</strong> {brief.synthesis.hypothesis_restated}</p>
-          {brief.synthesis.claims?.length > 0 && (
-            <div>
-              <span className="micro-label">CLAIMS & EVIDENCE</span>
-              <ul style={{ margin: "6px 0 0", paddingLeft: 18, display: "grid", gap: 6 }}>
-                {brief.synthesis.claims.map((c, i) => (
-                  <li key={i} style={{ fontSize: 12 }}>
-                    <span className="micro-label">{c.claim_type}</span> {c.statement}
-                    {c.evidence_refs?.length > 0 ? (
-                      <EvidenceReferences refs={c.evidence_refs} traceRows={traceRows} />
-                    ) : (
-                      <span className="mono-note"> · no call reference supplied</span>
-                    )}
-                    {c.limitations ? <em style={{ color: "#8a847a" }}> — {c.limitations}</em> : null}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {brief.synthesis.caveats?.length > 0 && (
-            <div>
-              <span className="micro-label">CAVEATS</span>
-              <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 12 }}>
-                {brief.synthesis.caveats.map((c, i) => <li key={i}>{c}</li>)}
-              </ul>
-            </div>
-          )}
-          {brief.synthesis.experiment_proposal && !draft && (
-            <div style={{ display: "grid", gap: 6 }}>
-              <span className="micro-label">
-                {brief.synthesis.experiment_proposal.kind === "test"
-                  ? "PROPOSED EXPERIMENT (not yet saved)"
-                  : "PROPOSED NEXT STEP — INFORMATION GATHERING (no supported hypothesis)"}
-              </span>
-              <p style={{ fontSize: 12 }}>
-                {brief.synthesis.experiment_proposal.action_plan}
-              </p>
-              <p className="mono-note">Reviewing opens an unsaved draft. It does not adopt or execute the proposal.</p>
-              <button type="button" onClick={startAdoption}>
-                {brief.synthesis.experiment_proposal.kind === "test"
-                  ? "Review and edit proposal"
-                  : "Review information-gathering plan"}
-              </button>
-            </div>
-          )}
-          {draft && (
-            <div style={{ display: "grid", gap: 6, marginTop: 6 }}>
-              <span className="micro-label">REVIEW & EDIT BEFORE SAVING — nothing is saved yet</span>
-              {(["hypothesis", "action_plan", "success_criteria", "observation_window"] as const).map((f) => (
-                <label key={f} style={{ fontSize: 11, display: "grid", gap: 2 }}>
-                  {f.replace(/_/g, " ")}
-                  <textarea
-                    value={draft[f]}
-                    rows={2}
-                    onChange={(e) => setDraft({ ...draft, [f]: e.target.value })}
-                    style={{ fontFamily: "var(--mono)", fontSize: 11 }}
-                  />
-                </label>
-              ))}
-              <div style={{ display: "flex", gap: 8 }}>
-                <button type="button" onClick={confirmAdoption} disabled={busy}>
-                  {busy ? "Saving…" : "Confirm adoption and save as planned"}
-                </button>
-                <button type="button" onClick={() => setDraft(null)} disabled={busy}>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-          {adoptMsg && <p role="status" aria-live="polite" style={{ color: "#8a847a", fontSize: 12 }}>{adoptMsg}</p>}
-          <p style={{ color: "#8a847a", fontSize: 10, ...mono }}>
-            method: {brief.metadata.method} · validation: {brief.metadata.validation}
-          </p>
-        </div>
-      )}
-    </section>
-  );
-}
-
-function InvestigationPanel({
-  inv,
-  traceRows,
-}: {
-  inv: InvestigationData;
-  traceRows: TraceRow[];
-}) {
-  const statusChip = (status: string) => {
-    const color =
-      status === "answered" ? "#7aba8a" : status === "insufficient" ? "#c29a6e" : "#8a847a";
-    return <span className="mono-note" style={{ color }}>{status.toUpperCase()}</span>;
-  };
-  const investigationStatus =
-    inv.data_status === "measured"
-      ? "MEASURED QLOO DATA"
-      : inv.data_status === "fixture"
-        ? "FIXTURE DEMONSTRATION — NOT LIVE QLOO DATA"
-        : "DATA STATUS UNKNOWN";
-
-  return (
-    <section className="evidence-panel" style={{ marginTop: 24 }}>
-      <h3>Cultural investigation</h3>
-      <span className="mono-note" style={{ display: "block", marginBottom: 14 }}>
-        WHAT THE AGENT ASKED · WHICH TOOL ANSWERED · WHAT THE RECORDED EVIDENCE SUPPORTS · {investigationStatus}
-      </span>
-
-      <div style={{ display: "grid", gap: 10 }}>
-        {inv.questions.map((q) => (
-          <article key={q.id} style={{ border: "1px solid var(--rule)", borderRadius: 6, padding: "10px 12px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-              <strong style={{ fontWeight: 500, fontSize: 13 }}>{q.question}</strong>
-              {statusChip(q.status)}
-            </div>
-            <p style={{ color: "#b3aea4", fontSize: 12, lineHeight: 1.6, margin: "6px 0 0" }}>{q.summary}</p>
-            <div style={{ display: "grid", gap: 4, marginTop: 6 }}>
-              <span className="mono-note">TOOL: {q.tool} · {q.operation}</span>
-              <span className="mono-note">EVIDENCE REFERENCES</span>
-              {(q.evidence_refs?.length ?? 0) > 0 ? (
-                <EvidenceReferences refs={q.evidence_refs} traceRows={traceRows} />
-              ) : (
-                <span className="evidence-trace-unresolved">No call reference supplied for this question.</span>
               )}
             </div>
-          </article>
-        ))}
-      </div>
+          ) : (
+            <div
+              id="fingerprint"
+              role="region"
+              aria-labelledby="fingerprint-unavailable-title"
+              className="border border-dashed border-line-strong p-8"
+            >
+              <span className="chip chip-warn">Requires completed analysis</span>
+              <h3 id="fingerprint-unavailable-title" className="font-display mt-4 text-3xl">
+                The fingerprint waits for evidence.
+              </h3>
+              <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+                A fingerprint requires verified cultural cohorts. A completed investigation places
+                this film at the centre with the cohorts it actually returned — no substitute or fixture fingerprint is shown before then.
+              </p>
+              <button
+                type="button"
+                className="btn-ghost mt-5"
+                onClick={() =>
+                  document
+                    .getElementById("investigation")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }
+              >
+                Go to investigation
+                <ArrowRight size={14} />
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
 
-      {inv.findings.length > 0 && (
-        <div style={{ marginTop: 16 }}>
-          <span className="micro-label">FINDINGS — SOURCE FACTS vs INTERPRETATION</span>
-          <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
-            {inv.findings.map((f, i) => (
-              <div key={i} style={{ fontSize: 12, lineHeight: 1.6, color: f.kind === "FACT" ? "#b3aea4" : "#c29a6e" }}>
-                <span className="mono-note">[{f.kind}]</span>{" "}
-                {f.kind === "INTERPRETATION" ? <em>{f.statement}</em> : f.statement}
-                <div style={{ marginTop: 3 }}>
-                  {(f.evidence_refs?.length ?? 0) > 0 ? (
-                    <EvidenceReferences refs={f.evidence_refs} traceRows={traceRows} />
-                  ) : (
-                    <span className="evidence-trace-unresolved">No call reference supplied.</span>
+      {/* 04 — CULTURAL MULTIVERSE / POSITIONING ARENA */}
+      <section id="arena" className="scroll-mt-36 border-b border-line bg-ink-3/40">
+        <div className="mx-auto max-w-[1440px] px-4 py-14 md:px-8">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="type-kicker">04 · Cultural multiverse</p>
+              <h2 className="font-display mt-2 text-3xl md:text-5xl">
+                Compare defensible directions.
+              </h2>
+            </div>
+            <p className="max-w-md text-sm leading-relaxed text-mute">
+              Anchor, Bridge and Frontier are derived from this completed run only. A direction the
+              evidence cannot support is shown as unavailable rather than written into the stage.
+            </p>
+          </div>
+
+          {completed && positioningMultiverse && positioningOrdering ? (
+            <PositioningArena
+              multiverse={positioningMultiverse}
+              policy={positioningPolicy}
+              ordering={positioningOrdering}
+              selectedId={selectedPositioningId}
+              onPolicyChange={setPositioningPolicy}
+              onSelect={(strategyId) => {
+                setSelectedPositioningId(strategyId);
+                const strategy = positioningMultiverse.strategies.find(
+                  (item) => item.id === strategyId,
+                );
+                if (strategy?.availability === "available") setExperimentDesign(strategy.suggested_test);
+              }}
+              experimentDesign={experimentDesign}
+              sourceLabel={filmTitle}
+              freeze={{
+                busy: savingPlan,
+                disabledReason: selectedStrategy
+                  ? null
+                  : "Select a strategy that is available in this run before freezing a decision.",
+                message: saveState ?? saveError,
+                savedStrategyId,
+                onSave: () => {
+                  void savePlan("arena");
+                },
+              }}
+            />
+          ) : (
+            <div className="border border-dashed border-line-strong p-8">
+              <span className="chip chip-warn">Requires completed analysis</span>
+              <h3 className="font-display mt-4 text-3xl">
+                {showUnavailablePanels
+                  ? "The arena needs a completed run."
+                  : "The multiverse opens after a run."}
+              </h3>
+              <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+                Strategies are computed from ranked cohorts returned by your investigation. Without
+                that evidence there is nothing to compare, and no illustrative strategy is shown in
+                its place.
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* 05 — DECISION BRIEF */}
+      <section className="scroll-mt-36 border-b border-line">
+        <div className="mx-auto max-w-[1440px] px-4 py-14 md:px-8">
+          <p className="type-kicker">05 · Decision brief</p>
+
+          {completed && (bet || investigation) ? (
+            <div id="brief" className="mt-6 grid gap-10 lg:grid-cols-12">
+              <div className="lg:col-span-7">
+                <ClaimChip kind="HYPOTHESIS" />
+                <h2 className="font-display mt-6 text-3xl leading-[1.05] md:text-5xl">
+                  {investigation?.hypotheses.primary?.statement ??
+                    (bet
+                      ? `The ${bet.primary.domain.replace("urn:entity:", "")} world — via ${bet.primary.cohort_name}`
+                      : "No supported hypothesis was returned.")}
+                </h2>
+                {bet && (
+                  <>
+                    <p className="mt-6 text-sm leading-relaxed text-paper-2">{bet.why}</p>
+                    <p className="mt-4 font-mono text-[0.65rem] text-dim">
+                      {bet.primary.member_count} entities
+                      {typeof bet.primary.mean_affinity === "number"
+                        ? ` · mean affinity ${bet.primary.mean_affinity.toFixed(2)}`
+                        : " · no mean affinity"}
+                      {bet.primary.call_id ? ` · call ${bet.primary.call_id}` : ""}
+                      {` · data status ${String(bet.data_status).toUpperCase()}`}
+                    </p>
+                  </>
+                )}
+                {investigation?.hypotheses.primary && (
+                  <div className="mt-5">
+                    <p className="caption">Hypothesis evidence</p>
+                    <EvidenceReferences
+                      refs={investigation.hypotheses.primary.evidence_refs ?? []}
+                      traceRows={traceRows}
+                      scope="decision-brief"
+                    />
+                  </div>
+                )}
+                {bet?.cultural_bridge && (
+                  <p className="mt-5 text-sm leading-relaxed text-paper-2">
+                    <span className="text-amber">Bridge · </span>
+                    {bet.cultural_bridge}
+                  </p>
+                )}
+                {bet?.programming_direction && (
+                  <p className="mt-3 text-sm leading-relaxed text-paper-2">
+                    <span className="text-amber">Direction · </span>
+                    {bet.programming_direction}
+                  </p>
+                )}
+                {bet?.geographic_signal && (
+                  <p className="mt-3 text-sm leading-relaxed text-mute">{bet.geographic_signal}</p>
+                )}
+                {bet?.falsification_condition && (
+                  <div className="mt-6 border border-blood/40 bg-blood/10 p-4">
+                    <p className="caption text-warn">Falsification condition</p>
+                    <p className="mt-2 text-sm leading-relaxed text-paper-2">
+                      {bet.falsification_condition}
+                    </p>
+                  </div>
+                )}
+                {investigation?.hypotheses.alternatives.map((alternative, index) => (
+                  <p
+                    key={`${alternative.statement}-${index}`}
+                    className="mt-4 text-sm leading-relaxed text-mute"
+                  >
+                    <span className="text-amber">Alternative · </span>
+                    {alternative.statement}
+                  </p>
+                ))}
+              </div>
+
+              <div className="lg:col-span-5">
+                <PhotoFrame photo={photos.analogDesk} className="aspect-[4/5]" />
+                <div className="mt-6 border border-line p-5">
+                  <p className="type-kicker">Limitations</p>
+                  <ul className="mt-4 space-y-3">
+                    {(investigation?.limitations?.length ?? 0) > 0 ? (
+                      investigation?.limitations.map((limitation, index) => (
+                        <li
+                          key={`${limitation}-${index}`}
+                          className="text-sm leading-relaxed text-mute"
+                        >
+                          {limitation}
+                        </li>
+                      ))
+                    ) : (
+                      <li className="text-sm leading-relaxed text-mute">
+                        No limitations were recorded in this investigation.
+                      </li>
+                    )}
+                    {bet?.rejected_candidates?.map((candidate) => (
+                      <li key={candidate.cohort_id} className="text-sm leading-relaxed text-mute">
+                        Rejected · {candidate.domain.replace("urn:entity:", "")} —{" "}
+                        {candidate.reason}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="caption mt-5">Subject · {filmTitle || "—"}</p>
+                </div>
+                {(investigation?.open_questions?.length ?? 0) > 0 && (
+                  <div className="mt-6 border border-line p-5">
+                    <p className="type-kicker">Open questions</p>
+                    <ul className="mt-3 space-y-2">
+                      {investigation?.open_questions.map((question, index) => (
+                        <li
+                          key={`${question}-${index}`}
+                          className="text-sm leading-relaxed text-mute"
+                        >
+                          {question}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {investigation && runId && !publicDemo && (
+                <div className="lg:col-span-12">
+                  <SynthesisPanel
+                    runId={runId}
+                    filmTitle={filmTitle || brief.title}
+                    investigation={investigation}
+                    traceRows={traceRows}
+                    onSaved={(message) => {
+                      setSaveState(message);
+                      void refreshExperiments();
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div
+              id="brief"
+              role="region"
+              aria-labelledby="brief-unavailable-title"
+              className="mt-6 border border-dashed border-line-strong p-8"
+            >
+              <span className="chip chip-warn">Requires completed analysis</span>
+              <h3 id="brief-unavailable-title" className="font-display mt-4 text-3xl">
+                {showUnavailablePanels
+                  ? "The decision brief is unavailable."
+                  : "The Programme Bet needs a run."}
+              </h3>
+              <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+                The decision brief depends on the structured investigation above. An interpretation
+                is written over the evidence that produced it; without that evidence there is
+                nothing to interpret, and nothing is invented to fill the space.
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* 06 — TEST CARD */}
+      <section id="test" className="scroll-mt-36 border-b border-line">
+        <div className="mx-auto max-w-[1440px] px-4 py-14 md:px-8">
+          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="type-kicker">06 · Test card</p>
+              <h2 className="font-display mt-2 text-3xl md:text-5xl">A plan, not a result.</h2>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={!completed || !card || savingPlan}
+                onClick={() => void savePlan("test-card")}
+                title={
+                  !card
+                    ? "Requires a completed investigation with a returned Test Card"
+                    : "Save a planned experiment"
+                }
+              >
+                {savingPlan ? "Saving…" : "Save planned experiment"}
+              </button>
+              {completed && card && (
+                <button type="button" className="test-card-export" onClick={exportTestCard}>
+                  <span>Export test card</span>
+                  <small>PLAIN TEXT · .TXT</small>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {(saveState || saveError) && (
+            <p
+              role={saveError ? "alert" : "status"}
+              aria-live="polite"
+              className={cn("mb-6 text-sm", saveError ? "text-warn" : "text-amber")}
+            >
+              {saveError ?? saveState}
+            </p>
+          )}
+
+          {completed && card && experimentDesign ? (
+            <>
+              <div className="mb-8 border border-amber/25 bg-amber/5 p-5">
+                <p className="type-kicker text-amber">PERSONALISE THE TEST BEFORE SAVING</p>
+                <p className="mt-2 max-w-3xl text-sm leading-relaxed text-paper-2">
+                  These are starting prompts, not a completed experiment. Replace them with your
+                  actual comparison, one measure you can collect, your decision threshold and
+                  observation window. Your edits are included in the export and in a newly saved snapshot; saving does not execute the test.
+                </p>
+                <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {DESIGN_FIELDS.map(([label, field]) => (
+                    <div key={field} className="border-t border-line pt-2">
+                      <dt className="caption">{label}</dt>
+                      <dd className="mt-1 text-sm leading-relaxed text-mute">
+                        {experimentDesign[field] || "— not yet written —"}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+                <p className="caption mt-4">
+                  Saved test design · snapshot · not executed. Edit the card to change these values
+                  before exporting or saving again.
+                </p>
+              </div>
+
+              <TestCard
+                card={card}
+                design={experimentDesign}
+                editing={editingCard}
+                hypothesis={selectedStrategy?.falsifiable_hypothesis ?? card.audience_hypothesis}
+                hypothesisNote={
+                  selectedStrategy
+                    ? `Selected strategy · ${selectedStrategy.type} · falsifiable hypothesis`
+                    : "Returned Test Card hypothesis"
+                }
+                onChange={(field: TestDesignField, value: string) =>
+                  setExperimentDesign((current) => updateTestDesign(current, card, field, value))
+                }
+                onToggleEdit={() => setEditingCard((value) => !value)}
+                onExport={exportTestCard}
+              />
+
+              {savedDesign && (
+                <div className="mt-8 border border-line p-5">
+                  <p className="type-kicker">FROZEN CULTURAL POSITIONING</p>
+                  <p className="mt-2 text-xs leading-relaxed text-mute">
+                    Read back from the stored experiment record. This is the plan that was frozen —
+                    a snapshot, not an executed experiment and not a result.
+                  </p>
+                  <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {DESIGN_FIELDS.map(([label, field]) => (
+                      <div key={field} className="border-t border-line pt-2">
+                        <dt className="caption">SAVED TEST DESIGN · {label}</dt>
+                        <dd className="mt-1 text-sm leading-relaxed text-paper-2">
+                          {savedDesign[field] ?? "— not recorded —"}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                  {savedSnapshot && (
+                    <p className="caption mt-4">
+                      Selected strategy ·{" "}
+                      {typeof savedSnapshot.selected_strategy_id === "string"
+                        ? savedSnapshot.selected_strategy_id
+                        : "—"}{" "}
+                      · calculation{" "}
+                      {typeof savedSnapshot.calculation_version === "string"
+                        ? savedSnapshot.calculation_version
+                        : "—"}
+                    </p>
                   )}
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {inv.hypotheses.primary ? (
-        <div style={{ marginTop: 16 }}>
-          <span className="micro-label">POSITIONING HYPOTHESIS (TO TEST — NOT A PREDICTION)</span>
-          <p style={{ color: "#e4dfd6", fontSize: 13, lineHeight: 1.7, margin: "8px 0 0" }}>
-            {inv.hypotheses.primary.statement}
-          </p>
-          <div style={{ display: "grid", gap: 4, marginTop: 6 }}>
-            <span className="mono-note">HYPOTHESIS EVIDENCE</span>
-            {(inv.hypotheses.primary.evidence_refs?.length ?? 0) > 0 ? (
-              <EvidenceReferences refs={inv.hypotheses.primary.evidence_refs} traceRows={traceRows} />
-            ) : (
-              <span className="evidence-trace-unresolved">No call reference supplied.</span>
-            )}
-          </div>
-          {inv.hypotheses.alternatives.map((alt, i) => (
-            <p key={i} style={{ color: "#b3aea4", fontSize: 12, lineHeight: 1.6, margin: "8px 0 0" }}>
-              <span className="mono-note">ALTERNATIVE:</span> {alt.statement}
-              {(alt.evidence_refs?.length ?? 0) > 0 && (
-                <span> · <EvidenceReferences refs={alt.evidence_refs} traceRows={traceRows} /></span>
               )}
-            </p>
-          ))}
+            </>
+          ) : (
+            <div className="border border-dashed border-line-strong p-8">
+              <span className="chip chip-warn">Requires completed analysis</span>
+              <h3 className="font-display mt-4 text-3xl">No card to edit yet.</h3>
+              <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+                The Test Card is drafted from a completed investigation, then yours to edit and
+                export. Saving a plan never means the experiment has run.
+              </p>
+            </div>
+          )}
         </div>
-      ) : (
-        <p style={{ color: "#c29a6e", fontSize: 12, marginTop: 16 }}>
-          No positioning hypothesis: the evidence did not support one. Nothing was invented.
-        </p>
-      )}
+      </section>
 
-      <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
-        <div>
-          <span className="micro-label">LIMITATIONS</span>
-          <ul style={{ margin: "6px 0 0", paddingLeft: 18, color: "#8a847a", fontSize: 12, lineHeight: 1.7 }}>
-            {inv.limitations.length > 0
-              ? inv.limitations.map((limitation, i) => <li key={i}>{limitation}</li>)
-              : <li>No limitations were recorded in this investigation.</li>}
-          </ul>
-        </div>
-        <div>
-          <span className="micro-label">OPEN QUESTIONS</span>
-          <ul style={{ margin: "6px 0 0", paddingLeft: 18, color: "#8a847a", fontSize: 12, lineHeight: 1.7 }}>
-            {inv.open_questions.length > 0
-              ? inv.open_questions.map((question, i) => <li key={i}>{question}</li>)
-              : <li>No open questions were recorded.</li>}
-          </ul>
-        </div>
-      </div>
+      <CreatorArchive
+        experiments={experiments}
+        loading={experimentsLoading}
+        error={experimentsError}
+        onReload={() => void refreshExperiments()}
+        publicDemo={publicDemo}
+        liveFacetsUnavailable={publicDemo}
+      />
+    </div>
+  );
+}
 
-      <EvidenceTraceLog rows={traceRows} />
-    </section>
+function Row({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="flex justify-between gap-4 border-b border-line pb-2">
+      <dt className="caption">{k}</dt>
+      <dd className="text-right text-paper-2">{v}</dd>
+    </div>
   );
 }

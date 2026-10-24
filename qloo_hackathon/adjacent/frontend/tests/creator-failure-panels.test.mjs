@@ -5,7 +5,7 @@ import { formatTestCardText, safeTextFilename } from "../lib/testCardExport.ts";
 import { createTestDesign, readSavedTestDesign, testDesignExportSections, updateTestDesign } from "../lib/testCardDesign.ts";
 
 const cinemaSource = readFileSync(new URL("../app/cinema/page.tsx", import.meta.url), "utf8");
-const graphSource = readFileSync(new URL("../components/AdjacencyGraph.tsx", import.meta.url), "utf8");
+const graphSource = readFileSync(new URL("../components/nf/CulturalFingerprint.tsx", import.meta.url), "utf8");
 
 const source = readFileSync(new URL("../app/creator/page.tsx", import.meta.url), "utf8");
 
@@ -130,19 +130,20 @@ test("saved Creator design reopens verbatim and legacy snapshots degrade gracefu
 });
 
 test("cultural fingerprint renders orbit guides and inspectable member nodes", () => {
-  assert.match(graphSource, /className="agraph-orbit agraph-orbit-inner"/);
-  assert.match(graphSource, /className="agraph-orbit agraph-orbit-outer"/);
-  assert.match(graphSource, /activeMember = memberNodes\.find/);
-  assert.match(graphSource, /setSelected\(isSelected \? null : member\.key\)/);
-  assert.match(graphSource, /Entity affinity/);
-  assert.match(graphSource, /agraph-center-halo/);
+  assert.match(graphSource, /viewBox="0 0 100 100"/);
+  assert.match(graphSource, /polar\(index, cohorts\.length, 28\)/);
+  assert.match(graphSource, /polar\(index, entities\.length, 42/);
+  assert.match(graphSource, /className="graph-node"/);
+  assert.match(graphSource, /setSelectedId\(entity\.id\)/);
+  assert.match(graphSource, /Source call · \{selected\.sourceCallId\}/);
+  assert.match(graphSource, /cultural similarity, not audience size/);
 });
 
 
 test("cultural fingerprint includes the reading key beneath the graph", () => {
-  assert.match(graphSource, /agraph-legend/);
+  assert.match(graphSource, /Reading key/);
   assert.match(graphSource, /Programme anchor/);
   assert.match(graphSource, /Cultural connection/);
-  assert.match(graphSource, /agraph-footnote/);
+  assert.match(graphSource, /Position is layout, not a hidden score/);
   assert.match(graphSource, /parent cohorts/);
 });

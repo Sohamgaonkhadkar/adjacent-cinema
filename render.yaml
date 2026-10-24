@@ -28,6 +28,29 @@ services:
       # Set this to the exact URL assigned to the frontend, without a path or wildcard.
       - key: ADJACENT_FILMSPONSOR_GUEST_ORIGINS
         sync: false
+      # --- Provider credentials: entered in the dashboard, never committed. ---
+      # Leave empty for a fixture-only deployment; every gated feature then
+      # reports an honest unavailable state. See docs/CONFIGURATION.md.
+      - key: QLOO_API_KEY
+        sync: false
+      - key: QLOO_BASE_URL
+        value: https://hackathon.api.qloo.com
+      # Optional Decision-Brief synthesis (OpenAI-compatible endpoint).
+      - key: ADJACENT_LLM_API_KEY
+        sync: false
+      - key: ADJACENT_LLM_BASE_URL
+        sync: false
+      - key: ADJACENT_LLM_MODEL
+        sync: false
+      # Optional YouTube Analytics (Google Cloud OAuth 2.0 web client).
+      - key: YOUTUBE_CLIENT_ID
+        sync: false
+      - key: YOUTUBE_CLIENT_SECRET
+        sync: false
+      - key: YOUTUBE_REDIRECT_URI
+        sync: false
+      - key: ADJACENT_YT_TOKEN_DB
+        value: /data/youtube_tokens.db
 
   - type: web
     name: adjacent-cinema-web

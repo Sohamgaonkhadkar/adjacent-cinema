@@ -10,8 +10,17 @@ const apiOrigin = (/^https?:\/\//i.test(configuredApiOrigin)
   : `http://${configuredApiOrigin}`
 ).replace(/\/+$/, "");
 
+// `next dev` only serves cross-origin dev requests (HMR, chunk fetches) from
+// origins listed here. Sandboxed previews and tunnels need it; production has
+// no dev server at all, so this stays empty unless ADJACENT_DEV_ORIGINS is set.
+const devOrigins = (process.env.ADJACENT_DEV_ORIGINS || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  ...(devOrigins.length > 0 ? { allowedDevOrigins: devOrigins } : {}),
   // The Render deployment serves Next.js directly (without the Caddy layer used
   // by Compose), so set baseline browser security headers at the app boundary.
   async headers() {

@@ -7,11 +7,12 @@
     "build": "next build",
     "start": "next start",
     "test:recovery": "node --experimental-default-type=module --experimental-strip-types --test tests/run-recovery.test.mjs",
-    "test:layout": "node --experimental-default-type=module --experimental-strip-types --test tests/responsive-intake.test.mjs",
+    "test:layout": "node --experimental-default-type=module --experimental-strip-types --test tests/responsive-layout.test.mjs",
     "test:creator-ui": "node --experimental-default-type=module --experimental-strip-types --test tests/creator-failure-panels.test.mjs",
     "test:positioning": "node --experimental-default-type=module --experimental-strip-types --test tests/positioning-arena.test.mjs",
     "test:entity-display": "node --experimental-default-type=module --experimental-strip-types --test tests/entity-display.test.mjs",
-    "test:render": "node --experimental-default-type=module --experimental-strip-types --test tests/render-smoke.mjs"
+    "test:render": "node --experimental-default-type=module --experimental-strip-types --test tests/render-smoke.mjs",
+    "test:contract": "node --experimental-default-type=module --experimental-strip-types --test tests/api-contract.test.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.54.0",

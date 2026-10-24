@@ -61,6 +61,13 @@ async function fetchJsonWithTimeout<T>(
   }
 }
 
+function responseDetail(value: unknown): string | null {
+  if (typeof value !== "object" || value === null || !("detail" in value)) return null;
+  const detail = (value as { detail?: unknown }).detail;
+  return typeof detail === "string" ? detail : null;
+}
+
+
 // ─── Programme Input ────────────────────────────────────────────────────────
 
 export interface ProgrammeItemInput {
@@ -100,22 +107,32 @@ export interface SSEEvent {
 // ─── API Calls ──────────────────────────────────────────────────────────────
 
 export async function createRun(request: RunRequest): Promise<RunResponse> {
-  const res = await fetch(`${API_BASE}/run`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
-  });
+  const { response: res, data } = await fetchJsonWithTimeout<RunResponse | { detail?: string }>(
+    "/run",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    },
+    "Analysis start timed out. The backend may have accepted the request; check run status before retrying."
+  );
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || "Failed to create run");
+    const detail = data && "detail" in data && typeof data.detail === "string" ? data.detail : res.statusText;
+    throw new Error(detail || "Failed to create run");
   }
-  return res.json();
+  if (!data || !("run_id" in data)) throw new Error("The backend returned an invalid run response.");
+  return data;
 }
 
 export async function getRun(runId: string): Promise<RunResponse> {
-  const res = await fetch(`${API_BASE}/run/${runId}`);
+  const { response: res, data } = await fetchJsonWithTimeout<RunResponse>(
+    `/run/${runId}`,
+    {},
+    "Run status request timed out. Check the backend connection and retry."
+  );
   if (!res.ok) throw new Error("Run not found");
-  return res.json();
+  if (!data) throw new Error("The backend returned an empty run response.");
+  return data;
 }
 
 /**
@@ -124,12 +141,17 @@ export async function getRun(runId: string): Promise<RunResponse> {
  * always show that labelling. This never replaces a live request.
  */
 export async function createDemoRun(): Promise<RunResponse> {
-  const res = await fetch(`${API_BASE}/run/demo`, { method: "POST" });
+  const { response: res, data } = await fetchJsonWithTimeout<RunResponse | { detail?: string }>(
+    "/run/demo",
+    { method: "POST" },
+    "Fixture run start timed out. The backend may have accepted the request; check run status before retrying."
+  );
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || "Failed to start fixture demo run");
+    const detail = data && "detail" in data && typeof data.detail === "string" ? data.detail : res.statusText;
+    throw new Error(detail || "Failed to start fixture demo run");
   }
-  return res.json();
+  if (!data || !("run_id" in data)) throw new Error("The backend returned an invalid fixture-run response.");
+  return data;
 }
 
 export function streamRun(
@@ -370,21 +392,29 @@ export async function initializeSponsorGuestSession(): Promise<{ expires_at: str
 }
 
 export async function revokeSponsorGuestSession(): Promise<void> {
-  const res = await fetch(`${API_BASE}/filmsponsor/guest-session`, {
-    method: "DELETE",
-    credentials: "same-origin",
-    headers: { "X-FilmSponsor-CSRF": filmSponsorCsrfToken ?? "" },
-  });
+  const res = await fetchWithTimeout(
+    "/filmsponsor/guest-session",
+    {
+      method: "DELETE",
+      credentials: "same-origin",
+      headers: { "X-FilmSponsor-CSRF": filmSponsorCsrfToken ?? "" },
+    },
+    "Ending the FilmSponsor workspace timed out. The session may already be revoked; recheck workspace status before retrying."
+  );
+  noteGuestSessionExpiry("/filmsponsor/guest-session", res);
   if (!res.ok) throw new Error("Could not end guest session.");
   filmSponsorCsrfToken = null;
 }
 
-async function sponsorFetch(path: string, init: RequestInit = {}): Promise<Response> {
+async function sponsorFetchJson<T>(
+  path: string,
+  init: RequestInit = {}
+): Promise<{ response: Response; data: T | { detail?: string } | null }> {
   const headers = new Headers(init.headers);
   if (filmSponsorCsrfToken && path !== "/filmsponsor/guest-session") {
     headers.set("X-FilmSponsor-CSRF", filmSponsorCsrfToken);
   }
-  const res = await fetchWithTimeout(
+  const result = await fetchJsonWithTimeout<T | { detail?: string }>(
     path,
     {
       ...init,
@@ -393,8 +423,8 @@ async function sponsorFetch(path: string, init: RequestInit = {}): Promise<Respo
     },
     "FilmSponsor request timed out. Check the backend connection and retry."
   );
-  noteGuestSessionExpiry(path, res);
-  return res;
+  noteGuestSessionExpiry(path, result.response);
+  return result;
 }
 
 async function postJson<T>(path: string, body: unknown, label: string): Promise<T> {
@@ -402,20 +432,26 @@ async function postJson<T>(path: string, body: unknown, label: string): Promise<
   if (path.startsWith("/filmsponsor/") && filmSponsorCsrfToken) {
     headers.set("X-FilmSponsor-CSRF", filmSponsorCsrfToken);
   }
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: "POST",
-    credentials: "same-origin",
-    headers,
-    body: JSON.stringify(body),
-  });
+  // Keep the abort timer active through response-body parsing as well as the
+  // initial connection. A server that sends headers and then stalls must not
+  // leave a write action spinning forever.
+  const { response: res, data } = await fetchJsonWithTimeout<T | { detail?: string }>(
+    path,
+    {
+      method: "POST",
+      credentials: "same-origin",
+      headers,
+      body: JSON.stringify(body),
+    },
+    `${label} timed out. The request may not have been recorded — reload before retrying.`
+  );
   noteGuestSessionExpiry(path, res);
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(
-      typeof err.detail === "string" ? err.detail : `${label} failed (${res.status})`
-    );
+    const detail = responseDetail(data);
+    throw new Error(detail || `${label} failed (${res.status})`);
   }
-  return res.json();
+  if (data === null) throw new Error(`${label} returned an empty or invalid response.`);
+  return data as T;
 }
 
 export function createCreatorRun(
@@ -470,9 +506,18 @@ export async function getExperiment(
   observations: ObservationRecord[];
   evaluations: EvaluationRecord[];
 }> {
-  const res = await fetch(`${API_BASE}/experiments/${experimentId}`);
+  const { response: res, data } = await fetchJsonWithTimeout<{
+    experiment: ExperimentRecord;
+    observations: ObservationRecord[];
+    evaluations: EvaluationRecord[];
+  }>(
+    `/experiments/${experimentId}`,
+    {},
+    "Experiment details request timed out. Check the backend connection and retry."
+  );
   if (!res.ok) throw new Error("Experiment not found");
-  return res.json();
+  if (!data) throw new Error("The backend returned an empty experiment response.");
+  return data;
 }
 
 // ---------------------------------------------------------------------------
@@ -515,9 +560,17 @@ export interface YouTubeMetricsPreview {
 }
 
 export async function youtubeStatus(): Promise<YouTubeStatus> {
-  const res = await fetch(`${API_BASE}/youtube/status`);
-  if (!res.ok) throw new Error("Could not load YouTube connection status");
-  return res.json();
+  const { response: res, data: body } = await fetchJsonWithTimeout<YouTubeStatus | { detail?: string }>(
+    "/youtube/status",
+    {},
+    "YouTube connection status request timed out. Check the backend connection and retry."
+  );
+  if (!res.ok) {
+    const detail = body && "detail" in body && typeof body.detail === "string" ? body.detail : res.statusText;
+    throw new Error(detail || "Could not load YouTube connection status");
+  }
+  if (!body || !("mode" in body)) throw new Error("The backend returned an invalid YouTube status response.");
+  return body;
 }
 
 /** Begins the consent flow in the top-level window (Google requires it). */
@@ -530,13 +583,23 @@ export async function youtubeVideos(): Promise<{
   videos: YouTubeVideo[];
   note: string;
 }> {
-  const res = await fetch(`${API_BASE}/youtube/videos`);
+  type VideosResponse = {
+    data_status: "mock" | "live";
+    videos: YouTubeVideo[];
+    note: string;
+  };
+  const { response: res, data } = await fetchJsonWithTimeout<VideosResponse | { detail?: string }>(
+    "/youtube/videos",
+    {},
+    "YouTube video list request timed out. Check the backend connection and retry."
+  );
   if (res.status === 409) throw new Error("No YouTube connection — authorize first.");
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(typeof body.detail === "string" ? body.detail : "Could not list videos");
+    const detail = data && "detail" in data && typeof data.detail === "string" ? data.detail : res.statusText;
+    throw new Error(detail || "Could not list videos");
   }
-  return res.json();
+  if (!data || !("videos" in data)) throw new Error("The backend returned an invalid YouTube video list.");
+  return data;
 }
 
 export async function youtubeMetrics(
@@ -549,12 +612,17 @@ export async function youtubeMetrics(
     start_date: startDate,
     end_date: endDate,
   });
-  const res = await fetch(`${API_BASE}/youtube/metrics?${params.toString()}`);
+  const { response: res, data } = await fetchJsonWithTimeout<YouTubeMetricsPreview | { detail?: string }>(
+    `/youtube/metrics?${params.toString()}`,
+    {},
+    "YouTube metrics request timed out. Check the backend connection and retry."
+  );
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(typeof body.detail === "string" ? body.detail : "Could not fetch metrics");
+    const detail = data && "detail" in data && typeof data.detail === "string" ? data.detail : res.statusText;
+    throw new Error(detail || "Could not fetch metrics");
   }
-  return res.json();
+  if (!data || !("video_id" in data)) throw new Error("The backend returned an invalid YouTube metrics response.");
+  return data;
 }
 
 export async function recordYouTubeObservation(
@@ -581,9 +649,23 @@ export async function disconnectYouTube(): Promise<{
   youtube_observations_deleted: number;
   experiments_tombstoned: number;
 }> {
-  const res = await fetch(`${API_BASE}/youtube/disconnect`, { method: "POST" });
-  if (!res.ok) throw new Error("Could not disconnect");
-  return res.json();
+  type DisconnectResponse = {
+    revoked_upstream: boolean;
+    credentials_deleted: boolean;
+    youtube_observations_deleted: number;
+    experiments_tombstoned: number;
+  } | { detail?: string };
+  const { response: res, data: body } = await fetchJsonWithTimeout<DisconnectResponse>(
+    "/youtube/disconnect",
+    { method: "POST" },
+    "YouTube disconnect timed out. The backend may have completed it; refresh connection status before retrying."
+  );
+  if (!res.ok) {
+    const detail = body && "detail" in body && typeof body.detail === "string" ? body.detail : res.statusText;
+    throw new Error(detail || "Could not disconnect");
+  }
+  if (!body || !("revoked_upstream" in body)) throw new Error("The backend returned an invalid disconnect response.");
+  return body;
 }
 
 // ── Role-B synthesis (M13.13): optional, provider-gated decision briefs ────
@@ -647,9 +729,17 @@ export interface SynthesisResponse {
 }
 
 export async function getSynthesisStatus(): Promise<SynthesisStatus> {
-  const res = await fetch(`${API_BASE}/creator/synthesis-status`);
-  if (!res.ok) throw new Error("Failed to load synthesis status");
-  return res.json();
+  const { response: res, data } = await fetchJsonWithTimeout<SynthesisStatus | { detail?: string }>(
+    "/creator/synthesis-status",
+    {},
+    "Decision brief availability check timed out. Check the backend connection and retry."
+  );
+  if (!res.ok) {
+    const detail = data && "detail" in data && typeof data.detail === "string" ? data.detail : res.statusText;
+    throw new Error(detail || "Failed to load synthesis status");
+  }
+  if (!data || !("available" in data)) throw new Error("The backend returned an invalid synthesis-status response.");
+  return data;
 }
 
 export function synthesizeRun(runId: string): Promise<SynthesisResponse> {
@@ -706,12 +796,25 @@ export async function listSponsorCampaigns(): Promise<SponsorCampaign[]> {
 }
 
 export async function getSponsorCampaign(campaignId: string): Promise<SponsorCampaignDetail> {
-  const res = await sponsorFetch(`/filmsponsor/campaigns/${campaignId}`);
+  const { response: res, data } = await sponsorFetchJson<SponsorCampaignDetail>(
+    `/filmsponsor/campaigns/${campaignId}`
+  );
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(typeof body.detail === "string" ? body.detail : "Campaign not found");
+    const detail = responseDetail(data);
+    throw new Error(detail || "Campaign not found");
   }
-  return res.json();
+  if (
+    !data ||
+    typeof data !== "object" ||
+    !("campaign" in data) ||
+    !("discoveries" in data) ||
+    !("drafts" in data) ||
+    !("source_reviews" in data) ||
+    !("outreach" in data)
+  ) {
+    throw new Error("The backend returned an invalid campaign response.");
+  }
+  return data as SponsorCampaignDetail;
 }
 
 /**
@@ -786,10 +889,22 @@ export function addSponsorOutreach(
 }
 
 export async function exportSponsorCampaign(campaignId: string): Promise<SponsorExportPackage> {
-  const res = await sponsorFetch(`/filmsponsor/campaigns/${campaignId}/export`);
+  const { response: res, data } = await sponsorFetchJson<SponsorExportPackage>(
+    `/filmsponsor/campaigns/${campaignId}/export`
+  );
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(typeof body.detail === "string" ? body.detail : "Export failed");
+    const detail = responseDetail(data);
+    throw new Error(detail || "Export failed");
   }
-  return res.json();
+  if (
+    !data ||
+    typeof data !== "object" ||
+    !("campaign" in data) ||
+    !("export_ready" in data) ||
+    !("approved_drafts" in data) ||
+    !("excluded_drafts" in data)
+  ) {
+    throw new Error("The backend returned an invalid export response.");
+  }
+  return data as SponsorExportPackage;
 }

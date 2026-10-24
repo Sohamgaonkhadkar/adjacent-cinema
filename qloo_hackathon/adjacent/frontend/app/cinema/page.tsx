@@ -1,1151 +1,962 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+/**
+ * Cinema Mode — composition ported from the source ZIP (`pages/Cinema.tsx`):
+ * photographic opening chapter, sticky five-chapter rail, house notes,
+ * programme contact sheet, cultural field, opportunity and Test Card.
+ *
+ * The programme is submitted to the real `/run` endpoint (or to the explicit
+ * `/run/demo` fixture route); the fingerprint, geography, Programme Bet and
+ * Test Card are the backend's own responses, and the four pre-registration
+ * fields the venue edits are exported verbatim.
+ */
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowRight, Plus, Trash2 } from "lucide-react";
 import {
-  createRun,
+  DEMO_PROGRAMME,
   createDemoRun,
-  streamRun,
+  createRun,
+  getHealth,
   getRun,
+  streamRun,
   type ProgrammeItemInput,
   type RunResponse,
   type SSEEvent,
 } from "@/lib/api";
-import type { AdjacentRunResult, HeatmapCell } from "@/types/adjacent";
-import IntakeForm from "@/components/IntakeForm";
-import AdjacencyGraph from "@/components/AdjacencyGraph";
+import type { AdjacentRunResult } from "@/types/adjacent";
+import { watchRunWithRecovery } from "@/lib/runRecovery";
+import {
+  createTestDesign,
+  testDesignExportSections,
+  updateTestDesign,
+  type TestDesign,
+  type TestDesignField,
+} from "@/lib/testCardDesign";
 import { downloadTextFile, formatTestCardText, safeTextFilename } from "@/lib/testCardExport";
-import { createTestDesign, testDesignExportSections, updateTestDesign } from "@/lib/testCardDesign";
+import { buildFingerprintNodes, buildStageViews, stageStatusLabel } from "@/lib/nfData";
+import { photos } from "@/lib/photos";
+import { PhotoFrame } from "@/components/nf/PhotoFrame";
+import { Field, TextInput } from "@/components/nf/Field";
+import { CulturalFingerprint } from "@/components/nf/CulturalFingerprint";
+import { TestCard } from "@/components/nf/TestCard";
+import { ClaimChip, DataChip, RunChip } from "@/components/nf/Chips";
+import { EvidenceTraceLog } from "@/components/EvidenceTrace";
+import GeographyMap from "@/components/GeographyMap";
+import { cn } from "@/lib/cn";
 
-// ─── Editorial sample strip (illustrative photography, NOT a live analysis) ──
+type ChapterId = "cinema" | "programme" | "cultural-field" | "opportunity" | "test";
 
-const FILMS = [
-  { id: "substance", title: "The Substance", year: 2024, genre: "Horror · Satire", director: "Coralie Fargeat",
-    img: "https://images.pexels.com/photos/21316136/pexels-photo-21316136.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=900&h=1250",
-    credit: "Fakhri Baghirov", creditUrl: "https://www.pexels.com/photo/woman-face-illuminated-by-red-light-21316136/",
-    note: "Body horror meets an uncompromising auteur sensibility." },
-  { id: "aftersun", title: "Aftersun", year: 2022, genre: "Drama · Memory", director: "Charlotte Wells",
-    img: "https://images.pexels.com/photos/7991486/pexels-photo-7991486.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=900&h=1250",
-    credit: "Tima Miroshnichenko", creditUrl: "https://www.pexels.com/photo/an-empty-cinema-7991486/",
-    note: "Intimate, emotionally precise independent cinema." },
-  { id: "strangers", title: "All of Us Strangers", year: 2023, genre: "Drama · Romance", director: "Andrew Haigh",
-    img: "https://images.pexels.com/photos/16158304/pexels-photo-16158304.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=900&h=1250",
-    credit: "Shuvo Haque", creditUrl: "https://www.pexels.com/photo/puddles-on-empty-street-in-city-16158304/",
-    note: "Contemporary British authorship with a nocturnal pulse." },
-  { id: "poor-things", title: "Poor Things", year: 2023, genre: "Fantasy · Romance", director: "Yorgos Lanthimos",
-    img: "https://images.pexels.com/photos/35551877/pexels-photo-35551877.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=900&h=1250",
-    credit: "Poetarojo", creditUrl: "https://www.pexels.com/photo/classical-columns-in-museum-interior-setting-35551877/",
-    note: "An art-forward world built with unusually bold form." },
-  { id: "past-lives", title: "Past Lives", year: 2023, genre: "Drama · Romance", director: "Celine Song",
-    img: "https://images.pexels.com/photos/15510029/pexels-photo-15510029.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=900&h=1250",
-    credit: "Alexander Nadrilyanski", creditUrl: "https://www.pexels.com/photo/string-lights-above-the-cobblestone-street-in-soho-london-england-15510029/",
-    note: "A quiet, contemporary story with a strong afterlife beyond the screen." },
+const CHAPTERS: { id: ChapterId; label: string; needsRun: boolean }[] = [
+  { id: "cinema", label: "Cinema", needsRun: false },
+  { id: "programme", label: "Programme", needsRun: false },
+  { id: "cultural-field", label: "Cultural field", needsRun: true },
+  { id: "opportunity", label: "Opportunity", needsRun: true },
+  { id: "test", label: "Test", needsRun: true },
 ];
 
-const NAV_ITEMS = [
-  { id: "cinema", label: "Cinema" },
-  { id: "programme", label: "Programme" },
-  { id: "field", label: "Cultural field" },
-  { id: "opportunity", label: "Opportunity" },
-  { id: "test", label: "Test" },
+type ProgrammeRow = { title: string; year: string; note: string };
+
+const blankProgramme: ProgrammeRow[] = [
+  { title: "", year: "", note: "" },
+  { title: "", year: "", note: "" },
+  { title: "", year: "", note: "" },
 ];
 
-// ─── Small display helpers ────────────────────────────────────────────────
+const CONTACT_SHEET = [
+  photos.cinemaSeats,
+  photos.urbanPuddle,
+  photos.columns,
+  photos.soho,
+  photos.nightAlley,
+  photos.lanternStreet,
+];
 
-function domainLabel(domain: string | null | undefined): string {
-  if (!domain) return "unknown domain";
-  return domain.replace("urn:entity:", "").replace(/_/g, " ");
-}
+export default function CinemaPage() {
+  const [venue, setVenue] = useState("");
+  const [city, setCity] = useState("");
+  const [programme, setProgramme] = useState<ProgrammeRow[]>(blankProgramme);
+  const [selected, setSelected] = useState(0);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
-function affinityPct(value: number | null | undefined): number {
-  if (typeof value !== "number" || !Number.isFinite(value)) return 0;
-  return Math.max(0, Math.min(100, Math.round(value * 100)));
-}
-
-// ─── Main App ───────────────────────────────────────────────────────────────
-
-export default function Home() {
-  const [activeChapter, setActiveChapter] = useState("cinema");
-  const [selectedFilm, setSelectedFilm] = useState(FILMS[0]);
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  // Analysis state
   const [runId, setRunId] = useState<string | null>(null);
   const [run, setRun] = useState<RunResponse | null>(null);
   const [events, setEvents] = useState<SSEEvent[]>([]);
   const [analysing, setAnalysing] = useState(false);
+  const [mode, setMode] = useState<"fixture" | "live" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [request, setRequest] = useState<{ city: string; venue: string; programme: ProgrammeItemInput[] } | null>(null);
-  const [requestMode, setRequestMode] = useState<"live" | "fixture" | null>(null);
-  const [testDesign, setTestDesign] = useState<{
-    comparison_protocol: string;
-    primary_measure: string;
-    decision_rule: string;
-    observation_window: string;
-  } | null>(null);
-  const cleanupRef = useRef<(() => void) | null>(null);
-  const runPollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const requestGenerationRef = useRef(0);
-  const activeRunIdRef = useRef<string | null>(null);
+  const [chapter, setChapter] = useState<ChapterId>("cinema");
 
-  // Intersection observer for active chapter
+  const [experimentDesign, setExperimentDesign] = useState<TestDesign | null>(null);
+  const [editingCard, setEditingCard] = useState(false);
+
+  const stopStream = useRef<(() => void) | null>(null);
+  const runGeneration = useRef(0);
+  const activeRunId = useRef<string | null>(null);
+
+  const result: AdjacentRunResult | null = useMemo(() => {
+    const candidate = (run?.result as AdjacentRunResult | null) ?? null;
+    if (!candidate) return null;
+    return candidate.data_status === "measured" || candidate.data_status === "fixture"
+      ? candidate
+      : null;
+  }, [run?.result]);
+
+  const completed = run?.status === "completed" && Boolean(result);
+  const failed = run?.status === "failed";
+  const insufficient = run?.status === "insufficient";
+  const traceRows = run?.trace ?? [];
+
+  const stages = useMemo(
+    () => buildStageViews({ started: Boolean(runId), status: run?.status ?? null, events }),
+    [runId, run?.status, events],
+  );
+
   useEffect(() => {
-    const sections = document.querySelectorAll<HTMLElement>("[data-chapter]");
+    const card = result?.test_card;
+    if (!card) {
+      setExperimentDesign(null);
+      return;
+    }
+    setExperimentDesign(createTestDesign(card));
+  }, [runId, result?.test_card]);
+
+  useEffect(() => {
+    const targets = CHAPTERS.map((item) => document.getElementById(item.id)).filter(
+      (element): element is HTMLElement => element instanceof HTMLElement,
+    );
+    if (!targets.length || !("IntersectionObserver" in window)) return;
     const observer = new IntersectionObserver(
       (entries) => {
         const visible = entries
-          .filter((e) => e.isIntersecting)
+          .filter((entry) => entry.isIntersecting)
           .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible) setActiveChapter((visible.target as HTMLElement).dataset.chapter ?? "cinema");
+        if (visible?.target instanceof HTMLElement) setChapter(visible.target.id as ChapterId);
       },
-      { threshold: [0.18, 0.36], rootMargin: "-8% 0px -12% 0px" }
+      { rootMargin: "-25% 0px -60% 0px", threshold: [0, 0.2, 0.5] },
     );
-    sections.forEach((s) => observer.observe(s));
+    targets.forEach((target) => observer.observe(target));
     return () => observer.disconnect();
-  }, []);
+  }, [runId, run?.status]);
 
-  function stopRunTracking() {
-    if (runPollTimerRef.current !== null) clearTimeout(runPollTimerRef.current);
-    runPollTimerRef.current = null;
-    cleanupRef.current?.();
-    cleanupRef.current = null;
-  }
-
-  // Cleanup and invalidate all pending requests/SSE callbacks on unmount.
   useEffect(() => {
     return () => {
-      requestGenerationRef.current += 1;
-      activeRunIdRef.current = null;
-      stopRunTracking();
+      runGeneration.current += 1;
+      activeRunId.current = null;
+      stopStream.current?.();
+      stopStream.current = null;
     };
   }, []);
 
-  // ── Typed views of a valid terminal result (never partial failed output) ──
-  const runIsTerminalSuccess = run?.status === "completed" || run?.status === "insufficient";
-  const candidateResult = runIsTerminalSuccess ? run?.result : null;
-  const result: AdjacentRunResult | null =
-    candidateResult && (candidateResult.data_status === "measured" || candidateResult.data_status === "fixture")
-      ? candidateResult
-      : null;
-  const dataStatus = result?.data_status ?? null;
-  const programme = result?.programme ?? null;
-  const tasteTags = result?.taste_dna?.tags ?? [];
-  const ranked = result?.cohorts?.ranked ?? [];
-  const rejected = result?.cohorts?.rejected ?? [];
-  const geography = result?.geography ?? null;
-  const geoCells = (geography ? (geography.highest_affinity_cells ?? geography.cells ?? []) : []).filter(
-    (cell): cell is HeatmapCell & { affinity: number } => typeof cell.affinity === "number"
-  );
-  const bet = result?.programme_bet ?? null;
-  const testCard = result?.test_card ?? null;
-  const evidence = result?.evidence ?? null;
+  const watchRun = useCallback((id: string) => {
+    const generation = ++runGeneration.current;
+    activeRunId.current = id;
+    stopStream.current?.();
+    setRunId(id);
+    setAnalysing(true);
+    setEvents([]);
 
-  useEffect(() => {
-    if (!testCard) {
-      setTestDesign(null);
-      return;
-    }
-    setTestDesign(createTestDesign(testCard));
-  }, [runId, testCard]);
-  const progItems = programme?.items ?? [];
-
-  // Map active chapter to nav id
-  const activeNavId = activeChapter === "where" || activeChapter === "bet"
-    ? "opportunity"
-    : activeChapter;
-
-  const traceEvents = events.filter((e) => e.event === "trace");
-  const insufficient = run?.status === "insufficient";
-  const failed = run?.status === "failed";
-
-  function handleExportCinemaTestCard() {
-    if (!testCard) return;
-    const text = formatTestCardText({
-      title: testCard.title,
-      context: request ? "CINEMA: " + request.venue + " · " + request.city : "CITY: " + (result?.city ?? "Not supplied"),
-      dataStatus: testCard.data_status,
-      sections: [
-        { label: "Programme context", value: testCard.programme_context },
-        { label: "Audience hypothesis", value: testCard.audience_hypothesis },
-        { label: "Cultural bridge", value: testCard.cultural_bridge },
-        { label: "Geographic signal", value: testCard.geographic_signal },
-        { label: "Programming direction", value: testCard.programming_direction },
-        { label: "Primary evidence", value: testCard.primary_evidence },
-        { label: "Runner-up direction", value: testCard.runner_up },
-        { label: "Observable success criteria", value: testCard.success_criteria },
-        ...testDesignExportSections(testDesign ?? createTestDesign(testCard)),
-        { label: "Falsification condition", value: testCard.falsification_condition },
-      ],
-      provenance: testCard.provenance,
-      footerNote: "This is a bounded programming hypothesis, not a new identity for the cinema. Affinity is not an attendance or conversion forecast.",
-    });
-    downloadTextFile(safeTextFilename(testCard.title) + ".txt", text);
-  }
-
-  function beginRunRequest(): number {
-    stopRunTracking();
-    activeRunIdRef.current = null;
-    requestGenerationRef.current += 1;
-    setRunId(null);
-    return requestGenerationRef.current;
-  }
-
-  function startStream(id: string, generation: number) {
-    const isCurrentRun = () =>
-      generation === requestGenerationRef.current && activeRunIdRef.current === id;
-    let terminalReconciled = false;
-    let pollScheduled = false;
-    let pollDelayMs = 1_500;
-
-    const reconcileRun = async (eventMessage?: string): Promise<boolean> => {
-      try {
-        const finalRun = await getRun(id);
-        if (!isCurrentRun()) return true;
-        const terminal = ["completed", "insufficient", "failed"].includes(finalRun.status);
-        if (terminal && !terminalReconciled) {
-          terminalReconciled = true;
-          setRun(finalRun);
-          setError(
-            finalRun.status === "failed" && !finalRun.error && !finalRun.stop_message
-              ? eventMessage || "The analysis could not complete."
-              : null
-          );
-          setAnalysing(false);
-          stopRunTracking();
-        } else if (eventMessage && !terminal) {
-          setError(eventMessage);
-        }
-        return terminal;
-      } catch (err: unknown) {
-        if (!isCurrentRun()) return true;
-        setError(eventMessage || (err instanceof Error ? err.message : "Could not load the final run status."));
-        return false;
-      }
-    };
-
-    const schedulePoll = () => {
-      if (!isCurrentRun() || pollScheduled || terminalReconciled) return;
-      pollScheduled = true;
-      runPollTimerRef.current = setTimeout(() => {
-        pollScheduled = false;
-        runPollTimerRef.current = null;
-        void reconcileRun().then((terminal) => {
-          if (!terminal && isCurrentRun()) {
-            pollDelayMs = Math.min(pollDelayMs + 1_000, 5_000);
-            schedulePoll();
-          }
-        });
-      }, pollDelayMs);
-    };
-
-    const cleanup = streamRun(
-      id,
-      (event) => {
-        if (!isCurrentRun()) return;
-        setEvents((prev) => [...prev, event]);
-        if (["done", "insufficiency", "error"].includes(event.event)) {
-          cleanupRef.current = null;
-          const eventMessage = String(event.data?.message || event.data?.stop_message || "");
-          void reconcileRun(event.event === "error" ? eventMessage : undefined).then((terminal) => {
-            if (!terminal) schedulePoll();
-          });
-        }
+    const isCurrent = () => runGeneration.current === generation && activeRunId.current === id;
+    stopStream.current = watchRunWithRecovery(id, {
+      isCurrent,
+      stream: streamRun,
+      fetchRun: getRun,
+      onEvent: (event) => {
+        if (isCurrent()) setEvents((previous) => [...previous, event]);
       },
-      (err) => {
-        if (!isCurrentRun()) return;
-        cleanupRef.current = null;
-        void reconcileRun(err.message).then((terminal) => {
-          if (!terminal) schedulePoll();
-        });
-      }
+      onRun: (response) => {
+        if (!isCurrent()) return;
+        setRun(response);
+        if (["completed", "failed", "insufficient"].includes(response.status)) setAnalysing(false);
+      },
+      onExhausted: () => {
+        if (!isCurrent()) return;
+        setError("The stream disconnected and the run status could not be confirmed. Retry.");
+        setAnalysing(false);
+      },
+    });
+  }, []);
+
+  const cancelRunWatch = useCallback(() => {
+    runGeneration.current += 1;
+    activeRunId.current = null;
+    stopStream.current?.();
+    stopStream.current = null;
+  }, []);
+
+  function loadSampleProgramme() {
+    setVenue("The Light House");
+    setCity("Brighton, United Kingdom");
+    setProgramme(
+      DEMO_PROGRAMME.map((item) => ({
+        title: item.title,
+        year: item.year ? String(item.year) : "",
+        note: "",
+      })),
     );
-    cleanupRef.current = cleanup;
-    schedulePoll();
   }
 
-  // The live path: exactly the values entered in the intake form are submitted.
-  async function handleAnalyse(city: string, venue: string, programmeItems: ProgrammeItemInput[]) {
-    const generation = beginRunRequest();
-    setError(null);
-    setAnalysing(true);
-    setRun(null);
-    setEvents([]);
-    setRequest({ city, venue, programme: programmeItems });
-    setRequestMode("live");
-
-    try {
-      const response = await createRun({ city, venue_name: venue, programme: programmeItems });
-      if (generation !== requestGenerationRef.current) return;
-      activeRunIdRef.current = response.run_id;
-      setRunId(response.run_id);
-      setRun(response);
-      document.getElementById("field")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      startStream(response.run_id, generation);
-    } catch (err: unknown) {
-      if (generation !== requestGenerationRef.current) return;
-      setError(err instanceof Error ? err.message : "Failed to start analysis");
-      setAnalysing(false);
-      // Surface server rejections immediately: the error panel lives in this section.
-      document.getElementById("field")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  function validate(): ProgrammeItemInput[] | null {
+    if (!venue.trim()) {
+      setFormError("A venue is required before an analysis.");
+      return null;
     }
-  }
-
-  // The fixture path: an explicit, labelled offline demo — never a silent fallback.
-  async function handleDemo() {
-    const generation = beginRunRequest();
-    setError(null);
-    setAnalysing(true);
-    setRun(null);
-    setEvents([]);
-    setRequest(null);
-    setRequestMode("fixture");
-
-    try {
-      const response = await createDemoRun();
-      if (generation !== requestGenerationRef.current) return;
-      activeRunIdRef.current = response.run_id;
-      setRunId(response.run_id);
-      setRun(response);
-      document.getElementById("field")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      startStream(response.run_id, generation);
-    } catch (err: unknown) {
-      if (generation !== requestGenerationRef.current) return;
-      setError(err instanceof Error ? err.message : "Failed to start the fixture demo");
-      setAnalysing(false);
+    if (!city.trim()) {
+      setFormError("A city is required before an analysis.");
+      return null;
     }
+    const items: ProgrammeItemInput[] = [];
+    for (const [index, row] of programme.entries()) {
+      const title = row.title.trim();
+      if (!title) {
+        if (row.year.trim() || row.note.trim()) {
+          setFormError(`Row ${index + 1} has a year or note but no title.`);
+          return null;
+        }
+        continue;
+      }
+      const year = row.year.trim() ? Number(row.year) : undefined;
+      if (
+        row.year.trim() &&
+        (!Number.isInteger(year) || Number(year) < 1888 || Number(year) > 2100)
+      ) {
+        setFormError(`Row ${index + 1}: year must be between 1888 and 2100.`);
+        return null;
+      }
+      items.push({ title, year });
+    }
+    if (items.length === 0) {
+      setFormError("Enter at least one film title.");
+      return null;
+    }
+    if (items.length > 12) {
+      setFormError("The engine accepts at most twelve titles per programme.");
+      return null;
+    }
+    setFormError(null);
+    return items;
   }
 
-  function resetAnalysis() {
-    requestGenerationRef.current += 1;
-    activeRunIdRef.current = null;
-    stopRunTracking();
+  function startFixture() {
+    cancelRunWatch();
+    setError(null);
+    setNotice(null);
+    setRun(null);
     setRunId(null);
-    setRun(null);
-    setEvents([]);
-    setError(null);
-    setRequest(null);
-    setRequestMode(null);
-    setAnalysing(false);
+    setMode("fixture");
+    setAnalysing(true);
+    if (!programme.some((row) => row.title.trim())) loadSampleProgramme();
+    if (!venue.trim()) setVenue("The Light House");
+    if (!city.trim()) setCity("Brighton, United Kingdom");
     document.getElementById("programme")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    createDemoRun()
+      .then((response) => watchRun(response.run_id))
+      .catch((reason: unknown) => {
+        setError(reason instanceof Error ? reason.message : "Failed to start the fixture run");
+        setAnalysing(false);
+      });
   }
 
-  const statusIsMeasured = dataStatus === "measured";
-  const statusLabel = statusIsMeasured
-    ? "MEASURED QLOO DATA"
-    : dataStatus === "fixture"
-      ? "FIXTURE DEMO — NOT LIVE QLOO DATA"
-      : "SOURCE NOT REPORTED";
+  // Live analysis is a server-side decision (public-demo gate + a configured
+  // Qloo key). Ask once so the button reflects it instead of failing on click.
+  const [liveNotice, setLiveNotice] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    getHealth()
+      .then((backend) => {
+        if (!active) return;
+        if (backend.public_demo && backend.live_creator_available === false) {
+          setLiveNotice(
+            "Live analysis is disabled for this deployment. The labelled fixture run stays available and is clearly marked as a fixture.",
+          );
+        } else if (backend.qloo_configured === false) {
+          setLiveNotice(
+            "This backend has no Qloo key configured, so a live analysis will stop with a configuration error. The labelled fixture run is available.",
+          );
+        } else {
+          setLiveNotice(null);
+        }
+      })
+      .catch(() => {
+        if (active) setLiveNotice(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  function startLive() {
+    const items = validate();
+    if (!items) return;
+    cancelRunWatch();
+    setError(null);
+    setNotice(null);
+    setRun(null);
+    setRunId(null);
+    setMode("live");
+    setAnalysing(true);
+    document.getElementById("programme")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    createRun({ city: city.trim(), venue_name: venue.trim(), programme: items })
+      .then((response) => watchRun(response.run_id))
+      .catch((reason: unknown) => {
+        setError(reason instanceof Error ? reason.message : "Failed to start the analysis");
+        setAnalysing(false);
+      });
+  }
+
+  const enteredProgramme = programme.filter((row) => row.title.trim());
+  const returnedProgramme = result?.programme?.items ?? [];
+  const displayProgramme =
+    returnedProgramme.length > 0
+      ? returnedProgramme.map((item) => ({
+          title: item.title,
+          year: item.year ? String(item.year) : "",
+          note: enteredProgramme.find((row) => row.title === item.title)?.note ?? "",
+          resolved: Boolean(item.resolved),
+          qlooName: item.qloo_name ?? null,
+        }))
+      : enteredProgramme.map((row) => ({
+          title: row.title,
+          year: row.year,
+          note: row.note,
+          resolved: false,
+          qlooName: null,
+        }));
+
+  const geography = result?.geography ?? null;
+  const geographyCells = (geography?.highest_affinity_cells ?? geography?.cells ?? []).filter(
+    (cell): cell is typeof cell & { affinity: number } => typeof cell.affinity === "number",
+  );
+  const hasGeography = Boolean(geography?.sufficient && geographyCells.length > 0);
+
+  const fingerprintNodes = useMemo(
+    () => (completed ? buildFingerprintNodes(result, venue || "This programme", traceRows) : []),
+    [completed, result, venue, traceRows],
+  );
+
+  const bet = result?.programme_bet ?? null;
+  const card = result?.test_card ?? null;
+
+  function exportTestCard() {
+    if (!card) return;
+    const activeDesign = experimentDesign ?? createTestDesign(card);
+    const text = formatTestCardText({
+      title: card.title,
+      context: `CINEMA: ${venue || "Unnamed venue"} · ${city || "City not supplied"}`,
+      dataStatus: card.data_status,
+      sections: [
+        { label: "Programme context", value: card.programme_context },
+        { label: "Audience hypothesis", value: card.audience_hypothesis },
+        { label: "Cultural bridge", value: card.cultural_bridge },
+        { label: "Geographic signal", value: card.geographic_signal },
+        { label: "Programming direction", value: card.programming_direction },
+        { label: "Primary evidence", value: card.primary_evidence },
+        { label: "Runner-up direction", value: card.runner_up },
+        { label: "Observable success criteria", value: card.success_criteria },
+        ...testDesignExportSections(activeDesign),
+        { label: "Falsification condition", value: card.falsification_condition },
+      ],
+      provenance: card.provenance,
+      footerNote:
+        "This is a bounded programming hypothesis, not a new identity for the cinema. Affinity is not an attendance or conversion forecast.",
+    });
+    downloadTextFile(safeTextFilename(card.title) + ".txt", text);
+    setNotice("Cinema test card exported as plain text.");
+  }
+
+  const PREREG_FIELDS: Array<{ label: string; field: TestDesignField; rows: number; note?: string }> = [
+    { label: "COMPARISON PROTOCOL · EDIT BEFORE EXPORT", field: "comparison_protocol", rows: 4 },
+    { label: "PRIMARY MEASURE · EDIT BEFORE EXPORT", field: "primary_measure", rows: 4 },
+    {
+      label: "DECISION RULE · PROPOSED PROMPT, SET BEFORE SCREENING",
+      field: "decision_rule",
+      rows: 4,
+      note: "Adjacent suggests no numerical threshold. Enter one only if the venue has chosen it before the screening.",
+    },
+    { label: "OBSERVATION WINDOW · EDIT BEFORE EXPORT", field: "observation_window", rows: 3 },
+  ];
 
   return (
-    <main style={{ overflow: "clip", background: "#090909" }}>
-      {/* ─── Header ─────────────────────────────────────────────────── */}
-      <header className="site-header">
-        <a className="header-brand" href="#cinema" onClick={() => setMenuOpen(false)}>
-          <span className="header-wordmark">ADJACENT</span>
-          <span className="header-descriptor">CULTURAL INTELLIGENCE<br />FOR INDEPENDENT CINEMAS</span>
-        </a>
-        <button
-          className="mobile-menu-toggle"
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((o) => !o)}
-        >
-          <span style={{ display: "block", width: 18, height: 1.5, background: "#e7e1d7", marginBottom: 4, transition: "transform 0.2s", ...(menuOpen ? { transform: "rotate(45deg) translate(3px, 3px)" } : {}) }} />
-          <span style={{ display: "block", width: 18, height: 1.5, background: "#e7e1d7", marginBottom: 4, ...(menuOpen ? { opacity: 0 } : {}) }} />
-          <span style={{ display: "block", width: 18, height: 1.5, background: "#e7e1d7", transition: "transform 0.2s", ...(menuOpen ? { transform: "rotate(-45deg) translate(3px, -3px)" } : {}) }} />
-        </button>
-          <nav className={`main-nav${menuOpen ? " is-open" : ""}`} aria-label="Story chapters">
-            <a href="/" style={{ color: "var(--amber)" }}>
-              <span className="nav-index">✦</span>
-              Home
-            </a>
-            <a href="/creator" style={{ color: "var(--amber)" }}>
-              <span className="nav-index">✦</span>
-              Creator Studio
-            </a>
-            <a href="/creator/sponsor" style={{ color: "var(--amber)" }}>
-              <span className="nav-index">✦</span>
-              FilmSponsor
-            </a>
-          {NAV_ITEMS.map((item, i) => (
-            <a
-              key={item.id}
-              href={`#${item.id}`}
-              className={activeNavId === item.id ? "is-current" : ""}
-              onClick={() => setMenuOpen(false)}
-            >
-              <span className="nav-index">0{i + 1}</span>
-              {item.label}
-            </a>
-          ))}
-        </nav>
-      </header>
-
-      {/* ─── 01 CINEMA / Hero ───────────────────────────────────────── */}
-      <section id="cinema" className="hero-section" data-chapter="cinema">
-        <div className="hero-image-wrap" aria-hidden="true">
-          <img
-            className="hero-image"
-            src="https://images.pexels.com/photos/15510029/pexels-photo-15510029.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=2200&h=1450"
-            alt=""
-            fetchPriority="high"
-          />
+    <div>
+      {/* CHAPTER — CINEMA */}
+      <section id="cinema" className="relative min-h-[70vh] scroll-mt-36 overflow-hidden">
+        <div className="absolute inset-0">
+          <PhotoFrame photo={photos.cinemaCurtain} className="h-full" credit={false} priority />
+          <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/55 to-ink/30" />
         </div>
-        <div className="hero-shade" aria-hidden="true" />
-        <div className="hero-content">
-          <p className="eyebrow hero-eyebrow"><span>01</span> CINEMA / A CULTURAL FIELD NOTE</p>
-          <h1 className="hero-title">
-            Find the audience<br /><em>you haven&rsquo;t met yet.</em>
+        <div className="relative z-10 mx-auto flex min-h-[70vh] max-w-[1440px] flex-col justify-end px-4 pb-12 pt-28 md:px-8">
+          <p className="type-kicker">Cinema Mode</p>
+          <h1 className="font-display mt-4 max-w-[16ch] text-5xl leading-[0.92] md:text-7xl">
+            A programmer&apos;s cultural atlas.
           </h1>
-          <p className="hero-deck">
-            Discover cultural territory adjacent to the films you already programme.
+          <p className="mt-5 max-w-lg text-sm leading-relaxed text-paper-2 md:text-base">
+            Venue, city, a programme of films. Curation rather than a poster wall. Geography only
+            when coordinates actually exist.
           </p>
-          <a className="text-link" href="#programme">
-            <span>Enter your programme</span>
-            <span className="link-arrow" aria-hidden="true">&rarr;</span>
-          </a>
-        </div>
-        <div className="hero-footer">
-          <div>
-            <span className="micro-label" style={{ fontSize: 8 }}>{request ? "ANALYSIS RUNNING FOR" : "BUILT FOR"}</span>
-            <strong>{request ? request.venue : "Your cinema"}</strong>
-            <span style={{ color: "#bcb6aa", fontSize: 9, letterSpacing: "0.11em", textTransform: "uppercase" }}>
-              {request ? request.city : "Any city / any programme"}
-            </span>
-          </div>
-          <div className="hero-foot-note">
-            <span className="micro-label" style={{ fontSize: 8 }}>A DIFFERENT KIND OF PROGRAMME INTELLIGENCE</span>
-            <span style={{ color: "#bcb6aa", fontSize: 9 }}>Films in / cultural connections out</span>
-          </div>
+          <p className="caption mt-6">Photo · {photos.cinemaCurtain.credit} / Pexels</p>
         </div>
       </section>
 
-      {/* ─── 02 PROGRAMME ───────────────────────────────────────────── */}
-      <section id="programme" className="programme-section" data-chapter="programme">
-        <div className="section-shell">
-          <div className="programme-head">
-            <div>
-              <p className="eyebrow"><span>02</span> THE STARTING POINT</p>
-              <h2>What you already<br /><em>programme.</em></h2>
-            </div>
-            <div className="programme-intro">
-              <p>Before looking outward, read the shape of the programme already in the room.</p>
-              <span className="mono-note">EDITORIAL SAMPLE / ILLUSTRATIVE — NOT AN ANALYSIS</span>
-            </div>
-          </div>
-
-          <div className="filmstrip" aria-label="Illustrative programme sample">
-            {FILMS.map((film, index) => (
-              <article key={film.id} className={`film-item${selectedFilm.id === film.id ? " is-selected" : ""}`}>
-                <button
-                  className="film-image-button"
-                  type="button"
-                  onClick={() => setSelectedFilm(film)}
-                  aria-pressed={selectedFilm.id === film.id}
-                >
-                  <img src={film.img} alt={`${film.title} editorial photography`} loading="lazy" />
-                  <span className="film-image-shade" aria-hidden="true" />
-                  <span className="film-number">0{index + 1}</span>
-                  <span className="film-hover-meta">
-                    <span>{film.director}</span>
-                    <span>{film.genre}</span>
-                  </span>
-                </button>
-                <div className="film-caption">
-                  <div className="film-title-line">
-                    <h3>{film.title}</h3>
-                    <span>{film.year}</span>
-                  </div>
-                  <p>{film.genre}</p>
-                  <a href={film.creditUrl} target="_blank" rel="noreferrer" className="film-credit">
-                    PHOTO / {film.credit}
-                  </a>
-                </div>
-              </article>
-            ))}
-          </div>
-
-          <div className="programme-bottom">
-            <div className="film-detail">
-              <span className="micro-label">IN THE SAMPLE / {selectedFilm.year}</span>
-              <span className="film-detail-name">{selectedFilm.title}</span>
-              <span className="film-detail-note">{selectedFilm.note}</span>
-            </div>
-            <div className="strip-instruction">
-              <span>CLICK TO EXPLORE</span>
-              <span aria-hidden="true">&harr;</span>
-            </div>
-          </div>
-          <p className="image-note">Editorial photography, not official film stills. Image credits link to their Pexels source. The strip above is an illustrative sample — the analysis below runs on what YOU enter.</p>
-
-          {/* ─── The real intake ─────────────────────────────────────── */}
-          <IntakeForm onSubmit={handleAnalyse} loading={analysing} />
-        </div>
-      </section>
-
-      {/* ─── 03 CULTURAL FIELD ──────────────────────────────────────── */}
-      <section id="field" className="field-section" data-chapter="field"
-        style={{ padding: "clamp(120px, 14vh, 175px) 0 60px" }}
+      <nav
+        className="sticky top-[64px] z-40 border-b border-line bg-ink/95 backdrop-blur"
+        aria-label="Cinema chapters"
       >
-        <div className="section-shell">
-          <div style={{ display: "flex", alignItems: "end", justifyContent: "space-between", gap: 48, marginBottom: 23 }}>
+        <div className="mx-auto flex max-w-[1440px] gap-1 overflow-x-auto px-4 py-2 md:px-8">
+          {CHAPTERS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() =>
+                document
+                  .getElementById(item.id)
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" })
+              }
+              aria-current={chapter === item.id ? "true" : undefined}
+              className={cn(
+                "shrink-0 border-b-2 px-4 py-2 font-mono text-[0.62rem] uppercase tracking-[0.16em] transition-colors",
+                chapter === item.id
+                  ? "border-amber text-paper"
+                  : "border-transparent text-mute hover:text-paper-2",
+                item.needsRun && !completed && "opacity-60",
+              )}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      {(error || formError || notice) && (
+        <div className="border-b border-amber/30 bg-amber/10" role="status" aria-live="polite">
+          <p className="mx-auto max-w-[1440px] px-4 py-3 text-sm text-amber md:px-8">
+            {formError ?? error ?? notice}
+          </p>
+        </div>
+      )}
+
+      <section className="mx-auto grid max-w-[1440px] gap-10 px-4 py-16 md:grid-cols-12 md:px-8">
+        <div className="md:col-span-5">
+          <p className="type-kicker">House notes</p>
+          <h2 className="font-display mt-3 text-3xl md:text-4xl">The desk</h2>
+          <div className="mt-8 space-y-6">
+            <Field label="Venue">
+              <TextInput
+                maxLength={120}
+                value={venue}
+                onChange={(event) => setVenue(event.target.value)}
+                placeholder="The Light House"
+              />
+            </Field>
+            <Field
+              label="City"
+              hint="Geography appears only when the run returns usable coordinates."
+            >
+              <TextInput
+                maxLength={120}
+                value={city}
+                onChange={(event) => setCity(event.target.value)}
+                placeholder="Brighton, United Kingdom"
+              />
+            </Field>
+          </div>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <button type="button" className="btn-primary" onClick={startFixture} disabled={analysing}>
+              Run labelled fixture
+              <ArrowRight size={16} />
+            </button>
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={startLive}
+              disabled={analysing || liveNotice !== null}
+              aria-disabled={analysing || liveNotice !== null}
+            >
+              Analyse programme (live)
+            </button>
+            <button type="button" className="btn-ghost" onClick={loadSampleProgramme}>
+              Load sample programme
+            </button>
+          </div>
+          {liveNotice && (
+            <p role="status" className="mt-4 max-w-xl text-xs leading-relaxed text-mute">
+              {liveNotice}
+            </p>
+          )}
+          <div className="mt-6 flex flex-wrap items-center gap-2">
+            <RunChip status={run?.status ?? (analysing ? "running" : "idle")} />
+            {mode === "fixture" && <DataChip status="fixture" />}
+            {mode === "live" && !completed && !analysing && <DataChip status="unavailable" />}
+            {result && <DataChip status={result.data_status} />}
+            {runId && <span className="caption">Run {runId}</span>}
+          </div>
+        </div>
+        <div className="md:col-span-7">
+          <p className="field-label">Programme</p>
+          <p className="mb-4 text-xs text-dim">
+            Titles and years. Notes stay with your own record; photography here is atmospheric — not
+            official artwork for these films.
+          </p>
+          <ul className="space-y-3">
+            {programme.map((row, index) => (
+              <li
+                key={index}
+                className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_5.5rem_1fr_2.5rem]"
+              >
+                <TextInput
+                  aria-label={`Film title ${index + 1}`}
+                  maxLength={200}
+                  placeholder="Perfect Days"
+                  value={row.title}
+                  onChange={(event) => {
+                    const next = [...programme];
+                    next[index] = { ...row, title: event.target.value };
+                    setProgramme(next);
+                  }}
+                />
+                <TextInput
+                  aria-label={`Year ${index + 1}`}
+                  maxLength={4}
+                  inputMode="numeric"
+                  placeholder="2023"
+                  value={row.year}
+                  onChange={(event) => {
+                    const next = [...programme];
+                    next[index] = { ...row, year: event.target.value };
+                    setProgramme(next);
+                  }}
+                />
+                <TextInput
+                  aria-label={`Curatorial note ${index + 1}`}
+                  maxLength={160}
+                  placeholder="Curatorial note"
+                  value={row.note}
+                  onChange={(event) => {
+                    const next = [...programme];
+                    next[index] = { ...row, note: event.target.value };
+                    setProgramme(next);
+                  }}
+                />
+                <button
+                  type="button"
+                  className="flex h-10 items-center justify-center text-mute hover:text-blood"
+                  aria-label={`Remove title ${index + 1}`}
+                  onClick={() => setProgramme(programme.filter((_, rowIndex) => rowIndex !== index))}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            className="btn-ghost mt-4"
+            disabled={programme.length >= 12}
+            onClick={() => setProgramme([...programme, { title: "", year: "", note: "" }])}
+          >
+            <Plus size={14} />
+            {programme.length >= 12 ? "12 title limit reached" : "Add title"}
+          </button>
+        </div>
+      </section>
+
+      {/* CHAPTER — PROGRAMME */}
+      <section id="programme" className="scroll-mt-36 border-t border-line bg-ink-2">
+        <div className="mx-auto max-w-[1440px] px-4 py-14 md:px-8">
+          <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="eyebrow"><span>03</span> CULTURAL FIELD</p>
-              <h2 style={{
-                margin: "20px 0 0", color: "var(--paper)",
-                fontFamily: "var(--display)", fontSize: "clamp(56px, 6.1vw, 94px)",
-                fontWeight: 400, letterSpacing: "-0.045em", lineHeight: 0.88
-              }} >
-                A programme is<br />a <em style={{ color: "#bcb4a7" }}>cultural fingerprint.</em>
+              <p className="type-kicker">Programme · contact sheet</p>
+              <h2 className="font-display mt-2 text-3xl md:text-5xl">
+                The programme as a strip, not a store.
               </h2>
             </div>
-            <p style={{ maxWidth: 310, margin: 0, color: "#a7a39b", fontSize: 14, lineHeight: 1.8 }}>
-              Follow the relationships outward. The useful signal is not a movie to recommend; it is a cultural territory the cinema could choose to enter.
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              {run?.status === "running" && <RunChip status="running" />}
+              {mode === "fixture" && <DataChip status="fixture" />}
+              {result && <DataChip status={result.data_status} />}
+            </div>
           </div>
 
-          {/* Analysis status / controls */}
-          <div style={{ padding: "40px 0", borderTop: "1px solid var(--rule)", marginTop: 32 }}>
-            <p className="eyebrow" style={{ marginBottom: 16 }}><span>&#9656;</span> LIVE ANALYSIS</p>
-
-            {!run && !analysing && (
-              <>
-                <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.85, maxWidth: 560, marginBottom: 24 }}>
-                  Enter your cinema and recent programme in <a href="#programme" style={{ color: "var(--amber)", borderBottom: "1px solid rgba(194,154,110,0.4)" }}>02 / Programme</a>.
-                  The engine resolves each film, queries Qloo for cultural adjacency signals, and produces an
-                  explainable Programme Bet with a measurable Test Card.
-                </p>
-                <button onClick={handleDemo} className="intake-sample-btn" style={{ marginRight: 12 }}>
-                  View labelled fixture demo (offline)
-                </button>
-                <span className="mono-note">NO API KEY REQUIRED FOR THE FIXTURE DEMO — IT IS ALWAYS LABELLED, NEVER PRESENTED AS LIVE</span>
-              </>
-            )}
-
-            {error && (
-              <div style={{ padding: "12px 16px", background: "rgba(138,80,72,0.15)", border: "1px solid rgba(138,80,72,0.4)", borderRadius: 8, marginBottom: 16, color: "#e8c4b8", fontSize: 12, maxWidth: 720 }}>
-                <strong style={{ display: "block", marginBottom: 4, fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.1em" }}>ANALYSIS ERROR — YOUR ENTRIES ARE PRESERVED IN 02 / PROGRAMME</strong>
-                {error}
-              </div>
-            )}
-
-            {analysing && (
-              <div>
-                <p style={{ color: "#d8b48a", fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "0.12em", marginBottom: 8 }}>
-                  ANALYSING{requestMode === "fixture" ? " FIXTURE DEMO" : ""}… {events.length > 0 ? `${events.length} EVENTS RECEIVED` : "CONNECTING"}
-                </p>
-                <div className="progress-rail">
-                  {traceEvents.slice(-6).map((e, i) => (
-                    <div className="progress-line" key={i}>
-                      <span className="phase">{String(e.data?.phase ?? "…")}</span>
-                      <span>{String(e.data?.message ?? "")}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {run && !analysing && (
-              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-                <button onClick={resetAnalysis} className="intake-sample-btn">
-                  Reset &amp; analyse another programme
-                </button>
-                {requestMode !== "fixture" && (
-                  <button onClick={handleDemo} className="intake-sample-btn">
-                    View labelled fixture demo (offline)
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Insufficiency — a finding, not an error */}
-          {run && !analysing && insufficient && (
-            <div className="insufficient-panel" style={{ marginTop: 32 }}>
-              <h3>Insufficient cultural evidence</h3>
-              <p>
-                {run.stop_message || "Qloo does not return enough verified cultural signal for this programme to name an adjacent audience."}
-              </p>
-              <p style={{ marginTop: 14 }} className="mono-note">
-                THIS IS THE PRODUCT WORKING — A REFUSAL IS AN HONEST RESULT, NOT A FAILURE.
-              </p>
-            </div>
-          )}
-
-          {/* Failure without a result */}
-          {run && !analysing && failed && !result && (
-            <div className="insufficient-panel" style={{ marginTop: 32, borderColor: "rgba(138,80,72,0.45)", background: "rgba(138,80,72,0.08)" }}>
-              <h3 style={{ color: "#d4a89e" }}>The run could not complete</h3>
-              <p>{run.error || run.stop_message || "Unknown failure."}</p>
-            </div>
-          )}
-
-          {/* Results */}
-          {result && (
-            <div style={{ marginTop: 32 }}>
-              {/* Data status */}
-              <div style={{ marginBottom: 24, padding: "10px 14px", background: statusIsMeasured ? "rgba(62,122,76,0.12)" : "rgba(194,154,110,0.12)", border: `1px solid ${statusIsMeasured ? "rgba(62,122,76,0.3)" : "rgba(194,154,110,0.3)"}`, borderRadius: 6 }}>
-                <span style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: statusIsMeasured ? "#7aba8a" : "#c29a6e" }}>
-                  {statusLabel}
-                </span>
-                {request && (
-                  <span style={{ marginLeft: 16, color: "#908c84", fontSize: 11 }}>
-                    {request.venue} · {request.city} · {request.programme.length} film(s) submitted
+          {(analysing || runId) && (
+            <ol className="mt-8 grid gap-x-8 md:grid-cols-2">
+              {stages.map((stage) => (
+                <li key={stage.id} className="flex justify-between border-t border-line py-3 text-sm">
+                  <span>{stage.label}</span>
+                  <span
+                    className={cn(
+                      "font-mono text-[0.62rem]",
+                      stage.state === "done" && "text-sage",
+                      stage.state === "now" && "text-amber",
+                      stage.state === "wait" && "text-dim",
+                      stage.state === "skipped" && "text-blood",
+                    )}
+                  >
+                    {stageStatusLabel(stage.state)}
                   </span>
-                )}
-              </div>
+                </li>
+              ))}
+            </ol>
+          )}
 
-              {/* Evidence-derived cultural fingerprint for the actual submitted programme. */}
-              {result.cohorts && (
-                <div className="fingerprint-cinema-graph">
-                  <AdjacencyGraph
-                    filmTitle={request?.venue ?? "Your cinema"}
-                    anchorLabel={request?.venue ?? "Your cinema"}
-                    anchorSubLabel={"CINEMA · " + (request?.city ?? result.city ?? "PROGRAMME")}
-                    cohorts={result.cohorts}
-                    bet={bet}
-                    dataStatus={result.data_status}
+          {(failed || insufficient) && (
+            <div className="mt-8 border border-dashed border-line-strong p-6">
+              <span className="chip chip-warn">{insufficient ? "Insufficient evidence" : "Run failed"}</span>
+              <p className="mt-3 text-sm leading-relaxed text-paper-2">
+                No map or cohort was drawn to hide the gap. A fixture run is optional and labelled.
+                {run?.stop_message ? ` ${run.stop_message}` : ""}
+              </p>
+              {runId && (
+                <button
+                  type="button"
+                  className="btn-ghost mt-4"
+                  onClick={() => {
+                    setError(null);
+                    watchRun(runId);
+                  }}
+                >
+                  Retry loading this run
+                </button>
+              )}
+            </div>
+          )}
+
+          <p className="mt-10 max-w-xl text-sm text-mute">
+            Images are atmospheric references. They are not posters, stills, or rights-cleared
+            artwork for the titles listed.
+          </p>
+
+          {displayProgramme.length === 0 ? (
+            <p className="mt-6 text-sm text-dim">
+              No titles entered yet. The contact sheet appears once the programme has entries.
+            </p>
+          ) : (
+            <div className="mt-6 flex gap-3 overflow-x-auto pb-4">
+              {displayProgramme.map((item, index) => (
+                <button
+                  key={`${item.title}-${index}`}
+                  type="button"
+                  onClick={() => setSelected(index)}
+                  aria-pressed={selected === index}
+                  className={cn(
+                    "w-44 shrink-0 text-left",
+                    selected === index ? "opacity-100" : "opacity-70 hover:opacity-100",
+                  )}
+                >
+                  <PhotoFrame
+                    photo={CONTACT_SHEET[index % CONTACT_SHEET.length]}
+                    className="aspect-[3/4]"
+                    credit={false}
+                    gate
                   />
+                  <p className="mt-3 font-display text-xl">{item.title}</p>
+                  <p className="caption mt-1">
+                    {item.year || "year not given"} · {item.note || "no note"}
+                  </p>
+                  {result && (
+                    <p className="caption mt-1">
+                      {item.resolved
+                        ? `Resolved · ${item.qlooName ?? "provider entity"}`
+                        : "Unresolved — not admitted to the profile"}
+                    </p>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+          {displayProgramme[selected] && (
+            <p className="mt-2 text-sm text-paper-2">
+              Selected · {displayProgramme[selected].title} (
+              {displayProgramme[selected].year || "year not given"}) —{" "}
+              {displayProgramme[selected].note || "no curatorial note yet"}
+            </p>
+          )}
+
+          {result && (
+            <p className="mt-4 font-mono text-[0.62rem] text-dim">
+              RESOLVED {result.programme.resolved_count} / {result.programme.total_count} · QLOO
+              CALLS {result.evidence.qloo_calls} · TRACE ROWS {result.evidence.trace_rows} · STOP{" "}
+              {result.evidence.stop_reason}
+            </p>
+          )}
+        </div>
+      </section>
+
+      {/* CHAPTER — CULTURAL FIELD */}
+      <section id="cultural-field" className="scroll-mt-36 border-t border-line">
+        <div className="mx-auto max-w-[1440px] px-4 py-14 md:px-8">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="type-kicker">Cultural field</p>
+              <h2 className="font-display mt-2 text-4xl md:text-5xl">Returned worlds</h2>
+            </div>
+            {result && <DataChip status={result.data_status} />}
+          </div>
+
+          {completed ? (
+            <>
+              <div className="mt-8">
+                <CulturalFingerprint
+                  nodes={fingerprintNodes}
+                  filmTitle={venue || "This programme"}
+                  dataStatus={result?.data_status}
+                  emptyBody="The run completed without a usable cultural field. An empty field is reported as empty rather than illustrated."
+                />
+              </div>
+
+              <div className="mt-10 grid gap-8 border border-line p-6 md:grid-cols-2">
+                <div>
+                  <p className="type-kicker">Geography</p>
+                  <h3 className="font-display mt-3 text-3xl">
+                    {hasGeography
+                      ? "Coordinates returned by this run."
+                      : "City context without a fake heat map."}
+                  </h3>
+                  <p className="mt-4 text-sm leading-relaxed text-mute">
+                    {hasGeography
+                      ? `${city || geography?.city_display || "The city"} is drawn from ${geographyCells.length} returned affinity cell(s). Affinity is a cultural-similarity signal, not attendance.`
+                      : `${city || "The city"} is recorded as venue context. This run did not return usable coordinates${
+                          geography?.note ? ` — ${geography.note}` : ""
+                        }, so no choropleth, pins or attendance surface is rendered.`}
+                  </p>
+                  {geography?.call_id && (
+                    <p className="mt-3 font-mono text-[0.62rem] text-dim">CALL {geography.call_id}</p>
+                  )}
+                </div>
+                {hasGeography && geography ? (
+                  <div className="min-h-[280px] overflow-hidden border border-line">
+                    <GeographyMap geography={geography} />
+                  </div>
+                ) : (
+                  <div className="flex min-h-[200px] items-end border border-dashed border-line-strong p-4">
+                    <p className="caption">Map withheld · insufficient geographic evidence</p>
+                  </div>
+                )}
+              </div>
+
+              {hasGeography && geographyCells.length > 0 && (
+                <div className="mt-4 overflow-auto border border-line">
+                  <table className="w-full text-left text-sm">
+                    <caption className="caption px-4 py-2 text-left">
+                      Returned affinity cells · not attendance, not reachable audience
+                    </caption>
+                    <thead>
+                      <tr className="border-b border-line font-mono text-[0.58rem] uppercase tracking-[0.12em] text-dim">
+                        <th className="px-4 py-2">Geohash</th>
+                        <th className="px-4 py-2">Latitude</th>
+                        <th className="px-4 py-2">Longitude</th>
+                        <th className="px-4 py-2">Affinity</th>
+                        <th className="px-4 py-2">Rank</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {geographyCells.slice(0, 24).map((cell, index) => (
+                        <tr key={`${cell.geohash ?? "cell"}-${index}`} className="border-b border-line">
+                          <td className="px-4 py-2 font-mono text-[0.62rem] text-mute">
+                            {cell.geohash ?? "—"}
+                          </td>
+                          <td className="px-4 py-2 text-paper-2">{cell.latitude.toFixed(3)}</td>
+                          <td className="px-4 py-2 text-paper-2">{cell.longitude.toFixed(3)}</td>
+                          <td className="px-4 py-2 text-amber">{cell.affinity.toFixed(2)}</td>
+                          <td className="px-4 py-2 text-mute">{cell.affinity_rank ?? "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
 
-              {/* Programme profile */}
-              <div className="evidence-panel">
-                <h3>Programme Profile</h3>
-                <span className="mono-note" style={{ display: "block", marginBottom: 16 }}>
-                  {programme?.resolved_count ?? 0}/{programme?.total_count ?? 0} FILMS RESOLVED AGAINST QLOO
-                </span>
-                <div style={{ display: "grid", gap: 6 }}>
-                  {progItems.map((item, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, flexWrap: "wrap" }}>
-                      <span style={{ color: item.resolved ? "#7aba8a" : "#c97a6a" }}>
-                        {item.resolved ? "✓" : "✕"}
-                      </span>
-                      <span style={{ color: "#e9e3d8" }}>{item.title}</span>
-                      {item.year != null && <span style={{ color: "#88837a" }}>({item.year})</span>}
-                      {item.resolved && item.qloo_name && item.qloo_name !== item.title && (
-                        <span style={{ color: "#88837a", fontSize: 10 }}>→ {item.qloo_name}</span>
-                      )}
-                      {!item.resolved && (
-                        <span style={{ color: "#8a847a", fontSize: 10, fontFamily: "var(--mono)" }}>UNRESOLVED — EXCLUDED FROM EVIDENCE, NEVER GUESSED</span>
-                      )}
-                    </div>
+              {traceRows.length > 0 && (
+                <div className="mt-8 border border-line p-5">
+                  <p className="type-kicker">Evidence trace</p>
+                  <p className="mt-2 text-xs text-mute">
+                    Every recorded provider call for this run. Parameters are redacted server-side.
+                  </p>
+                  <div className="mt-3 max-h-[360px] overflow-auto pr-1">
+                    <EvidenceTraceLog rows={traceRows} scope="cinema-run" />
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <Locked
+              title="No cultural field yet."
+              body="Ranked cohorts, rejected worlds and geographic evidence appear only after a completed run. Empty is not a graph."
+              action="Run labelled fixture"
+              onAction={startFixture}
+            />
+          )}
+        </div>
+      </section>
+
+      {/* CHAPTER — OPPORTUNITY */}
+      <section id="opportunity" className="scroll-mt-36 border-t border-line bg-ink-2">
+        <div className="mx-auto max-w-[1440px] px-4 py-14 md:px-8">
+          <p className="type-kicker">Opportunity · programming direction</p>
+          {completed && bet ? (
+            <div className="mt-6 grid gap-10 md:grid-cols-12">
+              <div className="md:col-span-7">
+                <ClaimChip kind="HYPOTHESIS" />
+                <h2 className="font-display mt-5 text-3xl leading-tight md:text-5xl">
+                  The {bet.primary.domain.replace("urn:entity:", "")} world — via{" "}
+                  {bet.primary.cohort_name}
+                </h2>
+                <p className="mt-5 text-sm leading-relaxed text-paper-2">{bet.why}</p>
+                {bet.cultural_bridge && (
+                  <p className="mt-4 text-sm leading-relaxed text-paper-2">
+                    <span className="text-amber">Bridge · </span>
+                    {bet.cultural_bridge}
+                  </p>
+                )}
+                {bet.programming_direction && (
+                  <p className="mt-3 text-sm leading-relaxed text-paper-2">
+                    <span className="text-amber">Direction · </span>
+                    {bet.programming_direction}
+                  </p>
+                )}
+                <p className="mt-4 font-mono text-[0.65rem] text-dim">
+                  {bet.primary.member_count} entities
+                  {typeof bet.primary.mean_affinity === "number"
+                    ? ` · mean affinity ${bet.primary.mean_affinity.toFixed(2)}`
+                    : " · no mean affinity"}
+                  {bet.primary.call_id ? ` · call ${bet.primary.call_id}` : ""}
+                  {` · ${String(bet.data_status).toUpperCase()}`}
+                </p>
+                {bet.falsification_condition && (
+                  <div className="mt-6 border border-blood/40 bg-blood/10 p-4">
+                    <p className="caption text-warn">Falsification condition</p>
+                    <p className="mt-2 text-sm leading-relaxed text-paper-2">
+                      {bet.falsification_condition}
+                    </p>
+                  </div>
+                )}
+                <ul className="mt-6 space-y-3">
+                  {bet.rejected_candidates.map((candidate) => (
+                    <li key={candidate.cohort_id} className="text-sm text-mute">
+                      — Rejected · {candidate.domain.replace("urn:entity:", "")} — {candidate.reason}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="md:col-span-5">
+                <PhotoFrame photo={photos.cinemaAisle} className="aspect-[4/5]" />
+                {bet.two_sided_signals?.methodology_note && (
+                  <p className="caption mt-4">{bet.two_sided_signals.methodology_note}</p>
+                )}
+              </div>
+            </div>
+          ) : completed ? (
+            <div className="mt-6 border border-dashed border-line-strong p-8">
+              <span className="chip chip-warn">No supported direction</span>
+              <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+                This run completed without a Programme Bet. Nothing is substituted for a missing
+                recommendation.
+              </p>
+            </div>
+          ) : (
+            <Locked
+              title="No programming direction yet."
+              body="The proposed direction is an interpretation written over ranked cohorts. Without a run there is nothing to interpret."
+              action="Run labelled fixture"
+              onAction={startFixture}
+            />
+          )}
+        </div>
+      </section>
+
+      {/* CHAPTER — TEST */}
+      <section id="test" className="scroll-mt-36 border-t border-line">
+        <div className="mx-auto max-w-[1440px] px-4 py-14 md:px-8">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="type-kicker">Test · cinema test card</p>
+              <p className="mt-2 max-w-xl text-sm text-mute">
+                A bounded test of a cultural adjacency. Not a new identity for the cinema.
+              </p>
+            </div>
+            {completed && card && (
+              <button type="button" className="test-card-export" onClick={exportTestCard}>
+                <span>Export test card</span>
+                <small>PLAIN TEXT · .TXT</small>
+              </button>
+            )}
+          </div>
+
+          {completed && card && experimentDesign ? (
+            <div className="grid gap-8 lg:grid-cols-12">
+              <div className="border border-line p-5 lg:col-span-4">
+                <p className="type-kicker text-amber">Pre-register before export</p>
+                <div className="mt-4 grid gap-4">
+                  {PREREG_FIELDS.map((entry) => (
+                    <label key={entry.field} className="block">
+                      <span className="field-label">{entry.label}</span>
+                      <textarea
+                        className="mt-2 w-full border border-line bg-ink px-3 py-2 text-sm text-paper-2"
+                        aria-label={`Cinema ${entry.field.replaceAll("_", " ")}`}
+                        rows={entry.rows}
+                        maxLength={2000}
+                        value={experimentDesign[entry.field]}
+                        onChange={(event) =>
+                          setExperimentDesign((current) =>
+                            updateTestDesign(current, card, entry.field, event.target.value),
+                          )
+                        }
+                      />
+                      {entry.note && <span className="caption mt-1 block">{entry.note}</span>}
+                    </label>
                   ))}
                 </div>
               </div>
-
-              {/* Taste DNA */}
-              {tasteTags.length > 0 && (
-                <div className="evidence-panel">
-                  <h3>Taste DNA</h3>
-                  <span className="mono-note" style={{ display: "block", marginBottom: 16 }}>
-                    {result.taste_dna?.tag_count ?? tasteTags.length} TAGS · QLOO AFFINITY 0–1 · {statusIsMeasured ? "MEASURED" : "FIXTURE"}
-                  </span>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
-                    {tasteTags.slice(0, 16).map((tag, i) => (
-                      <div key={tag.tag_id || i} style={{ padding: "10px 12px", background: "rgba(232,226,213,0.04)", border: "1px solid var(--rule)", borderRadius: 6 }}>
-                        <div style={{ color: "#e7e1d7", fontSize: 12, fontWeight: 500 }}>{tag.name}</div>
-                        <div style={{ color: "#88837a", fontSize: 10, marginTop: 4 }}>
-                          Affinity: {typeof tag.affinity === "number" ? tag.affinity.toFixed(4) : "—"} · {tag.band || "—"}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Ranked cohorts — the cultural field, ranked */}
-              {ranked.length > 0 && (
-                <div className="evidence-panel">
-                  <h3>Adjacent Cohorts, Ranked</h3>
-                  <span className="mono-note" style={{ display: "block", marginBottom: 16 }}>
-                    {ranked.length} RANKED · {rejected.length} REJECTED WITH REASONS · AFFINITY = QLOO CULTURAL SIMILARITY, NOT AUDIENCE SIZE
-                  </span>
-                  <div style={{ display: "grid", gap: 14 }}>
-                    {ranked.map((cohort) => (
-                      <div key={cohort.cohort_id} style={{ padding: "16px 18px", border: "1px solid var(--rule)", borderRadius: 7, background: "rgba(232,226,213,0.02)" }}>
-                        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
-                          <span style={{ fontFamily: "var(--display)", fontSize: 22, color: "#e9e3d8" }}>
-                            <span style={{ color: "var(--amber)", fontFamily: "var(--mono)", fontSize: 10, marginRight: 10 }}>0{cohort.rank}</span>
-                            {domainLabel(cohort.domain)}
-                          </span>
-                          <span className="mono-note">
-                            {cohort.member_count} MEMBERS · MEAN AFFINITY {typeof cohort.score?.mean_affinity === "number" ? cohort.score.mean_affinity.toFixed(2) : "—"}
-                            {" · "}{cohort.verdict ?? ""}
-                          </span>
-                        </div>
-                        <div style={{ display: "grid", gap: 6 }}>
-                          {cohort.members.slice(0, 5).map((m, mi) => (
-                            <div className="bar-row" key={m.entity_id || mi} style={{ gridTemplateColumns: "minmax(140px, 1.2fr) 2fr auto" }}>
-                              <span className="bar-label">{m.name}</span>
-                              <div className="bar-track">
-                                <div className="bar-fill adjacent" style={{ width: `${affinityPct(m.affinity)}%` }} />
-                              </div>
-                              <span className="bar-value">
-                                {typeof m.affinity === "number" ? m.affinity.toFixed(2) : "—"}{m.band ? ` · ${m.band}` : ""}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                        {(cohort.excluded_members?.length ?? 0) > 0 && (
-                          <details style={{ marginTop: 10 }}>
-                            <summary className="mono-note" style={{ cursor: "pointer" }}>
-                              {cohort.qualifying_count ?? cohort.members.length} OF {cohort.member_count} MEMBERS QUALIFY · {cohort.excluded_members?.length} CONSIDERED BUT EXCLUDED — AND WHY
-                            </summary>
-                            <div style={{ display: "grid", gap: 4, marginTop: 8 }}>
-                              {cohort.excluded_members?.map((ex, ei) => (
-                                <div key={ex.entity_id || ei} style={{ color: "#8a847a", fontSize: 11 }}>
-                                  {ex.name ?? ex.entity_id} — {ex.reason_code}
-                                  {typeof ex.affinity === "number" ? ` (affinity ${ex.affinity.toFixed(2)})` : ""}
-                                </div>
-                              ))}
-                            </div>
-                          </details>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  {rejected.length > 0 && (
-                    <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--rule)" }}>
-                      <span className="micro-label" style={{ marginBottom: 8 }}>REJECTED — AND WHY</span>
-                      <div style={{ display: "grid", gap: 4 }}>
-                        {rejected.map((r, ri) => (
-                          <div key={r.cohort_id || ri} style={{ color: "#8a847a", fontSize: 11 }}>
-                            {domainLabel(r.domain)} — {r.rejection_reason ?? "rejected"}{r.rejection_detail ? ` (${r.rejection_detail})` : ""}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Geography — with its limits stated */}
-              {geography && (
-                <div className="evidence-panel">
-                  <h3>Where the affinity concentrates</h3>
-                  <span className="mono-note" style={{ display: "block", marginBottom: 4 }}>
-                    {geography.city_display || geography.city} · {geography.total_cells} HEATMAP CELLS · CALL {geography.call_id ?? "—"} · {geography.data_status === "measured" ? "MEASURED" : "FIXTURE"}
-                  </span>
-                  {!geography.sufficient && (
-                    <p style={{ color: "#c29a6e", fontSize: 11, margin: "8px 0 0", lineHeight: 1.7 }}>
-                      {geography.note || "Too few cells for a geographic claim — treat as directional only."}
-                    </p>
-                  )}
-                  <div className="geo-list">
-                    {geoCells.slice(0, 5).map((cell, ci) => (
-                      <div className="geo-row" key={ci}>
-                        <span className="geo-rank">#{cell.affinity_rank ?? ci + 1}</span>
-                        <span className="geo-name">{cell.geohash ?? "cell"}</span>
-                        <span className="geo-coords">{cell.latitude.toFixed(3)}, {cell.longitude.toFixed(3)}</span>
-                        <span className="geo-affinity">{cell.affinity.toFixed(2)}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="mono-note" style={{ marginTop: 12, lineHeight: 1.8 }}>
-                    GEOHASH CELL CENTROIDS FROM A QLOO HEATMAP — A CULTURAL-AFFINITY CONCENTRATION SIGNAL, NOT A POPULATION, CATCHMENT OR DEMAND MODEL.
-                  </p>
-                </div>
-              )}
-
-              {/* Programme Bet */}
-              {bet && (
-                <div style={{ marginBottom: 32, padding: 24, background: "rgba(194,154,110,0.06)", border: "1px solid rgba(194,154,110,0.25)", borderRadius: 8 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, gap: 12, flexWrap: "wrap" }}>
-                    <span className="eyebrow" style={{ color: "var(--amber)" }}>&#127919; PROGRAMME BET</span>
-                    <span style={{ fontFamily: "var(--mono)", fontSize: 8, letterSpacing: "0.1em", textTransform: "uppercase", color: bet.data_status === "measured" ? "#7aba8a" : "#c29a6e", padding: "3px 8px", background: "rgba(194,154,110,0.1)", borderRadius: 4 }}>
-                      {bet.data_status === "measured" ? "MEASURED QLOO" : `DATA STATUS: ${String(bet.data_status ?? "unknown").toUpperCase()}`}
-                    </span>
-                  </div>
-                  <h3 style={{ margin: "0 0 8px", fontFamily: "var(--display)", fontSize: 32, fontWeight: 400, color: "#e9e3d8" }}>
-                    {bet.primary?.cohort_name}
-                  </h3>
-                  <p style={{ color: "#a7a39b", fontSize: 12, lineHeight: 1.7, marginBottom: 16 }}>
-                    {domainLabel(bet.primary?.domain)} · {bet.primary?.member_count} entities
-                    {typeof bet.primary?.mean_affinity === "number" ? ` · mean affinity ${bet.primary.mean_affinity.toFixed(2)}` : ""}
-                    {bet.primary?.call_id ? ` · call ${bet.primary.call_id}` : ""}
-                    {bet.primary?.cohort_id ? ` · built from ranked cohort ${bet.primary.cohort_id} above` : ""}
-                  </p>
-                  {bet.two_sided_signals && (
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 16 }}>
-                      <div style={{ padding: "10px 12px", border: "1px solid var(--rule)", borderRadius: 6 }}>
-                        <span className="micro-label">PROGRAMME ADJACENCY</span>
-                        <span style={{ display: "block", color: "#e9e3d8", fontSize: 14, marginTop: 4 }}>
-                          {typeof bet.two_sided_signals.programme_adjacency === "number" ? bet.two_sided_signals.programme_adjacency.toFixed(2) : "—"}
-                          {bet.two_sided_signals.adjacency_band ? ` · ${bet.two_sided_signals.adjacency_band}` : ""}
-                        </span>
-                      </div>
-                      <div style={{ padding: "10px 12px", border: "1px solid var(--rule)", borderRadius: 6 }}>
-                        <span className="micro-label">COHORT BREADTH</span>
-                        <span style={{ display: "block", color: "#e9e3d8", fontSize: 14, marginTop: 4 }}>
-                          {typeof bet.two_sided_signals.cohort_breadth === "number" ? bet.two_sided_signals.cohort_breadth.toFixed(2) : "—"}
-                          {bet.two_sided_signals.breadth_band ? ` · ${bet.two_sided_signals.breadth_band}` : ""}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, marginBottom: 12 }}>
-                    {bet.why}
-                  </p>
-                  {bet.cultural_bridge && (
-                    <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, marginBottom: 12 }}>
-                      <span className="micro-label" style={{ display: "inline", marginRight: 8 }}>BRIDGE</span>{bet.cultural_bridge}
-                    </p>
-                  )}
-                  {bet.programming_direction && (
-                    <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, marginBottom: 12 }}>
-                      <span className="micro-label" style={{ display: "inline", marginRight: 8 }}>DIRECTION</span>{bet.programming_direction}
-                    </p>
-                  )}
-                  {bet.falsification_condition && (
-                    <div style={{ marginTop: 16, padding: "12px 14px", background: "rgba(138,80,72,0.1)", border: "1px solid rgba(138,80,72,0.25)", borderRadius: 6 }}>
-                      <span className="micro-label" style={{ color: "#c97a6a", marginBottom: 6, display: "block" }}>&#9888; FALSIFICATION CONDITION</span>
-                      <p style={{ color: "#d4a89e", fontSize: 12, lineHeight: 1.7, margin: 0 }}>
-                        {bet.falsification_condition}
-                      </p>
-                    </div>
-                  )}
-                  {bet.runner_up && (
-                    <p className="mono-note" style={{ marginTop: 12, lineHeight: 1.8 }}>
-                      RUNNER-UP: {bet.runner_up.cohort_name ?? domainLabel(bet.runner_up.domain)}
-                      {typeof bet.runner_up.mean_affinity === "number" ? ` · AFFINITY ${bet.runner_up.mean_affinity.toFixed(2)}` : ""}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Evidence / provenance */}
-              {evidence && (
-                <div style={{ padding: 20, border: "1px solid var(--rule)", borderRadius: 8 }}>
-                  <span className="micro-label" style={{ marginBottom: 14, display: "block" }}>PROVENANCE / EVIDENCE</span>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 16 }}>
-                    {([
-                      ["Qloo calls", evidence.qloo_calls],
-                      ["Trace rows", evidence.trace_rows],
-                      ["Stop reason", evidence.stop_reason],
-                      ["Run status", run?.status],
-                      ["Run ID", runId],
-                    ] as [string, unknown][]).map(([label, value]) => (
-                      <div key={label}>
-                        <span className="micro-label">{label}</span>
-                        <span style={{ display: "block", color: "#e9e3d8", fontSize: 13, marginTop: 4, overflowWrap: "anywhere" }}>{String(value ?? "—")}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div className="lg:col-span-8">
+                <TestCard
+                  card={card}
+                  design={experimentDesign}
+                  editing={editingCard}
+                  hypothesis={card.audience_hypothesis}
+                  hypothesisNote="Returned cinema Test Card hypothesis"
+                  onChange={(field: TestDesignField, value: string) =>
+                    setExperimentDesign((current) => updateTestDesign(current, card, field, value))
+                  }
+                  onToggleEdit={() => setEditingCard((value) => !value)}
+                  onExport={exportTestCard}
+                />
+              </div>
             </div>
+          ) : (
+            <Locked
+              title="No Test Card yet."
+              body="The cinema Test Card is drafted from the programming direction and stays editable before it is exported. Export remains unavailable until a completed run returns one."
+              action="Run labelled fixture"
+              onAction={startFixture}
+            />
           )}
         </div>
       </section>
+    </div>
+  );
+}
 
-      {/* ─── 04 OPPORTUNITY ─────────────────────────────────────────── */}
-      <section id="opportunity" className="gap-section" data-chapter="opportunity">
-        <div className="section-shell">
-          <div style={{ display: "flex", alignItems: "end", justifyContent: "space-between", gap: 48, marginBottom: 48 }}>
-            <div>
-              <p className="eyebrow"><span>04</span> THE OPPORTUNITY / A PROGRAMME GAP</p>
-              <h2 style={{
-                margin: "28px 0 0", color: "var(--paper)",
-                fontFamily: "var(--display)", fontSize: "clamp(56px, 6.1vw, 94px)",
-                fontWeight: 400, letterSpacing: "-0.045em", lineHeight: 0.88,
-              }} >
-                The cultural territory<br />you are <em style={{ color: "#bcb4a7" }}>not yet exploring.</em>
-              </h2>
-            </div>
-            <p style={{ maxWidth: 310, margin: 0, color: "#a7a39b", fontSize: 14, lineHeight: 1.8 }}>
-              An adjacent direction should feel close enough to belong, and new enough to create a reason to visit.
-            </p>
-          </div>
-
-          {!result && !failed && (
-            <div className="insufficient-panel">
-              <h3>No numbers before evidence</h3>
-              <p>
-                Adjacent never displays territory scores it has not measured. Run an analysis on your
-                programme in <a href="#programme" style={{ color: "var(--amber)" }}>02 / Programme</a> —
-                this panel will then show your programme&rsquo;s expressed taste profile beside the
-                highest-ranked adjacent cohorts, each value taken directly from the Qloo response.
-              </p>
-            </div>
-          )}
-
-          {result && insufficient && (
-            <div className="insufficient-panel">
-              <h3>Insufficient evidence for a territory claim</h3>
-              <p>
-                {run?.stop_message || "Qloo did not return enough verified cultural signal for this programme."}
-              </p>
-            </div>
-          )}
-
-          {result && !insufficient && (
-            <>
-              <div className="opportunity-grid">
-                {/* Expressed — from measured taste tags */}
-                <div>
-                  <span className="micro-label" style={{ marginBottom: 12, display: "block" }}>01 / EXPRESSED · YOUR TASTE PROFILE</span>
-                  <h3 style={{ fontFamily: "var(--display)", fontSize: "clamp(28px, 3vw, 42px)", fontWeight: 400, margin: "0 0 24px", lineHeight: 1 }}>
-                    What your programme<br /><em style={{ color: "#bcb4a7" }}>already expresses.</em>
-                  </h3>
-                  {tasteTags.length > 0 ? tasteTags.slice(0, 5).map((tag, i) => (
-                    <div className="bar-row" key={tag.tag_id || i}>
-                      <span className="bar-label">{tag.name}</span>
-                      <div className="bar-track">
-                        <div className="bar-fill" style={{ width: `${affinityPct(tag.affinity)}%` }} />
-                      </div>
-                      <span className="bar-value">
-                        {typeof tag.affinity === "number" ? tag.affinity.toFixed(2) : "—"}{tag.band ? ` · ${tag.band}` : ""}
-                      </span>
-                    </div>
-                  )) : (
-                    <p style={{ color: "#8a847a", fontSize: 12 }}>No taste tags returned for this programme.</p>
-                  )}
-                </div>
-
-                {/* Bridge arrow */}
-                <div className="opportunity-bridge">
-                  <span className="mono-note" style={{ color: "var(--amber)" }}>EXTEND</span>
-                  <span style={{ fontSize: 24 }}>&rarr;</span>
-                </div>
-
-                {/* Adjacent — from ranked cohorts */}
-                <div>
-                  <span className="micro-label" style={{ marginBottom: 12, display: "block" }}>02 / ADJACENT · RANKED COHORTS</span>
-                  <h3 style={{ fontFamily: "var(--display)", fontSize: "clamp(28px, 3vw, 42px)", fontWeight: 400, margin: "0 0 24px", lineHeight: 1 }}>
-                    Adjacent<br /><em style={{ color: "#bcb4a7" }}>territory.</em>
-                  </h3>
-                  {ranked.length > 0 ? ranked.slice(0, 5).map((cohort) => (
-                    <div className="bar-row" key={cohort.cohort_id}>
-                      <span className="bar-label" title={cohort.domain}>{domainLabel(cohort.domain)}</span>
-                      <div className="bar-track">
-                        <div className="bar-fill adjacent" style={{ width: `${affinityPct(cohort.score?.mean_affinity)}%` }} />
-                      </div>
-                      <span className="bar-value">
-                        {typeof cohort.score?.mean_affinity === "number" ? cohort.score.mean_affinity.toFixed(2) : "—"} · {cohort.member_count} ENT
-                      </span>
-                    </div>
-                  )) : (
-                    <p style={{ color: "#8a847a", fontSize: 12 }}>No adjacent cohorts cleared the evidence gate.</p>
-                  )}
-                </div>
-              </div>
-
-              <div style={{ textAlign: "center", padding: "48px 0 0", borderTop: "1px solid var(--rule)", marginTop: 48 }}>
-                <span className="micro-label" style={{ marginBottom: 12, display: "block" }}>HOW TO READ THESE BARS · {statusIsMeasured ? "MEASURED QLOO DATA" : "FIXTURE DEMO DATA"}</span>
-                <p style={{ fontFamily: "var(--display)", fontSize: "clamp(20px, 2.3vw, 30px)", fontWeight: 400, margin: "0 0 14px", lineHeight: 1.35 }}>
-                  Affinity is a Qloo cultural-similarity score (0–1).<br />
-                  <em style={{ color: "#bcb4a7" }}>It is not an audience size, an attendance forecast, or a conversion probability.</em>
-                </p>
-                <p className="mono-note" style={{ maxWidth: 640, margin: "0 auto", lineHeight: 1.9 }}>
-                  LEFT: HIGHEST-AFFINITY TASTE TAGS OF YOUR PROGRAMME. RIGHT: HIGHEST-RANKED ADJACENT COHORTS BY MEAN MEMBER AFFINITY. EVERY VALUE COMES FROM THE QLOO RESPONSES OF THIS RUN — SEE PROVENANCE IN 03.
-                </p>
-              </div>
-            </>
-          )}
-        </div>
-      </section>
-
-      {/* ─── 05 TEST ────────────────────────────────────────────────── */}
-      <section id="test" className="test-section" data-chapter="test">
-        <div className="test-shell">
-          <div style={{ display: "flex", alignItems: "end", justifyContent: "space-between", gap: 48, marginBottom: 48 }}>
-            <div>
-              <p className="eyebrow"><span>05</span> TAKE IT INTO THE WORLD</p>
-              <h2 style={{
-                margin: "20px 0 0", color: "var(--paper)",
-                fontFamily: "var(--display)", fontSize: "clamp(56px, 6.1vw, 94px)",
-                fontWeight: 400, letterSpacing: "-0.045em", lineHeight: 0.88,
-              }} >
-                Programme<br /><em style={{ color: "#bcb4a7" }}>experiment.</em>
-              </h2>
-            </div>
-            <p style={{ maxWidth: 310, margin: 0, color: "#a7a39b", fontSize: 14, lineHeight: 1.8 }}>
-              A bounded test of a cultural adjacency. Not a new identity for the cinema.
-            </p>
-          </div>
-
-          <article className="test-card-sheet" style={{ padding: 32, border: "1px solid var(--rule)", borderRadius: 8, background: "rgba(232,226,213,0.02)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 24, paddingBottom: 16, borderBottom: "1px solid var(--rule)", gap: 12, flexWrap: "wrap" }}>
-              <span className="micro-label">PROGRAMME EXPERIMENT · TEST CARD</span>
-              <span className="mono-note">
-                {testCard
-                  ? `DATA STATUS: ${String(testCard.data_status ?? "unknown").toUpperCase()}`
-                  : "RUN AN ANALYSIS ABOVE TO POPULATE"}
-              </span>
-            </div>
-
-            {testCard ? (
-              <>
-                <div style={{ marginBottom: 24 }}>
-                  <span className="micro-label" style={{ marginBottom: 8, display: "block" }}>THE BET</span>
-                  <h3 style={{ fontFamily: "var(--display)", fontSize: 32, fontWeight: 400, margin: 0, color: "#e9e3d8" }}>
-                    {testCard.title}
-                  </h3>
-                </div>
-
-                <div style={{ display: "grid", gap: 22 }}>
-                  {testCard.programme_context && (
-                    <div>
-                      <span className="micro-label" style={{ marginBottom: 8, display: "block" }}>PROGRAMME CONTEXT</span>
-                      <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, margin: 0 }}>{testCard.programme_context}</p>
-                    </div>
-                  )}
-                  {testCard.audience_hypothesis && (
-                    <div>
-                      <span className="micro-label" style={{ marginBottom: 8, display: "block" }}>AUDIENCE HYPOTHESIS</span>
-                      <p style={{ color: "#b3aea4", fontSize: 14, lineHeight: 1.8, margin: 0 }}>
-                        &ldquo;{testCard.audience_hypothesis}&rdquo;
-                      </p>
-                    </div>
-                  )}
-                  {testCard.cultural_bridge && (
-                    <div>
-                      <span className="micro-label" style={{ marginBottom: 8, display: "block" }}>CULTURAL BRIDGE</span>
-                      <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, margin: 0 }}>{testCard.cultural_bridge}</p>
-                    </div>
-                  )}
-                  {testCard.geographic_signal && (
-                    <div>
-                      <span className="micro-label" style={{ marginBottom: 8, display: "block" }}>GEOGRAPHIC SIGNAL</span>
-                      <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, margin: 0 }}>{testCard.geographic_signal}</p>
-                    </div>
-                  )}
-                  {testCard.programming_direction && (
-                    <div>
-                      <span className="micro-label" style={{ marginBottom: 8, display: "block" }}>PROGRAMMING DIRECTION</span>
-                      <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, margin: 0 }}>{testCard.programming_direction}</p>
-                    </div>
-                  )}
-                  {testCard.primary_evidence && (
-                    <div>
-                      <span className="micro-label" style={{ marginBottom: 8, display: "block" }}>PRIMARY EVIDENCE</span>
-                      <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, margin: 0 }}>{testCard.primary_evidence}</p>
-                    </div>
-                  )}
-                  {testCard.runner_up && (
-                    <div>
-                      <span className="micro-label" style={{ marginBottom: 8, display: "block" }}>RUNNER-UP DIRECTION</span>
-                      <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, margin: 0 }}>{testCard.runner_up}</p>
-                    </div>
-                  )}
-                  {testCard.falsification_condition && (
-                    <div style={{ padding: "12px 14px", background: "rgba(138,80,72,0.1)", border: "1px solid rgba(138,80,72,0.25)", borderRadius: 6 }}>
-                      <span className="micro-label" style={{ color: "#c97a6a", marginBottom: 6, display: "block" }}>&#9888; FALSIFICATION CONDITION</span>
-                      <p className="test-card-caution" style={{ color: "#d4a89e", fontSize: 12, lineHeight: 1.7, margin: 0 }}>
-                        {testCard.falsification_condition}
-                      </p>
-                    </div>
-                  )}
-                  {testCard.success_criteria && (
-                    <div>
-                      <span className="micro-label" style={{ marginBottom: 8, display: "block" }}>OBSERVABLE SUCCESS CRITERIA</span>
-                      <p style={{ color: "#b3aea4", fontSize: 13, lineHeight: 1.8, margin: 0 }}>{testCard.success_criteria}</p>
-                    </div>
-                  )}
-                  <label style={{ display: "grid", gap: 8 }}>
-                    <span className="micro-label">COMPARISON PROTOCOL · EDIT BEFORE EXPORT</span>
-                    <textarea
-                      className="intake-input"
-                      aria-label="Cinema comparison protocol"
-                      rows={4}
-                      maxLength={2000}
-                      value={testDesign?.comparison_protocol ?? testCard.comparison_protocol ?? ""}
-                      onChange={(event) => setTestDesign((current) =>
-                        updateTestDesign(current, testCard, "comparison_protocol", event.target.value)
-                      )}
-                    />
-                  </label>
-                  <label style={{ display: "grid", gap: 8 }}>
-                    <span className="micro-label">PRIMARY MEASURE · EDIT BEFORE EXPORT</span>
-                    <textarea
-                      className="intake-input"
-                      aria-label="Cinema primary measure"
-                      rows={4}
-                      maxLength={2000}
-                      value={testDesign?.primary_measure ?? testCard.primary_measure ?? ""}
-                      onChange={(event) => setTestDesign((current) =>
-                        updateTestDesign(current, testCard, "primary_measure", event.target.value)
-                      )}
-                    />
-                  </label>
-                  <label style={{ display: "grid", gap: 8 }}>
-                    <span className="micro-label">DECISION RULE · PROPOSED PROMPT, SET BEFORE SCREENING</span>
-                    <textarea
-                      className="intake-input"
-                      aria-label="Cinema decision rule"
-                      rows={4}
-                      maxLength={2000}
-                      value={testDesign?.decision_rule ?? testCard.decision_rule ?? ""}
-                      onChange={(event) => setTestDesign((current) =>
-                        updateTestDesign(current, testCard, "decision_rule", event.target.value)
-                      )}
-                    />
-                    <span className="mono-note">Adjacent suggests no numerical threshold. Enter a threshold only if the venue has selected one before the screening.</span>
-                  </label>
-                  <label style={{ display: "grid", gap: 8 }}>
-                    <span className="micro-label">OBSERVATION WINDOW · EDIT BEFORE EXPORT</span>
-                    <textarea
-                      className="intake-input"
-                      aria-label="Cinema observation window"
-                      rows={3}
-                      maxLength={2000}
-                      value={testDesign?.observation_window ?? testCard.observation_window ?? ""}
-                      onChange={(event) => setTestDesign((current) =>
-                        updateTestDesign(current, testCard, "observation_window", event.target.value)
-                      )}
-                    />
-                  </label>
-                  {testCard.provenance && (
-                    <div>
-                      <span className="micro-label" style={{ marginBottom: 8, display: "block" }}>PROVENANCE</span>
-                      <div style={{ display: "grid", gap: 4 }}>
-                        {Object.entries(testCard.provenance).map(([k, v]) => (
-                          <div key={k} className="mono-note" style={{ lineHeight: 1.8 }}>
-                            {k.toUpperCase()}: {String(v ?? "—")}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div style={{ textAlign: "center", padding: "48px 0", color: "#6b6964" }}>
-                <p style={{ fontFamily: "var(--display)", fontSize: 24, margin: "0 0 12px", color: "#88837a" }}>
-                  Run a cultural analysis above to populate this test card.
-                </p>
-                <p style={{ fontSize: 12, lineHeight: 1.7 }}>
-                  The engine will resolve your programme, query Qloo, and produce<br />
-                  an explainable Programme Bet with a measurable Test Card.
-                </p>
-              </div>
-            )}
-
-            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 24, paddingTop: 16, borderTop: "1px solid var(--rule)", gap: 12, flexWrap: "wrap" }}>
-              <span className="mono-note">NO ATTENDANCE TARGETS / NO CONVERSION CLAIMS</span>
-              <span className="mono-note">REVIEW AFTER THE EXPERIMENT</span>
-            </div>
-            {testCard && (
-              <div className="test-card-footer-actions">
-                <button type="button" className="test-card-export" onClick={handleExportCinemaTestCard}>
-                  <span>Export test card</span><small>PLAIN TEXT · .TXT</small><span aria-hidden="true">↓</span>
-                </button>
-                <a className="test-card-secondary" href="#programme">Edit programme ↗</a>
-                <a className="test-card-secondary" href="#field">Back to cultural field ↗</a>
-              </div>
-            )}
-          </article>
-
-          <footer style={{ display: "flex", justifyContent: "space-between", marginTop: 48, paddingTop: 24, borderTop: "1px solid var(--rule)", gap: 12, flexWrap: "wrap" }}>
-            <span style={{ fontFamily: "var(--mono)", fontSize: 8, letterSpacing: "0.1em", textTransform: "uppercase", color: "#6b6964" }}>
-              ADJACENT / CULTURAL INTELLIGENCE FOR INDEPENDENT CINEMAS
-            </span>
-            <span style={{ fontFamily: "var(--mono)", fontSize: 8, letterSpacing: "0.1em", textTransform: "uppercase", color: "#6b6964" }}>
-              HERE IS THE DECISION. NOW GO TEST IT.
-            </span>
-          </footer>
-        </div>
-      </section>
-    </main>
+function Locked({
+  title,
+  body,
+  action,
+  onAction,
+}: {
+  title: string;
+  body: string;
+  action: string;
+  onAction: () => void;
+}) {
+  return (
+    <div className="mt-6 flex flex-col items-start gap-6 border border-dashed border-line-strong p-8 md:flex-row md:items-center md:justify-between">
+      <div className="max-w-xl">
+        <p className="chip chip-warn">Requires completed analysis</p>
+        <h3 className="font-display mt-4 text-3xl">{title}</h3>
+        <p className="mt-3 text-sm leading-relaxed text-mute">{body}</p>
+      </div>
+      <button type="button" className="btn-ghost shrink-0" onClick={onAction}>
+        {action}
+        <ArrowRight size={14} />
+      </button>
+    </div>
   );
 }
