@@ -1,34 +1,44 @@
 # Project Nightfall — Frontend Design Reference
 
-This directory is reserved for the standalone frontend reimagination ZIP supplied for Adjacent Cinema.
+This folder is the handoff point for the Cultural Multiverse / Positioning Arena reimagination of Adjacent Cinema.
 
-## Current status
+## Archive status
 
-The supplied archive was reviewed in the project-owner conversation. Its main design changes include:
+The original prototype ZIP has been inspected locally, but the ZIP bytes and complete extracted source tree are **not yet present in this GitHub folder**. No incomplete base64 fragments are kept here. Do not assume a bundle is available to decode.
 
-- Cultural Multiverse preview on the homepage
-- Positioning Arena component intended for Creator Studio
-- Creator journey with seven sections
-- Cinema Mode chapter navigation
-- FilmSponsor eight-stage workflow
-- Explicit illustrative-data labeling
-- What-If Lab with a suggestion and “Apply to preview” action
+The project owner can attach the original archive to the implementation session. Once available, add the real ZIP or its extracted source files beneath this directory and verify the archive/source checksums before proceeding.
 
-**The ZIP archive itself has not been committed to this directory yet.** Do not treat this README as the actual source archive. Add the original ZIP or its extracted source files here when available.
+## What the prototype contains
 
-## Important integration rule
+- Homepage Cultural Multiverse preview
+- PositioningArena component in the Creator Studio journey after Cultural Fingerprint and before Decision Brief
+- Three positioning lenses: Anchor, Bridge, and Frontier
+- What-If Lab with suggestion vs. selected strategy and “Apply to preview”
+- Evidence Challenge and a design-only Freeze Decision preview
+- Seven-stage Creator journey
+- Five Cinema Mode chapters: Cinema, Programme, Cultural field, Opportunity, Test
+- Eight-stage FilmSponsor workflow
+- An explicit illustrative-data / not-live-Qloo status banner
 
-The archive is a standalone Vite/React prototype. The production project uses Next.js App Router and existing backend API contracts. Use the prototype as a design reference and port components into the existing application. Do not replace the production app with the Vite router, local storage, or mock API behaviors.
+## Production integration rule
 
-## Integration task
+The supplied ZIP is a standalone Vite/React prototype. The current production project uses Next.js App Router and established backend contracts. Port the relevant visuals and interaction patterns into the existing Next.js app; **do not replace production with the standalone Vite app, its hash router, localStorage model, or mocked API behavior.**
 
-See GitHub issue [#12 — Integrate Project Nightfall frontend design into existing Next.js product safely](https://github.com/Sohamgaonkhadkar/adjacent-cinema/issues/12).
+Keep the concept isolated from real analysis and experiments. Do not invent Qloo evidence, calculated scores, audience outcomes, saved experiments, observations, or success states. Freeze Decision must remain disabled or explicitly preview-only until an actual backend snapshot/persistence contract and experiment linkage exist.
 
-The original current routes must continue to work:
+## Existing routes and behavior to preserve
 
 - `/`
 - `/creator`
 - `/cinema`
 - `/creator/sponsor`
 
-The Positioning Arena is a concept preview until a real backend strategy-engine and snapshot contract exists. No fabricated Qloo evidence, strategy scores, saved experiments, observations, or success states.
+Use frontend/lib/api.ts and frontend/types/adjacent.ts for existing backend integration. Do not invent endpoints, call Render directly from browser code, or expose provider secrets in the client. Preserve Creator Studio intake/analysis/Test Card/archive workflows, Cinema context, and FilmSponsor approval prerequisites.
+
+## Arena's active task
+
+See [ARENA_TASK.md](./ARENA_TASK.md) and GitHub [issue #12](https://github.com/Sohamgaonkhadkar/adjacent-cinema/issues/12). The task is to port the design safely into the existing application and run checks before any production deployment.
+
+## Validation
+
+The standalone prototype build was not verified in this handoff. Run repository tests/type checks and inspect the updated pages before merging or deploying. The design handoff PR remains a draft until the implementation and checks are complete.
