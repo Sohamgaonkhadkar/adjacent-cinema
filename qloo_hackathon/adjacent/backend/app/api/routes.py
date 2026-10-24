@@ -691,6 +691,31 @@ def _build_result(
     test_card: Any = None,
 ) -> dict[str, Any]:
     """Build the final result payload."""
+
+    def member_result(member: Any) -> dict[str, Any]:
+        attributions = member.qloo_attributions()
+        attribution_status = member.qloo_attribution_status
+        if attribution_status == "requested":
+            attribution_status = "returned" if attributions else "missing"
+        return {
+            "entity_id": member.entity_id,
+            # Provider identity stays a distinct field; cohort explanations
+            # and evidence tags are never folded into the entity name.
+            "name": member.name,
+            "type": member.scored.type,
+            "subtype": member.scored.subtype,
+            "affinity": member.affinity,
+            "band": member.band.value if hasattr(member.band, "value") else str(member.band),
+            "popularity": member.popularity,
+            "tags": [
+                {"tag_id": tag.tag_id, "name": tag.name, "subtype": tag.subtype}
+                for tag in member.scored.tags
+            ],
+            "call_id": member.call_id,
+            "qloo_attributions": attributions,
+            "qloo_attribution_status": attribution_status,
+        }
+
     result: dict[str, Any] = {
         "data_status": getattr(state, "data_status", "unknown"),
         "programme": {
@@ -730,33 +755,18 @@ def _build_result(
                     "kind": c.kind,
                     "construction_reason": c.construction_reason,
                     "construction_evidence": c.construction_evidence,
+                    "context_id": c.context_id,
                     "rank": c.rank,
                     "member_count": c.member_count,
                     "verdict": c.verdict.reason_code if c.verdict else None,
                     "score": {
+                        "call_id": c.score.call_id if c.score else None,
+                        "context_id": c.score.context_id if c.score else None,
                         "mean_affinity": c.score.mean_affinity if c.score else None,
                         "max_affinity": c.score.max_affinity if c.score else None,
                         "novelty_proxy": c.score.novelty_proxy if c.score else None,
                     } if c.score else None,
-                    "members": [
-                        {
-                            "entity_id": m.entity_id,
-                            # Provider identity stays a distinct field; cohort explanations
-                            # and evidence tags are never folded into the entity name.
-                            "name": m.name,
-                            "type": m.scored.type,
-                            "subtype": m.scored.subtype,
-                            "affinity": m.affinity,
-                            "band": m.band.value if hasattr(m.band, 'value') else str(m.band),
-                            "popularity": m.popularity,
-                            "tags": [
-                                {"tag_id": tag.tag_id, "name": tag.name, "subtype": tag.subtype}
-                                for tag in m.scored.tags
-                            ],
-                            "call_id": m.call_id,
-                        }
-                        for m in c.members
-                    ],
+                    "members": [member_result(member) for member in c.members],
                     # Exclusions are annotations, never deletions (reasons.py):
                     # surfaced with codes so the reader can disagree with them.
                     "qualifying_count": len(c.qualifying_members),

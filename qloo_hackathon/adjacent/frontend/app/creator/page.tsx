@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   addEvaluation,
@@ -34,10 +34,19 @@ import {
 } from "@/lib/api";
 import type { AdjacentRunResult, InvestigationData, ProgrammeFilm, TraceRow } from "@/types/adjacent";
 import AdjacencyGraph from "@/components/AdjacencyGraph";
+import PositioningArena from "@/components/PositioningArena";
 import { EvidenceReferences, EvidenceTraceLog } from "@/components/EvidenceTrace";
 import { watchRunWithRecovery } from "@/lib/runRecovery";
 import { downloadTextFile, formatTestCardText, safeTextFilename } from "@/lib/testCardExport";
 import { createTestDesign, readSavedTestDesign, testDesignExportSections, updateTestDesign } from "@/lib/testCardDesign";
+import {
+  buildPositioningMultiverse,
+  DEFAULT_POSITIONING_POLICY,
+  orderPositioningStrategies,
+  readSavedPositioningSnapshot,
+  type PositioningPolicy,
+  type PositioningStrategy,
+} from "@/lib/positioningArena";
 
 // Small helpers shared with the cinema page's visual language.
 const mono = { fontFamily: "var(--mono)" } as const;
@@ -95,6 +104,8 @@ export default function CreatorPage() {
     decision_rule: string;
     observation_window: string;
   } | null>(null);
+  const [positioningPolicy, setPositioningPolicy] = useState<PositioningPolicy>({ ...DEFAULT_POSITIONING_POLICY });
+  const [selectedPositioningId, setSelectedPositioningId] = useState<PositioningStrategy["id"] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const stopStream = useRef<(() => void) | null>(null);
   const runGeneration = useRef(0);
@@ -141,6 +152,26 @@ export default function CreatorPage() {
     return () => observer.disconnect();
   }, [result, run?.status]);
   const traceRows: TraceRow[] = run?.trace ?? [];
+  const positioningMultiverse = useMemo(
+    () => run?.status === "completed"
+      ? buildPositioningMultiverse(result, traceRows, runId, run.status)
+      : null,
+    [result, traceRows, run?.status, runId],
+  );
+  const positioningOrdering = useMemo(
+    () => positioningMultiverse ? orderPositioningStrategies(positioningMultiverse, positioningPolicy) : null,
+    [positioningMultiverse, positioningPolicy],
+  );
+  const selectedPositioningStrategy = positioningMultiverse?.strategies.find(
+    (strategy) => strategy.id === selectedPositioningId && strategy.availability === "available",
+  ) ?? null;
+  useEffect(() => {
+    if (!positioningMultiverse) return;
+    setPositioningPolicy({ ...DEFAULT_POSITIONING_POLICY });
+    const anchor = positioningMultiverse.strategies.find((strategy) => strategy.id === "anchor" && strategy.availability === "available");
+    const firstAvailable = positioningMultiverse.strategies.find((strategy) => strategy.availability === "available");
+    setSelectedPositioningId(anchor?.id ?? firstAvailable?.id ?? null);
+  }, [runId, positioningMultiverse?.source_run_id, run?.status]);
   const insufficient = run?.status === "insufficient";
   const failed = run?.status === "failed";
   const resultTone = statusTone(failed || insufficient ? null : result?.data_status ?? null);
@@ -401,23 +432,47 @@ export default function CreatorPage() {
         : null;
       const invEvidenceRefs = ((inv?.provenance as Record<string, unknown> | undefined)
         ?.call_ids ?? []) as string[];
+      const frozenTestDesign = {
+        comparison_protocol: experimentDesign?.comparison_protocol ?? card.comparison_protocol ?? null,
+        primary_measure: experimentDesign?.primary_measure ?? card.primary_measure ?? null,
+        decision_rule: experimentDesign?.decision_rule ?? card.decision_rule ?? null,
+        observation_window: experimentDesign?.observation_window ?? card.observation_window ?? null,
+      };
+      const positioningSnapshot = positioningMultiverse && positioningOrdering && selectedPositioningStrategy
+        ? {
+            snapshot_version: "cultural-positioning-snapshot-v1",
+            calculation_version: positioningMultiverse.calculation_version,
+            source_run_id: runId,
+            original_data_status: result.data_status,
+            original_test_card: card,
+            strategies: positioningMultiverse.strategies,
+            selected_strategy_id: selectedPositioningStrategy.id,
+            selected_strategy: selectedPositioningStrategy,
+            policy: {
+              formula_version: positioningOrdering.formula_version,
+              values: positioningOrdering.policy,
+              ordering: positioningOrdering.entries,
+              notes: positioningOrdering.notes,
+            },
+            experiment_design: frozenTestDesign,
+            limitations: positioningMultiverse.source_limitations,
+          }
+        : null;
       const resp = await saveExperiment({
         request_id: `exp-${runId}`, // one saved decision per analysis run — retry-safe
         film_title: (result.film as { title?: string } | undefined)?.title ?? title,
-        hypothesis: card.audience_hypothesis,
-        success_criteria: card.success_criteria ?? "",
-        observation_window: experimentDesign?.observation_window ?? card.observation_window ?? "",
-        action_plan: card.programming_direction,
-        data_status: card.data_status,
+        hypothesis: selectedPositioningStrategy?.falsifiable_hypothesis ?? card.audience_hypothesis,
+        success_criteria: selectedPositioningStrategy
+          ? "Evaluate only against the creator-selected primary measure and pre-set decision rule. Missing or non-comparable observations remain inconclusive."
+          : card.success_criteria ?? "",
+        observation_window: frozenTestDesign.observation_window ?? "",
+        action_plan: selectedPositioningStrategy?.creative_direction ?? card.programming_direction,
+        data_status: result.data_status,
         source_run_id: runId,
         source_bet: {
           ...((result.programme_bet ?? {}) as Record<string, unknown>),
-          experiment_design: {
-            comparison_protocol: experimentDesign?.comparison_protocol ?? card.comparison_protocol ?? null,
-            primary_measure: experimentDesign?.primary_measure ?? card.primary_measure ?? null,
-            decision_rule: experimentDesign?.decision_rule ?? card.decision_rule ?? null,
-            observation_window: experimentDesign?.observation_window ?? card.observation_window ?? null,
-          },
+          experiment_design: frozenTestDesign,
+          ...(positioningSnapshot ? { cultural_multiverse_snapshot: positioningSnapshot } : {}),
         },
         provenance: (card.provenance ?? {}) as Record<string, unknown>,
         film_context: (result.film ?? {}) as Record<string, unknown>,
@@ -487,10 +542,18 @@ export default function CreatorPage() {
     if (!card) return;
     const filmName = (result?.film as { title?: string } | undefined)?.title ?? title ?? "Your film";
     const text = formatTestCardText({
-      title: card.title,
+      title: selectedPositioningStrategy ? `${selectedPositioningStrategy.type} strategy · ${card.title}` : card.title,
       context: "FILM: " + filmName,
-      dataStatus: card.data_status,
+      dataStatus: result?.data_status ?? card.data_status,
       sections: [
+        ...(selectedPositioningStrategy ? [
+          { label: "Selected cultural strategy", value: selectedPositioningStrategy.thesis },
+          { label: "Creative direction", value: selectedPositioningStrategy.creative_direction },
+          { label: "Falsifiable hypothesis", value: selectedPositioningStrategy.falsifiable_hypothesis },
+          { label: "Strategy evidence", value: selectedPositioningStrategy.evidence_refs.map((item) => `${item.description} Calls: ${item.call_ids.join(", ")}.`).join(" ") },
+          { label: "Policy formula and priorities", value: positioningOrdering ? `${positioningOrdering.formula_version}; fit=${positioningOrdering.policy.fit}, exploration=${positioningOrdering.policy.exploration}, breadth=${positioningOrdering.policy.breadth}. The preference index is not a prediction.` : "Unavailable" },
+          { label: "Strategy limitations", value: selectedPositioningStrategy.tradeoffs.join(" ") },
+        ] : []),
         { label: "Programme context", value: card.programme_context },
         { label: "Audience hypothesis", value: card.audience_hypothesis },
         { label: "Cultural bridge", value: card.cultural_bridge },
@@ -502,8 +565,15 @@ export default function CreatorPage() {
         ...testDesignExportSections(experimentDesign ?? createTestDesign(card)),
         { label: "Falsification condition", value: card.falsification_condition },
       ],
-      provenance: card.provenance,
-      footerNote: "Cultural affinity is not a forecast of views, attendance, revenue, or audience demand.",
+      provenance: {
+        ...(card.provenance ?? {}),
+        ...(selectedPositioningStrategy ? {
+          selected_strategy_id: selectedPositioningStrategy.id,
+          strategy_source_cohort_ids: selectedPositioningStrategy.source_cohort_ids.join(", "),
+          strategy_supporting_call_ids: selectedPositioningStrategy.evidence_challenge.supporting_call_ids.join(", "),
+        } : {}),
+      },
+      footerNote: `${result?.data_status === "fixture" ? "Fixture demonstration, not a live provider result. " : ""}Cultural affinity is not a forecast of views, attendance, revenue, or audience demand. ${selectedPositioningStrategy?.tradeoffs.join(" ") ?? ""}`,
     });
     downloadTextFile(safeTextFilename(card.title) + ".txt", text);
   }
@@ -1011,6 +1081,21 @@ export default function CreatorPage() {
               </div>
             )}
 
+            {positioningMultiverse && positioningOrdering && (
+              <PositioningArena
+                multiverse={positioningMultiverse}
+                policy={positioningPolicy}
+                ordering={positioningOrdering}
+                selectedId={selectedPositioningId}
+                onPolicyChange={setPositioningPolicy}
+                onSelect={(strategyId) => {
+                  setSelectedPositioningId(strategyId);
+                  const strategy = positioningMultiverse.strategies.find((item) => item.id === strategyId);
+                  if (strategy?.availability === "available") setExperimentDesign(strategy.suggested_test);
+                }}
+              />
+            )}
+
             {/* ── Test Card → experiment ─────────────────────────────── */}
             {card && (
               <article className="test-card-sheet" style={{ padding: 28, border: "1px solid var(--rule)", borderRadius: 8, background: "rgba(232,226,213,0.02)" }}>
@@ -1208,6 +1293,19 @@ function ExperimentDetail({
 }) {
   const { experiment, observations, evaluations } = detail;
   const savedDesign = readSavedTestDesign(experiment.source_bet, experiment.observation_window);
+  const savedPositioning = readSavedPositioningSnapshot(experiment.source_bet);
+  const savedStrategy = savedPositioning?.selected_strategy && typeof savedPositioning.selected_strategy === "object"
+    ? savedPositioning.selected_strategy as Record<string, unknown>
+    : null;
+  const savedStrategies = Array.isArray(savedPositioning?.strategies)
+    ? savedPositioning.strategies.filter((strategy): strategy is Record<string, unknown> => Boolean(strategy) && typeof strategy === "object" && !Array.isArray(strategy))
+    : [];
+  const savedPolicy = savedPositioning?.policy && typeof savedPositioning.policy === "object"
+    ? savedPositioning.policy as Record<string, unknown>
+    : null;
+  const savedPolicyValues = savedPolicy?.values && typeof savedPolicy.values === "object"
+    ? savedPolicy.values as Record<string, unknown>
+    : null;
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [sourceTrace, setSourceTrace] = useState<TraceRow[]>([]);
@@ -1326,6 +1424,25 @@ function ExperimentDetail({
           <p style={{ color: "#8a847a", fontSize: 12, lineHeight: 1.7, margin: "6px 0 0" }}>
             <span className="mono-note">SUCCESS CRITERIA: </span>{experiment.success_criteria}
           </p>
+        )}
+        {savedPositioning && (
+          <section aria-label="Frozen cultural strategy snapshot" style={{ marginTop: 10, padding: "10px 12px", border: "1px solid var(--rule)", borderRadius: 6 }}>
+            <span className="micro-label">FROZEN CULTURAL POSITIONING · SNAPSHOT · NOT EXECUTED</span>
+            <p className="mono-note">SNAPSHOT: {String(savedPositioning.snapshot_version ?? "unknown")} · CALCULATION: {String(savedPositioning.calculation_version ?? "unknown")} · SOURCE STATUS: {String(savedPositioning.original_data_status ?? experiment.data_status).toUpperCase()}</p>
+            <p style={{ color: "#d1cbc0", lineHeight: 1.65 }}>{String(savedStrategy?.thesis ?? "Selected strategy details were not recorded.")}</p>
+            <p className="mono-note">SELECTED: {String(savedPositioning.selected_strategy_id ?? "not recorded")} · POLICY: {String(savedPolicy?.formula_version ?? "unknown")} · FIT {String(savedPolicyValues?.fit ?? "—")} · EXPLORATION {String(savedPolicyValues?.exploration ?? "—")} · BREADTH {String(savedPolicyValues?.breadth ?? "—")}</p>
+            {typeof savedStrategy?.falsifiable_hypothesis === "string" && <p className="mono-note">HYPOTHESIS: {savedStrategy.falsifiable_hypothesis}</p>}
+            <ul style={{ color: "#9b968d", fontSize: 11, lineHeight: 1.6 }}>
+              {savedStrategies.map((strategy, index) => (
+                <li key={`${String(strategy.id ?? index)}-${index}`}>
+                  {String(strategy.type ?? "strategy")} · {String(strategy.availability ?? "unknown")}
+                  {typeof strategy.unavailable_reason === "string" ? ` · ${strategy.unavailable_reason}` : ""}
+                  {typeof strategy.thesis === "string" ? ` · ${strategy.thesis}` : ""}
+                </li>
+              ))}
+            </ul>
+            {Array.isArray(savedPositioning.limitations) && <p className="mono-note">LIMITS: {savedPositioning.limitations.map(String).join(" ")}</p>}
+          </section>
         )}
         <section aria-label="Saved experiment design" style={{ marginTop: 10, padding: "10px 12px", border: "1px solid var(--rule)", borderRadius: 6 }}>
           <span className="micro-label">SAVED TEST DESIGN · SNAPSHOT · NOT EXECUTED</span>

@@ -56,6 +56,53 @@ class TestSaveExperiment:
         assert fetched["observations"] == []
         assert fetched["evaluations"] == []
 
+    def test_versioned_positioning_snapshot_round_trips_and_survives_appends(self, client: TestClient) -> None:
+        snapshot = {
+            "snapshot_version": "cultural-positioning-snapshot-v1",
+            "calculation_version": "cultural-positioning-v1",
+            "source_run_id": "run-positioning-1",
+            "original_data_status": "fixture",
+            "selected_strategy_id": "frontier",
+            "selected_strategy": {"type": "FRONTIER", "source_cohort_ids": ["artist:frontier"]},
+            "strategies": [
+                {"id": "anchor", "availability": "available"},
+                {"id": "bridge", "availability": "unavailable", "unavailable_reason": "No shared tag."},
+                {"id": "frontier", "availability": "available"},
+            ],
+            "policy": {"formula_version": "weighted-ordinal-preference-v1", "values": {"fit": 50, "exploration": 25, "breadth": 25}},
+            "original_test_card": {"title": "Original test card", "data_status": "fixture"},
+            "experiment_design": {"comparison_protocol": "Edited protocol", "primary_measure": "Observed action / denominator", "decision_rule": "Creator-set", "observation_window": "Fixed before launch"},
+        }
+        response = client.post("/experiments", json={
+            "request_id": "positioning-snapshot-1",
+            "film_title": "Night Harbour",
+            "hypothesis": "Compare two framings on a preselected observable measure.",
+            "observation_window": "Fixed before launch",
+            "data_status": "fixture",
+            "source_run_id": "run-positioning-1",
+            "source_bet": {"primary": {"cohort_id": "artist:anchor"}, "cultural_multiverse_snapshot": snapshot},
+        })
+        assert response.status_code == 201
+        experiment = response.json()["experiment"]
+        assert experiment["source_bet"]["cultural_multiverse_snapshot"] == snapshot
+        experiment_id = experiment["experiment_id"]
+
+        client.post(f"/experiments/{experiment_id}/observations", json={
+            "request_id": "positioning-observation-1",
+            "kind": "NOTE",
+            "measurement_status": "UNAVAILABLE",
+            "limitations": "No external result was collected.",
+        })
+        client.post(f"/experiments/{experiment_id}/evaluations", json={
+            "request_id": "positioning-evaluation-1",
+            "outcome": "INCONCLUSIVE",
+            "rationale": "A saved plan is not evidence that its test ran.",
+        })
+        reopened = client.get(f"/experiments/{experiment_id}").json()
+        assert reopened["experiment"]["source_bet"]["cultural_multiverse_snapshot"] == snapshot
+        assert len(reopened["observations"]) == 1
+        assert reopened["evaluations"][0]["outcome"] == "INCONCLUSIVE"
+
     def test_retry_same_request_id_returns_original(self, client: TestClient) -> None:
         first = _save(client)
         again = client.post("/experiments", json={
