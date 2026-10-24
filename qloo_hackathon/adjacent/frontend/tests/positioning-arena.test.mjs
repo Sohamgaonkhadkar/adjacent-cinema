@@ -228,6 +228,7 @@ test("legacy and new frozen snapshot payloads load without rewriting either", ()
 test("Creator wires the frozen strategy into the existing experiment and Test Card lifecycle", () => {
   const creator = readFileSync(new URL("../app/creator/page.tsx", import.meta.url), "utf8");
   assert.match(creator, /<PositioningArena/);
+  assert.equal((creator.match(/<PositioningArena\\b/g) ?? []).length, 1);
   assert.match(creator, /cultural_multiverse_snapshot/);
   assert.match(creator, /selected_strategy_id/);
   assert.match(creator, /original_test_card/);
