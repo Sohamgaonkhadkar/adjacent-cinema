@@ -1,44 +1,53 @@
 # Project Nightfall — Frontend Design Reference
 
-This folder is the handoff point for the Cultural Multiverse / Positioning Arena reimagination of Adjacent Cinema.
+This folder contains the original Project Nightfall Vite/React prototype archive for the Cultural Multiverse / Positioning Arena redesign of Adjacent Cinema.
 
-## Archive status
+## Verified archive
 
-The original prototype ZIP has been inspected locally, but the ZIP bytes and complete extracted source tree are **not yet present in this GitHub folder**. No incomplete base64 fragments are kept here. Do not assume a bundle is available to decode.
+The original ZIP is present in this repository at:
 
-The project owner can attach the original archive to the implementation session. Once available, add the real ZIP or its extracted source files beneath this directory and verify the archive/source checksums before proceeding.
+`design-reference/project-nightfall/archives/project-nightfall-frontend-reimagination (1).zip`
 
-## What the prototype contains
+It was merged into `main` in commit `17e52aef46ebce3dc6a262da5868518710065829`. Fetch the file from the repository and run an archive integrity test before extraction. Preserve the original archive; do not recreate it from snippets or replace it with a generated approximation.
+
+## Required use
+
+Read and port the actual source from the ZIP, especially:
+- `src/App.tsx` and `src/index.css`
+- `src/pages/Home.tsx`, `src/pages/Creator.tsx`, `src/pages/Cinema.tsx`, and `src/pages/Sponsor.tsx`
+- `src/components/Nav.tsx`, `src/components/Multiverse.tsx`, `src/components/PositioningArena.tsx`, `src/components/CulturalFingerprint.tsx`, `src/components/TestCard.tsx`, and related components/utilities.
+
+The objective is a genuine page-by-page visual and interaction port into the existing Next.js application, not only a homepage update or a standalone demo.
+
+## Design and feature inventory
 
 - Homepage Cultural Multiverse preview
-- PositioningArena component in the Creator Studio journey after Cultural Fingerprint and before Decision Brief
+- Positioning Arena between Cultural Fingerprint and Decision Brief in Creator Studio
 - Three positioning lenses: Anchor, Bridge, and Frontier
-- What-If Lab with suggestion vs. selected strategy and “Apply to preview”
-- Evidence Challenge and a design-only Freeze Decision preview
+- What-If Lab with suggested vs. selected strategy and preview-only application
+- Evidence Challenge, a Positioning/Decision Brief, and Freeze Decision
 - Seven-stage Creator journey
 - Five Cinema Mode chapters: Cinema, Programme, Cultural field, Opportunity, Test
 - Eight-stage FilmSponsor workflow
-- An explicit illustrative-data / not-live-Qloo status banner
+- Explicit illustrative-data / not-live-Qloo labels
 
-## Production integration rule
+## Production integration rules
 
-The supplied ZIP is a standalone Vite/React prototype. The current production project uses Next.js App Router and established backend contracts. Port the relevant visuals and interaction patterns into the existing Next.js app; **do not replace production with the standalone Vite app, its hash router, localStorage model, or mocked API behavior.**
+The prototype is a standalone Vite/React app. The existing product uses Next.js App Router and established backend contracts. Port/adapt its visuals, component hierarchy, and interactions into the existing application; **do not replace the production app with Vite, its hash router, localStorage model, or mock API behavior.**
 
-Keep the concept isolated from real analysis and experiments. Do not invent Qloo evidence, calculated scores, audience outcomes, saved experiments, observations, or success states. Freeze Decision must remain disabled or explicitly preview-only until an actual backend snapshot/persistence contract and experiment linkage exist.
+Preserve `frontend/lib/api.ts`, `frontend/types/adjacent.ts`, existing backend integration, real analysis context, experiment lifecycle, and FilmSponsor source-review/approval requirements. Never invent Qloo evidence, scores, audience outcomes, experiments, observations, or success states. Clearly distinguish measured/live, fixture, concept preview, and blocked states.
 
-## Existing routes and behavior to preserve
+## Existing routes to redesign and preserve
 
 - `/`
 - `/creator`
 - `/cinema`
 - `/creator/sponsor`
 
-Use frontend/lib/api.ts and frontend/types/adjacent.ts for existing backend integration. Do not invent endpoints, call Render directly from browser code, or expose provider secrets in the client. Preserve Creator Studio intake/analysis/Test Card/archive workflows, Cinema context, and FilmSponsor approval prerequisites.
+The Multiverse must be easy to find on Home. Creator must show one Positioning Arena for a completed real or explicitly labelled fixture run, and `/creator?demo=fixture` must be tested. Empty states must explain how to view the feature without pretending an analysis has completed.
 
-## Arena's active task
+## Active follow-up task
 
-See [ARENA_TASK.md](./ARENA_TASK.md) and GitHub [issue #12](https://github.com/Sohamgaonkhadkar/adjacent-cinema/issues/12). The task is to port the design safely into the existing application and run checks before any production deployment.
+See [issue #15](https://github.com/Sohamgaonkhadkar/adjacent-cinema/issues/15). The work branch is `arena/nightfall-full-frontend-port`. Compare the actual extracted ZIP with rendered Next.js pages at desktop and mobile sizes; green build/test results alone do not establish visual fidelity.
 
-## Validation
-
-The standalone prototype build was not verified in this handoff. Run repository tests/type checks and inspect the updated pages before merging or deploying. The design handoff PR remains a draft until the implementation and checks are complete.
+Do not merge the follow-up implementation PR or deploy to production until visual acceptance and relevant frontend/backend tests pass.
