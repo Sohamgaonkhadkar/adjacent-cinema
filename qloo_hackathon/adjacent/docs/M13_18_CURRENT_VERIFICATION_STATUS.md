@@ -1,6 +1,6 @@
 # M13.18 — Current Verification Status
 
-**Checkpoint:** 24 October 2026, current working branch. This records observed local results and their limits; it does not certify live Qloo, a hosted deployment, hackathon eligibility, or a submission.
+**Checkpoint:** 24 October 2026, PR head 9fbeeba6cf3bf38044513519800cb4e46d92ffb7, CI run #225. This records observed local and CI results; it does not certify the full deployed application flow, hosted acceptance, hackathon eligibility, or a submission.
 
 ## Changes included in this working tree
 
@@ -22,20 +22,22 @@
 | Backend Ruff | `ruff check backend` | **Passed** | Static lint across backend. |
 | Targeted backend format check | Ruff format check on cohorts/scoring/new tests | **Passed** | `creator_analysis.py` and `test_m13_9_creator_mode.py` have pre-existing format differences elsewhere; no broad reformat was applied. |
 | Backend full suite, compatibility scratch | Python **3.11.2**, copied scratch tree with only existing `class ToolResult[T]` syntax translated to the equivalent `Generic[T]` form; `QLOO_API_KEY` unset | **745 passed, 9 skipped, 0 failed** | Includes the new attribution contract rejection cases and no-parameter fallback assertions. This is not a native Python 3.12 run. The 9 skips are live-provider checks, not passes. Scratch copy only; the checkout's Python 3.12 syntax is unchanged. |
-| Backend native collection | Python **3.11.2** on checkout | **Blocked at collection** | Existing PEP 695 `class ToolResult[T]` in `backend/app/qloo/models.py` requires Python 3.12. No Python 3.12 interpreter is installed. |
-| Live Qloo | Not run | **Reserved / pending** | No live provider claim; owner/ChatGPT handoff is in `M13_17_OWNER_DEMO_AND_LIVE_HANDOFF.md`. |
+| Local backend native collection | Python **3.11.2** on checkout | **Blocked at collection** | Existing PEP 695 ToolResult[T] syntax in backend/app/qloo/models.py requires Python 3.12. This local limitation is superseded for backend-suite verification by the native Python 3.12 CI result below. |
+| Backend native CI (offline/fixture) | GitHub Actions CI run #225, Python **3.12.15**, pytest -m not-live selection | **746 passed, 8 deselected** | Unmodified source on the supported interpreter; live-marked tests run separately. |
+| Direct live Qloo contract CI | Same CI run #225, pytest -m live -rs | **8 passed, 746 deselected** | Includes test_explainability_contract against the Qloo API. This verifies the direct endpoint contract, not the application's full Creator/Cinema path. |
+| Application-level live Qloo path | Not run against the deployed backend | **Pending** | No full deployed Creator/Cinema run or runtime trace has been verified. |
 | Hosted production / browser E2E | Not run | **Reserved / pending** | No production setting or deployment was touched. The repository blueprint/docs were inspected read-only. |
 
-The backend scratch result includes the new fallback/attribution tests and the existing full backend test tree. It is useful regression evidence, but does not replace the requested native Python 3.12 run. Python 3.12 installation through the earlier `uv` route was blocked by certificate/connectivity to the standalone runtime download. Do not report this as “Python 3.12 tests passed.”
+The compatibility-scratch result (745 passed, 9 skipped) is supplemental evidence and remains a Python 3.11 scratch run. The latest PR CI run (#225) did run the unmodified backend source with Python 3.12.15: 746 non-live tests passed, and a separate live-marked step passed 8 tests including the direct Qloo explainability response contract. This proves the endpoint contract was observed in CI, but not that the deployed application completes a live Creator/Cinema run through Render.
 
 ## Known remaining gates
 
-1. Run the unmodified backend suite under Python 3.12 in a supported CI/local environment; confirm that the nine live-provider skips remain understood.
-2. Have ChatGPT/the authorized owner conduct the live Qloo test and hosted production/browser acceptance in the separate handoff. Do not make or imply this happened in this checkpoint.
+1. Keep the native Python 3.12 CI suite green after any further backend edit; the latest PR head has 746 non-live tests passing and 8 live-marked Qloo contract tests passing.
+2. Have ChatGPT/the authorized owner verify the integrated live Qloo path and hosted production/browser acceptance. The direct Qloo contract test passed in CI, but it does not establish deployed entity resolution, scoring, attribution serialization, fallback handling, or frontend rendering.
 3. Ask the hackathon organizers in writing what the literal “Qloo 4after” means if project-history eligibility depends on it. No eligibility verdict is made.
 4. Before a judge-facing live demo, verify the exact current frontend/backend deployment revisions, same-origin `/api` proxy, health mode, and FilmSponsor guest origin/cookie isolation without changing production configuration.
 5. Keep the public competitor scorecard as a source-grounded screening estimate, not an official leaderboard or placement claim.
 
 ## Readiness verdict
 
-**NOT READY to certify live/hosted judge acceptance or hackathon eligibility.** The local frontend/build and offline backend evidence are strong enough for a clearly labelled fixture walkthrough, while native Python 3.12 backend execution, live Qloo, hosted/browser acceptance, and organizer clarification remain open. Publishing this review branch/PR is separate from production; no deployment or production change is part of this verification.
+**Ready for final deployment review, but NOT READY to certify hosted judge acceptance or hackathon eligibility.** Frontend checks passed; native Python 3.12 CI passed 746 non-live tests; 8 direct live Qloo contract tests also passed, including explainability. The integrated live application path, hosted/browser acceptance, and organizer clarification remain open. No production deployment is part of this verification.
