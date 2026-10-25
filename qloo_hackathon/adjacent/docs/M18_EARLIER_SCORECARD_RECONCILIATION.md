@@ -244,6 +244,9 @@ meticulous per case; Adjacent has a CI gate, a lifecycle and 40× the operating 
 
 ## 4. Revised combined table
 
+> **Adjacent's row is superseded by `M21`** (deployment + live-provider verification, 25 Oct). Rival rows are
+> unchanged. Read the Adjacent figure there, not here.
+
 Equal 25 % weights on the four official criteria, 1–10, my screening estimates. Not official scores; differences
 ≤ 0.5 are not meaningful.
 

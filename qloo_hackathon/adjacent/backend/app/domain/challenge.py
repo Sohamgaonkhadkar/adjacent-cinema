@@ -784,8 +784,9 @@ def _next_checks(
                     action=(
                         "Treat the top two as one option when planning, or add a comparable that "
                         "separates them. A pairwise comparison between the two cohorts is not "
-                        "offered: the analysis/compare endpoint is declared in this repository's "
-                        "parameter registry but has no verified client implementation."
+                        "offered: the client can call /v2/analysis/compare, but nothing in this "
+                        "product wires it into ranking, and it has not been exercised against the "
+                        "live provider here."
                     ),
                     operation="expand_candidates / rank_cohorts",
                     estimated_calls=2,
