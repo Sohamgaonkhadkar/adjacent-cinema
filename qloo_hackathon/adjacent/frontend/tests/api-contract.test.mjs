@@ -351,15 +351,19 @@ test("a run is only treated as complete when the backend said so and returned a 
   assert.match(creatorPage, /run\?\.stop_message/);
 });
 
-test("Cinema live runs require at least one explicit IMDb ID before making a request", () => {
-  // The public backend intentionally does not guess title matches. Keep that
-  // constraint visible and validate before starting a run, rather than letting
-  // the analysis fail after the UI has shown progress.
+test("Cinema live runs allow verified title/year resolution without requiring an IMDb ID", () => {
   assert.ok(cinemaPage.includes("aria-label={`IMDb ID ${index + 1}`}"));
   assert.ok(cinemaPage.includes('imdbId: item.imdb_id ?? ""'), "loading the sample programme should prefill its known IMDb IDs");
   assert.match(cinemaPage, /imdb_id: imdbId \|\| undefined/);
-  assert.match(cinemaPage, /if \(!items\.some\(\(item\) => item\.imdb_id\)\)/);
-  assert.match(cinemaPage, /Live analysis needs an IMDb ID for at least one film/);
+  assert.doesNotMatch(cinemaPage, /if \(!items\.some\(\(item\) => item\.imdb_id\)\)/);
+  assert.match(cinemaPage, /IMDb IDs help resolve films precisely, but are optional/);
+});
+
+test("run-start calls allow a bounded Render cold-start window", () => {
+  assert.match(apiSource, /const API_TIMEOUT_MS = 12_000/);
+  assert.match(apiSource, /const RUN_START_TIMEOUT_MS = 75_000/);
+  assert.match(apiSource, /timeoutMs = API_TIMEOUT_MS/);
+  assert.equal((apiSource.match(/RUN_START_TIMEOUT_MS/g) ?? []).length, 5);
 });
 
 test("writes are idempotent on content, so a retry cannot duplicate a record", async () => {
