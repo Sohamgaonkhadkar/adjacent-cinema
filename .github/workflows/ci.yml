@@ -75,6 +75,8 @@ jobs:
         run: npm run test:entity-display
       - name: Test frontend/backend request contract and idempotency
         run: npm run test:contract
+      - name: Test decision-challenge view model and receipt export
+        run: npm run test:challenge
       - name: Build frontend
         run: npm run build
       - name: Render primary routes from the production build

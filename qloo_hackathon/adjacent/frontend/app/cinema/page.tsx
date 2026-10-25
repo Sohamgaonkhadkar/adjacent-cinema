@@ -2,8 +2,12 @@
 
 /**
  * Cinema Mode — composition ported from the source ZIP (`pages/Cinema.tsx`):
- * photographic opening chapter, sticky five-chapter rail, house notes,
- * programme contact sheet, cultural field, opportunity and Test Card.
+ * photographic opening chapter, sticky chapter rail, house notes,
+ * programme contact sheet, cultural field, opportunity, decision challenge and
+ * Test Card. The Challenge chapter sits between the recommendation and the test
+ * on purpose: that is the moment a sceptical programmer asks "why should I
+ * believe this?", and the answer has to be checkable before anything is
+ * pre-registered.
  *
  * The programme is submitted to the real `/run` endpoint (or to the explicit
  * `/run/demo` fixture route); the fingerprint, geography, Programme Bet and
@@ -41,17 +45,20 @@ import { Field, TextInput } from "@/components/nf/Field";
 import { CulturalFingerprint } from "@/components/nf/CulturalFingerprint";
 import { TestCard } from "@/components/nf/TestCard";
 import { ClaimChip, DataChip, RunChip } from "@/components/nf/Chips";
+import { ChallengeSummary, DecisionChallenge } from "@/components/nf/DecisionChallenge";
+import { buildChallengeView, challengeExportSections, formatDecisionReceipt } from "@/lib/challengeView";
 import { EvidenceTraceLog } from "@/components/EvidenceTrace";
 import GeographyMap from "@/components/GeographyMap";
 import { cn } from "@/lib/cn";
 
-type ChapterId = "cinema" | "programme" | "cultural-field" | "opportunity" | "test";
+type ChapterId = "cinema" | "programme" | "cultural-field" | "opportunity" | "challenge" | "test";
 
 const CHAPTERS: { id: ChapterId; label: string; needsRun: boolean }[] = [
   { id: "cinema", label: "Cinema", needsRun: false },
   { id: "programme", label: "Programme", needsRun: false },
   { id: "cultural-field", label: "Cultural field", needsRun: true },
   { id: "opportunity", label: "Opportunity", needsRun: true },
+  { id: "challenge", label: "Challenge", needsRun: true },
   { id: "test", label: "Test", needsRun: true },
 ];
 
@@ -337,6 +344,17 @@ export default function CinemaPage() {
 
   const bet = result?.programme_bet ?? null;
   const card = result?.test_card ?? null;
+  const challenge = result?.challenge ?? null;
+
+  function exportReceipt() {
+    const text = formatDecisionReceipt(challenge);
+    downloadTextFile(safeTextFilename(`decision-receipt-${runId ?? "run"}`) + ".txt", text);
+    setNotice("Decision receipt exported as plain text.");
+  }
+
+  function goToTest() {
+    document.getElementById("test")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   function exportTestCard() {
     if (!card) return;
@@ -356,6 +374,10 @@ export default function CinemaPage() {
         { label: "Observable success criteria", value: card.success_criteria },
         ...testDesignExportSections(activeDesign),
         { label: "Falsification condition", value: card.falsification_condition },
+        // The decision's fragility travels with the test: an experiment recorded
+        // without it would be judged against a recommendation whose basis was
+        // never stated.
+        ...challengeExportSections(challenge),
       ],
       provenance: card.provenance,
       footerNote:
@@ -863,6 +885,36 @@ export default function CinemaPage() {
         </div>
       </section>
 
+      {/* CHAPTER — CHALLENGE */}
+      <section id="challenge" className="scroll-mt-36 border-t border-line bg-ink-2">
+        <div className="mx-auto max-w-[1440px] px-4 py-14 md:px-8">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="type-kicker">Challenge · necessity and stability</p>
+              <p className="mt-2 max-w-xl text-sm text-mute">
+                Two questions asked of the recommendation above, answered from this run&rsquo;s own
+                cached evidence. No extra Qloo calls, and no forecast of what an audience will do.
+              </p>
+            </div>
+          </div>
+
+          {completed ? (
+            <DecisionChallenge
+              challenge={challenge}
+              onExportReceipt={exportReceipt}
+              onGoToTest={goToTest}
+            />
+          ) : (
+            <Locked
+              title="Nothing to challenge yet."
+              body="The challenge compares the recommendation against counterfactuals computed from the same evidence. Without a completed run there is no recommendation to test."
+              action="Run labelled fixture"
+              onAction={startFixture}
+            />
+          )}
+        </div>
+      </section>
+
       {/* CHAPTER — TEST */}
       <section id="test" className="scroll-mt-36 border-t border-line">
         <div className="mx-auto max-w-[1440px] px-4 py-14 md:px-8">
@@ -907,6 +959,8 @@ export default function CinemaPage() {
                 </div>
               </div>
               <div className="lg:col-span-8">
+                <ChallengeSummary challenge={challenge} />
+                <div className="mt-6">
                 <TestCard
                   card={card}
                   design={experimentDesign}
@@ -919,6 +973,7 @@ export default function CinemaPage() {
                   onToggleEdit={() => setEditingCard((value) => !value)}
                   onExport={exportTestCard}
                 />
+                </div>
               </div>
             </div>
           ) : (
