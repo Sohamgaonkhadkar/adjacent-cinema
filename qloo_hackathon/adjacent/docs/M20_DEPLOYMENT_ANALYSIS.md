@@ -13,7 +13,7 @@ The Production and feature Preview are deliberately serving different frontend v
 - **Feature Preview** (`https://adjacent-cinema-git-arena-41d4ba64-adja-d0737b-sohamgaonkhadkar.vercel.app`) serves the Nightfall port on PR #17. Its Cinema chapter rail includes **Challenge**, and its Cinema form includes an IMDb-ID field.
 - Both `/api/health` endpoints returned HTTP 200. The production route is not failing merely because its UI is older: the same-origin API proxy reaches a backend in both environments.
 - The deployed Render services are public **Web Services**: Production tracks `main`; the separate Preview service tracks `arena/41d4ba64-adjacent-cinema`. The root `render.yaml` describes an alternative Blueprint topology using a private backend, not the topology currently inspected in the Render dashboard.
-- Live API smoke tests on the feature-branch Preview previously produced measured Qloo-backed Cinema, Creator, and FilmSponsor results. CI also passed on commit `481b12d99c6ff8ba08af102ff98689150c8fb316`. The follow-up rate-limit, identity-input, and run-start-timeout changes are on this same draft branch and must pass their own final CI/deployment checks before being treated as accepted.
+- Live API smoke tests on the feature-branch Preview previously produced measured Qloo-backed Cinema, Creator, and FilmSponsor results. CI also passed on commit `481b12d99c6ff8ba08af102ff98689150c8fb316`. The follow-up rate-limit, identity-input, run-start-timeout, and Cinema title-search wiring are verified on commit `b75f8b93bf94e79e3de9df2b54717a0d196b5de8`. GitHub Actions run #379 (`40181936875`) passed backend (including live-Qloo tests), frontend, and container-build. The corresponding Vercel Preview is READY and the matching Render Preview backend is live.
 
 ## 1. Directly observed deployment probes
 
@@ -44,7 +44,8 @@ The following are API-level integration smoke tests against the feature-branch P
 
 | Workflow | Observed result |
 |---|---|
-| Cinema `POST /run` | Terminal status `completed`; `data_status=measured`; 6 programme items submitted; 4 resolved; 21 Qloo calls; `challenge.available=true` |
+| Cinema `POST /run` with IMDb IDs | Terminal status `completed`; `data_status=measured`; 6 programme items submitted; 4 resolved; 21 Qloo calls; `challenge.available=true` |
+| Cinema `POST /run` with title/year only (no IMDb IDs) | Terminal status `completed`; all 5 programme items resolved as `VERIFIED`; `data_status=measured`; 18 Qloo calls; 7 ranked cohorts; `challenge.available=true` |
 | Creator `POST /creator/run` | Terminal status `completed`; `data_status=measured`; 5/5 reference films resolved; 22 Qloo calls; 7 ranked cohorts; no run error |
 | FilmSponsor guest flow | Guest-session creation and revocation HTTP 200; campaign creation HTTP 201; brand discovery HTTP 200; `data_status=measured`; 10 brand results from 6 provider call IDs; no outreach sent |
 | CI before the follow-up fixes | GitHub Actions run #365 on `481b12d` passed backend (including live-Qloo tests), frontend, and container-build jobs |
@@ -65,7 +66,9 @@ Regression coverage checks IPv4/IPv6 parsing, malformed-header fallback, same-cl
 
 The prior Cinema frontend blocked live analysis unless at least one IMDb ID was supplied. The actual backend resolver accepts optional IMDb IDs and attempts a typed Qloo `/search`, then verifies title/year/type; ambiguous or mismatched candidates remain unresolved rather than guessed. The feature branch removes the unnecessarily strict frontend hard gate. IMDb IDs remain available and are prefetched for the sample programme, but a title/year-only request can reach the backend's verified resolver.
 
-The UI now explains that IMDb IDs improve precision while ambiguous matches are reported honestly. This keeps the frontend consistent with backend capability without weakening the resolver's match rules.
+The Cinema route now explicitly enables the orchestrator's verified title-search path (`allow_title_search=True`), matching the Creator route. The orchestrator's default remains strict for other callers. The UI explains that IMDb IDs improve precision while ambiguous matches are reported honestly.
+
+A live end-to-end smoke test with five title/year-only items and no IMDb IDs completed successfully: all five were marked `VERIFIED`, Qloo returned measured results, seven cohorts cleared the evidence gate, and the Decision Challenge was available. This confirms that the API no longer rejects title/year-only Cinema input before the resolver runs.
 
 ### Render cold starts and run-start requests
 
@@ -91,7 +94,7 @@ The ordinary API timeout remains 12 seconds. The feature branch gives only run-s
 
 ## 6. Remaining work and release gates
 
-1. **Final CI for the follow-up commits:** confirm GitHub Actions is green on the latest PR head after the rate-limit test, optional-IMDb change, and 75-second run-start timeout change. Confirm the latest Vercel Preview and Preview Render backend are ready on a matching revision.
+1. **CI and Preview for the follow-up fixes — complete:** run #379 passed all three jobs. Vercel Preview and the matching Render backend are READY/live on commit `b75f8b93bf94e79e3de9df2b54717a0d196b5de8`. The title/year-only live smoke test completed with measured Qloo results.
 2. **Browser interaction and visual review:** click through the fixture and live run flows in the browser; inspect desktop and mobile; check the MapLibre/WebGL geography view. HTTP/SSR checks do not replace this.
 3. **Production release is a separate, owner-approved action:** PR #17 is still draft and Production intentionally serves the old UI. Do not merge or deploy the feature branch without explicit approval.
 4. **Security hygiene:** because the Qloo key was pasted into a chat, rotate it in Qloo and update only the backend Render secret after verification. Confirm the new key works without printing or committing it. Do not include the secret value in this repository.
