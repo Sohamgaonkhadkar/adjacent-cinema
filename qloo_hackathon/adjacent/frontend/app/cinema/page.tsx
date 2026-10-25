@@ -62,12 +62,12 @@ const CHAPTERS: { id: ChapterId; label: string; needsRun: boolean }[] = [
   { id: "test", label: "Test", needsRun: true },
 ];
 
-type ProgrammeRow = { title: string; year: string; note: string };
+type ProgrammeRow = { title: string; year: string; imdbId: string; note: string };
 
 const blankProgramme: ProgrammeRow[] = [
-  { title: "", year: "", note: "" },
-  { title: "", year: "", note: "" },
-  { title: "", year: "", note: "" },
+  { title: "", year: "", imdbId: "", note: "" },
+  { title: "", year: "", imdbId: "", note: "" },
+  { title: "", year: "", imdbId: "", note: "" },
 ];
 
 const CONTACT_SHEET = [
@@ -199,6 +199,7 @@ export default function CinemaPage() {
       DEMO_PROGRAMME.map((item) => ({
         title: item.title,
         year: item.year ? String(item.year) : "",
+        imdbId: "",
         note: "",
       })),
     );
@@ -216,9 +217,10 @@ export default function CinemaPage() {
     const items: ProgrammeItemInput[] = [];
     for (const [index, row] of programme.entries()) {
       const title = row.title.trim();
+      const imdbId = row.imdbId.trim();
       if (!title) {
-        if (row.year.trim() || row.note.trim()) {
-          setFormError(`Row ${index + 1} has a year or note but no title.`);
+        if (row.year.trim() || imdbId || row.note.trim()) {
+          setFormError(`Row ${index + 1} has a year, IMDb ID, or note but no title.`);
           return null;
         }
         continue;
@@ -231,10 +233,16 @@ export default function CinemaPage() {
         setFormError(`Row ${index + 1}: year must be between 1888 and 2100.`);
         return null;
       }
-      items.push({ title, year });
+      items.push({ title, year, imdb_id: imdbId || undefined });
     }
     if (items.length === 0) {
       setFormError("Enter at least one film title.");
+      return null;
+    }
+    if (!items.some((item) => item.imdb_id)) {
+      setFormError(
+        "Live analysis needs an IMDb ID for at least one film. This backend does not guess title matches. Add an IMDb ID or run the labelled fixture.",
+      );
       return null;
     }
     if (items.length > 12) {
@@ -516,14 +524,15 @@ export default function CinemaPage() {
         <div className="md:col-span-7">
           <p className="field-label">Programme</p>
           <p className="mb-4 text-xs text-dim">
-            Titles and years. Notes stay with your own record; photography here is atmospheric — not
-            official artwork for these films.
+            Titles and years. Live analysis also needs an IMDb ID for at least one film because
+            title-only identity matches are never guessed. Notes stay with your own record; photography
+            here is atmospheric — not official artwork for these films.
           </p>
           <ul className="space-y-3">
             {programme.map((row, index) => (
               <li
                 key={index}
-                className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_5.5rem_1fr_2.5rem]"
+                className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(10rem,1.4fr)_5.5rem_8.5rem_minmax(10rem,1fr)_2.5rem]"
               >
                 <TextInput
                   aria-label={`Film title ${index + 1}`}
@@ -545,6 +554,17 @@ export default function CinemaPage() {
                   onChange={(event) => {
                     const next = [...programme];
                     next[index] = { ...row, year: event.target.value };
+                    setProgramme(next);
+                  }}
+                />
+                <TextInput
+                  aria-label={`IMDb ID ${index + 1}`}
+                  maxLength={20}
+                  placeholder="IMDb ID (e.g. tt1234567)"
+                  value={row.imdbId}
+                  onChange={(event) => {
+                    const next = [...programme];
+                    next[index] = { ...row, imdbId: event.target.value };
                     setProgramme(next);
                   }}
                 />
@@ -574,7 +594,7 @@ export default function CinemaPage() {
             type="button"
             className="btn-ghost mt-4"
             disabled={programme.length >= 12}
-            onClick={() => setProgramme([...programme, { title: "", year: "", note: "" }])}
+            onClick={() => setProgramme([...programme, { title: "", year: "", imdbId: "", note: "" }])}
           >
             <Plus size={14} />
             {programme.length >= 12 ? "12 title limit reached" : "Add title"}
