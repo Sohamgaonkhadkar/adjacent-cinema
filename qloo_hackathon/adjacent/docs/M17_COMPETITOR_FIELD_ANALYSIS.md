@@ -1,5 +1,13 @@
 # M17 — Competitor field analysis (270-repository census) and where Adjacent ranks
 
+> **REVISED 25 October 2026 — read `M18_EARLIER_SCORECARD_RECONCILIATION.md` alongside this document.**
+> Four of the twelve entries below (COMMON GROUND, MOSAIC, Clash Control, Taste-Matched Trailer) were scored from
+> cloned source and tree metrics but without executing their test suites. `M18` ran them and revises three of the
+> four upward, records the revised table (**Adjacent 7th of 12**, not 4th–6th), and corrects two claims in this
+> document that were wrong: the Qloo-surface breadth in §2.3 (Adjacent invokes **5** endpoints, not 8 — two are
+> declared in the parameter registry but never called) and the engineering-proof verdict in §3/A6 (Clash Control's
+> suite is deeper than Adjacent's). The aspect analysis and the ranked actions in §8 stand.
+
 **Research snapshot:** 25 October 2026
 **Scope:** every public GitHub repository returned by the search `qloo hackathon` (270 repos), funnelled to the
 12 that are genuinely comparable to Adjacent Cinema, compared against this repository.
@@ -12,9 +20,9 @@ read as a field ranking.
 ## 0. Verdict in one paragraph
 
 In the film/cinema cluster, **Adjacent ranks 3rd of 7**, behind `zicheng-yu/clearrun` and `shro-2002/territory`.
-Across the whole comparable shortlist it lands **around 4th–6th of 12**, in the same 8.0 band as
-`Dhamani-aryan/COMMON GROUND` and `louji2308/Zorq`. The gap to the top two is **not product depth** — Adjacent has
-more product surface, far more tests and broader Qloo endpoint coverage than either. The gap is **published
+Across the whole comparable shortlist it lands **around 4th–6th of 12** (§4; revised to **7th of 12** in `M18` once
+four suites were executed). The gap to the top two is **not product depth** — Adjacent has more product surface and
+far more offline tests than either. The gap is **published
 evidence and judge-facing packaging**: the leaders ship a *completed* head-to-head that shows why Qloo is necessary
 (territory's E6 ablation, clearrun's backtests), and they ship a public demo URL. Adjacent has the ablation harness
 but its comparison arm has never run, and it has no deployed demo.
@@ -63,25 +71,26 @@ all 12 repos. This table is deliberately *not* a quality ranking — see §3 for
 | Repo | Domain | Product LOC | Test LOC | Test files | CI | Persistence | LLM in path |
 |---|---|---|---|---|---|---|---|
 | **Adjacent (this repo)** | pre-release cultural positioning for film | **33 047** (21 871 backend + 11 176 frontend) | 16 003 | 42 backend + 7 frontend suites, **737 test fns** | ruff + pytest ×2 + probe + 8 node suites + build + 2 Docker builds | SQLite | optional, **synthesis only** |
-| `neric-joel/qloo-agentic-hackathon` (Clash Control) | festival clash scheduling | 60 732 | 65 796 | 150 | browser + ci, "journey gate" | Redis + localStorage | Anthropic, in path |
+| `neric-joel/qloo-agentic-hackathon` (Clash Control) | festival clash scheduling | 60 732 | 65 796 | 88 web files (**2 307 tests, run** ) + 33 backend files (**545 fns** ) + 28 e2e specs | browser + ci, "journey gate" | Redis + localStorage | Anthropic, in path |
 | `louji2308/Zorq` | cultural composition for physical places | 24 533 | 19 726 | 92 | ci + healthz | — | DeepSeek, in path |
-| `Dhamani-aryan/qloo-hackathon` (COMMON GROUND) | two-group cultural bridge for community programming | 12 558 | 3 549 | 38 | none | Redis | OpenAI, in path + baseline |
+| `Dhamani-aryan/qloo-hackathon` (COMMON GROUND) | two-group cultural bridge for community programming | 12 558 | 3 549 | 29 files (**186 tests, run** ) | **none** | Redis | OpenAI, in path + baseline |
 | `zicheng-yu/clearrun` | film release-week choice | 8 570 | 2 083 | 71 (T0 pass) | typecheck + test | SQLite | Claude Haiku, tool-calling |
-| `yannabadie/taste-matched-trailer` | book-trailer cultural direction | 8 184 | 1 214 | 9 | none | — | Claude, in path |
+| `yannabadie/taste-matched-trailer` | book-trailer cultural direction | 8 184 | 1 214 | 6 py + 4 mjs (**10 tests, run** ), 1 unrunnable here | none | — | Claude, in path |
 | `shro-2002/territory` | indie film distribution war room | 4 825 | 1 069 | 80 (T0 pass) + Playwright | lint + typecheck + test + build + e2e | Redis | **none** |
 | `G-Hostin/quiet-week` | indie game launch timing | 5 058 | 561 | 9 | none | — | Gemini, in path |
 | `longtt-marketing/taste-brief` | podcast ad buying for brands | 3 772 | 1 214 | 15 + benchmark suite | review workflow | — | Anthropic, in path |
 | `msimakhov-star/will-it-land` | "spellcheck for cultural references" in scripts | 4 088 | 652 | 24 + eval + kill-test | pages | SQLite | Gemini + Claude |
-| `Abdullah-m7/qloo-mosaic` (MOSAIC) | cultural negotiation for promoters | 2 293 | 1 657 | 23 | smoke + benchmark | — | none |
+| `Abdullah-m7/qloo-mosaic` (MOSAIC) | cultural negotiation for promoters | 2 293 | 1 657 | 10 files (**127 tests, run** , zero deps) | smoke: test + npm audit + live credentialed | — | none |
 | `kevin9327/HyperCueStudio` | greenlight / sync / touring "courtroom" | 2 924 | 151 | 1 | pages | — | Gemini, in path |
 
 ### 2.3 Qloo surface used
 
 Endpoint families hit, by repo (all /12):
 
-- **Adjacent (8):** `/v2/insights` ×23, `/search` ×23, `/entities` ×25, `/v2/tags` ×6, `/v2/audiences` ×5,
-  `/v2/trending` ×4, `/v2/analysis/compare` ×3, `/heatmaps` ×3 — with a declarative `ParamSpec` registry
-  (`backend/app/qloo/params.py`, 930 lines) that marks each parameter verified/unverified and carries an
+- **Adjacent (5 invoked, 7 declared).** `/search`, `/entities`, `/v2/insights` (including
+  `filter.type=urn:heatmap`), `/v2/tags`, `/v2/audiences` are called from `app/qloo/client.py`. `/v2/trending` and
+  `/v2/analysis/compare` are **declared in the registry with full `ParamSpec`s but never called** — see `M18` §5.1.
+  The registry (`backend/app/qloo/params.py`, 930 lines) marks each parameter verified/unverified and carries an
   `open_question` probe id for the ones that are not.
 - `neric-joel` (2, very broad usage): `/search` ×160, insights ×87.
 - `kevin9327` (2): `/search` ×24 + insights ×23, plus the `@qloo/qloo-harness` npm package.
@@ -90,8 +99,10 @@ Endpoint families hit, by repo (all /12):
   Wikidata → Qloo `/entities` join for the release calendar.
 - `territory`, `quiet-week`, `will-it-land`, `taste-brief`, `Zorq`, `MOSAIC`, `COMMON GROUND`: 1–3 families each.
 
-Adjacent's breadth is real, but breadth is the weakest kind of advantage: it is easy to copy and hard for a judge to
-see without reading the parameter registry.
+Adjacent's breadth is therefore **mid-field, tied with COMMON GROUND and Clash Control at 5 endpoints**, and it is the
+only one of the three that leaves `/v2/analysis/compare` unbuilt — the endpoint all three rivals use to justify that
+two entities belong together. Breadth is the weakest kind of advantage anyway: easy to copy, hard for a judge to see
+without reading the parameter registry.
 
 ---
 
@@ -114,8 +125,9 @@ rather than guessing (`filter.tags` is flagged `UNVERIFIED` with a probe id), an
 `app/qloo/params.py`** and no treatment of the pre-release leakage problem at all — for a product whose whole premise
 is positioning a film *before* release, that is a genuine analytical hole, not a cosmetic one.
 
-**Verdict:** Adjacent wins on breadth and on honesty about unknowns; loses on the one parameter that matters most for
-its own use case.
+**Verdict:** Adjacent wins on honesty about unknowns; does **not** win on breadth (5 invoked endpoints, tied with
+COMMON GROUND and Clash Control — `M18` §5.1); loses on the one parameter that matters most for its own use case
+(`bias.content_based`) and on `/v2/analysis/compare`, which it declares but never calls.
 
 ### A2 — Agentic architecture
 
@@ -203,8 +215,11 @@ run. 737 backend test functions; 132 docs.
 that fails on any skipped test; `clearrun` typecheck+test (71, verified); `Zorq` lint/typecheck/test; the rest either
 no CI or a smoke/deploy workflow only.
 
-**Verdict:** Adjacent #1, narrowly over territory. Note the counterweight: Adjacent's tests are 100 % offline and its
-own `M13_11` shows the *comparison* is what's missing — more tests of the same code would not move a judge.
+**Verdict (corrected in `M18`):** Adjacent has the **widest CI pipeline** and the most offline test functions, but not
+the deepest executed suite. Clash Control runs 2,307 frontend tests plus 28 Playwright specs (including
+`honesty.spec.ts` and `network-safety.spec.ts`) against Adjacent's 737 backend test functions and **zero browser
+tests**; COMMON GROUND runs 186 and MOSAIC 127. And the counterweight stands: Adjacent's tests are 100 % offline,
+and its own `M13_11` shows the *comparison* is what's missing — more tests of the same code would not move a judge.
 
 ### A7 — Design and judge-facing packaging
 
@@ -245,23 +260,23 @@ Differences ≤ 0.5 should not be read as meaningful.
 | # | Project | Tech | Design | Impact | Idea | Mean | Evidence tier |
 |---|---|---|---|---|---|---|---|
 | 1 | `zicheng-yu/clearrun` | 9.0 | 8.5 | 8.5 | 9.0 | **8.75** | T0 tests + T1 code + screenshots |
+| 2 | `neric-joel/Clash Control` | 9.0 | 8.8 | 7.8 | 8.5 | **8.5** | T0: 2 307 tests run · T1 code · failed-test disclosure |
+| 2 | `Dhamani-aryan/COMMON GROUND` | 8.6 | 9.0 | 7.8 | 8.7 | **8.5** | T0: 186 tests run · T1 code + screenshot · executed live ablation (author-reported) |
 | 2 | `longtt-marketing/taste-brief` *(not film)* | 9.0 | 8.0 | 8.5 | 8.5 | **8.5** | T1 code + committed results |
-| 3 | `shro-2002/territory` | 8.5 | 7.5 | 9.0 | 8.5 | **8.4** | T0 tests + executed artefacts |
-| 4 | **Adjacent (this repo)** | 8.5 | 7.5 | 8.0 | 8.0 | **8.0** | T1 code + own docs; **no visual check** |
-| 5 | `louji2308/Zorq` *(not film)* | 8.5 | 8.0 | 8.0 | 8.0 | **8.1** | T1 code + screenshots |
-| 6 | `Dhamani-aryan/COMMON GROUND` | 8.0 | 9.0 | 7.0 | 8.0 | **8.1** | T1 code + screenshots |
-| 7 | `msimakhov-star/will-it-land` | 7.5 | 8.0 | 7.0 | 8.5 | **7.75** | T1 code + eval artefacts |
-| 8 | `G-Hostin/quiet-week` | 7.5 | 7.5 | 7.5 | 8.0 | **7.6** | T1 code |
-| 9 | `Abdullah-m7/MOSAIC` | 7.5 | 7.5 | 7.0 | 7.5 | **7.4** | T1 code + synthetic benchmark |
-| 10 | `neric-joel/Clash Control` | 8.0 | 7.0 | 7.5 | 7.0 | **7.4** | T1 code (largest codebase in the field) |
-| 11 | `kevin9327/HyperCueStudio` | 6.0 | 7.5 | 7.0 | 7.5 | **7.0** | T1 code: 1 test file for those claims |
-| 12 | `yannabadie/taste-matched-trailer` | 7.5 | 6.5 | 6.0 | 7.5 | **6.9** | T1 code; extraordinary evidence artefacts, tiny audience |
+| 5 | `shro-2002/territory` | 8.5 | 7.5 | 9.0 | 8.5 | **8.4** | T0 tests + executed artefacts |
+| 6 | `louji2308/Zorq` *(not film)* | 8.5 | 8.0 | 8.0 | 8.0 | **8.1** | T1 code + screenshots |
+| 7 | **Adjacent (this repo)** | 8.5 | 7.5 | 8.0 | 8.0 | **8.0** | T1 code + own docs; **no visual check** |
+| 8 | `Abdullah-m7/MOSAIC` | 8.2 | 7.8 | 7.3 | 8.3 | **7.9** | T0: 127 tests run · frozen-but-unexecuted ablation |
+| 9 | `msimakhov-star/will-it-land` | 7.5 | 8.0 | 7.0 | 8.5 | **7.75** | T1 code + eval artefacts |
+| 10 | `G-Hostin/quiet-week` | 7.5 | 7.5 | 7.5 | 8.0 | **7.6** | T1 code |
+| 11 | `yannabadie/taste-matched-trailer` | 7.4 | 8.3 | 6.2 | 8.0 | **7.5** | T0: 10 tests run, 1 unrunnable; extraordinary evidence artefacts, tiny audience |
+| 12 | `kevin9327/HyperCueStudio` | 6.0 | 7.5 | 7.0 | 7.5 | **7.0** | T1 code: 1 test file for those claims |
 
-*(Rows 4–6 are within 0.1 of each other; treat them as tied. Sorted by mean, rank column reflects rounding of
-equal-weight sums before display.)*
+*(Rows 2–4 are tied at 8.5 and are listed together; differences of ≤0.5 anywhere in this table are not
+meaningful. Positions 8–12 are ordered by mean. Values for the four projects revised in `M18` are the revised ones.)*
 
 **Sensitivity.** Adjacent's Design score is the least verified number here. At Design 8.5 it reaches 8.25 (2nd in the
-film cluster); at 6.5 it drops to 7.75 (4th). Everything else about its position is stable.
+film cluster); at 6.5 it drops to 7.75 (4th, or 5th once `M18`'s revisions are applied). Everything else about its position is stable.
 
 ### Film/cinema cluster only
 
@@ -270,10 +285,12 @@ film cluster); at 6.5 it drops to 7.75 (4th). Everything else about its position
 | 1 | `clearrun` | 8.75 |
 | 2 | `territory` | 8.4 |
 | 3 | **Adjacent** | **8.0** |
-| 4 | `COMMON GROUND` (community programming, film in the mix) | 8.1 → tied with Adjacent |
-| 5 | `will-it-land` | 7.75 |
-| 6 | `MOSAIC` | 7.4 |
-| 7 | `HyperCueStudio` | 7.0 |
+| 4 | `will-it-land` | 7.75 |
+| 5 | `Taste-Matched Trailer` | 7.5 |
+| 6 | `HyperCueStudio` | 7.0 |
+
+(`COMMON GROUND` 8.5 and `MOSAIC` 7.9 sit in the neighbouring "community/event programming" space rather than film
+production; `M18` §4 explains why both moved.)
 
 ---
 
