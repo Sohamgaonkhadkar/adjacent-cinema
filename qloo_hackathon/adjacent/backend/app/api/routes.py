@@ -813,7 +813,35 @@ def _build_result(
     if test_card is not None:
         result["test_card"] = test_card.to_dict()
 
+    # Decision challenge — necessity, stability and next checks, all recomputed
+    # from this run's own cached evidence. A failure here must never invalidate a
+    # completed analysis, so it degrades to an explicit unavailable state.
+    result["challenge"] = _build_challenge(state)
+
     return result
+
+
+def _build_challenge(state: AdjacentState) -> dict[str, Any]:
+    """Build the decision challenge, or an honest unavailable record."""
+    from ..domain.challenge import SCHEMA, build_decision_challenge
+
+    try:
+        return build_decision_challenge(state)
+    except Exception as exc:  # defensive: a decorated run must survive this
+        return {
+            "schema": SCHEMA,
+            "available": False,
+            "unavailable_reason": (
+                "The decision challenge could not be computed for this run. The analysis above "
+                "is unaffected."
+            ),
+            "error": safe_error_diagnostic(error_type=type(exc).__name__),
+            "data_status": getattr(state, "data_status", "unknown"),
+            "necessity": None,
+            "stability": None,
+            "next_checks": [],
+            "receipt": None,
+        }
 
 
 def _record_to_response(record: RunRecord) -> RunResponse:
