@@ -132,6 +132,44 @@ def _median(values: Sequence[float]) -> float | None:
     return round(statistics.median(values), 6) if values else None
 
 
+def cohort_score_from(
+    members: Sequence[MemberEvidence],
+    *,
+    context_id: str,
+    call_id: str,
+    unscored: Sequence[str] = (),
+) -> CohortScore:
+    """Compute a cohort's :class:`CohortScore` from its scored members.
+
+    This is the **only** place the production cohort arithmetic lives. The
+    ranker calls it when it attaches scores after a scoring call, and the
+    decision-challenge analysis calls it when it recomputes a cohort after an
+    evidence item has been removed. One implementation means a counterfactual
+    can never silently drift away from the number the product actually showed.
+
+    ``total_members`` counts the *scored* members only, exactly as the ranker
+    has always counted it: it is the denominator of the published cohort
+    breadth. ``unscored`` (member ids the context did not score) marks the score
+    partial and must never be folded into that denominator.
+    """
+    affinities = [m.affinity for m in members if m.affinity is not None]
+    popularities = [m.popularity for m in members if m.popularity is not None]
+    median_pop = _median(popularities)
+    return CohortScore(
+        context_id=context_id,
+        call_id=call_id,
+        mean_affinity=_mean(affinities),
+        max_affinity=round(max(affinities), 6) if affinities else None,
+        min_affinity=round(min(affinities), 6) if affinities else None,
+        median_popularity=median_pop,
+        novelty_proxy=round(1.0 - median_pop, 6) if median_pop is not None else None,
+        qualifying_members=sum(1 for a in affinities if a >= BAND_MEDIUM),
+        total_members=len(members),
+        member_affinities=tuple(affinities),
+        partial=bool(unscored),
+    )
+
+
 def _is_explainability_parameter_rejection(error: QlooError) -> bool:
     """Return true only for an explicit 4xx rejection of this optional field."""
     if error.status not in {400, 422} or error.endpoint != "/v2/insights":
@@ -369,21 +407,11 @@ class CohortRanker:
                 )
         cohort.excluded_members = excluded
 
-        affinities = [m.affinity for m in members if m.affinity is not None]
-        popularities = [m.popularity for m in members if m.popularity is not None]
-        median_pop = _median(popularities)
-        cohort.score = CohortScore(
+        cohort.score = cohort_score_from(
+            members,
             context_id=context.context_id,
             call_id=context.call_id,
-            mean_affinity=_mean(affinities),
-            max_affinity=round(max(affinities), 6) if affinities else None,
-            min_affinity=round(min(affinities), 6) if affinities else None,
-            median_popularity=median_pop,
-            novelty_proxy=round(1.0 - median_pop, 6) if median_pop is not None else None,
-            qualifying_members=sum(1 for a in affinities if a >= BAND_MEDIUM),
-            total_members=len(members),
-            member_affinities=tuple(affinities),
-            partial=bool(unscored),
+            unscored=unscored,
         )
 
     # -- the evidence gate -------------------------------------------------
