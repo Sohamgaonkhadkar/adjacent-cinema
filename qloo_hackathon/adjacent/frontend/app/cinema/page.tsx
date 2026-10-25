@@ -199,7 +199,7 @@ export default function CinemaPage() {
       DEMO_PROGRAMME.map((item) => ({
         title: item.title,
         year: item.year ? String(item.year) : "",
-        imdbId: "",
+        imdbId: item.imdb_id ?? "",
         note: "",
       })),
     );
