@@ -351,6 +351,16 @@ test("a run is only treated as complete when the backend said so and returned a 
   assert.match(creatorPage, /run\?\.stop_message/);
 });
 
+test("Cinema live runs require at least one explicit IMDb ID before making a request", () => {
+  // The public backend intentionally does not guess title matches. Keep that
+  // constraint visible and validate before starting a run, rather than letting
+  // the analysis fail after the UI has shown progress.
+  assert.match(cinemaPage, /aria-label=\{`IMDb ID \$\{index \+ 1\}\}/);
+  assert.match(cinemaPage, /imdb_id: imdbId \|\| undefined/);
+  assert.match(cinemaPage, /if \(!items\.some\(\(item\) => item\.imdb_id\)\)/);
+  assert.match(cinemaPage, /Live analysis needs an IMDb ID for at least one film/);
+});
+
 test("writes are idempotent on content, so a retry cannot duplicate a record", async () => {
   const { stableRequestId } = await import("../lib/requestId.ts");
   const payload = { kind: "ANALYTICS", metrics: { views: 12, watch_time_minutes: null } };
