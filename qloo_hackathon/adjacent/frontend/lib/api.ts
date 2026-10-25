@@ -21,6 +21,9 @@ import type {
 // and Next.js proxies /api using ADJACENT_API_ORIGIN.
 const API_BASE = "/api";
 const API_TIMEOUT_MS = 12_000;
+// Render's free service may need tens of seconds to wake from sleep. Only run
+// creation gets this longer budget; polling, reads and ordinary writes stay bounded.
+const RUN_START_TIMEOUT_MS = 75_000;
 
 async function fetchWithTimeout(
   path: string,
@@ -42,10 +45,11 @@ async function fetchWithTimeout(
 async function fetchJsonWithTimeout<T>(
   path: string,
   init: RequestInit,
-  timeoutMessage: string
+  timeoutMessage: string,
+  timeoutMs = API_TIMEOUT_MS
 ): Promise<{ response: Response; data: T | null }> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(`${API_BASE}${path}`, { ...init, signal: controller.signal });
     const data = await response.json().catch((err: unknown) => {
@@ -114,7 +118,8 @@ export async function createRun(request: RunRequest): Promise<RunResponse> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
     },
-    "Analysis start timed out. The backend may have accepted the request; check run status before retrying."
+    "Analysis start timed out. The backend may have accepted the request; check run status before retrying.",
+    RUN_START_TIMEOUT_MS
   );
   if (!res.ok) {
     const detail = data && "detail" in data && typeof data.detail === "string" ? data.detail : res.statusText;
@@ -144,7 +149,8 @@ export async function createDemoRun(): Promise<RunResponse> {
   const { response: res, data } = await fetchJsonWithTimeout<RunResponse | { detail?: string }>(
     "/run/demo",
     { method: "POST" },
-    "Fixture run start timed out. The backend may have accepted the request; check run status before retrying."
+    "Fixture run start timed out. The backend may have accepted the request; check run status before retrying.",
+    RUN_START_TIMEOUT_MS
   );
   if (!res.ok) {
     const detail = data && "detail" in data && typeof data.detail === "string" ? data.detail : res.statusText;
@@ -427,7 +433,12 @@ async function sponsorFetchJson<T>(
   return result;
 }
 
-async function postJson<T>(path: string, body: unknown, label: string): Promise<T> {
+async function postJson<T>(
+  path: string,
+  body: unknown,
+  label: string,
+  timeoutMs = API_TIMEOUT_MS
+): Promise<T> {
   const headers = new Headers({ "Content-Type": "application/json" });
   if (path.startsWith("/filmsponsor/") && filmSponsorCsrfToken) {
     headers.set("X-FilmSponsor-CSRF", filmSponsorCsrfToken);
@@ -443,7 +454,8 @@ async function postJson<T>(path: string, body: unknown, label: string): Promise<
       headers,
       body: JSON.stringify(body),
     },
-    `${label} timed out. The request may not have been recorded — reload before retrying.`
+    `${label} timed out. The request may not have been recorded — reload before retrying.`,
+    timeoutMs
   );
   noteGuestSessionExpiry(path, res);
   if (!res.ok) {
@@ -460,13 +472,17 @@ export function createCreatorRun(
 ): Promise<RunResponse> {
   const isDemo = options?.demo || req.demo === "fixture" || req.demo === true;
   const path = isDemo ? "/creator/run?demo=fixture" : "/creator/run";
-  return postJson<RunResponse>(path, req, isDemo ? "Creator fixture demo" : "Creator analysis");
+  return postJson<RunResponse>(
+    path, req, isDemo ? "Creator fixture demo" : "Creator analysis", RUN_START_TIMEOUT_MS
+  );
 }
 
 export function createCreatorDemoRun(
   req?: Partial<CreatorRunRequest>
 ): Promise<RunResponse> {
-  return postJson<RunResponse>("/creator/run/demo", req ?? {}, "Creator fixture demo");
+  return postJson<RunResponse>(
+    "/creator/run/demo", req ?? {}, "Creator fixture demo", RUN_START_TIMEOUT_MS
+  );
 }
 
 export function saveExperiment(
