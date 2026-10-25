@@ -149,9 +149,14 @@ export function DecisionChallenge({ challenge, onExportReceipt, onGoToTest }: De
                   ? ` · ${check.proposed_check.operation}`
                   : ""}
                 {check.proposed_check.estimated_qloo_calls
-                  ? ` · ~${check.proposed_check.estimated_qloo_calls} Qloo call(s)`
+                  ? ` · ~${check.proposed_check.estimated_qloo_calls} Qloo ${check.proposed_check.estimated_qloo_calls === 1 ? "call" : "calls"}`
                   : " · no new Qloo call"}
               </p>
+              {!check.proposed_check.available_now && check.proposed_check.unavailable_reason && (
+                <p className="caption mt-1 text-warn">
+                  Cannot be run from this build: {check.proposed_check.unavailable_reason}
+                </p>
+              )}
             </li>
           ))}
         </ul>

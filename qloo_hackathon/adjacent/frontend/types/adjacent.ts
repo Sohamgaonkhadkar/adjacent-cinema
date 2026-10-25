@@ -274,7 +274,8 @@ export interface NecessityData {
   gate: {
     admitted_with_affinity_gate: string[];
     structurally_admitted: string[];
-    suppressed_by_affinity_gate: string[];
+    // Each row carries its own label: the UI must never fall back to a raw urn.
+    suppressed_by_affinity_gate: ChallengeOrderEntry[];
     admitted_without_structural_support: string[];
   };
   production_order: string[];
@@ -306,6 +307,7 @@ export interface StabilityData {
     removed: StabilityScenario["removed"];
     removed_from: StabilityScenario["removed_from"];
     winner_after: string | null;
+    winner_after_label?: string | null;
   }[];
   scenarios: StabilityScenario[];
   member_scope: string;
@@ -321,7 +323,8 @@ export interface NextCheck {
     operation: string;
     estimated_qloo_calls: number;
     available_now: boolean;
-    unavailable_reason: string;
+    /** null means "not applicable" — only set when available_now is false. */
+    unavailable_reason: string | null;
   };
   evidence_call_ids: string[];
 }

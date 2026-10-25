@@ -70,13 +70,22 @@ export function toneForVerdict(verdict: string | null | undefined): Tone {
   return "neutral";
 }
 
+/** "no other position moves" / "1 other position moves" / "2 other positions move". */
+function movedPositions(count: number): string {
+  if (!count) return "no other position moves";
+  return count === 1 ? "1 other position moves" : `${count} other positions move`;
+}
+
+/** A reader-facing name for a cohort, or an honest placeholder — never a raw urn. */
+export const UNLABELLED = "an unlabelled grouping";
+
 function labelFor(
   order: { cohort_id: string; label: string }[] | undefined,
   id: string | null | undefined,
 ): string {
   if (!id) return "nothing";
   const entry = (order ?? []).find((item) => item.cohort_id === id);
-  return entry?.label ?? id;
+  return entry?.label || UNLABELLED;
 }
 
 function scenarioRow(
@@ -191,22 +200,30 @@ export function buildChallengeView(
         id: "suppressed",
         label: `${suppressed.length} grouping${suppressed.length === 1 ? "" : "s"} held back by the affinity threshold`,
         detail: `These had enough scored members to be shown but did not clear the affinity gate, so they never reached the list: ${suppressed
-          .map((id) => labelFor(necessity.affinity_withheld.order, id))
+          .map((entry) => entry.label || UNLABELLED)
           .join(", ")}.`,
         tone: "neutral",
       });
     }
   }
 
+  // Every labelled cohort the payload mentions, so a counterfactual winner can be
+  // named even when it was not in the admitted pool.
   const labelsById: Record<string, string> = {};
   for (const entry of [
     ...(necessity?.affinity_withheld.order ?? []),
     ...(necessity?.popularity_only.order ?? []),
+    ...(necessity?.gate.suppressed_by_affinity_gate ?? []),
   ]) {
-    labelsById[entry.cohort_id] = entry.label;
+    if (entry.label) labelsById[entry.cohort_id] = entry.label;
+  }
+  for (const flip of stability?.flips ?? []) {
+    if (flip.winner_after && flip.winner_after_label) {
+      labelsById[flip.winner_after] = flip.winner_after_label;
+    }
   }
   const nameOf = (id: string | null | undefined) =>
-    id ? (labelsById[id] ?? id) : "nothing";
+    id ? (labelsById[id] || UNLABELLED) : "nothing";
 
   const flips = stability?.flips ?? [];
   const stabilityRows: ChallengeRow[] = [];
@@ -330,7 +347,7 @@ export function formatDecisionReceipt(challenge: DecisionChallengeData | null | 
   lines.push("NECESSITY");
   lines.push(
     `  Affinity removed → winner ${receipt.necessity.affinity_changed_winner ? "CHANGES" : "unchanged"}` +
-      ` (${receipt.necessity.ranks_moved_without_affinity} other position(s) move)`,
+      ` (${movedPositions(receipt.necessity.ranks_moved_without_affinity)})`,
   );
   lines.push(
     `  Popularity-only baseline → ${receipt.necessity.popularity_would_differ ? "DIFFERENT cohort" : "same cohort"}`,
@@ -388,7 +405,7 @@ export function challengeExportSections(
       label: "Counterfactual: affinity withheld",
       value: view.receipt.necessity.affinity_changed_winner
         ? "The recommendation changes when Qloo's affinity numbers are removed."
-        : `The recommendation holds without the affinity numbers (${view.receipt.necessity.ranks_moved_without_affinity} other position(s) move). Affinity decided ${view.receipt.basis.affinity_decided_pairs} of ${view.receipt.basis.adjacent_pairs_examined} adjacent pairs.`,
+        : `The recommendation holds without the affinity numbers (${movedPositions(view.receipt.necessity.ranks_moved_without_affinity)}). Affinity decided ${view.receipt.basis.affinity_decided_pairs} of ${view.receipt.basis.adjacent_pairs_examined} adjacent pairs.`,
     },
   ];
   if (view.receipt.necessity.popularity_would_differ) {

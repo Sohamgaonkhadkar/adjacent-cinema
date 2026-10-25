@@ -48,6 +48,12 @@ Constraints, each enforced by a test:
   likelihood or percentage anywhere in the payload or the frontend view
   (`frontend/lib/challengeView.ts`). Stability is a rule outcome printed next to
   the rule, and the frontend bans those words in the exported receipt.
+- **Identifiers stay in the payload, names go to the reader.** `cohort_id`s remain
+  in `order`, `flips` and `production_order` so a machine can join on them, but
+  every sentence a person reads names the cohort (each suppressed group carries
+  its own `label`, and a flip carries `winner_after_label`). The view model falls
+  back to "an unlabelled grouping" rather than printing a urn, and a test asserts
+  reader-facing prose contains no `urn:entity:` and no `(s)` placeholder.
 - **A counterfactual is a diagnostic, not a claim.** "Affinity withheld changes
   nothing" is reported as unchanged; it is not reported as proof that the
   affinity evidence was uninformative. `limits` says this in the payload, in the

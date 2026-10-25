@@ -257,7 +257,8 @@ def test_suppressed_candidates_are_reported_but_never_admitted_silently(strong_r
     gate = challenge["necessity"]["gate"]
     ranked_ids = {c.cohort_id for c in strong_run.ranked}
 
-    assert set(gate["suppressed_by_affinity_gate"]).isdisjoint(ranked_ids), (
+    suppressed_ids = {row["cohort_id"] for row in gate["suppressed_by_affinity_gate"]}
+    assert suppressed_ids.isdisjoint(ranked_ids), (
         "the counterfactual must not add candidates that the product suppressed"
     )
     assert gate["admitted_with_affinity_gate"] == sorted(ranked_ids)
@@ -355,6 +356,54 @@ def test_stability_invariant_rule_is_published(strong_run):
     stability = build_decision_challenge(strong_run)["stability"]
     assert "Fragile if any single removable evidence item changes the winning cohort" in stability["rule"]
     assert str(MIN_SCENARIOS_FOR_STABLE) in stability["rule"]
+
+
+def _reader_facing_prose(challenge: dict) -> list[str]:
+    """Every string a reader sees, excluding machine ids and provenance."""
+    prose = [challenge.get("necessity_statement") or "", challenge.get("stability", {}).get("reason", "")]
+    for check in challenge.get("next_checks") or []:
+        prose.extend(
+            [
+                check.get("title") or "",
+                check.get("detail") or "",
+                check.get("uncertainty_addressed") or "",
+                check.get("proposed_check", {}).get("action") or "",
+            ]
+        )
+    return [line for line in prose if line]
+
+
+def test_reader_facing_prose_names_cohorts_and_never_prints_an_identifier(strong_run):
+    """A sentence must not contain a raw urn, and must not contain "(s)"."""
+    challenge = build_decision_challenge(strong_run)
+    for line in _reader_facing_prose(challenge):
+        assert "urn:entity:" not in line, line
+        assert "(s)" not in line, line
+
+
+def test_flips_carry_a_readable_name_for_the_cohort_that_would_win(strong_run):
+    challenge = build_decision_challenge(strong_run)
+    labels = {
+        cohort.cohort_id: challenge["recommendation"]["label"]
+        for cohort in strong_run.ranked
+        if cohort.cohort_id == challenge["recommendation"]["cohort_id"]
+    }
+    assert challenge["stability"]["flips"]
+    for flip in challenge["stability"]["flips"]:
+        assert flip["winner_after_label"], flip
+        assert "urn:entity:" not in flip["winner_after_label"]
+    # The label must name the same cohort the id points at.
+    winner_label = labels.get(challenge["recommendation"]["cohort_id"])
+    assert winner_label
+
+
+def test_suppressed_groups_are_labelled_for_display(strong_run):
+    challenge = build_decision_challenge(strong_run)
+    suppressed = challenge["necessity"]["gate"]["suppressed_by_affinity_gate"]
+    assert suppressed
+    for row in suppressed:
+        assert row["cohort_id"].startswith("urn:entity:")
+        assert row["label"] and not row["label"].startswith("urn:")
 
 
 # ---------------------------------------------------------------------------

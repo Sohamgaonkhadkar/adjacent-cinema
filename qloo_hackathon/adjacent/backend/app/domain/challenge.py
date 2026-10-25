@@ -386,7 +386,10 @@ def _necessity(
         "gate": {
             "admitted_with_affinity_gate": sorted(admitted_with_affinity),
             "structurally_admitted": sorted(structurally_admitted),
-            "suppressed_by_affinity_gate": suppressed,
+            # Reader-facing: a raw urn here would reach the UI as an identifier.
+            "suppressed_by_affinity_gate": [
+                {"cohort_id": cid, "label": labels.get(cid, cid)} for cid in suppressed
+            ],
             "admitted_without_structural_support": admitted_without_structure,
         },
         "production_order": list(production),
@@ -451,7 +454,8 @@ def _necessity_statement(necessity: dict[str, Any], labels: dict[str, str]) -> s
         lines.append(
             f"{len(suppressed)} candidate grouping{'s' if len(suppressed) != 1 else ''} had enough "
             f"scored members to be considered "
-            f"but were suppressed by the affinity threshold: {', '.join(labels.get(cid, cid) for cid in suppressed)}."
+            f"but {'was' if len(suppressed) == 1 else 'were'} suppressed by the affinity threshold: "
+            f"{', '.join(row['label'] for row in suppressed)}."
         )
     return " ".join(lines)
 
@@ -565,6 +569,7 @@ def _stability(
                 "removed": flip["removed"],
                 "removed_from": flip["removed_from"],
                 "winner_after": flip["winner_after"],
+                "winner_after_label": labels.get(flip["winner_after"], "") or None,
             }
             for flip in flips
         ],
@@ -590,6 +595,12 @@ def _stability_rule() -> str:
 # ---------------------------------------------------------------------------
 
 
+def _count(n: int, singular: str, plural: str | None = None) -> str:
+    """'1 candidate cohort' / '3 candidate cohorts' — never '(s)' in reader-facing text."""
+    word = singular if n == 1 else (plural or f"{singular}s")
+    return f"{n} {word}"
+
+
 def _gap(
     gap_id: str,
     title: str,
@@ -601,7 +612,7 @@ def _gap(
     estimated_calls: int = 0,
     call_ids: Sequence[str] = (),
     available: bool = True,
-    unavailable_reason: str = "",
+    unavailable_reason: str | None = None,
 ) -> dict[str, Any]:
     return {
         "id": gap_id,
@@ -646,7 +657,7 @@ def _next_checks(
             _gap(
                 "no_admitted_cohort",
                 "Nothing cleared the evidence gate",
-                f"{len(rejected)} candidate cohort(s) were rejected ({summary}). No recommendation "
+                f"{_count(len(rejected), 'candidate cohort')} were rejected ({summary}). No recommendation "
                 "was substituted.",
                 uncertainty_addressed=(
                     "whether the candidate pool is too thin or the programme's taste is too "
@@ -668,7 +679,7 @@ def _next_checks(
         checks.append(
             _gap(
                 "unscored_members",
-                f"{len(unscored)} candidate(s) came back without a score",
+                f"{_count(len(unscored), 'candidate')} came back without a score",
                 "A candidate that was discovered but not scored cannot support or weaken the "
                 "recommendation, and its absence silently shrinks the cohort it belonged to.",
                 uncertainty_addressed="whether the ranking is missing an entity that would have changed it",
@@ -702,14 +713,15 @@ def _next_checks(
             if attribution_status.get("missing")
             else "the optional feature.explainability field was rejected by the provider"
             if unsupported
-            else f"{limited} member(s) were scored in a call that asked for more than 12 entities, "
+            else f"{_count(limited, 'member')} were scored in a call that asked for more than 12 entities, "
             "so attribution was not requested"
         )
         checks.append(
             _gap(
                 "attribution_unavailable",
                 "Per-comparable attribution is missing for this run",
-                f"{missing_attribution} ranked member(s) have no per-seed attribution: {why}. "
+                f"{_count(missing_attribution, 'ranked member')} "
+                f"{'has' if missing_attribution == 1 else 'have'} no per-seed attribution: {why}. "
                 "Without it, Adjacent can say which cohort won but not which of your films carried it.",
                 uncertainty_addressed=(
                     "which programme title is actually responsible for the recommendation, and "
@@ -734,7 +746,7 @@ def _next_checks(
                 _gap(
                     "thin_winner",
                     "The recommendation rests on the minimum evidence it needs",
-                    f"The winning cohort has {qualifying} member(s) at or above the Medium band "
+                    f"The winning cohort has {_count(qualifying, 'member')} at or above the Medium band "
                     f"({BAND_MEDIUM}); the gate requires {evidence.MIN_COHORT_MEMBERS}. Losing any "
                     "one of them changes the arithmetic.",
                     uncertainty_addressed="whether the winning grouping is real or an artefact of two adjacent entities",
@@ -792,7 +804,7 @@ def _next_checks(
                 "One evidence item is holding the recommendation up",
                 f"Removing {removed.get('name') or removed.get('entity_id')} from "
                 f"{first.get('removed_from', {}).get('label', 'the winning cohort')} changes the "
-                f"winner to {first.get('winner_after') or 'a different cohort'}.",
+                f"winner to {first.get('winner_after_label') or 'a different cohort'}.",
                 uncertainty_addressed=(
                     "whether the recommendation is a property of the programme or of a single "
                     "adjacent entity"
@@ -803,7 +815,7 @@ def _next_checks(
                 ),
                 operation="rank_cohorts",
                 estimated_calls=1,
-                call_ids=[first.get("removed_from", {}).get("call_id") or ""],
+                call_ids=[cid for cid in [first.get("removed_from", {}).get("call_id")] if cid],
             )
         )
 

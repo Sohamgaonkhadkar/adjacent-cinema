@@ -64,7 +64,9 @@ const fixtureChallenge = {
     gate: {
       admitted_with_affinity_gate: ["urn:entity:artist:tag_cluster:1"],
       structurally_admitted: ["urn:entity:artist:tag_cluster:1", "urn:entity:brand:domain_group:7"],
-      suppressed_by_affinity_gate: ["urn:entity:brand:domain_group:7"],
+      suppressed_by_affinity_gate: [
+        { cohort_id: "urn:entity:brand:domain_group:7", label: "brand · Everyday Objects" },
+      ],
       admitted_without_structural_support: [],
     },
     production_order: ["urn:entity:artist:tag_cluster:1"],
@@ -98,6 +100,7 @@ const fixtureChallenge = {
           call_id: "call-1",
         },
         winner_after: "urn:entity:book:subtype:nonfiction:1",
+        winner_after_label: "book · A Field Guide",
       },
     ],
     scenarios: [
@@ -117,6 +120,7 @@ const fixtureChallenge = {
         },
         cohort_still_admitted: true,
         winner_after: "urn:entity:book:subtype:nonfiction:1",
+        winner_after_label: "book · A Field Guide",
         winner_changed: true,
         order_after: ["urn:entity:book:subtype:nonfiction:1"],
       },
@@ -256,6 +260,44 @@ test("suppressed candidate groupings are named, not silently dropped", () => {
   const suppressed = view.necessityRows.find((row) => row.id === "suppressed");
   assert.ok(suppressed);
   assert.match(suppressed.label, /held back by the affinity threshold/);
+  // The reader gets the cohort's own label, not the identifier behind it.
+  assert.match(suppressed.detail, /brand · Everyday Objects/);
+  assert.doesNotMatch(suppressed.detail, /urn:/);
+});
+
+test("no reader-facing text ever prints a raw cohort identifier", () => {
+  const view = buildChallengeView(fixtureChallenge);
+  const lines = [
+    ...view.necessityRows.map((row) => `${row.label} ${row.detail}`),
+    ...view.stabilityRows.map((row) => `${row.label} ${row.detail}`),
+    view.stabilityReason,
+    view.statement ?? "",
+    formatDecisionReceipt(fixtureChallenge),
+  ];
+  for (const line of lines) {
+    assert.doesNotMatch(line, /urn:entity:/, line);
+    assert.doesNotMatch(line, /\(s\)/, line);
+  }
+});
+
+test("an unresolvable cohort is described, never shown as a bare identifier", () => {
+  const orphaned = {
+    ...fixtureChallenge,
+    stability: {
+      ...fixtureChallenge.stability,
+      flips: [
+        {
+          ...fixtureChallenge.stability.flips[0],
+          winner_after: "urn:entity:artist:tag_cluster:99",
+          winner_after_label: null,
+        },
+      ],
+      scenarios: [],
+    },
+  };
+  const view = buildChallengeView(orphaned);
+  assert.ok(view.stabilityRows.length > 0);
+  assert.doesNotMatch(view.stabilityRows[0].detail, /urn:entity:/);
 });
 
 test("skipped items are surfaced with their reason", () => {
