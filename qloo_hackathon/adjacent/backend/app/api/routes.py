@@ -298,7 +298,10 @@ async def _execute_run(record: RunRecord) -> None:
         state.ledger = ProvenanceLedger(recorder=client.recorder, data_status="measured")
 
         pipeline = LivePipeline(client, resolver, record.programme)
-        orchestrator = AgentOrchestrator(pipeline)
+        # Cinema accepts title/year input and uses the same verified Qloo
+        # search resolver as Creator. Ambiguous matches remain unresolved by
+        # EntityResolver; enabling search here does not guess or auto-select.
+        orchestrator = AgentOrchestrator(pipeline, allow_title_search=True)
 
         # Run the core pipeline
         state = await orchestrator.run(state)
