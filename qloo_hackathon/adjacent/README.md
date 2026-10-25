@@ -276,6 +276,8 @@ record).
 - [Qloo setup](docs/QLOO_SETUP.md)
 - [Frontend/API contract](docs/FRONTEND_CONTRACT.md)
 - [Deployment topology proposal](docs/adr/006-deployment-topology.md)
+- [Decision Challenge design](docs/adr/007-decision-challenge.md) — necessity,
+  stability and next checks recomputed from the run's own cached evidence
 - [Live-Qloo checklist](docs/NEXT_LIVE_CHECKLIST.md)
 - [Historical live-Qloo report](docs/LIVE_QLOO_VALIDATION.md) — historical only;
   not current connectivity proof
