@@ -355,7 +355,7 @@ test("Cinema live runs require at least one explicit IMDb ID before making a req
   // The public backend intentionally does not guess title matches. Keep that
   // constraint visible and validate before starting a run, rather than letting
   // the analysis fail after the UI has shown progress.
-  assert.match(cinemaPage, /aria-label=\{`IMDb ID \$\{index \+ 1\}\}/);
+  assert.ok(cinemaPage.includes("aria-label={`IMDb ID ${index + 1}`}"));
   assert.match(cinemaPage, /imdb_id: imdbId \|\| undefined/);
   assert.match(cinemaPage, /if \(!items\.some\(\(item\) => item\.imdb_id\)\)/);
   assert.match(cinemaPage, /Live analysis needs an IMDb ID for at least one film/);
