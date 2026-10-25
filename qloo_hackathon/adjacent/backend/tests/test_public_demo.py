@@ -318,6 +318,63 @@ class TestPublicDemoBoundary:
 
 
 class TestPublicDemoLimiter:
+    def test_client_key_uses_render_forwarded_ip_and_validates_it(self) -> None:
+        assert public_demo._normalise_client_key(
+            "10.0.0.7", "198.51.100.9, 10.0.0.1"
+        ) == "198.51.100.9"
+        assert public_demo._normalise_client_key(
+            "10.0.0.7", "2001:db8::1, 10.0.0.1"
+        ) == "2001:db8::1"
+        assert public_demo._normalise_client_key(
+            "10.0.0.7", "not-an-ip, 10.0.0.1"
+        ) == "10.0.0.7"
+        assert public_demo._normalise_client_key(None, None) == "unknown"
+
+    def test_live_run_quota_is_per_forwarded_client_ip(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("ADJACENT_PUBLIC_DEMO", "1")
+        monkeypatch.setenv("ADJACENT_PUBLIC_LIVE", "1")
+        monkeypatch.setenv("QLOO_API_KEY", "SYNTHETIC-KEY-CANARY")
+        limiter = PublicDemoLimiter(
+            client_limit=1,
+            global_limit=3,
+            max_active=1,
+            window_seconds=60,
+        )
+        monkeypatch.setattr(public_demo, "_PUBLIC_LIVE_LIMITER", limiter)
+
+        async def fake_execute_run(record) -> None:
+            record.status = RunStatus.FAILED
+            record.error = "synthetic test failure"
+            record.stop_message = record.error
+
+        monkeypatch.setattr(run_routes, "_execute_run", fake_execute_run)
+        client = TestClient(app)
+        body = {
+            "city": "London",
+            "venue_name": "Test Cinema",
+            "programme": [{"title": "Perfect Days", "year": 2023}],
+        }
+
+        first = client.post(
+            "/run", json=body, headers={"x-forwarded-for": "198.51.100.10"}
+        )
+        assert first.status_code == 200
+        _wait(client, first.json()["run_id"])
+
+        same_ip = client.post(
+            "/run", json=body, headers={"x-forwarded-for": "198.51.100.10"}
+        )
+        assert same_ip.status_code == 429
+        assert same_ip.headers["retry-after"] == "60"
+
+        another_ip = client.post(
+            "/run", json=body, headers={"x-forwarded-for": "198.51.100.11"}
+        )
+        assert another_ip.status_code == 200
+        _wait(client, another_ip.json()["run_id"])
+
     def test_public_fixture_run_endpoint_uses_its_own_process_local_quota(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
