@@ -12,6 +12,7 @@ also enforce edge-level quotas. The API key is never sent to the browser.
 
 from __future__ import annotations
 
+import ipaddress
 import math
 import os
 import threading
@@ -278,12 +279,45 @@ _PUBLIC_REQUEST_LIMITER = PublicDemoLimiter(
 )
 
 
+def _normalise_client_key(peer_host: str | None, forwarded_for: str | None) -> str:
+    """Return the client IP supplied by Render's edge, falling back to the peer.
+
+    On Render, the socket peer is a shared load balancer. Render places the
+    public client address first in X-Forwarded-For; using request.client.host
+    would make unrelated visitors consume the same per-client quota. Only the
+    first address is considered, and it must parse as an IP literal.
+    """
+    if forwarded_for:
+        candidate = forwarded_for.split(",", 1)[0].strip()
+        try:
+            return ipaddress.ip_address(candidate).compressed
+        except ValueError:
+            pass
+    return peer_host or "unknown"
+
+
+def _request_client_key(request: Request) -> str:
+    peer_host = request.client.host if request.client else None
+    return _normalise_client_key(peer_host, request.headers.get("x-forwarded-for"))
+
+
+def _scope_client_key(scope: Scope) -> str:
+    peer = scope.get("client")
+    peer_host = str(peer[0]) if peer else None
+    forwarded_for = None
+    for name, value in scope.get("headers", []):
+        if name.lower() == b"x-forwarded-for":
+            forwarded_for = value.decode("latin-1")
+            break
+    return _normalise_client_key(peer_host, forwarded_for)
+
+
 def acquire_public_demo_run(request: Request, *, live: bool) -> _Permit | None:
     """Acquire a public-mode run slot and fail with a bounded retry hint."""
     if not public_demo_enabled():
         return None
     limiter = _PUBLIC_LIVE_LIMITER if live else _PUBLIC_FIXTURE_LIMITER
-    client_key = request.client.host if request.client else "unknown"
+    client_key = _request_client_key(request)
     permit, retry_after = limiter.acquire(client_key)
     if permit is None:
         raise HTTPException(
@@ -338,8 +372,7 @@ class PublicDemoGuard:
             await self.app(scope, receive, send)
             return
 
-        peer = scope.get("client")
-        client_key = str(peer[0]) if peer else "unknown"
+        client_key = _scope_client_key(scope)
         permit, retry_after = _PUBLIC_REQUEST_LIMITER.acquire(client_key)
         if permit is None:
             await JSONResponse(
