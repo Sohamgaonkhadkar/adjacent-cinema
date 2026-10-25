@@ -239,12 +239,6 @@ export default function CinemaPage() {
       setFormError("Enter at least one film title.");
       return null;
     }
-    if (!items.some((item) => item.imdb_id)) {
-      setFormError(
-        "Live analysis needs an IMDb ID for at least one film. This backend does not guess title matches. Add an IMDb ID or run the labelled fixture.",
-      );
-      return null;
-    }
     if (items.length > 12) {
       setFormError("The engine accepts at most twelve titles per programme.");
       return null;
@@ -524,9 +518,9 @@ export default function CinemaPage() {
         <div className="md:col-span-7">
           <p className="field-label">Programme</p>
           <p className="mb-4 text-xs text-dim">
-            Titles and years. Live analysis also needs an IMDb ID for at least one film because
-            title-only identity matches are never guessed. Notes stay with your own record; photography
-            here is atmospheric — not official artwork for these films.
+            Titles and years. IMDb IDs help resolve films precisely, but are optional: Qloo
+            title/year search is verified by the backend, and ambiguous matches are reported rather than
+            guessed. Notes stay with your own record; photography here is atmospheric — not official artwork.
           </p>
           <ul className="space-y-3">
             {programme.map((row, index) => (
