@@ -12,6 +12,7 @@ also enforce edge-level quotas. The API key is never sent to the browser.
 
 from __future__ import annotations
 
+import hmac
 import ipaddress
 import math
 import os
@@ -279,18 +280,39 @@ _PUBLIC_REQUEST_LIMITER = PublicDemoLimiter(
 )
 
 
-def _normalise_client_key(peer_host: str | None, forwarded_for: str | None) -> str:
-    """Return the client IP supplied by Render's edge, falling back to the peer.
+def _normalise_client_key(
+    peer_host: str | None,
+    *,
+    proxy_client_ip: str | None = None,
+    proxy_token: str | None = None,
+    expected_proxy_secret: str | None = None,
+    cloudflare_client_ip: str | None = None,
+) -> str:
+    """Resolve a client IP only from authenticated proxy metadata or Cloudflare.
 
-    On Render, the socket peer is a shared load balancer. Render places the
-    public client address first in X-Forwarded-For; using request.client.host
-    would make unrelated visitors consume the same per-client quota. Only the
-    first address is considered, and it must parse as an IP literal.
+    X-Forwarded-For is intentionally not accepted here: public Render ingress
+    appends to that header, so a caller can control its leftmost value. The
+    Vercel proxy may provide x-adjacent-client-ip only with a matching
+    server-side shared secret. Direct public requests fall back to
+    CF-Connecting-IP, which Render's Cloudflare ingress overwrites; malformed
+    metadata falls back to the socket peer rather than trusting caller input.
     """
-    if forwarded_for:
-        candidate = forwarded_for.split(",", 1)[0].strip()
+
+    if (
+        expected_proxy_secret
+        and proxy_token
+        and proxy_client_ip
+        and hmac.compare_digest(proxy_token, expected_proxy_secret)
+    ):
         try:
-            return ipaddress.ip_address(candidate).compressed
+            return ipaddress.ip_address(proxy_client_ip.strip()).compressed
+        except ValueError:
+            # A valid token is not sufficient if the claimed IP is malformed.
+            pass
+
+    if cloudflare_client_ip:
+        try:
+            return ipaddress.ip_address(cloudflare_client_ip.strip()).compressed
         except ValueError:
             pass
     return peer_host or "unknown"
@@ -298,18 +320,41 @@ def _normalise_client_key(peer_host: str | None, forwarded_for: str | None) -> s
 
 def _request_client_key(request: Request) -> str:
     peer_host = request.client.host if request.client else None
-    return _normalise_client_key(peer_host, request.headers.get("x-forwarded-for"))
+    return _normalise_client_key(
+        peer_host,
+        proxy_client_ip=request.headers.get("x-adjacent-client-ip"),
+        proxy_token=request.headers.get("x-adjacent-proxy-token"),
+        expected_proxy_secret=os.getenv("ADJACENT_PROXY_SHARED_SECRET"),
+        cloudflare_client_ip=request.headers.get("cf-connecting-ip"),
+    )
 
 
 def _scope_client_key(scope: Scope) -> str:
     peer = scope.get("client")
     peer_host = str(peer[0]) if peer else None
-    forwarded_for = None
+    header_names = {
+        b"x-adjacent-client-ip",
+        b"x-adjacent-proxy-token",
+        b"cf-connecting-ip",
+    }
+    values: dict[bytes, list[str]] = {name: [] for name in header_names}
     for name, value in scope.get("headers", []):
-        if name.lower() == b"x-forwarded-for":
-            forwarded_for = value.decode("latin-1")
-            break
-    return _normalise_client_key(peer_host, forwarded_for)
+        lower_name = name.lower()
+        if lower_name in values:
+            values[lower_name].append(value.decode("latin-1"))
+
+    # Duplicate trusted-metadata headers are ambiguous; ignore them.
+    def single(name: bytes) -> str | None:
+        items = values[name]
+        return items[0] if len(items) == 1 else None
+
+    return _normalise_client_key(
+        peer_host,
+        proxy_client_ip=single(b"x-adjacent-client-ip"),
+        proxy_token=single(b"x-adjacent-proxy-token"),
+        expected_proxy_secret=os.getenv("ADJACENT_PROXY_SHARED_SECRET"),
+        cloudflare_client_ip=single(b"cf-connecting-ip"),
+    )
 
 
 def acquire_public_demo_run(request: Request, *, live: bool) -> _Permit | None:
