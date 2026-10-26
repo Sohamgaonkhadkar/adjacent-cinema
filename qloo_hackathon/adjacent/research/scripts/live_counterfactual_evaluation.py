@@ -146,11 +146,28 @@ def summarize_run(scenario: dict[str, Any]) -> dict[str, Any]:
     withheld_winner_id = withheld.get("counterfactual_winner")
     popularity_winner_id = popularity.get("counterfactual_winner")
 
+    # Keep affinity-gate effects separate from the order-only counterfactual.
+    # The retrieved pool is fixed; this does not simulate fresh Qloo retrieval.
+    gate = necessity.get("gate") or {}
+    gate_suppressed = gate.get("suppressed_by_affinity_gate") or []
+    structurally_admitted = gate.get("structurally_admitted") or []
+    admitted_without_structure = gate.get("admitted_without_structural_support") or []
+    winner_id = production_winner.get("cohort_id")
+    winner_cohort = next(
+        (cohort for cohort in state.ranked if cohort.cohort_id == winner_id), None
+    )
+    winner_score = winner_cohort.score if winner_cohort is not None else None
+    contexts = list(getattr(state.ranking, "contexts", []) or [])
+    contexts_by_id = {context.context_id: context for context in contexts}
+    winner_context = (
+        contexts_by_id.get(winner_score.context_id) if winner_score is not None else None
+    )
+
     return {
         **row,
         "status": "evaluable",
         "error_type": None,
-        "production_winner_id": production_winner.get("cohort_id"),
+        "production_winner_id": winner_id,
         "production_winner": production_winner.get("label"),
         "affinity_withheld_winner_id": withheld_winner_id,
         "affinity_withheld_winner": _label_for(withheld_order, withheld_winner_id),
@@ -161,6 +178,29 @@ def summarize_run(scenario: dict[str, Any]) -> dict[str, Any]:
         "popularity_only_winner_changed": popularity.get("winner_changed"),
         "affinity_decided_pairs": len(necessity.get("affinity_decided_pairs") or []),
         "adjacent_pairs_examined": necessity.get("adjacent_pairs_examined", 0),
+        "affinity_gate_suppressed_count": len(gate_suppressed),
+        "affinity_gate_suppressed_labels": [
+            item.get("label") for item in gate_suppressed if item.get("label")
+        ],
+        "structurally_admitted_count": len(structurally_admitted),
+        "admitted_without_structural_support_count": len(admitted_without_structure),
+        "winner_context_domain": winner_cohort.domain if winner_cohort is not None else None,
+        "winner_mean_affinity": winner_score.mean_affinity if winner_score is not None else None,
+        "winner_qualifying_members": winner_score.qualifying_members if winner_score is not None else None,
+        "winner_scored_members": winner_score.total_members if winner_score is not None else None,
+        "winner_median_popularity": winner_score.median_popularity if winner_score is not None else None,
+        "winner_explainability_status": (
+            winner_context.explainability_status if winner_context is not None else None
+        ),
+        "scoring_contexts": [
+            {
+                "domain": context.domain,
+                "requested": len(context.requested_ids),
+                "returned": len(context.scored),
+                "explainability_status": context.explainability_status,
+            }
+            for context in contexts
+        ],
         "stability_verdict": (challenge.get("stability") or {}).get("verdict", "undetermined"),
         "stability_evidence_items_tested": (challenge.get("stability") or {}).get("evaluated", 0),
         "counterfactual_extra_qloo_calls": necessity.get("qloo_calls_made", 0),
@@ -188,6 +228,15 @@ def build_report(runs: list[dict[str, Any]]) -> dict[str, Any]:
             "popularity_only_changed_winner": sum(
                 run.get("popularity_only_winner_changed") is True for run in evaluable
             ),
+            "programmes_with_affinity_gate_suppression": sum(
+                (run.get("affinity_gate_suppressed_count") or 0) > 0 for run in evaluable
+            ),
+            "cohorts_suppressed_by_affinity_gate": sum(
+                run.get("affinity_gate_suppressed_count", 0) for run in evaluable
+            ),
+            "programmes_with_affinity_decided_pairs": sum(
+                (run.get("affinity_decided_pairs") or 0) > 0 for run in evaluable
+            ),
         },
         "limitations": LIMITATIONS,
         "runs": runs,
@@ -206,6 +255,9 @@ def markdown_report(report: dict[str, Any]) -> str:
         f"- Failed / not evaluable: **{summary['programmes_failed_or_not_evaluable']}**",
         f"- Affinity-withheld runs that changed the winner: **{summary['affinity_withheld_changed_winner']} / {summary['programmes_evaluable']}**",
         f"- Popularity-only runs that changed the winner: **{summary['popularity_only_changed_winner']} / {summary['programmes_evaluable']}**",
+        f"- Programmes with at least one cohort suppressed by the affinity gate: **{summary.get('programmes_with_affinity_gate_suppression', 0)} / {summary['programmes_evaluable']}**",
+        f"- Cohorts suppressed by the affinity gate across all programmes: **{summary.get('cohorts_suppressed_by_affinity_gate', 0)}**",
+        f"- Programmes where affinity decided at least one adjacent ranking pair: **{summary.get('programmes_with_affinity_decided_pairs', 0)} / {summary['programmes_evaluable']}**",
         "",
         "## Per-programme results",
         "",
@@ -239,7 +291,64 @@ def markdown_report(report: dict[str, Any]) -> str:
             )
             + " |"
         )
-    lines.extend(["", "## Application trace IDs (scoped to each run)", ""])
+    lines.extend([
+        "",
+        "## Affinity-gate and winner-signal audit",
+        "",
+        "The gate audit is separate from the order-only counterfactual: it records structurally large groupings that did not clear the production evidence gate. It holds the returned candidate pool fixed and does not simulate fresh Qloo retrieval. Winner affinity is shown only alongside its own entity-type context; raw affinity values are not comparable across domains or runs.",
+        "",
+        "| Programme | Gate-suppressed groupings | Winning context | Winner mean affinity (context-local) | Qualifying / scored members | Winner explainability status |",
+        "|---|---:|---|---:|---:|---|",
+    ])
+    for run in report["runs"]:
+        def audit_cell(value: Any) -> str:
+            return str(value if value is not None else "—").replace("|", "\\|").replace("\\n", " ")
+        labels = run.get("affinity_gate_suppressed_labels") or []
+        lines.append(
+            "| "
+            + " | ".join(
+                audit_cell(value)
+                for value in (
+                    run.get("programme_id"),
+                    f"{run.get('affinity_gate_suppressed_count', 0)}"
+                    + (f": {', '.join(labels)}" if labels else ""),
+                    run.get("winner_context_domain"),
+                    run.get("winner_mean_affinity"),
+                    (
+                        f"{run.get('winner_qualifying_members')}/{run.get('winner_scored_members')}"
+                        if run.get("winner_qualifying_members") is not None else None
+                    ),
+                    run.get("winner_explainability_status"),
+                )
+            )
+            + " |"
+        )
+    lines.extend([
+        "",
+        "### Scoring-context coverage",
+        "",
+        "Per-context counts show which Qloo scoring contexts ran and whether optional provider explainability was returned/requested/omitted. Status strings come from the application trace; they are not a quality rating.",
+        "",
+    ])
+    for run in report["runs"]:
+        lines.extend([f"**{run['programme_id']}**", ""])
+        contexts = run.get("scoring_contexts") or []
+        if not contexts:
+            lines.extend(["No scoring-context record was available.", ""])
+            continue
+        lines.extend(["| Context | Requested candidates | Returned candidates | Explainability status |", "|---|---:|---:|---|"])
+        for context in contexts:
+            lines.append(
+                "| "
+                + " | ".join(
+                    audit_cell(context.get(key))
+                    for key in ("domain", "requested", "returned", "explainability_status")
+                )
+                + " |"
+            )
+        lines.append("")
+
+    lines.extend(["## Application trace IDs (scoped to each run)", ""])
     for run in report["runs"]:
         lines.extend(
             [
@@ -282,6 +391,9 @@ def self_test() -> None:
             "programmes_failed_or_not_evaluable": 0,
             "affinity_withheld_changed_winner": 0,
             "popularity_only_changed_winner": 1,
+            "programmes_with_affinity_gate_suppression": 1,
+            "cohorts_suppressed_by_affinity_gate": 1,
+            "programmes_with_affinity_decided_pairs": 1,
         },
         "limitations": LIMITATIONS,
         "runs": [
@@ -300,6 +412,19 @@ def self_test() -> None:
                 "popularity_only_winner_changed": True,
                 "affinity_decided_pairs": 1,
                 "adjacent_pairs_examined": 3,
+                "affinity_gate_suppressed_count": 1,
+                "affinity_gate_suppressed_labels": ["book · Example"],
+                "structurally_admitted_count": 2,
+                "admitted_without_structural_support_count": 0,
+                "winner_context_domain": "urn:entity:artist",
+                "winner_mean_affinity": 0.77,
+                "winner_qualifying_members": 2,
+                "winner_scored_members": 3,
+                "winner_median_popularity": 0.24,
+                "winner_explainability_status": "returned",
+                "scoring_contexts": [
+                    {"domain": "urn:entity:artist", "requested": 5, "returned": 3, "explainability_status": "returned"}
+                ],
                 "stability_verdict": "fragile",
             }
         ],
@@ -308,6 +433,10 @@ def self_test() -> None:
     assert "call-a" in rendered
     assert "False" in rendered and "True" in rendered
     assert "No attendance, audience size" in rendered
+    assert "Affinity-gate and winner-signal audit" in rendered
+    assert "Cohorts suppressed by the affinity gate across all programmes: **1**" in rendered
+    assert "book · Example" in rendered
+    assert "Scoring-context coverage" in rendered
     print("Counterfactual report renderer self-test passed.")
 
 
