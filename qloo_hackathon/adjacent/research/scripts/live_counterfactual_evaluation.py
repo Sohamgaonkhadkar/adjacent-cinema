@@ -3,7 +3,7 @@
 
 This reuses the product's live runner and Decision Challenge. It does not
 implement a second ranking function, call an LLM, or infer downstream outcomes.
-All emitted measurements are tied to Qloo trace call IDs.
+All emitted measurements are tied to application trace rows.
 """
 
 from __future__ import annotations
@@ -100,8 +100,8 @@ def summarize_run(scenario: dict[str, Any]) -> dict[str, Any]:
             "status": "failed",
             "data_status": "unavailable",
             "error_type": type(exc).__name__,
-            "qloo_call_ids": [],
-            "qloo_call_count": 0,
+            "app_trace_ids": [],
+            "application_trace_count": 0,
         }
 
     trace_rows = state.trace_rows
@@ -116,8 +116,8 @@ def summarize_run(scenario: dict[str, Any]) -> dict[str, Any]:
         "stop_reason": state.stop_reason,
         "resolved_films": len(state.resolved_items),
         "unresolved_films": [item.title for item in state.unresolved_items],
-        "qloo_call_ids": call_ids,
-        "qloo_call_count": len(call_ids),
+        "app_trace_ids": call_ids,
+        "application_trace_count": len(call_ids),
         "ranked_cohort_count": len(state.ranked),
         "rejected_cohort_count": len(state.rejected),
     }
@@ -209,7 +209,7 @@ def markdown_report(report: dict[str, Any]) -> str:
         "",
         "## Per-programme results",
         "",
-        "| Programme | Status | Resolved | Qloo calls | Production winner | Winner without affinity | Changed? | Popularity-only winner | Changed? | Affinity-decided pairs | Stability |",
+        "| Programme | Status | Resolved | App trace rows | Production winner | Winner without affinity | Changed? | Popularity-only winner | Changed? | Affinity-decided pairs | Stability |",
         "|---|---|---:|---:|---|---|---|---|---|---:|---|",
     ]
     for run in report["runs"]:
@@ -223,7 +223,7 @@ def markdown_report(report: dict[str, Any]) -> str:
                     run["programme_id"],
                     run["status"],
                     f"{run.get('resolved_films', 0)}/{len(run['programme'])}",
-                    run.get("qloo_call_count", 0),
+                    run.get("application_trace_count", 0),
                     run.get("production_winner"),
                     run.get("affinity_withheld_winner"),
                     run.get("affinity_withheld_winner_changed"),
@@ -239,7 +239,7 @@ def markdown_report(report: dict[str, Any]) -> str:
             )
             + " |"
         )
-    lines.extend(["", "## Provider trace IDs", ""])
+    lines.extend(["", "## Application trace IDs (scoped to each run)", ""])
     for run in report["runs"]:
         lines.extend(
             [
@@ -247,8 +247,8 @@ def markdown_report(report: dict[str, Any]) -> str:
                 "",
                 f"Status: **{run['status']}**; data status: **{run.get('data_status', 'unavailable')}**.",
                 "",
-                "Qloo call IDs: "
-                + (", ".join(run.get("qloo_call_ids", [])) or "none recorded"),
+                "Run-scoped application trace IDs: "
+                + (", ".join(run.get("app_trace_ids", [])) or "none recorded"),
                 "",
             ]
         )
@@ -291,8 +291,8 @@ def self_test() -> None:
                 "data_status": "measured",
                 "programme": [{"title": "Example", "year": 2020, "imdb_id": "tt0000000"}],
                 "resolved_films": 1,
-                "qloo_call_count": 2,
-                "qloo_call_ids": ["call-a", "call-b"],
+                "application_trace_count": 2,
+                "app_trace_ids": ["call-a", "call-b"],
                 "production_winner": "Winner A",
                 "affinity_withheld_winner": "Winner A",
                 "affinity_withheld_winner_changed": False,
