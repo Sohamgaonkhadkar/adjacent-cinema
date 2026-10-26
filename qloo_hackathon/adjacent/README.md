@@ -84,7 +84,9 @@ destination is `http://127.0.0.1:8000`. For a hosted frontend, set
 
 A reproducible live-Qloo evaluation ran three independent film programmes and applied the existing Decision Challenge to each completed measured run. See the [evaluation report](docs/verification/live_counterfactual_evaluation.md) and machine-readable [JSON results](docs/verification/live_counterfactual_evaluation.json).
 
-The result is deliberately reported without spin: the affinity-withheld counterfactual changed the winner in **0/3** runs; the popularity-only baseline changed it in **3/3**. No adjacent ranking pair was first separated by an affinity-derived ordering key in these samples. This is a useful signal for follow-up analysis, not proof that affinity is necessary or that the recommendation predicts attendance or revenue. The third programme retained one unresolved film rather than substituting fixture data.
+The latest live run is published in both the [evaluation report](docs/verification/live_counterfactual_evaluation.md) and [JSON results](docs/verification/live_counterfactual_evaluation.json). The affinity-withheld counterfactual changed the winner in **0/3** runs; the popularity-only baseline selected a different winner in **3/3**. The affinity gate suppressed **0** structurally sized cohorts, and no adjacent pair was first separated by an affinity-derived key. These samples show a difference from the limited popularity-only baseline, not proof that affinity alone determines recommendations or predicts attendance/revenue.
+
+A practical limitation is now explicit: per-seed explainability was `not_requested_limit` in **11/11** scoring contexts because each passed 50 candidate IDs, above the 12-candidate bound. The evaluation therefore does not establish which specific seed influenced the winning cohort. The third programme retained `Taipei Story` as unresolved rather than substituting fixture data.
 
 Re-run with an authorised live `QLOO_API_KEY` using:
 

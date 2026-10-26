@@ -1,6 +1,6 @@
 {
   "schema": "adjacent.live-counterfactual-evaluation/1",
-  "generated_at_utc": "2026-10-26T19:08:21.988024+00:00",
+  "generated_at_utc": "2026-10-26T20:14:32.044257+00:00",
   "evaluation_kind": "live_qloo",
   "method": "Run the existing live pipeline for each listed programme, then apply the existing Decision Challenge to the same cached run. No second ranker or additional counterfactual Qloo calls.",
   "summary": {
@@ -8,7 +8,10 @@
     "programmes_evaluable": 3,
     "programmes_failed_or_not_evaluable": 0,
     "affinity_withheld_changed_winner": 0,
-    "popularity_only_changed_winner": 3
+    "popularity_only_changed_winner": 3,
+    "programmes_with_affinity_gate_suppression": 0,
+    "cohorts_suppressed_by_affinity_gate": 0,
+    "programmes_with_affinity_decided_pairs": 0
   },
   "limitations": [
     "The counterfactual holds the retrieved and admitted candidate pool fixed; it tests ranking sensitivity, not what a fresh Qloo query would retrieve.",
@@ -97,6 +100,48 @@
         "urn:entity:artist:tag_cluster:1",
         "urn:entity:brand:tag_cluster:1",
         "urn:entity:movie:tag_cluster:1"
+      ],
+      "affinity_gate_suppressed_count": 0,
+      "affinity_gate_suppressed_labels": [],
+      "structurally_admitted_count": 6,
+      "admitted_without_structural_support_count": 0,
+      "winner_context_domain": "urn:entity:book",
+      "winner_mean_affinity": 0.850929,
+      "winner_qualifying_members": 12,
+      "winner_scored_members": 12,
+      "winner_median_popularity": 0.719881,
+      "winner_explainability_status": "not_requested_limit",
+      "scoring_contexts": [
+        {
+          "domain": "urn:entity:artist",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:book",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:brand",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:movie",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:podcast",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        }
       ]
     },
     {
@@ -169,6 +214,36 @@
         "urn:entity:artist:tag_cluster:1",
         "urn:entity:brand:tag_cluster:1",
         "urn:entity:movie:tag_cluster:1"
+      ],
+      "affinity_gate_suppressed_count": 0,
+      "affinity_gate_suppressed_labels": [],
+      "structurally_admitted_count": 3,
+      "admitted_without_structural_support_count": 0,
+      "winner_context_domain": "urn:entity:artist",
+      "winner_mean_affinity": 0.86601,
+      "winner_qualifying_members": 49,
+      "winner_scored_members": 49,
+      "winner_median_popularity": 0.770285,
+      "winner_explainability_status": "not_requested_limit",
+      "scoring_contexts": [
+        {
+          "domain": "urn:entity:artist",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:brand",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:movie",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        }
       ]
     },
     {
@@ -243,6 +318,36 @@
         "urn:entity:artist:tag_cluster:1",
         "urn:entity:brand:tag_cluster:1",
         "urn:entity:movie:tag_cluster:1"
+      ],
+      "affinity_gate_suppressed_count": 0,
+      "affinity_gate_suppressed_labels": [],
+      "structurally_admitted_count": 3,
+      "admitted_without_structural_support_count": 0,
+      "winner_context_domain": "urn:entity:artist",
+      "winner_mean_affinity": 0.886144,
+      "winner_qualifying_members": 50,
+      "winner_scored_members": 50,
+      "winner_median_popularity": 0.800379,
+      "winner_explainability_status": "not_requested_limit",
+      "scoring_contexts": [
+        {
+          "domain": "urn:entity:artist",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:brand",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:movie",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        }
       ]
     }
   ]
