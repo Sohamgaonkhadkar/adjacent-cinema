@@ -13,6 +13,12 @@ The Docker Compose and Render Blueprint deployment paths are documented in
 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md); either requires a connected host or
 hosting account and is not a hosted deployment by itself.
 
+## Current hosted status
+
+This is the current split deployment, not just a proposed topology: [Vercel frontend](https://adjacent-cinema.vercel.app) and [Render API](https://adjacent-cinema.onrender.com). On 27 October 2026, the four frontend routes returned HTTP 200, the proxied `/api/health` endpoint returned the expected public-demo flags, and sampled live Creator/Cinema runs completed with measured Qloo traces. Recent Render logs also show successful FilmSponsor guest-session, campaign and discovery requests, although older origin-mismatch logs make a normal-browser origin/cookie check important.
+
+The public demo intentionally disables optional LLM synthesis and shared experiment APIs. `/api/creator/synthesis-status` reports synthesis unavailable; `/api/experiments` returns 403 by design. See the root [hackathon fit and verification notes](../../README.md#fit-to-the-qloo-agentic-hackathon) for a judge walkthrough and evidence limitations. These are point-in-time checks, not a security audit or uptime guarantee.
+
 ## Prerequisites and repository layout
 
 - Python **3.12 or newer** for the backend (`pyproject.toml`); Python 3.12 is
@@ -187,7 +193,9 @@ additionally require `ADJACENT_PUBLIC_LIVE=1` and a backend Qloo key. Rate limit
 process-local; a public host requires an external edge/API-gateway quota.
 
 Public FilmSponsor guest workspaces are a separate opt-in and remain **off by
-default**. Required backend settings:
+default in local configuration**. The current hosted health response reports
+`filmsponsor_guest_enabled: true`; this flag confirms enablement, not the complete
+browser Origin/cookie/CSRF/session-isolation contract. Required backend settings:
 
 ```text
 ADJACENT_PUBLIC_DEMO=1
@@ -276,9 +284,11 @@ filesystem**. Do not put the database/WAL on network storage or use independent
 replica copies. A single backend process is the conservative baseline; global
 HTTP limiter state is process-local. Before any public exposure, separately
 configure HTTPS, durable storage, restrictive database/backup permissions,
-appropriate encryption at rest, ingress-log redaction and external quotas. None
-of those OCI/host controls has been verified in this repository. No deployment
-manifest, OCI deployment or public URL is verified.
+appropriate encryption at rest, ingress-log redaction and external quotas. The OCI single-host deployment is not claimed. The split Vercel/Render public URL
+is currently deployed and was smoke-checked as described near the top of this guide.
+The hosted app is not thereby certified for production multi-tenancy: in particular,
+confirm the exact FilmSponsor Origin/cookie flow and trusted-proxy configuration
+before relying on it beyond the bounded hackathon demo.
 
 For the complete public route rules and current limits, see
 [`docs/FRONTEND_CONTRACT.md`](docs/FRONTEND_CONTRACT.md) and
