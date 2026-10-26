@@ -1,6 +1,6 @@
 # M13.17 — Judge Demo, Safe Fallback, and Owner/ChatGPT Handoff
 
-**Status:** review branch/CI evidence only; this is an operator checklist, not a deployment record. PR CI run #225 passed native Python 3.12 offline tests and 8 live-marked Qloo contract tests, including the direct explainability response shape. No hosted-production or browser acceptance was performed in this work session.
+**Status:** this file began as a pre-deployment handoff and is retained as an operator checklist. The app was subsequently deployed and smoke-checked on 26–27 October 2026; sampled Creator/Cinema runs returned measured Qloo evidence. See [current verification status](M13_18_CURRENT_VERIFICATION_STATUS.md) and [live-Qloo evaluation](verification/live_counterfactual_evaluation.md). Full browser/security acceptance remains a separate step; historical observations below are not updated observations.
 
 ## Read-only deployment compatibility notes
 
@@ -8,7 +8,7 @@
 - `frontend/next.config.ts` rewrites browser-relative `/api/*` requests server-side to `ADJACENT_API_ORIGIN`; the Qloo API key is not a frontend variable. Render's private `hostport` reference is normalized to an `http://` origin at Next config load/build time.
 - FastAPI's direct CORS allowlist is opt-in through exact `ADJACENT_CORS_ORIGINS`; absent configuration it permits localhost development origins only. The intended browser-to-API path is the same-origin Next rewrite, so production browser calls should not need wildcard CORS.
 - FilmSponsor guest-session origin checks use `ADJACENT_FILMSPONSOR_GUEST_ORIGINS`. `render.yaml` leaves it unset until the exact frontend origin is supplied. The backend should see the browser frontend `Origin` through the same-origin rewrite; the backend hostname is not the allowlist entry. Secure cookies remain enabled in the blueprint.
-- The deployment runbook and README contain hosted URLs/configuration claims, but this review did not connect to, inspect, or operate any hosted service. Blueprint presence, a static build, and an old health record do not validate production. No deployment setting was edited.
+- **Historical note:** this original review did not connect to or operate a hosted service. That status was superseded by the later read-only production checks linked above. The current live service is the split Vercel/Render deployment; no secret values were changed for those checks.
 - This remains a single-process/single-host demo topology: in-memory run/SSE state and process-local controls are not multi-replica durable. SQLite's persistent disk is distinct from volatile run state. Public live use still requires owner approval, secure Qloo credentials, and edge/API-gateway quotas.
 
 ## Short, honest demo path (3–4 minutes)
@@ -32,6 +32,8 @@
 The direct Qloo endpoint contract has passed in PR CI, but integrated live application-path and hosted-production acceptance remain reserved to ChatGPT/the authorized owner. Use the trusted current runtime; never put a key in chat, a repository file, a browser bundle, screenshots, command history, or logs.
 
 ### A. Live Qloo acceptance (backend only)
+
+**Latest result (26 October 2026):** the dedicated live counterfactual workflow completed successfully and evaluated all three default programmes against real Qloo data. See `verification/live_counterfactual_evaluation.md`. That report is diagnostic evidence, not a claim that affinity is decisive or that the recommendation predicts audience/commercial outcomes. Per-seed explainability was not requested in 11/11 scoring contexts because each context exceeded the configured 12-candidate bound.
 
 1. Confirm the deployed/checked-out code revision and runtime configuration without printing secret values. Supply `QLOO_API_KEY` only through the trusted backend secret/environment mechanism. Confirm the Qloo base URL is the authorized hackathon host. Keep `ADJACENT_PUBLIC_LIVE=0` unless the owner explicitly approves public Qloo spend and edge quotas; a key alone is not authorization for anonymous public use.
 2. Start with one small, non-confidential live Creator input. Check exact entity resolution (name/title, year and entity ID), the run's `data_status`, and the actual trace rows. A label alone is insufficient: confirm the successful trace source is Qloo, the HTTP status is successful, and each evidence call ID belongs to this run. Do not paste raw provider bodies or the secret.
