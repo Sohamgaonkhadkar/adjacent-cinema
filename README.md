@@ -609,7 +609,7 @@ Production route smoke, sampled live Creator/Cinema analysis, CI, Vercel and Ren
 | [Qloo setup](qloo_hackathon/adjacent/docs/QLOO_SETUP.md) | Credentials, hosts and live checks |
 | [Qloo attribution and test protocol](qloo_hackathon/adjacent/docs/QLOO_ATTRIBUTION_AND_TEST_PROTOCOL.md) | Bounded Qloo explainability and the experiment-design contract |
 | [Fresh hackathon competitor scorecard](qloo_hackathon/adjacent/docs/M13_16_FRESH_HACKATHON_COMPETITOR_SCORECARD.md) | Ten current public repositories scored equally against the official four criteria; not an official ranking |
-| [Judge demo and owner live handoff](qloo_hackathon/adjacent/docs/M13_17_OWNER_DEMO_AND_LIVE_HANDOFF.md) | Fixture fallback, read-only deployment notes, and reserved live Qloo/production acceptance steps |
+| [Live-Qloo and deployment checklist](qloo_hackathon/adjacent/docs/NEXT_LIVE_CHECKLIST.md) | Current measured-live status, safe validation procedure, and remaining hosted acceptance checks |
 | [Current verification status](qloo_hackathon/adjacent/docs/M13_18_CURRENT_VERIFICATION_STATUS.md) | Observed frontend/backend results and environment/live-test limits |
 | [Eligibility audit](qloo_hackathon/adjacent/docs/M13_11_HACKATHON_ELIGIBILITY_AUDIT.md) | Exact official wording and unresolved “Qloo 4after” organizer clarification; no eligibility conclusion |
 | [Live-Qloo checklist](qloo_hackathon/adjacent/docs/NEXT_LIVE_CHECKLIST.md) | Current operator checklist; historical reports are not current acceptance |
