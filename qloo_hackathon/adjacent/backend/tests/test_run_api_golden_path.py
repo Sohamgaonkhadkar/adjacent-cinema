@@ -143,8 +143,11 @@ def _run_with_fake_live_stop(
             del client, resolver, programme
 
     class FakeOrchestrator:
-        def __init__(self, pipeline: object) -> None:
+        def __init__(self, pipeline: object, *, allow_title_search: bool = False) -> None:
             del pipeline
+            # The Cinema route opts into the existing verified title-search path;
+            # it must not silently fall back to the orchestrator's strict default.
+            assert allow_title_search is True
 
         async def run(self, state: object) -> object:
             state.programme[0].resolved_entity_id = "synthetic-verified-id"

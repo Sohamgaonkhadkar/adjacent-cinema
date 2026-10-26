@@ -455,6 +455,23 @@ def test_programme_without_identifiers_stops_as_invalid_input():
     assert state.budget.qloo_calls_used == 0
     assert not state.trace_rows
 
+def test_title_search_can_be_enabled_without_weakening_default_validation():
+    programme = [
+        ProgrammeItem(title="Arrival", year=2016, imdb_id=None, declared_entity_id=None)
+    ]
+    state = _state(programme=programme)
+
+    # The default remains strict for callers that do not opt into verified title search.
+    default_orchestrator = AgentOrchestrator(StubRuntime())
+    default_problem = default_orchestrator.validate_input(state)
+    assert default_problem is not None
+    assert default_problem.code == "no_identifiers"
+
+    # Cinema and Creator explicitly opt into the resolver's typed search path.
+    search_orchestrator = AgentOrchestrator(StubRuntime(), allow_title_search=True)
+    assert search_orchestrator.validate_input(state) is None
+
+
 
 def test_invalid_input_is_distinguishable_from_thin_evidence():
     """Same fixture family, two different verdicts, two different words."""

@@ -225,6 +225,165 @@ export interface TestCardData {
   data_status: string;
 }
 
+// ─── Decision challenge ─────────────────────────────────────────────────────
+// Recomputed by the backend from the run's own cached evidence. No Qloo call is
+// made to produce it, and no field here is a forecast: stability is a stated
+// rule, not a confidence.
+
+export interface ChallengeOrderEntry {
+  cohort_id: string;
+  label: string;
+}
+
+export interface ChallengeMove {
+  cohort_id: string;
+  label: string;
+  rank_before: number;
+  rank_after: number;
+  delta: number;
+}
+
+export interface ChallengeOrderComparison {
+  production_winner: string | null;
+  counterfactual_winner: string | null;
+  winner_changed: boolean;
+  moves: ChallengeMove[];
+  ranks_moved: number;
+  changed_below_first: boolean;
+  dropped_out: string[];
+  entered: string[];
+}
+
+export interface NecessityData {
+  method: string;
+  qloo_calls_made: number;
+  pool_size?: number;
+  affinity_withheld: ChallengeOrderComparison & {
+    order: ChallengeOrderEntry[];
+    ordering_keys: string[];
+    removed_keys?: string[];
+    top_pair_tied_without_affinity?: boolean;
+    runner_up?: string | null;
+  };
+  popularity_only: ChallengeOrderComparison & {
+    order: ChallengeOrderEntry[];
+    ordering_keys: string[];
+  };
+  affinity_decided_pairs: { left: string; right: string; decided_by: string; affinity_derived: boolean }[];
+  adjacent_pairs_examined: number;
+  gate: {
+    admitted_with_affinity_gate: string[];
+    structurally_admitted: string[];
+    // Each row carries its own label: the UI must never fall back to a raw urn.
+    suppressed_by_affinity_gate: ChallengeOrderEntry[];
+    admitted_without_structural_support: string[];
+  };
+  production_order: string[];
+}
+
+export interface StabilityScenario {
+  removed: {
+    entity_id: string;
+    name: string | null;
+    affinity: number | null;
+    band: string;
+    popularity: number | null;
+    call_id: string;
+  };
+  removed_from: { cohort_id: string; label: string; call_id: string };
+  cohort_still_admitted: boolean;
+  winner_after: string | null;
+  winner_changed: boolean;
+  order_after: string[];
+}
+
+export interface StabilityData {
+  verdict: "stable" | "fragile" | "undetermined" | string;
+  reason: string;
+  rule: string;
+  evaluated: number;
+  skipped: { cohort_id: string; entity_id: string; name: string | null; reason: string }[];
+  flips: {
+    removed: StabilityScenario["removed"];
+    removed_from: StabilityScenario["removed_from"];
+    winner_after: string | null;
+    winner_after_label?: string | null;
+  }[];
+  scenarios: StabilityScenario[];
+  member_scope: string;
+}
+
+export interface NextCheck {
+  id: string;
+  title: string;
+  detail: string;
+  uncertainty_addressed: string;
+  proposed_check: {
+    action: string;
+    operation: string;
+    estimated_qloo_calls: number;
+    available_now: boolean;
+    /** null means "not applicable" — only set when available_now is false. */
+    unavailable_reason: string | null;
+  };
+  evidence_call_ids: string[];
+}
+
+export interface DecisionReceipt {
+  schema: string;
+  run_id: string;
+  data_status: string;
+  recommendation: {
+    cohort_id: string;
+    domain: string;
+    kind: string;
+    label: string;
+    member_names: string[];
+    mean_affinity: number | null;
+    novelty_proxy: number | null;
+    strength: string | null;
+    call_id: string | null;
+    construction_reason: string;
+  } | Record<string, never>;
+  basis: {
+    ordering_keys: string[];
+    affinity_decided_pairs: number;
+    adjacent_pairs_examined: number;
+  };
+  necessity: {
+    winner_without_affinity: string | null;
+    affinity_changed_winner: boolean;
+    ranks_moved_without_affinity: number;
+    popularity_only_winner: string | null;
+    popularity_would_differ: boolean;
+  };
+  stability: { verdict: string; reason: string; evaluated: number; flips: number };
+  next_checks: { id: string; title: string }[];
+  limits: string[];
+  call_ids: string[];
+}
+
+export interface DecisionChallengeData {
+  schema: string;
+  available: boolean;
+  unavailable_reason: string | null;
+  data_status: string;
+  recommendation?: { cohort_id: string | null; label: string } | null;
+  necessity: NecessityData | null;
+  necessity_statement?: string;
+  stability: StabilityData | null;
+  next_checks: NextCheck[];
+  counts?: {
+    cohorts_ranked: number;
+    cohorts_rejected: number;
+    evidence_items_tested: number;
+    qloo_calls_made: number;
+  };
+  receipt: DecisionReceipt | null;
+  limits: string[];
+  error?: string;
+}
+
 // ─── Evidence ───────────────────────────────────────────────────────────────
 
 export interface EvidenceData {
@@ -316,6 +475,8 @@ export interface AdjacentRunResult {
   mode?: "creator";
   /// M13.11 structured cultural investigation
   investigation?: InvestigationData | null;
+  /// Necessity, stability and next checks, recomputed from this run's own evidence.
+  challenge?: DecisionChallengeData | null;
   film?: {
     title: string;
     logline: string;

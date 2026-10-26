@@ -318,6 +318,99 @@ class TestPublicDemoBoundary:
 
 
 class TestPublicDemoLimiter:
+    def test_client_key_requires_authenticated_proxy_metadata(self) -> None:
+        # The backend deliberately does not accept caller-controlled XFF.
+        assert public_demo._normalise_client_key("10.0.0.7") == "10.0.0.7"
+        assert public_demo._normalise_client_key(None) == "unknown"
+
+        assert public_demo._normalise_client_key(
+            "10.0.0.7",
+            proxy_client_ip="198.51.100.9",
+            proxy_token="test-secret",
+            expected_proxy_secret="test-secret",
+        ) == "198.51.100.9"
+        assert public_demo._normalise_client_key(
+            "10.0.0.7",
+            proxy_client_ip="2001:db8::1",
+            proxy_token="test-secret",
+            expected_proxy_secret="test-secret",
+        ) == "2001:db8::1"
+
+        # Spoofed/malformed proxy metadata falls back to the edge IP, not the
+        # claimed address. Render's public edge overwrites CF-Connecting-IP.
+        assert public_demo._normalise_client_key(
+            "10.0.0.7",
+            proxy_client_ip="198.51.100.9",
+            proxy_token="wrong-secret",
+            expected_proxy_secret="test-secret",
+            cloudflare_client_ip="203.0.113.8",
+        ) == "203.0.113.8"
+        assert public_demo._normalise_client_key(
+            "10.0.0.7",
+            proxy_client_ip="not-an-ip",
+            proxy_token="test-secret",
+            expected_proxy_secret="test-secret",
+            cloudflare_client_ip="203.0.113.8",
+        ) == "203.0.113.8"
+        assert public_demo._normalise_client_key(
+            "10.0.0.7",
+            proxy_client_ip="198.51.100.9",
+            proxy_token="wrong-secret",
+            expected_proxy_secret="test-secret",
+        ) == "10.0.0.7"
+
+    def test_live_run_quota_is_per_authenticated_proxy_client_ip(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("ADJACENT_PUBLIC_DEMO", "1")
+        monkeypatch.setenv("ADJACENT_PUBLIC_LIVE", "1")
+        monkeypatch.setenv("ADJACENT_PROXY_SHARED_SECRET", "test-proxy-secret")
+        monkeypatch.setenv("QLOO_API_KEY", "SYNTHETIC-KEY-CANARY")
+        limiter = PublicDemoLimiter(
+            client_limit=1,
+            global_limit=3,
+            max_active=1,
+            window_seconds=60,
+        )
+        monkeypatch.setattr(public_demo, "_PUBLIC_LIVE_LIMITER", limiter)
+
+        async def fake_execute_run(record) -> None:
+            record.status = RunStatus.FAILED
+            record.error = "synthetic test failure"
+            record.stop_message = record.error
+
+        monkeypatch.setattr(run_routes, "_execute_run", fake_execute_run)
+        client = TestClient(app)
+        body = {
+            "city": "London",
+            "venue_name": "Test Cinema",
+            "programme": [{"title": "Perfect Days", "year": 2023}],
+        }
+
+        def proxy_headers(client_ip: str) -> dict[str, str]:
+            return {
+                "x-adjacent-client-ip": client_ip,
+                "x-adjacent-proxy-token": "test-proxy-secret",
+                # These caller-supplied values must not control the quota key.
+                "x-forwarded-for": "198.51.100.250",
+            }
+
+        first = client.post("/run", json=body, headers=proxy_headers("198.51.100.10"))
+        assert first.status_code == 200
+        _wait(client, first.json()["run_id"])
+
+        same_ip = client.post(
+            "/run", json=body, headers=proxy_headers("198.51.100.10")
+        )
+        assert same_ip.status_code == 429
+        assert same_ip.headers["retry-after"] == "60"
+
+        another_ip = client.post(
+            "/run", json=body, headers=proxy_headers("198.51.100.11")
+        )
+        assert another_ip.status_code == 200
+        _wait(client, another_ip.json()["run_id"])
+
     def test_public_fixture_run_endpoint_uses_its_own_process_local_quota(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -354,8 +447,12 @@ class TestPublicDemoLimiter:
         monkeypatch.setattr(public_demo, "_PUBLIC_REQUEST_LIMITER", limiter)
         client = TestClient(app)
 
-        first = client.get("/health")
-        second = client.get("/health")
+        first = client.get(
+            "/health", headers={"x-forwarded-for": "198.51.100.10"}
+        )
+        second = client.get(
+            "/health", headers={"x-forwarded-for": "198.51.100.11"}
+        )
 
         assert first.status_code == 200
         assert second.status_code == 429

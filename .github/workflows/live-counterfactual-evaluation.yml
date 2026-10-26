@@ -1,0 +1,52 @@
+name: Live Counterfactual Evaluation
+
+on:
+  push:
+    branches: ["arena/**"]
+    paths:
+      - ".github/workflows/live-counterfactual-evaluation.yml"
+      - "qloo_hackathon/adjacent/research/scripts/live_counterfactual_evaluation.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-counterfactual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: qloo_hackathon/adjacent
+    env:
+      # Secret is consumed by the live client and is never echoed.
+      QLOO_API_KEY: ${{ secrets.QLOO_API_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install backend runtime dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install fastapi httpx httpx2 pydantic uvicorn
+      - name: Require live Qloo credentials
+        run: |
+          if [ -z "$QLOO_API_KEY" ]; then
+            echo "::error::QLOO_API_KEY is not configured; refusing to generate a fixture-backed report."
+            exit 1
+          fi
+      - name: Test report renderer without provider calls
+        run: python research/scripts/live_counterfactual_evaluation.py --self-test
+      - name: Run live counterfactual evaluation
+        run: python research/scripts/live_counterfactual_evaluation.py --output-dir docs/verification --limit 3
+      - name: Upload JSON and Markdown report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: adjacent-live-counterfactual-evaluation
+          path: |
+            qloo_hackathon/adjacent/docs/verification/live_counterfactual_evaluation.json
+            qloo_hackathon/adjacent/docs/verification/live_counterfactual_evaluation.md
+          if-no-files-found: warn
+          retention-days: 30

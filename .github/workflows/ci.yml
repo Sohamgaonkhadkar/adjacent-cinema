@@ -65,12 +65,20 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Test run recovery
         run: npm run test:recovery
-      - name: Test responsive intake layout
+      - name: Test responsive layout
         run: npm run test:layout
       - name: Test Creator failure-stage visibility
         run: npm run test:creator-ui
       - name: Test Cultural Multiverse selection and policy
         run: npm run test:positioning
+      - name: Test entity display and fingerprint accessibility
+        run: npm run test:entity-display
+      - name: Test frontend/backend request contract and idempotency
+        run: npm run test:contract
+      - name: Test trusted client-IP proxy headers
+        run: npm run test:proxy
+      - name: Test decision-challenge view model and receipt export
+        run: npm run test:challenge
       - name: Build frontend
         run: npm run build
       - name: Render primary routes from the production build
