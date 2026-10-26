@@ -82,12 +82,16 @@ necessity delta.
   against fixture data would have produced a confident-looking check that cannot
   fail — worse than no check. Deferred until an outcome ledger has real
   observations.
-- **`/v2/analysis/compare`.** Comparing two runs is attractive, but every
-  comparison field would need a baseline the run does not currently carry
-  (same city, same programme, same evidence window). Rather than accept
-  incomparable inputs and present a difference as meaningful, the endpoint is
-  deferred; the Decision Challenge answers the sharper question ("would this
-  recommendation survive without this evidence?") from one run's own data.
+- **`/v2/analysis/compare` (product integration deferred).** The Qloo client
+  implements a typed `compare()` method for two entity groups, but the method is
+  not wired into ranking or the Decision Challenge and has not been verified
+  against the live provider for this product workflow. Do not describe the
+  client method as absent or the provider call as validated. Product integration
+  remains deferred until the application can supply a justified pair of
+  comparable groups and tests can verify the response semantics and provenance
+  without weakening evidence gates. The current Decision Challenge instead
+  answers "would this recommendation survive without this evidence?" from one
+  run's own cached data.
 
 ## Consequences
 
