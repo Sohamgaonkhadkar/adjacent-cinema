@@ -7,7 +7,7 @@
 - Qloo Insights scoring optionally requests `feature.explainability` only for at most 12 unique candidates and when budget permits one possible fallback. Only an explicitly identified 400/422 rejection of this parameter at `/v2/insights` can trigger one request without it. Other errors are not retried by this fallback. Both provider-call IDs remain in trace; the operation note records the rejected ID; core scoring remains tied to the successful call; affected attributions are `unsupported`.
 - Attribution serialization validates finite scores in [0,1], rejects booleans/malformed values/duplicate IDs, and in production limits returned attribution IDs to verified input seeds. It does not expose raw response payloads. API status distinguishes returned, missing, unsupported and not-requested states.
 - Creator and Cinema Test Cards allow review/edit of comparison protocol, primary measure, decision prompt and observation window before export. Creator stores the exact fields in the saved snapshot and top-level observation window, then reads them on reopen; legacy snapshots continue to load without inventing missing design values. Cinema edits remain explicitly observational. Observation/decision prompts do not create invented thresholds or outcomes.
-- Added a current public competitor scorecard, owner/live handoff, clarified the exact “Qloo 4after” eligibility text without interpreting it, and linked current notes from the root README.
+- Added a current public competitor scorecard and clarified the exact “Qloo 4after” eligibility text without interpreting it. Current operational checks are maintained in `NEXT_LIVE_CHECKLIST.md` and `DEPLOYMENT.md`.
 
 ## Results observed
 
