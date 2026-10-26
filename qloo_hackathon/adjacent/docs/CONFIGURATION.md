@@ -12,12 +12,14 @@ Two deployment services read these values:
 | Service | What runs there | Reads |
 |---|---|---|
 | **Backend** — Render (`adjacent-cinema-api`, FastAPI) | Qloo calls, SQLite persistence, YouTube OAuth, optional LLM synthesis, public-demo guardrails | every variable in the *Backend* tables below |
-| **Frontend** — Vercel (`adjacent-cinema-web`, Next.js) | static pages + the same-origin `/api/*` proxy | `ADJACENT_API_ORIGIN` only |
+| **Frontend** — Vercel (`adjacent-cinema-web`, Next.js) | pages + same-origin `/api/*` proxy and trusted client-IP attestation | `ADJACENT_API_ORIGIN`, optional `ADJACENT_PROXY_SHARED_SECRET` |
 
 `ADJACENT_API_ORIGIN` is read at **build time** by `frontend/next.config.ts` and
 is never exposed to browser JavaScript: the browser only ever calls relative
-`/api/...` paths. No provider credential is ever read by the frontend, and none
-is ever returned by an API response, a trace row or a log line.
+`/api/...` paths. `ADJACENT_PROXY_SHARED_SECRET`, when configured, is read only
+by the server-side Next.js proxy and backend; it must never use a `NEXT_PUBLIC_`
+prefix. No provider credential is read by browser code or returned by an API
+response, a trace row or a log line.
 
 > Secrets belong in the service's dashboard environment (Render → Environment,
 > Vercel → Project Settings → Environment Variables) or in a local `.env` that is
@@ -41,6 +43,7 @@ is ever returned by an API response, a trace row or a log line.
 | Variable | Values | Effect |
 |---|---|---|
 | `ADJACENT_PUBLIC_DEMO` | `1` / unset | `1` switches on anonymous-demo guardrails: bounded runs, transient run reads, no shared experiments, no YouTube, no synthesis, and sanitised failure text |
+| `ADJACENT_PROXY_SHARED_SECRET` | optional; identical value on the paired Vercel frontend and Render backend | When set on both sides, Next.js strips caller-supplied attestation headers and stamps a single Vercel-validated client IP with this token; the backend accepts that IP only with a constant-time token match. Render-direct requests fall back to its `CF-Connecting-IP` edge header. If unset, no custom attestation is trusted and the backend falls back to the trusted edge/socket IP; per-client quotas for Vercel-proxied users may collapse into one shared bucket |
 | `ADJACENT_PUBLIC_LIVE` | `1` / unset | Allows bounded **live** Cinema/Creator runs *in addition to* a configured `QLOO_API_KEY`. Requires `ADJACENT_PUBLIC_DEMO=1`. Off means live runs are refused with an explanatory message and the labelled fixture path is offered instead |
 | `ADJACENT_FILMSPONSOR_GUEST_DEMO` | `1` / unset | Enables the guest workspace (no account) used by `/creator/sponsor`. **Only takes effect when `ADJACENT_PUBLIC_DEMO=1`** and at least one origin is listed in `ADJACENT_FILMSPONSOR_GUEST_ORIGINS`; otherwise `/api/health` reports `filmsponsor_guest_enabled: false` and the page shows the honest blocked state |
 | `ADJACENT_FILMSPONSOR_GUEST_COOKIE_SECURE` | `1` (default) | Keep `1` on HTTPS. Set `0` **only** for plain-HTTP local development, and only for `http://localhost`/`http://127.0.0.1` origins — insecure cookies are rejected for any other origin |
@@ -132,6 +135,7 @@ once, on the branch, after the variables are in place.
 | Value | Render (backend) | Vercel (frontend) |
 |---|---|---|
 | `QLOO_API_KEY`, `QLOO_BASE_URL` | ✅ | ✗ (never) |
+| `ADJACENT_PROXY_SHARED_SECRET` | ✅ on the matching backend | ✅ on the matching Vercel environment (Preview branch-scoped where appropriate) |
 | `ADJACENT_EXPERIMENTS_DB`, `ADJACENT_YT_TOKEN_DB` | ✅ (on the `/data` disk) | ✗ |
 | `ADJACENT_FILMSPONSOR_GUEST_ORIGINS` | ✅ (exact Vercel origin) | ✗ |
 | `ADJACENT_PUBLIC_DEMO`, `ADJACENT_PUBLIC_LIVE`, `ADJACENT_FILMSPONSOR_GUEST_DEMO`, `ADJACENT_FILMSPONSOR_GUEST_COOKIE_SECURE` | ✅ | ✗ |
