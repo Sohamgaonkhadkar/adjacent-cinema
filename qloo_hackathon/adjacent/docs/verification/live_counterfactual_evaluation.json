@@ -76,17 +76,28 @@
       "rejected_cohort_count": 0,
       "status": "evaluable",
       "error_type": null,
+      "production_winner_id": "urn:entity:book:subtype:urn:entity:book:1",
       "production_winner": "book · Dear America: Notes of an Undocumented Citizen",
+      "affinity_withheld_winner_id": "urn:entity:book:subtype:urn:entity:book:1",
       "affinity_withheld_winner": "book · Dear America: Notes of an Undocumented Citizen",
       "affinity_withheld_winner_changed": false,
       "affinity_withheld_rank_positions_moved": 0,
+      "popularity_only_winner_id": "urn:entity:movie:tag_cluster:1",
       "popularity_only_winner": "movie · The Great Beauty",
       "popularity_only_winner_changed": true,
       "affinity_decided_pairs": 0,
       "adjacent_pairs_examined": 5,
       "stability_verdict": "stable",
       "stability_evidence_items_tested": 250,
-      "counterfactual_extra_qloo_calls": 0
+      "counterfactual_extra_qloo_calls": 0,
+      "production_order": [
+        "urn:entity:book:subtype:urn:entity:book:1",
+        "urn:entity:book:tag_cluster:1",
+        "urn:entity:podcast:tag_cluster:1",
+        "urn:entity:artist:tag_cluster:1",
+        "urn:entity:brand:tag_cluster:1",
+        "urn:entity:movie:tag_cluster:1"
+      ]
     },
     {
       "programme_id": "psychological-tension",
@@ -140,17 +151,25 @@
       "rejected_cohort_count": 1,
       "status": "evaluable",
       "error_type": null,
+      "production_winner_id": "urn:entity:artist:tag_cluster:1",
       "production_winner": "artist · Kirin J Callinan",
+      "affinity_withheld_winner_id": "urn:entity:artist:tag_cluster:1",
       "affinity_withheld_winner": "artist · Kirin J Callinan",
       "affinity_withheld_winner_changed": false,
       "affinity_withheld_rank_positions_moved": 0,
+      "popularity_only_winner_id": "urn:entity:movie:tag_cluster:1",
       "popularity_only_winner": "movie · Lover",
       "popularity_only_winner_changed": true,
       "affinity_decided_pairs": 0,
       "adjacent_pairs_examined": 2,
       "stability_verdict": "stable",
       "stability_evidence_items_tested": 149,
-      "counterfactual_extra_qloo_calls": 0
+      "counterfactual_extra_qloo_calls": 0,
+      "production_order": [
+        "urn:entity:artist:tag_cluster:1",
+        "urn:entity:brand:tag_cluster:1",
+        "urn:entity:movie:tag_cluster:1"
+      ]
     },
     {
       "programme_id": "auteur-cross-cultural",
@@ -206,17 +225,25 @@
       "rejected_cohort_count": 0,
       "status": "evaluable",
       "error_type": null,
+      "production_winner_id": "urn:entity:artist:tag_cluster:1",
       "production_winner": "artist · Alan Sparhawk",
+      "affinity_withheld_winner_id": "urn:entity:artist:tag_cluster:1",
       "affinity_withheld_winner": "artist · Alan Sparhawk",
       "affinity_withheld_winner_changed": false,
       "affinity_withheld_rank_positions_moved": 0,
+      "popularity_only_winner_id": "urn:entity:movie:tag_cluster:1",
       "popularity_only_winner": "movie · This Is Not a Burial, It's a Resurrection",
       "popularity_only_winner_changed": true,
       "affinity_decided_pairs": 0,
       "adjacent_pairs_examined": 2,
       "stability_verdict": "stable",
       "stability_evidence_items_tested": 150,
-      "counterfactual_extra_qloo_calls": 0
+      "counterfactual_extra_qloo_calls": 0,
+      "production_order": [
+        "urn:entity:artist:tag_cluster:1",
+        "urn:entity:brand:tag_cluster:1",
+        "urn:entity:movie:tag_cluster:1"
+      ]
     }
   ]
 }
