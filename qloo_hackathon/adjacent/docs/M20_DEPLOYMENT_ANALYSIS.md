@@ -58,9 +58,11 @@ A separate Creator probe with only two submitted comparables correctly returned 
 
 ### Public-demo rate limiting behind Render
 
-The screenshot showing `Public demo run capacity reached` exposed that the limiter used the socket peer address, which can represent a shared Render proxy rather than each visitor. The feature branch now derives a client bucket from Render's forwarded client IP, validates it as an IPv4/IPv6 literal, and falls back to the socket peer for a malformed or absent header. Both the live-run limiter and the general request guard use this helper.
+The screenshot showing `Public demo run capacity reached` exposed that the socket peer can represent a shared Render proxy rather than each visitor. The initial forwarded-IP fix still trusted the leftmost `X-Forwarded-For` value; that is unsafe because a public caller may supply a value which the edge appends to rather than replaces.
 
-Regression coverage checks IPv4/IPv6 parsing, malformed-header fallback, same-client throttling, and independent quotas for distinct client IPs. Global and concurrency quotas remain in place: live runs are capped at 2 per client/hour, 12 globally/hour, with at most 2 active per process. These are per-process public-demo limits, not authentication.
+The current feature-branch implementation does **not** use `X-Forwarded-For` directly as a backend quota key. For browser requests through Vercel, the Next.js `proxy.ts` removes caller-supplied attestation headers and adds `x-adjacent-client-ip` only for one valid IP from Vercel's overwritten `X-Forwarded-For`, accompanied by `x-adjacent-proxy-token`. The backend uses that IP only when the server-side `ADJACENT_PROXY_SHARED_SECRET` matches in constant time and the IP parses successfully. For direct requests through Render's public Cloudflare ingress, the backend validates `CF-Connecting-IP`; otherwise it falls back to the socket peer. See [Vercel request-header behavior](https://vercel.com/docs/headers/request-headers) and [Render's proxy/IP explanation](https://render.com/articles/host-pocketbase-on-render).
+
+**Deployment gate:** the same high-entropy `ADJACENT_PROXY_SHARED_SECRET` must be configured on the matching Vercel environment and Render backend service. Until both values are set and the matching Preview backend is redeployed, Vercel-proxied requests safely share the fallback ingress bucket; this may throttle unrelated visitors together but does not let a caller choose arbitrary IP buckets. The global and concurrency quotas remain enabled: live runs are capped at 2 per client/hour, 12 globally/hour, with at most 2 active per process. These are per-process public-demo limits, not authentication.
 
 ### Cinema identity resolution
 
@@ -94,7 +96,7 @@ The ordinary API timeout remains 12 seconds. The feature branch gives only run-s
 
 ## 6. Remaining work and release gates
 
-1. **CI and Preview for the follow-up fixes — complete:** run #379 passed all three jobs. Vercel Preview and the matching Render backend are READY/live on commit `b75f8b93bf94e79e3de9df2b54717a0d196b5de8`. The title/year-only live smoke test completed with measured Qloo results.
+1. **CI and Preview for the earlier Cinema fixes — complete on `b75f8b9`:** run #379 passed all three jobs and the title/year-only live smoke test completed with measured Qloo results. The subsequent trusted-IP hardening has its own CI gate; the paired Preview shared-secret configuration and matching Render deployment must be verified separately before this security gate is called complete.
 2. **Browser interaction and visual review:** click through the fixture and live run flows in the browser; inspect desktop and mobile; check the MapLibre/WebGL geography view. HTTP/SSR checks do not replace this.
 3. **Production release is a separate, owner-approved action:** PR #17 is still draft and Production intentionally serves the old UI. Do not merge or deploy the feature branch without explicit approval.
 4. **Security hygiene:** because the Qloo key was pasted into a chat, rotate it in Qloo and update only the backend Render secret after verification. Confirm the new key works without printing or committing it. Do not include the secret value in this repository.
