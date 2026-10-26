@@ -1,7 +1,7 @@
 # Live Qloo Counterfactual Evaluation
 
 - Generated: **2026-10-26T20:14:32.044257+00:00**
-- Schema: \`adjacent.live-counterfactual-evaluation/1\`
+- Schema: `adjacent.live-counterfactual-evaluation/1`
 - Programmes attempted: **3**
 - Programmes evaluable: **3**
 - Failed / not evaluable: **0**
@@ -92,4 +92,4 @@ A result with no winner change is retained as-is; it is not described as evidenc
 
 **Result to preserve:** the current production winner stayed the same when affinity-derived ordering keys were removed in all three samples, and no structurally sized cohort was excluded by the affinity gate in those runs. A popularity-only ordering chose a different winner in each sample. This shows a difference from that deliberately limited popularity baseline, but does not establish that affinity alone determines the recommendations.
 
-In all **11/11** scoring contexts, per-seed explainability was \`not_requested_limit\`: each context requested 50 candidate IDs, above the 12-candidate bound. Therefore this evaluation includes Qloo's measured affinity scoring but does **not** provide per-seed attribution for these winners. One reference film, \`Taipei Story\`, remained unresolved and was not substituted with fixture data.
+In all **11/11** scoring contexts, per-seed explainability was `not_requested_limit`: each context requested 50 candidate IDs, above the 12-candidate bound. Therefore this evaluation includes Qloo's measured affinity scoring but does **not** provide per-seed attribution for these winners. One reference film, `Taipei Story`, remained unresolved and was not substituted with fixture data.
