@@ -294,32 +294,33 @@ SQLite is a single-host, local-filesystem design. The conservative deployment mo
 
 ## Repository map
 
+The repository keeps production application code, source documentation, tests, deployment configuration, and verification artifacts. The integrated Project Nightfall design archive has been removed; the live frontend implementation remains in `qloo_hackathon/adjacent/frontend/`.
+
 ```text
 .
 ├── README.md
 ├── LICENSE
-├── render.yaml                         # Render Blueprint (not a deployment by itself)
-├── .github/workflows/ci.yml            # Backend, frontend and container CI
+├── render.yaml
+├── .github/workflows/
 └── qloo_hackathon/adjacent/
-    ├── pyproject.toml                  # Python package, dependencies, pytest/Ruff config
-    ├── Makefile                        # Common development and verification commands
-    ├── .env.example                    # Safe configuration template; no live key
-    ├── compose.yaml                    # Single-host service topology
-    ├── Caddyfile                       # HTTPS edge/reverse proxy for Compose
-    ├── backend/
-    │   └── app/
-    │       ├── api/                    # Run, Creator, FilmSponsor and YouTube routes
-    │       ├── agent/                  # State machine, budgets, tools and stop rules
-    │       ├── domain/                 # Identity, cohorts, scoring, evidence, experiments
-    │       ├── qloo/                   # Client, typed models, params and traces
-    │       └── resolution/             # Film/entity identity and resolution contract
+    ├── pyproject.toml
+    ├── Makefile
+    ├── .env.example
+    ├── compose.yaml
+    ├── Caddyfile
+    ├── backend/app/
+    │   ├── api/
+    │   ├── agent/
+    │   ├── domain/
+    │   ├── qloo/
+    │   └── resolution/
     ├── frontend/
-    │   ├── app/                        # Home, Creator, Cinema and FilmSponsor screens
-    │   ├── components/                 # Cultural graph, evidence trace and visual surfaces
-    │   ├── lib/                        # API client, run recovery and plain-text export
-    │   └── tests/                      # UI contract, responsiveness, recovery and render smoke
-    ├── scripts/                        # Qloo probe and FilmSponsor live gate
-    └── docs/                           # Contracts, evidence audits, setup and deployment runbooks
+    │   ├── app/
+    │   ├── components/
+    │   ├── lib/
+    │   └── tests/
+    ├── scripts/
+    └── docs/
 ```
 
 ## Local setup
@@ -575,13 +576,14 @@ Do not run `docker compose down -v` as a routine restart; it removes named data 
 
 ### Remaining deployment hardening checks
 
-The current split Vercel/Render demo has passed the point-in-time smoke checks listed near the top of this README. Before treating it as a production service beyond hackathon judging, still verify:
+Production route smoke, sampled live Creator/Cinema analysis, CI, Vercel and Render deployment have been verified. These security/operations checks are still open before scaling beyond a bounded hackathon demo:
 
-- [ ] Run the FilmSponsor guest workflow in a normal browser and check exact Origin, Secure/HttpOnly/SameSite cookies, CSRF checks, session isolation and expiry.
+- [ ] Run the FilmSponsor guest workflow in a normal browser and verify exact Origin, Secure/HttpOnly/SameSite cookies, CSRF, second-session isolation, revocation and expiry.
 - [ ] Privately confirm the frontend/backend trusted-proxy shared-secret configuration is aligned; do not expose or commit secret values.
 - [ ] Add external edge/API-gateway quotas and monitoring before increasing anonymous live Qloo usage. Current request limits are partly process-local.
-- [ ] Review durable SQLite storage, backup/restore and scheduled cleanup of expired guest sessions.
-- [ ] Re-check the deployed frontend/backend revisions after any change; a successful route response alone is not a full browser or security acceptance test.
+- [ ] Review durable SQLite storage, backup/restore and scheduled cleanup of expired guest sessions on the actual host.
+- [ ] Ask the hackathon organizers in writing what the literal “Qloo 4after” eligibility wording means if project-history eligibility depends on it.
+- [ ] If per-seed explanation is part of the judge story, test an intentionally bounded scoring context of at most 12 unique candidate IDs. The current 11/11 contexts did not request it because each had 50 candidates.
 
 ## Security and known limitations
 
