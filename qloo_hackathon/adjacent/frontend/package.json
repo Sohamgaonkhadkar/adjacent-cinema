@@ -13,7 +13,8 @@
     "test:entity-display": "node --experimental-default-type=module --experimental-strip-types --test tests/entity-display.test.mjs",
     "test:render": "node --experimental-default-type=module --experimental-strip-types --test tests/render-smoke.mjs",
     "test:contract": "node --experimental-default-type=module --experimental-strip-types --test tests/api-contract.test.mjs",
-    "test:challenge": "node --experimental-default-type=module --experimental-strip-types --test tests/decision-challenge.test.mjs"
+    "test:challenge": "node --experimental-default-type=module --experimental-strip-types --test tests/decision-challenge.test.mjs",
+    "test:proxy": "node --experimental-default-type=module --experimental-strip-types --test tests/proxy-client-ip.test.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.54.0",
