@@ -4,7 +4,7 @@
 
 Creator Mode is documented and remains the primary demo path; Cinema Mode is preserved. This sprint adds a narrow, opt-in public-demo boundary, tighter request/input limits, entity-mismatch regressions, more complete resolution-call provenance, a same-origin frontend API proxy, and refreshed operator/judge documentation. The anonymous demo is fixture-first; public live Creator requests require two owner-controlled opt-ins.
 
-**No live Qloo request or hosted deployment was verified in this session.** The sandbox API preview used labelled fixtures. The Qloo key was unset in the checked shell and preview process; the Qloo URL falls back to `https://hackathon.api.qloo.com`, and mode is mock unless a key is configured. No `.env` file was found, and no key was requested or exposed. The preview explicitly ran with `ADJACENT_PUBLIC_DEMO=1` and live opt-in off; the shell defaults had both public flags off.
+**Historical note (19 October 2026):** the original sandbox session used labelled fixtures and did not verify hosted deployment or a live Qloo request. That status was superseded by production checks on 26–27 October 2026: Vercel/Render are deployed, sampled Creator/Cinema requests returned measured Qloo traces, and a separate three-programme live counterfactual evaluation completed. See the current [developer verification status](M13_18_CURRENT_VERIFICATION_STATUS.md), [live-Qloo evaluation](verification/live_counterfactual_evaluation.md), and [current checklist](NEXT_LIVE_CHECKLIST.md). Do not treat the older sandbox results below as current hosted evidence.
 
 ## Repository, branch, PR, and CI
 
@@ -95,9 +95,11 @@ Behind the same-origin proxy, the API may see all users as one peer IP; those us
 
 ## Remaining gates / next steps
 
-1. **Live Qloo is blocked:** `QLOO_API_KEY` is absent from the checked runtime, the conditional CI live tests were skipped, and GitHub denied access to the repository secret list (HTTP 403). An authorized operator must provision the key directly to a trusted backend runtime (not chat) before a real probe and bounded Creator run can be attempted. A fixture run is not live evidence.
-2. **Deployment is blocked:** no deployment manifest, GitHub environment, deployment record, or URL is available. A hosting account and permission to provision the backend and Next.js services are needed before a verified public URL can be reported.
-3. **Merge state:** PR #3 is open against `m13-work`, not `main`, with backend/frontend CI passing on the release commit. The release is not in the default `main` branch. Merge PR #3 when ready; updating `main` requires the separate promotion path from `m13-work`.
+1. **Current live Qloo path: sampled and verified.** On 26 October, the dedicated live workflow ran three programmes with measured Qloo data (3/3 evaluable). The report does not prove affinity is decisive: affinity-withheld ranking changed no winner, the popularity-only baseline changed all three, the affinity gate suppressed zero cohorts, and per-seed explainability was not requested for any of 11 scoring contexts because they each exceeded the 12-ID limit.
+2. **Current deployment: live.** Vercel and Render deployments are healthy for the sampled checks. The four primary pages and proxied `/api/health` returned HTTP 200 on 27 October. This is not a full browser-driven security acceptance.
+3. **Remaining hosted security gate:** run FilmSponsor guest flow in a normal browser and verify exact Origin, Secure/HttpOnly/SameSite cookies, CSRF, cross-session isolation, expiry/revocation, and privately confirm the trusted-proxy/shared-secret alignment. Never disclose or commit secret values.
+4. **CI/merge status:** the current implementation is on `main`; the earlier PR #3 state below is historical and retained only as provenance. For current CI use [run #40394494087](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40394494087).
+5. **Eligibility:** the organizer interpretation of the phrase “Qloo 4after” remains unconfirmed; do not infer project eligibility without their written clarification.
 
 ## Historical evidence
 

@@ -1,6 +1,6 @@
 # M13.18 — Current Verification Status
 
-**Latest follow-up:** 24 October 2026, feature branch `arena/76d901e7-adjacent-cinema`, commit `259ecf0`, GitHub Actions CI run `40106948750` (all jobs successful). The earlier PR-head checkpoint `9fbeeba6cf3bf38044513519800cb4e46d92ffb7` / CI run #225 remains historical below. This records observed local and CI results; it does not certify the deployed application flow, hosted acceptance, hackathon eligibility, or a submission.
+**Historical checkpoint:** 24 October 2026, feature branch `arena/76d901e7-adjacent-cinema`, commit `259ecf0`, GitHub Actions CI run `40106948750`. This document preserves that earlier review. The more recent hosted and live-Qloo verification is summarized below; these checks establish route availability and sampled runs, not a complete browser/security acceptance or hackathon eligibility verdict.
 
 ## Changes included in this working tree
 
@@ -25,8 +25,10 @@
 | Local backend native collection | Python **3.11.2** on checkout | **Blocked at collection** | Existing PEP 695 ToolResult[T] syntax in backend/app/qloo/models.py requires Python 3.12. This local limitation is superseded for backend-suite verification by the native Python 3.12 CI result below. |
 | Backend native CI (offline/fixture) | GitHub Actions CI run #225, Python **3.12.15**, pytest -m not-live selection | **746 passed, 8 deselected** | Unmodified source on the supported interpreter; live-marked tests run separately. |
 | Direct live Qloo contract CI | Same CI run #225, pytest -m live -rs | **8 passed, 746 deselected** | Includes test_explainability_contract against the Qloo API. This verifies the direct endpoint contract, not the application's full Creator/Cinema path. |
-| Application-level live Qloo path | Not run against the deployed backend | **Pending** | No full deployed Creator/Cinema run or runtime trace has been verified. |
-| Hosted production / browser E2E | Not run | **Reserved / pending** | No production setting or deployment was touched. The repository blueprint/docs were inspected read-only. |
+| Application-level live Qloo path | Sampled production Creator/Cinema runs (27 Oct 2026) | **Partially verified** | Sampled runs completed with `data_status="measured"` and inspected Qloo trace entries returned HTTP 200. This is not exhaustive coverage of every input/error path. |
+| Hosted production route smoke | Vercel/Render production (27 Oct 2026) | **Passed, scoped** | `/`, `/creator`, `/cinema`, `/creator/sponsor` and proxied `/api/health` returned HTTP 200. This is not a browser-driven click-through or security audit. |
+| FilmSponsor browser security E2E | Render logs show successful session/campaign/discovery requests; earlier origin mismatches also recorded | **Partially verified / browser gate remains** | Still needs a normal browser check of exact Origin, Secure/HttpOnly/SameSite cookies, CSRF, session isolation and expiry. |
+| Public LLM synthesis | `/api/creator/synthesis-status` | **Intentionally unavailable** | `available=false`; optional synthesis is disabled in public-demo mode. Core deterministic Qloo analysis remains independent. |
 
 The compatibility-scratch result (745 passed, 9 skipped) is supplemental evidence and remains a Python 3.11 scratch run. The latest PR CI run (#225) did run the unmodified backend source with Python 3.12.15: 746 non-live tests passed, and a separate live-marked step passed 8 tests including the direct Qloo explainability response contract. This proves the endpoint contract was observed in CI, but not that the deployed application completes a live Creator/Cinema run through Render.
 
@@ -38,16 +40,17 @@ The compatibility-scratch result (745 passed, 9 skipped) is supplemental evidenc
 - Local frontend verification on the committed source: existing Node suites plus Positioning Arena **26 passed, 0 failed**; `npx tsc --noEmit`, production build, and production-render smoke (**1 passed**) all passed.
 - Local backend verification used a temporary Python 3.11.2 scratch copy with only the existing Python 3.12 `ToolResult[T]` syntax translated to `Generic[T]`: focused creator/experiment/attribution/run API tests **50 passed**; full non-live suite **746 passed, 1 skipped, 8 deselected**; Ruff passed. Do not treat that scratch result as a native runtime check.
 - GitHub Actions CI run `40106948750` for commit `259ecf0` completed successfully: Python 3.12 backend, frontend (including new strategy test/build/render steps), and container build jobs all green. The conditional live-Qloo step is reported successful; it does not establish a hosted Creator run. The detailed remote log download was unavailable at verification time, so no live-test count is recorded here.
-- Hosted judge path remains **unverified / treat as blocked**. No public deployment was inspected or changed, and no browser E2E was run. The owner-approved next step remains read-only confirmation of deployed revisions and `/api/health` via the public frontend, then a bounded live Creator run only under the authorized backend credential/quota process; keep public live mode disabled absent explicit approval.
+- Hosted production was subsequently verified read-only on 27 October 2026: Vercel served the primary routes with HTTP 200, `/api/health` reported the expected public-demo flags, and sampled Creator/Cinema runs completed with measured Qloo traces. This supersedes the older blocked-hosted wording in the historical notes below. Full browser-driven FilmSponsor Origin/cookie/CSRF/isolation testing is still pending.
 
 ## Known remaining gates
 
-1. Keep the native Python 3.12 CI suite green after any further backend edit; the latest PR head has 746 non-live tests passing and 8 live-marked Qloo contract tests passing.
-2. Have ChatGPT/the authorized owner verify the integrated live Qloo path and hosted production/browser acceptance. The direct Qloo contract test passed in CI, but it does not establish deployed entity resolution, scoring, attribution serialization, fallback handling, or frontend rendering.
-3. Ask the hackathon organizers in writing what the literal “Qloo 4after” means if project-history eligibility depends on it. No eligibility verdict is made.
-4. Before a judge-facing live demo, verify the exact current frontend/backend deployment revisions, same-origin `/api` proxy, health mode, and FilmSponsor guest origin/cookie isolation without changing production configuration.
+1. Keep the native Python 3.12 CI suite green after further backend edits. As of 27 October 2026, the post-merge CI run for commit `4346a5c` passed backend, frontend, and container-build jobs; see [run #40394494087](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40394494087).
+2. Finish a normal-browser FilmSponsor guest acceptance check: exact frontend Origin, Secure/HttpOnly/SameSite cookies, CSRF header, second-session isolation, revocation and expiry. Do not loosen production security settings to make the test pass.
+3. Privately verify trusted-proxy/shared-secret alignment and external rate-limit/monitoring posture before increasing anonymous live usage. Do not expose or change secret values without an explicit, authorized operator action.
+4. Ask hackathon organizers in writing what the literal “Qloo 4after” phrase means if project-history eligibility depends on it. No eligibility verdict is made from the available wording.
 5. Keep the public competitor scorecard as a source-grounded screening estimate, not an official leaderboard or placement claim.
+6. Optional per-seed explainability was not requested in 11/11 scoring contexts in the current live evaluation because each contained 50 IDs, above the 12-ID bound. If per-seed attribution is important to the judging story, evaluate a bounded run with at most 12 unique candidates per scoring context; report missing/unsupported attribution honestly.
 
 ## Readiness verdict
 
-**Ready for final deployment review, but NOT READY to certify hosted judge acceptance or hackathon eligibility.** Frontend checks passed; native Python 3.12 CI passed 746 non-live tests; 8 direct live Qloo contract tests also passed, including explainability. The integrated live application path, hosted/browser acceptance, and organizer clarification remain open. No production deployment is part of this verification.
+**The current code is deployed and CI-green; full browser/security acceptance and hackathon eligibility are not certified.** The current production route smoke passed and sampled Creator/Cinema runs returned measured Qloo evidence. Remaining work is narrowed to the FilmSponsor browser security contract, private proxy/secret alignment review, optional bounded per-seed attribution analysis, and written organizer clarification of “Qloo 4after.”

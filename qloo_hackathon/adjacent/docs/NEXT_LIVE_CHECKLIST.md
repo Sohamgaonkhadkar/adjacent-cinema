@@ -1,8 +1,23 @@
 # Current live-Qloo validation gate
 
-**Status as of 16 October 2026: BLOCKED / NOT VERIFIED IN THIS SESSION.** The checked shell had no `QLOO_API_KEY` and no `QLOO_BASE_URL` override; without a key, non-public mode is mock. The sandbox API preview was explicitly `public_demo`, with fixtures available and live Creator unavailable. The inspected GitHub CI run passed its backend job but skipped the conditional live-Qloo step; remote secret state was not verified. No live request was made here.
+**Latest live-Qloo application check: 27 October 2026.** The current Vercel/Render deployment was checked read-only; sampled Creator/Cinema runs completed with `data_status="measured"` and inspected Qloo trace entries returned HTTP 200. The latest three-programme counterfactual report is linked below. This supersedes the historical blocked status from 16 October, but does not replace the optional FilmSponsor browser-security checks.
 
 `LIVE_QLOO_VALIDATION.md` records observations from 6 October 2026 only. It is historical evidence, not proof of current connectivity or current resolver behavior. It records `tt0089853` / Taipei Story being associated with The Purple Rose of Cairo and `tt7594358` / Perfect Days not resolving. Offline regressions now reject title/year conflicts, keep a title-search `MISMATCH` even if an external-ID lookup independently verifies a candidate, and preserve unresolved results; they do not establish what Qloo returns today.
+
+## Current completed checks
+
+- Production routes `/`, `/creator`, `/cinema`, and `/creator/sponsor` returned HTTP 200 on 27 October 2026.
+- Proxied `/api/health` returned HTTP 200 with `mode="public_demo"`, fixtures available, live Creator available and FilmSponsor guest mode enabled.
+- Sampled Creator and Cinema runs completed with measured Qloo evidence; the current [three-programme counterfactual report](verification/live_counterfactual_evaluation.md) records both the results and the limits.
+- Post-merge CI for `4346a5c` passed backend, frontend and container-build jobs: [run #40394494087](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40394494087).
+
+## Still required before claiming full browser/security acceptance
+
+- [ ] Use a normal browser to create a disposable FilmSponsor guest session, create a campaign, run live brand discovery, and verify exact Origin and cookie/CSRF behaviour.
+- [ ] Verify a second browser/session cannot access the first session's campaign; test revocation and expiry.
+- [ ] Privately confirm Vercel/Render trusted-proxy shared-secret alignment. Do not reveal, print, or commit secret values.
+- [ ] Do not enable higher anonymous live traffic until edge quotas, monitoring and acceptable usage limits are reviewed.
+- [ ] Written organizer clarification of the literal “Qloo 4after” eligibility wording, if project-history eligibility depends on it.
 
 ## Safe procedure for an authorized operator
 

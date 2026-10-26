@@ -15,9 +15,11 @@ hosting account and is not a hosted deployment by itself.
 
 ## Current hosted status
 
-This is the current split deployment, not just a proposed topology: [Vercel frontend](https://adjacent-cinema.vercel.app) and [Render API](https://adjacent-cinema.onrender.com). On 27 October 2026, the four frontend routes returned HTTP 200, the proxied `/api/health` endpoint returned the expected public-demo flags, and sampled live Creator/Cinema runs completed with measured Qloo traces. Recent Render logs also show successful FilmSponsor guest-session, campaign and discovery requests, although older origin-mismatch logs make a normal-browser origin/cookie check important.
+This is the current split deployment: [Vercel frontend](https://adjacent-cinema.vercel.app) and [Render API](https://adjacent-cinema.onrender.com). On 27 October 2026, the four frontend routes returned HTTP 200, the proxied `/api/health` endpoint returned the expected public-demo flags, and sampled live Creator/Cinema runs completed with measured Qloo traces. The current live counterfactual report is in [Markdown](docs/verification/live_counterfactual_evaluation.md) and [JSON](docs/verification/live_counterfactual_evaluation.json). Post-merge CI passed backend, frontend and container-build jobs on commit `4346a5c`.
 
-The public demo intentionally disables optional LLM synthesis and shared experiment APIs. `/api/creator/synthesis-status` reports synthesis unavailable; `/api/experiments` returns 403 by design. See the root [hackathon fit and verification notes](../../README.md#fit-to-the-qloo-agentic-hackathon) for a judge walkthrough and evidence limitations. These are point-in-time checks, not a security audit or uptime guarantee.
+Recent Render logs show successful FilmSponsor guest-session, campaign and discovery requests, but earlier origin-mismatch rejections remain a reason to perform the exact browser Origin/cookie check before relying on that workflow in a judge demo. This is a point-in-time verification, not a security audit or uptime guarantee.
+
+The public demo intentionally disables optional LLM synthesis and shared experiment APIs. `/api/creator/synthesis-status` reports synthesis unavailable; `/api/experiments` returns 403 by design. See the root [hackathon fit and verification notes](../../README.md#fit-to-the-qloo-agentic-hackathon) for the judge walkthrough and evidence limitations.
 
 ## Prerequisites and repository layout
 
@@ -84,9 +86,9 @@ destination is `http://127.0.0.1:8000`. For a hosted frontend, set
 
 A reproducible live-Qloo evaluation ran three independent film programmes and applied the existing Decision Challenge to each completed measured run. See the [evaluation report](docs/verification/live_counterfactual_evaluation.md) and machine-readable [JSON results](docs/verification/live_counterfactual_evaluation.json).
 
-The latest live run is published in both the [evaluation report](docs/verification/live_counterfactual_evaluation.md) and [JSON results](docs/verification/live_counterfactual_evaluation.json). The affinity-withheld counterfactual changed the winner in **0/3** runs; the popularity-only baseline selected a different winner in **3/3**. The affinity gate suppressed **0** structurally sized cohorts, and no adjacent pair was first separated by an affinity-derived key. These samples show a difference from the limited popularity-only baseline, not proof that affinity alone determines recommendations or predicts attendance/revenue.
+The latest report shows: affinity-withheld ranking changed the winner in **0/3** runs; the popularity-only baseline selected a different winner in **3/3**; the affinity gate suppressed **0** structurally sized cohorts; and affinity was not the first separating key for any adjacent ranking pair. These samples show a difference from the limited popularity-only baseline, not proof that affinity alone determines recommendations or predicts attendance/revenue.
 
-A practical limitation is now explicit: per-seed explainability was `not_requested_limit` in **11/11** scoring contexts because each passed 50 candidate IDs, above the 12-candidate bound. The evaluation therefore does not establish which specific seed influenced the winning cohort. The third programme retained `Taipei Story` as unresolved rather than substituting fixture data.
+Per-seed explainability was `not_requested_limit` in **11/11** scoring contexts because each passed 50 candidate IDs, above the 12-candidate bound. This evaluation therefore does not establish which specific reference seed influenced the winning cohort. The third programme retained `Taipei Story` as unresolved rather than substituting fixture data.
 
 Re-run with an authorised live `QLOO_API_KEY` using:
 
