@@ -110,18 +110,14 @@ def _run(
     return result, client
 
 
-def test_measured_overlap_is_reported_by_its_exact_key_and_costs_one_call() -> None:
+def test_familiar_metric_name_is_not_interpreted_without_a_verified_schema() -> None:
     result, client = _run(_two_artists(), payload={"overlap": 0.63})
 
     assert result["schema"] == SCHEMA
-    assert result["status"] == "measured"
-    assert result["available"] is True
-    assert result["metric"] == {
-        "key": "overlap",
-        "value": 0.63,
-        "direction": "higher_is_closer",
-        "source": "provider_reported",
-    }
+    assert result["status"] == "unsupported_response_shape"
+    assert result["available"] is False
+    assert result["metric"] is None
+    assert result["observed_keys"] == ["overlap"]
     assert result["call_id"] == "compare-call-1"
 
     assert len(client.calls) == 1
@@ -168,12 +164,13 @@ def test_cohort_labels_are_reader_facing_and_carry_no_identifier() -> None:
     assert result["cohorts"]["b"]["label"] == "artist · Hildur Gudnadottir"
 
 
-def test_nested_metric_inside_results_is_read_with_its_direction() -> None:
+def test_nested_candidate_metric_is_not_interpreted() -> None:
     result, _ = _run(_two_artists(), payload={"results": {"distance": 0.12}})
 
-    assert result["status"] == "measured"
-    assert result["metric"]["key"] == "distance"
-    assert result["metric"]["direction"] == "lower_is_closer"
+    assert result["status"] == "unsupported_response_shape"
+    assert result["available"] is False
+    assert result["metric"] is None
+    assert result["observed_keys"] == ["results"]
 
 
 def test_unrecognised_shape_is_refused_with_key_names_only() -> None:
@@ -191,10 +188,24 @@ def test_unrecognised_shape_is_refused_with_key_names_only() -> None:
     assert "must not escape" not in str(result)
 
 
-def test_non_finite_and_non_numeric_metric_values_are_not_read() -> None:
-    for bad in (True, "0.6", float("nan"), float("inf"), None):
-        result, _ = _run(_two_artists(), payload={"overlap": bad})
-        assert result["status"] == "unsupported_response_shape", bad
+def test_plausible_metric_keys_are_all_refused_until_schema_is_verified() -> None:
+    # These names look meaningful, but the public response contract does not
+    # document them. None may be assigned a value or direction based on its name.
+    payloads = [
+        {"overlap": 0.63},
+        {"similarity": 0.63},
+        {"correlation": 0.63},
+        {"affinity": 0.63},
+        {"distance": 0.12},
+        {"difference": 0.12},
+        {"divergence": 0.12},
+        {"query": {"overlap": 0.63}},
+        {"results": {"distance": 0.12}},
+    ]
+    for payload in payloads:
+        result, _ = _run(_two_artists(), payload=payload)
+        assert result["status"] == "unsupported_response_shape", payload
+        assert result["available"] is False
         assert result["metric"] is None
 
 
@@ -244,7 +255,9 @@ def test_winner_is_compared_with_the_best_same_type_cohort_and_ranks_are_reporte
     assert targets[1].cohort_id == "third"
 
     result, client = _run(ranking, payload={"overlap": 0.41})
-    assert result["status"] == "measured"
+    assert result["status"] == "unsupported_response_shape"
+    assert result["available"] is False
+    assert result["metric"] is None
     assert result["cohorts"]["a"]["rank"] == 1
     assert result["cohorts"]["b"]["rank"] == 3
     # The book cohort is never sent to a comparison scoped to one type.
