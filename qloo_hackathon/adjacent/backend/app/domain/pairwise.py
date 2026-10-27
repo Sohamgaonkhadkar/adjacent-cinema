@@ -10,12 +10,12 @@ top two ranked cohorts, and nothing else.
 
 What it refuses to do
 ---------------------
-* **It does not guess the response schema.** Qloo's compare response is not
-  modelled in this repository (``docs/API_NOTES.md`` records its *request*
-  parameters only). So the payload is read strictly: a numeric field whose name
-  this module recognises is reported *by its exact key*, and anything else is
-  reported as ``unsupported_response_shape`` with the observed key **names** and
-  no number at all. An unrecognised shape is never coerced into a score.
+* **It does not guess the response schema.** Qloo's public compare reference
+  documents request parameters, not the response payload contract. Until an
+  official response schema or a verified provider sample is recorded, every
+  provider response is reported as `unsupported_response_shape` with the
+  observed key **names** and no metric value. A familiar-looking field name is
+  not proof of its semantics or direction.
 * **It does not describe the number as a probability, lift or forecast.** The
   metric carries its own direction (``higher_is_closer`` / ``lower_is_closer``)
   or ``unknown``; an unknown direction suppresses the interpretation sentence.
@@ -31,24 +31,11 @@ could take down a completed run.
 
 from __future__ import annotations
 
-import math
 from typing import Any
 
 from ..qloo.models import RawResponse
 
 SCHEMA = "adjacent.pairwise-comparison/1"
-
-#: Endpoint-reported metric names this module is willing to read, with the
-#: direction each name implies. Anything not listed here is not interpreted.
-_METRIC_KEYS: tuple[tuple[str, str], ...] = (
-    ("overlap", "higher_is_closer"),
-    ("similarity", "higher_is_closer"),
-    ("correlation", "higher_is_closer"),
-    ("affinity", "higher_is_closer"),
-    ("distance", "lower_is_closer"),
-    ("difference", "lower_is_closer"),
-    ("divergence", "lower_is_closer"),
-)
 
 #: Failure kinds raised before any request leaves the process. A comparison that
 #: fails this way has spent no provider call and must not be charged to the run.
@@ -81,41 +68,18 @@ def _domain_name(domain: str) -> str:
     return (domain or "unknown").replace("urn:entity:", "").replace("urn:", "") or "unknown"
 
 
-def finite_number(value: Any) -> float | None:
-    """Accept a real number only. Bools, strings, NaN and ±inf are rejected."""
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        return None
-    number = float(value)
-    return number if math.isfinite(number) else None
-
-
 def read_metric(payload: dict[str, Any]) -> dict[str, Any] | None:
-    """Return one recognised metric, by exact key, or ``None``.
+    """Return no metric until Qloo documents this endpoint response schema.
 
-    Shallow scan of the payload root and its ``results`` / ``query`` mappings.
-    Deterministic: the same payload always yields the same metric.
+    The public Analysis Compare reference documents the required request
+    parameters but does not specify response fields. Plausible-looking keys
+    such as "overlap" or "distance" are not a verified contract, and their
+    meaning/direction cannot be safely inferred from their names. Keep the
+    response available for diagnostics through observed_keys, but do not
+    interpret any numeric value until an official response contract or a
+    verified provider sample is recorded.
     """
-    containers: list[dict[str, Any]] = [payload]
-    for name in ("results", "query"):
-        nested = payload.get(name)
-        if isinstance(nested, dict):
-            containers.append(nested)
-
-    for container in containers:
-        for key, direction in _METRIC_KEYS:
-            if key not in container:
-                continue
-            value = finite_number(container[key])
-            if value is None:
-                continue
-            return {
-                "key": key,
-                "value": value,
-                "direction": direction,
-                "source": "provider_reported",
-            }
     return None
-
 
 def observed_keys(payload: dict[str, Any]) -> list[str]:
     """Top-level key names only — never their values, which may be provider data."""
