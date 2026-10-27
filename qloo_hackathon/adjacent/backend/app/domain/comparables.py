@@ -11,9 +11,10 @@ reports what the provider returned for each.
 What it refuses to do
 ---------------------
 * **It does not score the pair itself.** Qloo's compare response is not modelled
-  in this repository, so a payload is read strictly (see ``pairwise.read_metric``):
-  a recognised numeric field is reported by its exact key, and anything else is
-  reported as ``no_readable_field`` with the observed key names and no number.
+  in this repository, so the shared reader currently interprets no numeric fields
+  (see ``pairwise.read_metric``). Every provider response is reported as
+  ``no_readable_field`` with observed key names and no number until a response
+  contract is verified.
 * **It does not treat a missing answer as a refutation.** "Qloo returned no field
   this build can read" is not "these two films are unrelated". Every state that
   carries no measurement says so in its own words, and the limitation travels
