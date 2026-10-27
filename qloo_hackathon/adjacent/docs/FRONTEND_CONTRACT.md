@@ -120,13 +120,14 @@ Built by `_build_result()`; TypeScript mirror: `AdjacentRunResult` in
 * `evidence.bounded_attribution` reports that follow-up call for the run:
   `status` is `returned | missing | failed | unavailable_budget | not_needed`,
   with `members_updated` and the `call_id`.
-* `pairwise.metric` is set **only** when the provider's compare payload carried
-  a numeric field this build recognises (`overlap`, `similarity`, `correlation`,
-  `affinity` → higher is closer; `distance`, `difference`, `divergence` → lower
-  is closer). An unrecognised payload yields `unsupported_response_shape` with
-  `observed_keys` (key names only) and `metric: null`. The compare response
-  schema is not modelled in this repository, and the live provider has not been
-  exercised for it here — treat `metric: null` as "no value", never as zero.
+* `pairwise.metric` is currently always `null` for provider responses,
+  because the public Compare reference documents request parameters but not the
+  response payload fields. This build does **not** infer a metric, meaning or
+  direction from plausible-looking names. The result is
+  `unsupported_response_shape` with `observed_keys` (top-level key names only)
+  and the originating `call_id`. Treat `metric: null` as "no verified value",
+  never as zero. Only change this contract after recording an official response
+  schema or a verifiable provider sample.
 * `call_attempted` is `false` for every refusal (`not_applicable`,
   `unavailable_budget`) and for a parameter error that never left the process,
   and `true` once a request was sent — including a failed one. The run's call
