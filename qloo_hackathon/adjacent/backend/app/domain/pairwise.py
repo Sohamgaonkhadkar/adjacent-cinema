@@ -16,9 +16,9 @@ What it refuses to do
   provider response is reported as `unsupported_response_shape` with the
   observed key **names** and no metric value. A familiar-looking field name is
   not proof of its semantics or direction.
-* **It does not describe the number as a probability, lift or forecast.** The
-  metric carries its own direction (``higher_is_closer`` / ``lower_is_closer``)
-  or ``unknown``; an unknown direction suppresses the interpretation sentence.
+* **It does not describe an unverified number as a probability, lift or
+  forecast.** This build surfaces no compare metric until the response schema is
+  verified, so it emits no numerical interpretation sentence for this endpoint.
 * **It does not compare across entity types.** ``filter.type`` is a required
   parameter, and two cohorts from different types cannot be compared in one
   call. That case is reported as ``not_applicable`` with the reason, never
