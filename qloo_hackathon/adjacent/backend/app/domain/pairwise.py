@@ -50,6 +50,19 @@ _METRIC_KEYS: tuple[tuple[str, str], ...] = (
     ("divergence", "lower_is_closer"),
 )
 
+#: Failure kinds raised before any request leaves the process. A comparison that
+#: fails this way has spent no provider call and must not be charged to the run.
+LOCAL_ONLY_FAILURES: frozenset[str] = frozenset(
+    {
+        "param_error",
+        "unverified_parameter",
+        "deprecated_parameter",
+        "invalid_combination",
+        "invalid_filter_type",
+        "invalid_value",
+    }
+)
+
 #: Group size accepted by the compare call for one cohort. Kept small on purpose:
 #: the comparison is about a handful of named entities, not a bulk scan.
 MAX_GROUP_MEMBERS = 10
@@ -127,6 +140,7 @@ def _refusal(reason_code: str, reason: str, *, data_status: str) -> dict[str, An
         "cohorts": None,
         "call_id": None,
         "observed_keys": [],
+        "call_attempted": False,
     }
 
 
@@ -258,6 +272,12 @@ async def build_pairwise_comparison(
         )
     # A comparison is optional evidence: any failure is reported, never raised.
     except Exception as exc:
+        # Report the failure's classification (timeout, authentication, upstream,
+        # …) and its HTTP status, but never the exception text: it can carry
+        # response bodies. A parameter error never reached the provider, so the
+        # call is not counted as spent.
+        kind = getattr(exc, "kind", None)
+        status = getattr(exc, "status", None)
         return {
             **_base(data_status=data_status),
             "available": False,
@@ -267,9 +287,12 @@ async def build_pairwise_comparison(
                 "no comparison is shown rather than an estimated one."
             ),
             "error_type": type(exc).__name__,
+            "error_kind": kind if isinstance(kind, str) else None,
+            "error_status": status if isinstance(status, int) else None,
+            "call_attempted": kind not in LOCAL_ONLY_FAILURES,
             "metric": None,
             "cohorts": cohorts,
-            "call_id": None,
+            "call_id": getattr(exc, "call_id", None),
             "observed_keys": [],
         }
 
@@ -289,6 +312,7 @@ async def build_pairwise_comparison(
             "cohorts": cohorts,
             "call_id": response.call_id,
             "observed_keys": observed_keys(payload),
+            "call_attempted": True,
         }
     if metric is None:
         return {
@@ -303,6 +327,7 @@ async def build_pairwise_comparison(
             "cohorts": cohorts,
             "call_id": response.call_id,
             "observed_keys": observed_keys(payload),
+            "call_attempted": True,
         }
 
     return {
@@ -314,6 +339,7 @@ async def build_pairwise_comparison(
         "cohorts": cohorts,
         "call_id": response.call_id,
         "observed_keys": [],
+        "call_attempted": True,
     }
 
 

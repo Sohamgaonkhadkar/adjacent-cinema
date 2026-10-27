@@ -66,6 +66,9 @@ PUBLIC_LIMITS: tuple[str, ...] = (
 )
 
 _ENTITY_ID = re.compile(r"^urn:[a-z_]+:[a-z_]+:[^\s]+$", re.IGNORECASE)
+#: A run id is interpolated into a URL path, so it must be a plain identifier:
+#: no slashes, dots or percent-escapes that could address another API resource.
+_RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 _ENTITY_TYPE = re.compile(r"^urn:entity:[a-z_]+$", re.IGNORECASE)
 
 #: Runs created in this session, so `get_evidence_report` can read them back
@@ -435,6 +438,12 @@ async def get_evidence_report(run_id: str) -> dict[str, Any]:
     if not isinstance(run_id, str) or not run_id.strip():
         return _unavailable("error", "run_id must be a non-empty string")
     run_id = run_id.strip()
+    if not _RUN_ID.match(run_id):
+        return _unavailable(
+            "error",
+            "run_id must be a plain identifier of letters, digits, hyphens or underscores "
+            "(1–64 characters); anything else could address a different API resource.",
+        )
 
     report = _SESSION_RUNS.get(run_id)
     if report is not None:

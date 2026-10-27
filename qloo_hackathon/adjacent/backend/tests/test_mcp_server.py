@@ -279,6 +279,20 @@ def test_evidence_report_without_origin_is_unavailable_not_invented() -> None:
     assert "ADJACENT_MCP_API_ORIGIN" in result["reason"]
 
 
+@pytest.mark.parametrize(
+    "run_id",
+    ["../health", "run/1", "a b", "x" * 65, "%2e%2e", "run?x=1", "https://evil.example", "\u2044"],
+)
+def test_evidence_report_rejects_ids_that_could_address_another_resource(
+    run_id: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The id is interpolated into a URL, so it must be a plain identifier."""
+    monkeypatch.setenv("ADJACENT_MCP_API_ORIGIN", "http://127.0.0.1:8000")
+    result = asyncio.run(get_evidence_report(run_id))
+    assert result["status"] == "error"
+    assert "plain identifier" in result["reason"]
+
+
 def test_evidence_report_rejects_empty_run_id() -> None:
     result = asyncio.run(get_evidence_report("   "))
     assert result["status"] == "error"

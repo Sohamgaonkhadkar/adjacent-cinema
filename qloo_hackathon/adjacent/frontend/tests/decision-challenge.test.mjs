@@ -493,6 +493,34 @@ test("a failed comparison is toned as a failure and keeps its call id", () => {
   assert.match(row.detail, /did not complete/);
 });
 
+test("a failed comparison names its failure class without quoting the provider", () => {
+  const row = pairwiseRow({
+    ...measuredPairwise,
+    available: false,
+    status: "failed",
+    metric: null,
+    reason: "The comparison call did not complete.",
+    call_id: "compare-call-4",
+    error_type: "QlooTimeoutError",
+    error_kind: "timeout",
+    error_status: 504,
+    call_attempted: true,
+  });
+  assert.match(row.detail, /Failure class: timeout \(HTTP 504\)\./);
+  assert.doesNotMatch(row.detail, /QlooTimeoutError/);
+  assert.equal(row.callId, "compare-call-4");
+
+  const noKind = pairwiseRow({
+    ...measuredPairwise,
+    available: false,
+    status: "failed",
+    metric: null,
+    reason: "The comparison call did not complete.",
+    call_id: null,
+  });
+  assert.doesNotMatch(noKind.detail, /Failure class/);
+});
+
 test("no comparison payload means no section at all", () => {
   assert.equal(pairwiseRow(null), null);
   assert.equal(pairwiseRow(undefined), null);

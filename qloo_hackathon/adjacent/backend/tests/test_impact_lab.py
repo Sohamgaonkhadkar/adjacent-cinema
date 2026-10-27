@@ -62,6 +62,25 @@ def test_kendall_tau_b_is_undefined_rather_than_zero_when_it_cannot_be_computed(
         assert result["meaning"] == AGREEMENT_MEANING
 
 
+def test_kendall_tau_b_reports_duplicates_instead_of_double_counting_them() -> None:
+    """A repeated id cannot inflate agreement; it is dropped and reported."""
+    clean = kendall_tau_b(["a", "b", "c"], ["b", "c", "a"])
+    messy = kendall_tau_b(["a", "b", "c", "b"], ["b", "c", "a"])
+    assert messy["value"] == pytest.approx(clean["value"])
+    assert messy["n"] == 3
+    assert messy["duplicates_removed"] == 1
+    assert messy["pairs"] == 3
+
+
+def test_kendall_tau_b_carries_no_tie_claim_it_cannot_support() -> None:
+    """Both orderings are strict, so tie terms never exist — say so in the payload."""
+    result = kendall_tau_b(["a", "b"], ["b", "a"])
+    assert "ties_left" not in result
+    assert "ties_right" not in result
+    assert result["pairs"] == 1
+    assert result["value"] == pytest.approx(-1.0)
+
+
 def test_agreement_sentence_distinguishes_unchanged_from_moved() -> None:
     same = describe_agreement(top_k_overlap(["a"], ["a"]), kendall_tau_b(["a", "b"], ["a", "b"]))
     assert "unchanged" in same

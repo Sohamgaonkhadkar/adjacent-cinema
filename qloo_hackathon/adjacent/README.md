@@ -160,7 +160,10 @@ the ranking, and they spend no provider call beyond the ones named.
   compare calls between resolved references. Each pair is reported as
   `measured`, `not_modelled_in_fixture`, `no_readable_field` or `failed`, with
   its call id. A pair with no value is unevaluated, not refuted, and the audit
-  short-circuits after an upstream failure instead of retrying blindly.
+  short-circuits after an upstream failure instead of retrying blindly. A failed
+  compare carries its failure class (`timeout`, `authentication`, `upstream`, …)
+  and HTTP status, never the exception text or the response body, and a call that
+  never left the process is not charged to the run's budget.
 - **Qloo Impact Lab** and **Why this result?** — the three-condition
   counterfactual table (`full_analysis`, `affinity_withheld`, `popularity_only`)
   and the bounded per-seed attribution panel. Kendall tau-b is reported as

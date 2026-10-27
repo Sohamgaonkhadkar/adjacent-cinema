@@ -1,21 +1,18 @@
-# MCP server — three read-only tools over the existing pipeline
+# MCP server (optional, read-only)
 
-`backend/app/mcp_server.py` exposes Adjacent's own analysis to an MCP client
-(an agent host). It is an **adapter**, not a second product:
-
-- every tool calls the same runner, the same Qloo reader and the same domain
-  functions the website calls;
-- there is no second ranker, no second scorer and no scoring arithmetic in
-  `mcp_server.py`;
-- running a tool changes nothing that a later website request would read.
+`backend/app/mcp_server.py` exposes three tools over the Model Context Protocol
+so an external agent can inspect the same analysis the website shows. It is a
+**thin adapter**: every tool calls the existing runner, reader and domain
+functions. It contains no scoring, ranking, counterfactual or evaluation logic of
+its own, opens no socket, and stores nothing.
 
 ## Tools
 
 | Tool | What it does | Provider calls |
-|---|---|---|
-| `analyze_film_positioning` | Runs the existing analysis for up to five film references and returns the ranked cohorts, the counterfactual summary, the data status, the limits and the trace call ids. | Fixture mode: none. Live mode: the normal live pipeline, at most twice per server session. |
-| `compare_film_groups` | One `/v2/analysis/compare` call between two groups of resolved Qloo entity ids, read by the same reader the website uses. | One compare call. |
-| `get_evidence_report` | Returns a completed run's result, evidence, limits and provenance without changing its decision. Reads runs created in this MCP session, or completed runs from the Adjacent API when `ADJACENT_MCP_API_ORIGIN` is set. | At most one HTTP GET to the Adjacent API. |
+| --- | --- | --- |
+| `analyze_film_positioning(programme, city=None, mode="fixture")` | Runs the standard pipeline (identity resolution → expansion → cohort construction → ranking → Decision Challenge) and returns the top three cohorts, the rejections, the challenge summary, the pairwise comparison, the trace call ids and the bounded attribution record. **Fixture mode runs the labelled fixture programme**, echoes the submitted titles in `requested_programme` and says in `programme_note` that they were not analysed. | Fixture: none. Live: the run's normal budget. |
+| `compare_film_groups(group_a, group_b, filter_type="urn:entity:movie", mode="fixture")` | One `/v2/analysis/compare` call between two groups of Qloo entity ids, read by the same reader the website uses (`app/domain/pairwise.py` semantics via `compare_entity_groups`). | At most one compare call. |
+| `get_evidence_report(run_id)` | Returns a run's full report unchanged: programme resolution, cohorts, challenge, pairwise, trace ids, limits. Reads runs created in this session, or completed runs from the Adjacent API when `ADJACENT_MCP_API_ORIGIN` is set. | At most one HTTP `GET` to the Adjacent API. |
 
 Every payload opens with `"schema": "adjacent.mcp-tool-result/1"` and a
 `status`. A status of `error`, `unavailable`, `no_readable_field` or
@@ -33,24 +30,23 @@ that produced no value.
 - **Nothing private.** The tools read no experiment records, no guest sessions
   and no environment values. Provider errors are reported by type, never with
   the key or the full upstream payload.
+- **A run id is an identifier, not a path.** `get_evidence_report` accepts 1–64
+  letters, digits, hyphens or underscores and rejects `../`, slashes, spaces,
+  percent-escapes and query strings before it builds a URL.
 - **No fabrication.** A provider failure becomes `unavailable`/`failed`; a
   fixture run states that it is a fixture and that the submitted titles were not
-  the ones analysed.
-- **stdio only.** `python -m app.mcp_server` runs the SDK's stdio transport. No
-  listener is opened, so there is no public endpoint and no origin policy to
-  get wrong.
+  analysed. No tool invents a value, a cohort, an entity id or a success.
+- **No public surface.** The transport is stdio. There is no listener, so there
+  is no endpoint to expose, rate-limit or authenticate at the network layer.
 
-## Install and run
-
-The SDK is an optional extra so the web API never depends on it:
+## Running it
 
 ```bash
-cd qloo_hackathon/adjacent
-python -m pip install -e '.[dev,mcp]'
+python -m pip install -e '.[mcp]'          # backend/ has the extra
 PYTHONPATH=backend python -m app.mcp_server
 ```
 
-A client configuration (placeholders only — no real paths or keys):
+Client configuration (placeholders, no real values):
 
 ```json
 {
@@ -67,10 +63,9 @@ A client configuration (placeholders only — no real paths or keys):
 }
 ```
 
-To read completed runs from a running API, add
-`"ADJACENT_MCP_API_ORIGIN": "http://127.0.0.1:8000"` (or the origin the API is
-actually served from). Without it, `get_evidence_report` only sees runs created
-in the same MCP session, and says so.
+Optional environment variables: `ADJACENT_MCP_ALLOW_LIVE` (`0`/`1`),
+`ADJACENT_MCP_MAX_LIVE_RUNS` (default `2`), `ADJACENT_MCP_API_ORIGIN` (base URL
+used only by `get_evidence_report` for runs created elsewhere).
 
 ## Tests
 
@@ -78,15 +73,21 @@ in the same MCP session, and says so.
 python -m pytest backend/tests/test_mcp_server.py -q
 ```
 
-The suite covers the registry (exactly three read-oriented tools), the input
-validation, the fixture labelling, the live refusal without the operator flag,
-the session caps, the API-unreachable path, and one real client↔server round
-trip over the SDK's in-memory streams — so the tools are proven reachable
-through the protocol, not merely importable. If the SDK is not installed the
-module skips rather than failing, and CI installs it so the suite actually runs.
+The suite drives the server through the SDK's in-memory transport (`mcp` is an
+optional dependency, so the module skips when it is absent) and asserts:
 
-## What this is not
+- the registry exposes exactly the three tool names, and the export names stay
+  `[a-z][a-z0-9_]*` so the read-only surface cannot drift;
+- a fixture analysis returns call ids, cohorts, the challenge summary and the
+  limits while stating that the submitted titles were not analysed;
+- a fixture comparison reports `not_modelled_in_fixture` with no metric;
+- invalid programmes, entity ids, entity types, modes and run ids return
+  `status: "error"` instead of raising;
+- live mode without the operator flag, or without a key, returns `unavailable`
+  and never falls back to a fixture;
+- the session cap is enforced (the test resets the counter to the bound);
+- `get_evidence_report` round-trips a session run byte-for-byte, and a run id
+  that could address another resource is refused.
 
-It is not an "agentic" layer: no tool decides anything, ranks anything or
-narrates a conclusion. It returns the evidence the website already computes, in
-a form an agent host can read, with the same limits attached.
+The suite does **not** exercise a live provider call: that needs a key this
+repository does not hold, and is reported as unverified.

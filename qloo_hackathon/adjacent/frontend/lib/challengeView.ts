@@ -236,12 +236,20 @@ export function pairwiseRow(
     };
   }
 
+  // A failed call says which failure it was: a wrong key cannot be retried,
+  // a stalled provider can. The classification is a code, not the raw message.
+  const failure =
+    comparison.status === "failed" && comparison.error_kind
+      ? ` Failure class: ${comparison.error_kind}` +
+        (comparison.error_status ? ` (HTTP ${comparison.error_status}).` : ".")
+      : "";
+
   return {
     tone: comparison.status === "failed" ? "fail" : "neutral",
     label: `No comparison value for ${a} vs ${b}`,
     detail:
-      comparison.reason ||
-      "The comparison returned no value this build is willing to interpret.",
+      (comparison.reason ||
+        "The comparison returned no value this build is willing to interpret.") + failure,
     callId,
   };
 }

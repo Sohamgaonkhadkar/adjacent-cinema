@@ -11,12 +11,19 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import Any
 
+import pytest
 from app.domain.pairwise import (
     MAX_GROUP_MEMBERS,
     SCHEMA,
     build_pairwise_comparison,
     comparison_targets,
     interpret,
+)
+from app.qloo.errors import (
+    InvalidFilterTypeError,
+    InvalidValueError,
+    ParamError,
+    QlooTimeoutError,
 )
 from app.qloo.models import RawResponse
 
@@ -130,6 +137,23 @@ def test_measured_overlap_is_reported_by_its_exact_key_and_costs_one_call() -> N
         "urn:entity:artist:gud",
         "urn:entity:artist:joh",
     ]
+
+
+def test_the_request_carries_only_documented_parameters() -> None:
+    """Freeze the request shape: no location, page or offset is invented."""
+    _, client = _run(_two_artists(), payload={"overlap": 0.63})
+
+    assert set(client.calls[0]) == {
+        "a_signal_interests_entities",
+        "b_signal_interests_entities",
+        "filter_type",
+        "model",
+        "take",
+        "tool",
+    }
+    assert "filter_location_query" not in client.calls[0]
+    assert "page" not in client.calls[0]
+    assert "offset" not in client.calls[0]
 
 
 def test_cohort_labels_are_reader_facing_and_carry_no_identifier() -> None:
@@ -250,6 +274,7 @@ def test_budget_refusal_makes_no_call() -> None:
     result, client = _run(_two_artists(), budget=0)
     assert result["status"] == "unavailable_budget"
     assert result["available"] is False
+    assert result["call_attempted"] is False
     assert client.calls == []
 
 
@@ -265,6 +290,44 @@ def test_provider_failure_is_recorded_and_never_raised() -> None:
     # The groups are still described, so the reader sees what *would* have
     # been compared.
     assert result["cohorts"]["a"]["label"] == "artist · Brian Eno"
+
+
+def test_provider_timeout_reports_its_kind_and_counts_as_an_attempt() -> None:
+    """A timeout must be diagnosable — and must not look like a refusal."""
+    result, client = _run(_two_artists(), error=QlooTimeoutError("upstream stalled"))
+
+    assert len(client.calls) == 1
+    assert result["status"] == "failed"
+    assert result["error_kind"] == "timeout"
+    assert result["error_status"] is None
+    assert result["call_attempted"] is True
+    assert result["metric"] is None
+    assert "stalled" not in str(result)
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        ParamError("filter.type must be a urn"),
+        InvalidFilterTypeError("filter.type is not an entity type"),
+        InvalidValueError("take must be positive"),
+    ],
+)
+def test_a_parameter_error_is_not_counted_as_a_spent_provider_call(error: Exception) -> None:
+    """Nothing left the process, so the budget must not be charged for it."""
+    result, client = _run(_two_artists(), error=error)
+
+    assert len(client.calls) == 1  # the client was asked...
+    assert result["status"] == "failed"
+    assert result["call_attempted"] is False
+    assert "filter.type" not in result["reason"]
+
+
+def test_refusals_state_that_no_call_was_attempted() -> None:
+    result, client = _run(_two_artists(), budget=0)
+    assert result["status"] == "unavailable_budget"
+    assert result["call_attempted"] is False
+    assert client.calls == []
 
 
 def test_groups_are_truncated_to_the_documented_size() -> None:

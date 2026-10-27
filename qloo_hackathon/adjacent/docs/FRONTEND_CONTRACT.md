@@ -103,7 +103,8 @@ Built by `_build_result()`; TypeScript mirror: `AdjacentRunResult` in
   "pairwise": {
     "status": "measured | not_applicable | unavailable_budget | unsupported_response_shape | not_modelled_in_fixture | failed",
     "available", "reason", "metric": { "key", "value", "direction" } | null,
-    "cohorts": { "a", "b" }, "call_id", "observed_keys", "limits"
+    "cohorts": { "a", "b" }, "call_id", "observed_keys", "call_attempted",
+    "error_type", "error_kind", "error_status", "limits"
   },
   "city": "..."
 }
@@ -126,6 +127,15 @@ Built by `_build_result()`; TypeScript mirror: `AdjacentRunResult` in
   `observed_keys` (key names only) and `metric: null`. The compare response
   schema is not modelled in this repository, and the live provider has not been
   exercised for it here — treat `metric: null` as "no value", never as zero.
+* `call_attempted` is `false` for every refusal (`not_applicable`,
+  `unavailable_budget`) and for a parameter error that never left the process,
+  and `true` once a request was sent — including a failed one. The run's call
+  count is charged on `call_attempted`, so a timeout is visible in the budget
+  rather than disappearing from it.
+* A failed comparison carries `error_kind` (`timeout`, `authentication`,
+  `upstream`, `rate_limited`, `transport`, `invalid_response`, `param_error`, …)
+  and `error_status`, never the exception text: response bodies are not echoed
+  into a run payload.
 * `challenge.pairwise` repeats the comparison object and
   `challenge.receipt.{pairwise,attribution}` carry the compact forms for export.
 

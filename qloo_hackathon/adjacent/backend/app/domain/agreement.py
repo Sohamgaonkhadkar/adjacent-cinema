@@ -7,8 +7,15 @@ ordering actually move?":
 * **Top-k overlap** — how many of the first *k* positions are the same grouping.
   Easy to read, blunt, and insensitive to changes below the cut.
 * **Kendall's tau-b** — a rank correlation over every grouping present in both
-  orders, with the tie correction. It moves when positions swap anywhere in the
-  list, so it catches reshuffling that top-k overlap would miss.
+  orders. It moves when positions swap anywhere in the list, so it catches
+  reshuffling that top-k overlap would miss.
+
+Both orderings are strict sequences: each grouping appears once, and each sort
+key ends with the cohort id, so two cohorts never occupy the same position. The
+tau-b denominator's tie terms are therefore zero by construction, and tau-b
+reduces to the permutation formula ``(concordant − discordant) / pairs``. The
+implementation counts ties anyway (a duplicate id would otherwise inflate the
+score) and reports how many ids it dropped.
 
 Both are reported as *agreement between two orderings computed by this
 application*, never as a probability, confidence or measure of correctness.
@@ -58,54 +65,63 @@ def _ranks(order: Sequence[str]) -> dict[str, int]:
     return {cid: index for index, cid in enumerate(order)}
 
 
+def _strict(order: Sequence[str]) -> tuple[list[str], int]:
+    """Remove repeated ids, keeping first position, and report how many went."""
+    seen: set[str] = set()
+    kept: list[str] = []
+    for cohort_id in order:
+        if cohort_id in seen:
+            continue
+        seen.add(cohort_id)
+        kept.append(cohort_id)
+    return kept, len(order) - len(kept)
+
+
 def kendall_tau_b(left: Sequence[str], right: Sequence[str]) -> dict[str, Any]:
     """Kendall's tau-b between two orderings, over the ids they share.
 
-    tau-b is used rather than tau-a because cohorts can tie: the counterfactual
-    orderings are sorted on discrete keys, and two groupings can sit at the same
-    novelty or popularity. Ties are counted as ties, not as agreement.
+    ``left`` and ``right`` are ranked sequences of cohort ids. Because both are
+    strict (unique ids; the sort key ends with the cohort id), the tie terms in
+    the tau-b denominator are zero and the value equals the permutation
+    formula — see the module docstring. Duplicate ids are dropped from the
+    front of the sequence and reported, so a malformed ordering cannot inflate
+    the correlation silently.
     """
-    left_rank = _ranks(left)
-    right_rank = _ranks(right)
-    common = [cid for cid in left if cid in right_rank]
+    left_ids, left_dropped = _strict(left)
+    right_ids, right_dropped = _strict(right)
+    left_rank = _ranks(left_ids)
+    right_rank = _ranks(right_ids)
+    common = [cid for cid in left_ids if cid in right_rank]
 
     result: dict[str, Any] = {
         "method": "kendall_tau_b",
         "value": None,
         "n": len(common),
+        "pairs": 0,
         "concordant": 0,
         "discordant": 0,
-        "ties_left": 0,
-        "ties_right": 0,
+        "duplicates_removed": left_dropped + right_dropped,
         "meaning": AGREEMENT_MEANING,
     }
     if len(common) < 2:
         return result
 
-    concordant = discordant = ties_left = ties_right = 0
+    concordant = discordant = 0
     for a, b in itertools.combinations(common, 2):
-        dl = left_rank[a] - left_rank[b]
-        dr = right_rank[a] - right_rank[b]
-        if dl == 0 and dr == 0:  # pragma: no cover - one id cannot hold two ranks
-            continue
-        if dl == 0:
-            ties_left += 1
-        elif dr == 0:
-            ties_right += 1
-        elif (dl > 0) == (dr > 0):
+        delta_left = left_rank[a] - left_rank[b]
+        delta_right = right_rank[a] - right_rank[b]
+        if (delta_left > 0) == (delta_right > 0):
             concordant += 1
         else:
             discordant += 1
 
     pairs = len(common) * (len(common) - 1) / 2
-    denominator = ((pairs - ties_left) * (pairs - ties_right)) ** 0.5
     result.update(
         {
             "concordant": concordant,
             "discordant": discordant,
-            "ties_left": ties_left,
-            "ties_right": ties_right,
-            "value": (concordant - discordant) / denominator if denominator else None,
+            "pairs": int(pairs),
+            "value": (concordant - discordant) / pairs,
         }
     )
     return result

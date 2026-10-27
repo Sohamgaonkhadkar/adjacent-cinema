@@ -478,6 +478,11 @@ export interface PairwiseComparison {
     | string;
   reason: string;
   error_type?: string;
+  /** Provider failure classification (`timeout`, `authentication`, …); never the raw message. */
+  error_kind?: string | null;
+  error_status?: number | null;
+  /** False for refusals and for parameter errors that never reached the provider. */
+  call_attempted?: boolean;
   metric: PairwiseMetric | null;
   cohorts: { a: PairwiseGroup; b: PairwiseGroup } | null;
   call_id: string | null;

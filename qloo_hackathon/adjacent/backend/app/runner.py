@@ -467,7 +467,9 @@ async def _rank(client: Any, run: AdjacentState, budget: Budget) -> None:
         data_status=run.data_status,
         budget_remaining=budget.remaining_calls,
     )
-    if run.pairwise.get("call_id"):
+    # Charge the comparison when a request was actually sent. A refused or
+    # parameter-rejected comparison costs nothing and is recorded as such.
+    if run.pairwise.get("call_attempted"):
         budget.record_calls(1)
 
 

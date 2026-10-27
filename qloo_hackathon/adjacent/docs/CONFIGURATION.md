@@ -62,6 +62,21 @@ response, a trace row or a log line.
 | `ADJACENT_YT_TOKEN_DB` | refresh-token storage | `./youtube_tokens.db` next to the backend | Backend; put it on the persistent disk in production (`/data/youtube_tokens.db`) |
 | `ADJACENT_YT_MOCK` | **test/demo only** | off | When `1`, YouTube routes serve clearly-labelled mock data (`data_status: "mock"`). Never enable in a deployment that claims live analytics |
 
+### Audience Pulse (optional)
+
+| Variable | Default | Purpose / absent means |
+|---|---|---|
+| `ADJACENT_PULSE_SHARE_ENABLED` | off | When `1`, `GET /pulse/share/{token}` and `POST /pulse/share/{token}/responses` are served. Off → both return 404 and poll creation returns 503. Owner routes stay inside the authenticated `/experiments` surface either way |
+| `ADJACENT_PULSE_COOKIE_SECURE` | `1` | `0` marks the participant session cookie non-Secure — local HTTP only |
+
+### MCP server (optional, stdio)
+
+| Variable | Default | Purpose / absent means |
+|---|---|---|
+| `ADJACENT_MCP_ALLOW_LIVE` | off | `1` lets the MCP tools run live analyses. Off → the tools return `unavailable` and fixture mode stays available |
+| `ADJACENT_MCP_MAX_LIVE_RUNS` | `2` | Per-process cap on live analyses; resets when the server restarts |
+| `ADJACENT_MCP_API_ORIGIN` | unset | Base URL used only by `get_evidence_report` to read a run created by the web app. Unset → only runs created in the same MCP session can be read |
+
 ## 4. Backend — tuning (all optional)
 
 | Variable | Default | Purpose |
