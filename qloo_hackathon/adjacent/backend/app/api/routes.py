@@ -831,6 +831,11 @@ def _build_result(
     if getattr(state, "pairwise", None) is not None:
         result["pairwise"] = state.pairwise
 
+    # Creator-only comparables audit. Absent for Cinema runs (never attempted)
+    # and for creator runs where the audit could not be built at all.
+    if getattr(state, "comparables", None) is not None:
+        result["comparables_audit"] = state.comparables
+
     return result
 
 

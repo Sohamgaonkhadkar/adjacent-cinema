@@ -51,6 +51,7 @@ from typing import TYPE_CHECKING, Any
 
 from .. import evidence
 from ..qloo.models import BAND_MEDIUM
+from .agreement import TOP_K, describe_agreement, kendall_tau_b, top_k_overlap
 from .cohorts import CandidateCohort, MemberEvidence
 from .scoring import CohortRanker, RankingResult, cohort_score_from
 
@@ -279,6 +280,9 @@ def _compare_orders(
     only_before = [cid for cid in production if cid not in position_after]
     only_after = [cid for cid in counterfactual if cid not in position_before]
 
+    overlap = top_k_overlap(production, counterfactual, k=TOP_K)
+    tau = kendall_tau_b(production, counterfactual)
+
     return {
         "production_winner": production_winner,
         "counterfactual_winner": counter_winner,
@@ -288,6 +292,10 @@ def _compare_orders(
         "changed_below_first": any(move["rank_before"] > 1 for move in moves),
         "dropped_out": only_before,
         "entered": only_after,
+        # How much of the ordering survived — not a probability of correctness.
+        "top_overlap": overlap,
+        "rank_correlation": tau,
+        "agreement_statement": describe_agreement(overlap, tau),
     }
 
 
@@ -383,6 +391,38 @@ def _necessity(
         },
         "affinity_decided_pairs": affinity_pairs,
         "adjacent_pairs_examined": len(decisive),
+        "conditions": {
+            "full_analysis": {
+                "label": "Full analysis",
+                "definition": "Every ordering input the product normally uses, including affinity.",
+                "qloo_calls_made": 0,
+                "winner": production[0] if production else None,
+                "top_overlap": top_k_overlap(production, production, k=TOP_K),
+                "rank_correlation": kendall_tau_b(production, production),
+            },
+            "affinity_withheld": {
+                "label": "Affinity withheld",
+                "definition": (
+                    "The same admitted pool, ordered by novelty, breadth and id. Every key derived "
+                    "from an affinity number is removed."
+                ),
+                "qloo_calls_made": 0,
+                "winner": withheld_cmp["counterfactual_winner"],
+                "top_overlap": withheld_cmp["top_overlap"],
+                "rank_correlation": withheld_cmp["rank_correlation"],
+            },
+            "popularity_only": {
+                "label": "Popularity-only baseline",
+                "definition": (
+                    "The same admitted pool, ordered by median popularity desc, then breadth, "
+                    "then id — a biggest-overlap-wins recommendation."
+                ),
+                "qloo_calls_made": 0,
+                "winner": popularity_cmp["counterfactual_winner"],
+                "top_overlap": popularity_cmp["top_overlap"],
+                "rank_correlation": popularity_cmp["rank_correlation"],
+            },
+        },
         "gate": {
             "admitted_with_affinity_gate": sorted(admitted_with_affinity),
             "structurally_admitted": sorted(structurally_admitted),
@@ -954,6 +994,12 @@ def build_receipt(
             "evaluated": stability.get("evaluated", 0),
             "flips": len(stability.get("flips") or []),
         },
+        "conditions": {
+            "affinity_withheld": _receipt_condition(
+                necessity.get("affinity_withheld") or {}
+            ),
+            "popularity_only": _receipt_condition(necessity.get("popularity_only") or {}),
+        },
         "next_checks": [
             {"id": check["id"], "title": check["title"]}
             for check in (challenge.get("next_checks") or [])
@@ -962,6 +1008,17 @@ def build_receipt(
         "attribution": _receipt_attribution(state),
         "limits": list(PUBLIC_LIMITS),
         "call_ids": sorted({cid for cid in call_ids if cid}),
+    }
+
+
+def _receipt_condition(comparison: dict[str, Any]) -> dict[str, Any]:
+    """The counterfactual summary a receipt can carry without its pool."""
+    return {
+        "winner": comparison.get("counterfactual_winner"),
+        "winner_changed": comparison.get("winner_changed"),
+        "ranks_moved": comparison.get("ranks_moved", 0),
+        "top_overlap": comparison.get("top_overlap"),
+        "rank_correlation": comparison.get("rank_correlation"),
     }
 
 

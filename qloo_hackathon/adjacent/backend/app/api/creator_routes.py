@@ -658,6 +658,34 @@ async def _post_pipeline_creator(
     investigation, _dropped_refs = verify_evidence_refs(investigation, known_call_ids)
     record.emit(RunEvent("investigation", investigation))
 
+    # Comparables audit: one bounded compare call per reference pair, at most
+    # three. It runs after the analysis so it can never affect the result, its
+    # failures are values, and an unusable provider leaves the run intact.
+    try:
+        from ..domain.comparables import MAX_PAIRS, build_comparables_audit
+
+        remaining = max(0, getattr(getattr(state, "budget", None), "remaining_calls", 0))
+        state.comparables = await build_comparables_audit(
+            client,
+            state,
+            budget_remaining=min(MAX_PAIRS, remaining),
+        )
+        record.emit(RunEvent("trace", {
+            "phase": "COMPARE",
+            "message": (
+                "Comparables audit: "
+                f"{state.comparables.get('summary', {}).get('pairs_attempted', 0)} pair(s) "
+                f"attempted, {state.comparables.get('summary', {}).get('pairs_measured', 0)} measured"
+            ),
+        }))
+    except Exception as exc:
+        # The audit is optional evidence; the Creator result must not depend on it.
+        state.comparables = None
+        record.emit(RunEvent("trace", {
+            "phase": "COMPARE",
+            "message": f"Comparables audit unavailable: {safe_run_error(exc)}",
+        }))
+
     return geography_result, bet, test_card, investigation
 
 

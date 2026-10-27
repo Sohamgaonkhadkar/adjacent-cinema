@@ -16,6 +16,8 @@
 import type {
   DecisionChallengeData,
   DecisionReceipt,
+  ImpactCondition,
+  NecessityData,
   NextCheck,
   PairwiseComparison,
   StabilityScenario,
@@ -46,6 +48,8 @@ export interface ChallengeView {
   skipped: { id: string; text: string }[];
   /** The winner-vs-same-type comparison, or an explicit reason there is none. */
   pairwise: { tone: Tone; label: string; detail: string; callId: string | null } | null;
+  /** Qloo Impact Lab: three conditions over one fixed pool. */
+  impact: ImpactView;
   checks: NextCheck[];
   receipt: DecisionReceipt | null;
   limits: string[];
@@ -108,6 +112,94 @@ function scenarioRow(
         `${scenario.cohort_still_admitted ? "" : ", even though its own cohort drops below the evidence gate"}. ` +
         `This ${scenario.removed.band} item (affinity ${affinity}) is not load-bearing.`,
     tone: scenario.winner_changed ? "warn" : "neutral",
+  };
+}
+
+export interface ImpactRow {
+  id: string;
+  label: string;
+  definition: string;
+  winner: string;
+  changed: boolean | null;
+  topOverlap: string;
+  rankCorrelation: string;
+  tone: Tone;
+}
+
+export interface ImpactView {
+  available: boolean;
+  rows: ImpactRow[];
+  statements: string[];
+  method: string;
+  reason: string;
+}
+
+/** "4/5", or an em dash when the payload has no overlap for that condition. */
+function overlapText(condition: ImpactCondition | undefined): string {
+  const overlap = condition?.top_overlap;
+  if (!overlap || !overlap.of) return "—";
+  return `${overlap.shared}/${overlap.of}`;
+}
+
+/** tau-b to two decimals, or "not computable" — never a stand-in zero. */
+function correlationText(condition: ImpactCondition | undefined): string {
+  const value = condition?.rank_correlation?.value;
+  return typeof value === "number" ? value.toFixed(2) : "not computable";
+}
+
+/**
+ * The Qloo Impact Lab: the full analysis beside the two counterfactuals, each
+ * measured against the production ranking over the same candidate pool. When a
+ * payload predates these fields the section says so instead of guessing.
+ */
+export function buildImpactView(
+  challenge: DecisionChallengeData | null | undefined,
+): ImpactView {
+  const necessity: NecessityData | null = challenge?.necessity ?? null;
+  const conditions = necessity?.conditions;
+  const statements = [
+    necessity?.affinity_withheld?.agreement_statement,
+    necessity?.popularity_only?.agreement_statement,
+  ].filter((value): value is string => Boolean(value));
+
+  if (!necessity || !conditions) {
+    return {
+      available: false,
+      rows: [],
+      statements,
+      method: necessity?.method ?? "",
+      reason:
+        "This run's challenge payload carries no condition comparison. Nothing is reconstructed from other numbers.",
+    };
+  }
+
+  const keys = ["full_analysis", "affinity_withheld", "popularity_only"] as const;
+  const rows: ImpactRow[] = keys.map((key) => {
+    const condition = conditions[key];
+    const comparison = key === "full_analysis" ? null : necessity[key];
+    const changed = key === "full_analysis" ? false : Boolean(comparison?.winner_changed);
+    const winner =
+      key === "full_analysis"
+        ? (challenge?.recommendation?.label || UNLABELLED)
+        : labelFor(comparison?.order, condition.winner);
+    return {
+      id: key,
+      label: condition.label,
+      definition: condition.definition,
+      winner,
+      changed,
+      topOverlap: overlapText(condition),
+      rankCorrelation: correlationText(condition),
+      tone: key === "full_analysis" ? "live" : changed ? "warn" : "neutral",
+    };
+  });
+
+  return {
+    available: true,
+    rows,
+    statements,
+    method: necessity.method,
+    reason: "",
   };
 }
 
@@ -178,6 +270,7 @@ export function buildChallengeView(
       stabilityRows: [],
       skipped: [],
       pairwise: null,
+      impact: { available: false, rows: [], statements: [], method: "", reason: "No challenge was computed for this run." },
       checks: [],
       receipt: null,
       limits: [],
@@ -333,6 +426,7 @@ export function buildChallengeView(
       text: `${skip.name ?? skip.entity_id} was not tested: ${skip.reason}.`,
     })),
     pairwise: pairwiseRow(challenge.pairwise),
+    impact: buildImpactView(challenge),
     checks: challenge.next_checks ?? [],
     receipt: challenge.receipt,
     limits: challenge.limits ?? [],
@@ -403,6 +497,13 @@ export function formatDecisionReceipt(challenge: DecisionChallengeData | null | 
   lines.push(
     `  Affinity decided ${receipt.basis.affinity_decided_pairs} of ${receipt.basis.adjacent_pairs_examined} adjacent pairs`,
   );
+  const impactLines = impactExportLines(view.impact);
+  if (impactLines.length) {
+    lines.push("");
+    lines.push("CONDITION COMPARISON (agreement between two orderings this app computed)");
+    for (const line of impactLines) lines.push(`  ${line}`);
+    if (view.impact.method) lines.push(`  Method: ${view.impact.method}`);
+  }
 
   lines.push("");
   lines.push("STABILITY");
@@ -464,6 +565,20 @@ export function formatDecisionReceipt(challenge: DecisionChallengeData | null | 
 
 
 /**
+ * The three conditions as plain lines, for the receipt and the exported card.
+ * Only conditions the payload actually compared are written; an absent one is
+ * never replaced with a zero, a 1.00 or a reassuring dash.
+ */
+export function impactExportLines(impact: ImpactView): string[] {
+  if (!impact.available || impact.rows.length === 0) return [];
+  return impact.rows.map((row) => {
+    const changed =
+      row.id === "full_analysis" ? "reference ordering" : row.changed ? "winner CHANGES" : "winner unchanged";
+    return `${row.label.toUpperCase()} — ${row.winner} · top five kept ${row.topOverlap} · tau-b ${row.rankCorrelation} · ${changed}`;
+  });
+}
+
+/**
  * Sections appended to the exported Test Card so the experiment always carries
  * the fragility finding it was designed against. Empty when nothing was
  * computed — an export never implies a challenge exists when it does not.
@@ -486,6 +601,13 @@ export function challengeExportSections(
         : `The recommendation holds without the affinity numbers (${movedPositions(view.receipt.necessity.ranks_moved_without_affinity)}). Affinity decided ${view.receipt.basis.affinity_decided_pairs} of ${view.receipt.basis.adjacent_pairs_examined} adjacent pairs.`,
     },
   ];
+  const impactLines = impactExportLines(view.impact);
+  if (impactLines.length) {
+    sections.push({
+      label: "Condition comparison (agreement, not a probability)",
+      value: impactLines.join(" · "),
+    });
+  }
   if (view.receipt.necessity.popularity_would_differ) {
     sections.push({
       label: "Counterfactual: popularity-only baseline",

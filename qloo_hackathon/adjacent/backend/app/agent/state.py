@@ -202,6 +202,9 @@ class AdjacentState:
     #: ``None`` until ranking has run; a dict — including honest refusals —
     #: afterwards. The Decision Challenge reads it, it never computes it.
     pairwise: dict[str, Any] | None = None
+    #: Creator-only comparables audit (see domain/comparables.py). ``None`` for
+    #: Cinema runs and for creator runs whose audit was never attempted.
+    comparables: dict[str, Any] | None = None
     ledger: ProvenanceLedger | None = None
 
     # -- agent control state ---------------------------------------------

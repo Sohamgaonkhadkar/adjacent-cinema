@@ -68,7 +68,7 @@ def _domain_name(domain: str) -> str:
     return (domain or "unknown").replace("urn:entity:", "").replace("urn:", "") or "unknown"
 
 
-def _finite(value: Any) -> float | None:
+def finite_number(value: Any) -> float | None:
     """Accept a real number only. Bools, strings, NaN and ±inf are rejected."""
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
@@ -76,7 +76,7 @@ def _finite(value: Any) -> float | None:
     return number if math.isfinite(number) else None
 
 
-def _read_metric(payload: dict[str, Any]) -> dict[str, Any] | None:
+def read_metric(payload: dict[str, Any]) -> dict[str, Any] | None:
     """Return one recognised metric, by exact key, or ``None``.
 
     Shallow scan of the payload root and its ``results`` / ``query`` mappings.
@@ -92,7 +92,7 @@ def _read_metric(payload: dict[str, Any]) -> dict[str, Any] | None:
         for key, direction in _METRIC_KEYS:
             if key not in container:
                 continue
-            value = _finite(container[key])
+            value = finite_number(container[key])
             if value is None:
                 continue
             return {
@@ -104,7 +104,7 @@ def _read_metric(payload: dict[str, Any]) -> dict[str, Any] | None:
     return None
 
 
-def _observed_keys(payload: dict[str, Any]) -> list[str]:
+def observed_keys(payload: dict[str, Any]) -> list[str]:
     """Top-level key names only — never their values, which may be provider data."""
     return sorted(str(key) for key in payload)[:24]
 
@@ -275,7 +275,7 @@ async def build_pairwise_comparison(
 
     payload = response.data if isinstance(response, RawResponse) else {}
     payload = payload if isinstance(payload, dict) else {}
-    metric = _read_metric(payload)
+    metric = read_metric(payload)
     if metric is None and data_status == "fixture":
         return {
             **_base(data_status=data_status),
@@ -288,7 +288,7 @@ async def build_pairwise_comparison(
             "metric": None,
             "cohorts": cohorts,
             "call_id": response.call_id,
-            "observed_keys": _observed_keys(payload),
+            "observed_keys": observed_keys(payload),
         }
     if metric is None:
         return {
@@ -302,7 +302,7 @@ async def build_pairwise_comparison(
             "metric": None,
             "cohorts": cohorts,
             "call_id": response.call_id,
-            "observed_keys": _observed_keys(payload),
+            "observed_keys": observed_keys(payload),
         }
 
     return {

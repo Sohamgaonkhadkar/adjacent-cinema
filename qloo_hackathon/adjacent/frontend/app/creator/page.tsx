@@ -58,6 +58,8 @@ import { PositioningArena } from "@/components/nf/PositioningArena";
 import { TestCard } from "@/components/nf/TestCard";
 import { CreatorArchive } from "@/components/nf/CreatorArchive";
 import { SynthesisPanel } from "@/components/nf/SynthesisPanel";
+import { ComparablesAuditPanel } from "@/components/nf/ComparablesAudit";
+import { WhyThisResult } from "@/components/nf/WhyThisResult";
 import { ClaimChip, DataChip, RunChip } from "@/components/nf/Chips";
 import { EvidenceReferences, EvidenceTraceLog } from "@/components/EvidenceTrace";
 import { cn } from "@/lib/cn";
@@ -1191,6 +1193,16 @@ export default function CreatorPage() {
                   </div>
                 </div>
               )}
+
+              {(validResult?.cohorts.ranked.length ?? 0) > 0 && (
+                <WhyThisResult
+                  members={validResult?.cohorts.ranked[0]?.members}
+                  programme={validResult?.programme}
+                  bounded={validResult?.evidence?.bounded_attribution}
+                />
+              )}
+
+              <ComparablesAuditPanel audit={validResult?.comparables_audit} />
             </div>
           ) : (
             <div

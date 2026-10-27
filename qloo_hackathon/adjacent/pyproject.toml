@@ -21,6 +21,12 @@ dev = [
     "ruff>=0.6",
     "httpx2",
 ]
+# The MCP server (backend/app/mcp_server.py) is a read-only adapter over the
+# existing pipeline. It is optional so the web API never depends on the SDK;
+# install with `pip install -e '.[mcp]'` to run `python -m app.mcp_server`.
+mcp = [
+    "mcp>=2.0,<3",
+]
 # Deliberately absent on Day 1:
 #   psycopg     — add when persistence is actually needed (Phase 1/9), not before
 #   langgraph   — the agent is a small explicit state machine; see docs/METHOD notes

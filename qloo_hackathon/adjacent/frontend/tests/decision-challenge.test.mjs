@@ -11,7 +11,7 @@ import test from "node:test";
  * carry its data status and its limits.
  */
 
-const { buildChallengeView, formatDecisionReceipt, challengeExportSections, toneForStatus, pairwiseRow } =
+const { buildChallengeView, buildImpactView, formatDecisionReceipt, challengeExportSections, toneForStatus, pairwiseRow } =
   await import("../lib/challengeView.ts");
 
 const fixtureChallenge = {
@@ -506,4 +506,152 @@ test("an unknown metric direction is not described as closeness", () => {
   });
   assert.match(row.detail, /does not interpret the direction/);
   assert.doesNotMatch(row.detail, /overlap more/);
+});
+
+// ─── Qloo Impact Lab ────────────────────────────────────────────────────────
+// Three conditions over one fixed pool. The view must read the computed
+// comparison, print an unavailable state when a payload predates it, and never
+// dress an order change as a claim about audiences.
+
+const impactConditions = {
+  full_analysis: {
+    label: "Full analysis",
+    definition: "Every ordering input the product normally uses, including affinity.",
+    qloo_calls_made: 0,
+    winner: "urn:entity:artist:tag_cluster:1",
+    top_overlap: { k: 5, shared: 5, of: 5, fraction: 1 },
+    rank_correlation: { method: "kendall_tau_b", value: 1, n: 6 },
+  },
+  affinity_withheld: {
+    label: "Affinity withheld",
+    definition: "The same admitted pool, ordered by novelty, breadth and id.",
+    qloo_calls_made: 0,
+    winner: "urn:entity:artist:tag_cluster:1",
+    top_overlap: { k: 5, shared: 4, of: 5, fraction: 0.8 },
+    rank_correlation: { method: "kendall_tau_b", value: 0.8, n: 6 },
+  },
+  popularity_only: {
+    label: "Popularity-only baseline",
+    definition: "The same admitted pool, ordered by median popularity.",
+    qloo_calls_made: 0,
+    winner: "urn:entity:movie:subtype:documentary:2",
+    top_overlap: { k: 5, shared: 2, of: 5, fraction: 0.4 },
+    rank_correlation: { method: "kendall_tau_b", value: -0.2, n: 6 },
+  },
+};
+
+const challengeWithImpact = {
+  ...fixtureChallenge,
+  recommendation: { cohort_id: "urn:entity:artist:tag_cluster:1", label: "artist · Brian Eno" },
+  necessity: {
+    ...fixtureChallenge.necessity,
+    conditions: impactConditions,
+    affinity_withheld: {
+      ...fixtureChallenge.necessity.affinity_withheld,
+      agreement_statement: "4 of the top 5 groupings are the same, and the full ordering moves together (tau-b 0.80, 6 groupings compared).",
+    },
+    popularity_only: {
+      ...fixtureChallenge.necessity.popularity_only,
+      agreement_statement: "2 of the top 5 groupings are the same, and the full ordering moves in the opposite direction (tau-b -0.20, 6 groupings compared).",
+    },
+  },
+};
+
+test("the impact view reports all three conditions on one scale", () => {
+  const view = buildImpactView(challengeWithImpact);
+  assert.equal(view.available, true);
+  assert.deepEqual(view.rows.map((row) => row.label), [
+    "Full analysis",
+    "Affinity withheld",
+    "Popularity-only baseline",
+  ]);
+  assert.deepEqual(view.rows.map((row) => row.topOverlap), ["5/5", "4/5", "2/5"]);
+  assert.deepEqual(view.rows.map((row) => row.rankCorrelation), ["1.00", "0.80", "-0.20"]);
+  assert.deepEqual(view.rows.map((row) => row.changed), [false, false, true]);
+  assert.equal(view.rows[0].winner, "artist · Brian Eno");
+  assert.equal(view.rows[2].winner, "movie · Baraka");
+  assert.equal(view.statements.length, 2);
+  assert.match(view.statements[0], /tau-b 0\.80/);
+});
+
+test("an impact payload that predates the conditions says so", () => {
+  const legacy = { ...fixtureChallenge };
+  delete legacy.necessity.conditions;
+  const view = buildImpactView(legacy);
+  assert.equal(view.available, false);
+  assert.match(view.reason, /no condition comparison/);
+  assert.deepEqual(view.rows, []);
+});
+
+test("a correlation that cannot be computed is never rendered as zero", () => {
+  const view = buildImpactView({
+    ...challengeWithImpact,
+    necessity: {
+      ...challengeWithImpact.necessity,
+      conditions: {
+        ...impactConditions,
+        affinity_withheld: {
+          ...impactConditions.affinity_withheld,
+          rank_correlation: { method: "kendall_tau_b", value: null, n: 1 },
+        },
+      },
+    },
+  });
+  assert.equal(view.rows[1].rankCorrelation, "not computable");
+});
+
+test("the impact table never claims audience or revenue effects", () => {
+  const view = buildImpactView(challengeWithImpact);
+  const text = JSON.stringify(view).toLowerCase();
+  assert.doesNotMatch(text, /attendance|revenue|causal|predicted/);
+});
+
+// ─── The condition comparison must survive export ───────────────────────────
+// A downloaded receipt that omits the counterfactual would be the one artifact
+// a reader quotes out of context. The comparison is written into both the
+// receipt text and the exported Test Card, with the same numbers as the UI.
+
+test("the receipt text carries the condition comparison", () => {
+  const receipt = formatDecisionReceipt(challengeWithImpact);
+  assert.match(receipt, /CONDITION COMPARISON/);
+  assert.match(receipt, /AFFINITY WITHHELD — artist · Brian Eno · top five kept 4\/5 · tau-b 0\.80 · winner unchanged/);
+  assert.match(receipt, /POPULARITY-ONLY BASELINE — movie · Baraka · top five kept 2\/5 · tau-b -0\.20 · winner CHANGES/);
+  assert.match(receipt, /FULL ANALYSIS — artist · Brian Eno · top five kept 5\/5 · tau-b 1\.00 · reference ordering/);
+});
+
+test("the exported Test Card carries the condition comparison", () => {
+  const sections = challengeExportSections(challengeWithImpact);
+  const section = sections.find((entry) => entry.label.startsWith("Condition comparison"));
+  assert.ok(section, "the exported card must not drop the counterfactuals");
+  assert.match(section.value, /top five kept 4\/5/);
+  assert.match(section.value, /tau-b -0\.20/);
+  assert.match(section.label, /not a probability/);
+});
+
+test("a payload without conditions exports no comparison and invents no zero", () => {
+  const legacy = { ...fixtureChallenge, necessity: { ...fixtureChallenge.necessity } };
+  delete legacy.necessity.conditions;
+  const receipt = formatDecisionReceipt(legacy);
+  assert.doesNotMatch(receipt, /CONDITION COMPARISON/);
+  assert.doesNotMatch(receipt, /tau-b 0\.00/);
+  const sections = challengeExportSections(legacy);
+  assert.equal(sections.filter((entry) => entry.label.startsWith("Condition comparison")).length, 0);
+});
+
+test("an uncomputable correlation is exported as words, never as a number", () => {
+  const receipt = formatDecisionReceipt({
+    ...challengeWithImpact,
+    necessity: {
+      ...challengeWithImpact.necessity,
+      conditions: {
+        ...impactConditions,
+        affinity_withheld: {
+          ...impactConditions.affinity_withheld,
+          rank_correlation: { method: "kendall_tau_b", value: null, n: 1 },
+        },
+      },
+    },
+  });
+  assert.match(receipt, /top five kept 4\/5 · tau-b not computable/);
+  assert.doesNotMatch(receipt, /tau-b 0\.00/);
 });
