@@ -167,6 +167,43 @@ the ranking, and they spend no provider call beyond the ones named.
   `not computable` when it is undefined rather than as `0.0`; no payload uses the
   words probability, confidence or likelihood.
 
+## Audience Pulse (optional pre-registered poll)
+
+A saved Test Card can become a small audience poll. The creator writes the
+question, 2–5 options, the collection window and the decision rule **before** any
+response is collected; the first stored response freezes that definition in the
+database (a trigger rejects later edits to the question, options, rule,
+hypothesis or window). Evaluating applies the frozen rule:
+
+- `SUPPORTED` — the chosen option's share of valid responses is at or above the
+  pre-registered threshold, with the creator's minimum sample met;
+- `CONTRADICTED` — that sample exists and the share is lower;
+- `INCONCLUSIVE` — fewer responses than the rule requires, no responses, or the
+  rule cannot decide. A handful of votes never becomes a result.
+
+Sharing is off by default. Set `ADJACENT_PULSE_SHARE_ENABLED=1` to serve the
+participant link; without it, creation returns 503 and says why. The participant
+surface is one token-scoped GET and one POST, both rate-limited, bounded by the
+collection window and a per-poll ceiling of 5,000 responses; the POST requires the
+`HttpOnly` session cookie that the GET issued and refuses a second response from
+the same session. Only a SHA-256 digest of that cookie is stored — no raw cookie,
+no IP address, no account. The owner routes live under `/experiments/…/pulse`
+and stay blocked by the public-demo guard, so enabling the flag on a public host
+opens exactly the ballot, not the experiment API.
+
+Counts are stored responses, never estimates: an empty poll reads as zero
+responses, and unresolved entries are reported separately. The sample is whoever
+opened the link, so the evaluation says in its own words that it is
+self-selected, is not attendance, revenue or an audience prediction, and does not
+establish anything about the wider audience.
+
+Files: `backend/app/domain/pulse.py` (validation, tabulation, evaluation),
+`backend/app/domain/pulse_repository.py` (schema, trigger, storage),
+`backend/app/api/pulse_routes.py` (owner + participant routes),
+`frontend/lib/pulse.ts`, `frontend/components/nf/AudiencePulse.tsx`,
+`frontend/app/pulse/[token]/page.tsx`. Contract and limits:
+[`docs/FRONTEND_CONTRACT.md`](docs/FRONTEND_CONTRACT.md) §6b.
+
 ## MCP server (optional)
 
 `backend/app/mcp_server.py` exposes three read-only tools —

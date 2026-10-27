@@ -7,7 +7,10 @@ import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 
 const frontendDir = fileURLToPath(new URL("..", import.meta.url));
-const routes = ["/", "/creator", "/cinema", "/creator/sponsor"];
+// `/pulse/[token]` is the participant ballot: it renders its loading state on
+// the server and fetches through the same-origin /api proxy in the browser, so
+// the smoke test can render it without a backend.
+const routes = ["/", "/creator", "/cinema", "/creator/sponsor", "/pulse/smoke-test-token"];
 
 async function getFreePort() {
   const { createServer } = await import("node:net");

@@ -110,6 +110,8 @@ jobs:
         run: npm run test:comparables
       - name: Test bounded explainability panel
         run: npm run test:explainability
+      - name: Test Audience Pulse view model
+        run: npm run test:pulse
       - name: Build frontend
         run: npm run build
       - name: Render primary routes from the production build

@@ -205,6 +205,43 @@ Frontend: `frontend/app/creator/page.tsx` (linked from the cinema home nav as
 (`createCreatorRun`, `createCreatorDemoRun`, `saveExperiment`, `listExperiments`,
 `getExperiment`, `addObservation`, `addEvaluation`).
 
+## 6b. Audience Pulse routes (pre-registered poll)
+
+Opt-in per deployment: participant links are served only when the backend sets
+`ADJACENT_PULSE_SHARE_ENABLED=1`. Creation returns 503 with that variable named
+otherwise, so a poll cannot exist without a link that can collect.
+
+**Owner routes** (same trust boundary as `/experiments`; blocked wholesale in
+public-demo mode because they sit under the same prefix):
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/api/experiments/{id}/pulse` | Create a poll. Body: `request_id`, `question` (≤240), `options[{label}]` (2–5, unique), `opens_at`/`closes_at` (ISO-8601 **with offset**, 1 h–90 d, closes in the future), `decision_rule{kind:"option_share_at_least", option_id, threshold (0–1], min_responses ≥5}`. 201 `{duplicate, poll, responses, evaluations, share_path}`; 422 with the reason; 404 unknown experiment. |
+| `GET` | `/api/experiments/{id}/pulse` | `{schema, sharing_enabled, polls:[{poll, share_path}]}`. |
+| `GET` | `/api/experiments/{id}/pulse/{poll_id}` | `{poll, responses, evaluations}` — owner view. A poll belonging to another experiment is 404. |
+| `POST` | `/api/experiments/{id}/pulse/{poll_id}/close` | Sets `closed_at`; the definition is untouched. |
+| `POST` | `/api/experiments/{id}/pulse/{poll_id}/evaluate` | Applies the frozen rule to the stored responses and appends an evaluation (`request_id`-idempotent). `outcome` ∈ `SUPPORTED\|CONTRADICTED\|INCONCLUSIVE`. |
+
+**Participant routes** (token only, no owner data):
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/pulse/share/{token}` | `{schema, question, options, opens_at, closes_at, collection, limitations, already_responded}`. No experiment id, hypothesis, rule or counts while collection is open. Sets `adjacent_pulse_session` (`HttpOnly; SameSite=Lax`; `Secure` unless `ADJACENT_PULSE_COOKIE_SECURE=0`). |
+| `POST` | `/api/pulse/share/{token}/responses` | Body `{option_id}`. 201 `{recorded, submitted_at, collection}`; 400 without the session cookie; 409 already answered / not accepting; 422 unknown option; 429 per-poll ceiling or rate limit. |
+
+Stored per poll: question, options, the experiment's hypothesis and snapshot, the
+decision rule, the window, `closed_at`, and `frozen_at` (set by the first stored
+response). A SQLite trigger rejects any later change to the question, options,
+rule, hypothesis, window or experiment link once `frozen_at` is set. Responses
+store a SHA-256 digest of the browser's session cookie — never the raw cookie
+and never a network address. Limits: 3 polls per experiment, 1 accepting
+responses at a time, 5,000 stored responses per poll, 20 response POSTs per
+client key per hour (process-local).
+
+Frontend: `frontend/components/nf/AudiencePulse.tsx` (inside the Creator research
+log detail), `frontend/app/pulse/[token]/page.tsx` (participant ballot),
+view model in `frontend/lib/pulse.ts`, client calls in `frontend/lib/api.ts`.
+
 ## 7. YouTube Analytics integration (M13.10)
 
 Optional, creator-authorized, single-connection. Tokens NEVER appear in any response.

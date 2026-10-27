@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import __version__, evidence
 from .api.creator_routes import router as creator_router
 from .api.filmsponsor_routes import router as filmsponsor_router
+from .api.pulse_routes import router as pulse_router
 from .api.routes import router as run_router
 from .api.youtube_routes import router as youtube_router
 from .config import Settings
@@ -62,6 +63,8 @@ app.add_middleware(PublicDemoGuard)
 app.include_router(run_router)
 # Creator Mode + experiment lifecycle (M13.9)
 app.include_router(creator_router)
+# Audience Pulse: owner poll control + the token-scoped participant ballot
+app.include_router(pulse_router)
 # FilmSponsor campaigns: discovery, drafts, source review, approval, outreach
 app.include_router(filmsponsor_router)
 # YouTube authorization + analytics bridge (M13.10)
