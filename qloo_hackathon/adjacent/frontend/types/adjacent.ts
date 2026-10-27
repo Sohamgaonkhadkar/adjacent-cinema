@@ -81,7 +81,13 @@ export interface CohortMember {
   call_id?: string | null;
   /** Qloo's normalized per-input contribution, when requested and returned. */
   qloo_attributions?: { entity_id: string; score: number }[];
-  qloo_attribution_status?: "returned" | "missing" | "unsupported" | "not_requested_limit" | "not_requested_budget" | string;
+  qloo_attribution_status?: "returned" | "returned_bounded" | "missing" | "unsupported" | "not_requested_limit" | "not_requested_budget" | string;
+  /**
+   * Where the attribution came from: "scoring" when the scoring call carried
+   * it, "bounded" when one follow-up call covered the winning cohort, null
+   * when there is none. The affinity number above always comes from scoring.
+   */
+  qloo_attribution_origin?: "scoring" | "bounded" | null;
 }
 
 export interface CohortScore {
@@ -329,6 +335,70 @@ export interface NextCheck {
   evidence_call_ids: string[];
 }
 
+/**
+ * One bounded `/v2/analysis/compare` call between the winner and the best
+ * same-type cohort. `metric` is set only when the provider's payload named a
+ * field this build recognises; `not_modelled_in_fixture` marks a labelled demo
+ * run, which makes the call but shows no value.
+ */
+export interface PairwiseGroup {
+  cohort_id: string;
+  domain: string;
+  rank: number | null;
+  label: string;
+  member_count: number;
+  entity_ids: string[];
+  member_names: string[];
+  truncated: boolean;
+}
+
+export interface PairwiseMetric {
+  key: string;
+  value: number;
+  direction: "higher_is_closer" | "lower_is_closer" | "unknown" | string;
+  source: "provider_reported" | string;
+}
+
+export interface PairwiseComparison {
+  schema: string;
+  data_status: string;
+  available: boolean;
+  status:
+    | "measured"
+    | "not_applicable"
+    | "unavailable_budget"
+    | "unsupported_response_shape"
+    | "not_modelled_in_fixture"
+    | "failed"
+    | string;
+  reason: string;
+  error_type?: string;
+  metric: PairwiseMetric | null;
+  cohorts: { a: PairwiseGroup; b: PairwiseGroup } | null;
+  call_id: string | null;
+  observed_keys: string[];
+  limits: string[];
+}
+
+export interface BoundedAttribution {
+  status:
+    | "returned"
+    | "missing"
+    | "failed"
+    | "unavailable_budget"
+    | "not_needed"
+    | "not_attempted"
+    | string;
+  reason: string;
+  error_type?: string;
+  domain: string | null;
+  cohort_id: string | null;
+  call_id: string | null;
+  entity_ids: string[];
+  members_updated: number;
+  qloo_calls_made: number;
+}
+
 export interface DecisionReceipt {
   schema: string;
   run_id: string;
@@ -358,6 +428,18 @@ export interface DecisionReceipt {
     popularity_would_differ: boolean;
   };
   stability: { verdict: string; reason: string; evaluated: number; flips: number };
+  pairwise?: {
+    status: string;
+    reason: string;
+    call_id: string | null;
+    metric: PairwiseMetric | null;
+  } | null;
+  attribution?: {
+    origins: Record<string, number>;
+    bounded_status: string;
+    bounded_call_id: string | null;
+    bounded_members_updated: number;
+  };
   next_checks: { id: string; title: string }[];
   limits: string[];
   call_ids: string[];
@@ -372,6 +454,8 @@ export interface DecisionChallengeData {
   necessity: NecessityData | null;
   necessity_statement?: string;
   stability: StabilityData | null;
+  /** Present when a comparison was attempted for this run — including refusals. */
+  pairwise?: PairwiseComparison | null;
   next_checks: NextCheck[];
   counts?: {
     cohorts_ranked: number;
@@ -391,6 +475,8 @@ export interface EvidenceData {
   trace_rows: number;
   stop_reason: string;
   stop_message: string | null;
+  /** The winner-only explainability follow-up, or null when ranking never ran. */
+  bounded_attribution?: BoundedAttribution | null;
 }
 
 /** A redacted provenance row returned with a run; it may represent a call or logical operation. */
@@ -477,6 +563,8 @@ export interface AdjacentRunResult {
   investigation?: InvestigationData | null;
   /// Necessity, stability and next checks, recomputed from this run's own evidence.
   challenge?: DecisionChallengeData | null;
+  /** The winner-vs-same-type-cohort comparison, when one was attempted. */
+  pairwise?: PairwiseComparison | null;
   film?: {
     title: string;
     logline: string;

@@ -97,10 +97,37 @@ Built by `_build_result()`; TypeScript mirror: `AdjacentRunResult` in
                     "data_status" },
     "data_status"
   },
-  "evidence": { "qloo_calls", "trace_rows", "stop_reason", "stop_message" },
+  "evidence": { "qloo_calls", "trace_rows", "stop_reason", "stop_message",
+                "bounded_attribution" },          // winner-only explainability follow-up
+  // Present whenever a comparison was attempted — including its refusals.
+  "pairwise": {
+    "status": "measured | not_applicable | unavailable_budget | unsupported_response_shape | not_modelled_in_fixture | failed",
+    "available", "reason", "metric": { "key", "value", "direction" } | null,
+    "cohorts": { "a", "b" }, "call_id", "observed_keys", "limits"
+  },
   "city": "..."
 }
 ```
+
+### Attribution and comparison surfaces (added 2026-10-27)
+
+* `cohorts.ranked[].members[].qloo_attribution_origin` is `"scoring"`,
+  `"bounded"` or `null`. `"bounded"` means the per-seed attribution came from
+  one extra call covering the winning cohort's top 12 members; the affinity and
+  popularity on that member still come from the original scoring call.
+  `qloo_attribution_status` gains the value `"returned_bounded"`.
+* `evidence.bounded_attribution` reports that follow-up call for the run:
+  `status` is `returned | missing | failed | unavailable_budget | not_needed`,
+  with `members_updated` and the `call_id`.
+* `pairwise.metric` is set **only** when the provider's compare payload carried
+  a numeric field this build recognises (`overlap`, `similarity`, `correlation`,
+  `affinity` → higher is closer; `distance`, `difference`, `divergence` → lower
+  is closer). An unrecognised payload yields `unsupported_response_shape` with
+  `observed_keys` (key names only) and `metric: null`. The compare response
+  schema is not modelled in this repository, and the live provider has not been
+  exercised for it here — treat `metric: null` as "no value", never as zero.
+* `challenge.pairwise` repeats the comparison object and
+  `challenge.receipt.{pairwise,attribution}` carry the compact forms for export.
 
 ### Invariants the UI relies on
 

@@ -141,6 +141,9 @@ class CohortMemberView(ContractModel):
     call_id: str
     qloo_attributions: list[QlooAttributionView] = Field(default_factory=list)
     qloo_attribution_status: str | None = None
+    #: Where the attribution came from: "scoring" (the scoring call carried it),
+    #: "bounded" (one follow-up call for the winning cohort) or null.
+    qloo_attribution_origin: str | None = None
 
 
 class ExcludedMemberView(ContractModel):
@@ -478,6 +481,7 @@ def _member(member: Any) -> CohortMemberView:
         call_id=member.call_id,
         qloo_attributions=attributions,
         qloo_attribution_status=attribution_status,
+        qloo_attribution_origin=getattr(member, "attribution_origin", None),
     )
 
 

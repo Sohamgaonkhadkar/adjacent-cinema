@@ -1158,7 +1158,10 @@ export default function CreatorPage() {
                                 <details className="mt-1">
                                   <summary className="cursor-pointer font-mono text-[0.58rem] uppercase tracking-[0.12em] text-amber">
                                     QLOO INPUT ATTRIBUTION · {member.qloo_attributions?.length}{" "}
-                                    SEED(S) · SCORE CALL {member.call_id ?? "UNAVAILABLE"}
+                                    SEED(S) ·{" "}
+                                    {member.qloo_attribution_origin === "bounded"
+                                      ? `BOUNDED FOLLOW-UP · SCORE CALL ${member.call_id ?? "UNAVAILABLE"}`
+                                      : `SCORE CALL ${member.call_id ?? "UNAVAILABLE"}`}
                                   </summary>
                                   <ul className="mt-1 space-y-1">
                                     {member.qloo_attributions?.map((attribution) => (

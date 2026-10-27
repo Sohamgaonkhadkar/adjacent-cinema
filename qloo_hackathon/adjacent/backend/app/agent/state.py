@@ -198,6 +198,10 @@ class AdjacentState:
     ranked: list[CandidateCohort] = field(default_factory=list)
     rejected: list[CandidateCohort] = field(default_factory=list)
     findings: list[Finding] = field(default_factory=list)
+    #: Pairwise comparison of the top two cohorts (see domain/pairwise.py).
+    #: ``None`` until ranking has run; a dict — including honest refusals —
+    #: afterwards. The Decision Challenge reads it, it never computes it.
+    pairwise: dict[str, Any] | None = None
     ledger: ProvenanceLedger | None = None
 
     # -- agent control state ---------------------------------------------

@@ -11,7 +11,7 @@ import test from "node:test";
  * carry its data status and its limits.
  */
 
-const { buildChallengeView, formatDecisionReceipt, challengeExportSections, toneForStatus } =
+const { buildChallengeView, formatDecisionReceipt, challengeExportSections, toneForStatus, pairwiseRow } =
   await import("../lib/challengeView.ts");
 
 const fixtureChallenge = {
@@ -386,4 +386,124 @@ test("data status maps to the same chip tones the rest of the product uses", () 
   assert.equal(toneForStatus("insufficient"), "warn");
   assert.equal(toneForStatus("failed"), "fail");
   assert.equal(toneForStatus(undefined), "neutral");
+});
+
+// ─── Pairwise comparison (`/v2/analysis/compare`) ───────────────────────────
+// The response schema is not modelled by the backend, so the UI may only ever
+// print a value the payload actually carried. These tests pin that boundary.
+
+const measuredPairwise = {
+  schema: "adjacent.pairwise-comparison/1",
+  data_status: "measured",
+  available: true,
+  status: "measured",
+  reason: "",
+  metric: { key: "overlap", value: 0.6314, direction: "higher_is_closer", source: "provider_reported" },
+  cohorts: {
+    a: {
+      cohort_id: "urn:entity:artist:tag_cluster:1",
+      domain: "urn:entity:artist",
+      rank: 1,
+      label: "artist · Brian Eno",
+      member_count: 4,
+      entity_ids: ["urn:entity:artist:eno"],
+      member_names: ["Brian Eno"],
+      truncated: false,
+    },
+    b: {
+      cohort_id: "urn:entity:artist:subtype:composer:1",
+      domain: "urn:entity:artist",
+      rank: 3,
+      label: "artist · Hildur Gudnadottir",
+      member_count: 3,
+      entity_ids: ["urn:entity:artist:gud"],
+      member_names: ["Hildur Gudnadottir"],
+      truncated: false,
+    },
+  },
+  call_id: "compare-call-1",
+  observed_keys: [],
+  limits: [],
+};
+
+test("a measured comparison is printed with its key, direction and call id", () => {
+  const row = pairwiseRow(measuredPairwise);
+  assert.equal(row.tone, "live");
+  assert.match(row.label, /Brian Eno vs artist · Hildur Gudnadottir/);
+  assert.match(row.detail, /overlap = 0\.631/);
+  assert.match(row.detail, /higher means the two groups overlap more/);
+  assert.match(row.detail, /not a forecast of/);
+  assert.equal(row.callId, "compare-call-1");
+
+  const view = buildChallengeView({ ...fixtureChallenge, pairwise: measuredPairwise });
+  assert.deepEqual(view.pairwise, row);
+
+  const receipt = formatDecisionReceipt({ ...fixtureChallenge, pairwise: measuredPairwise });
+  assert.match(receipt, /PAIRWISE COMPARISON/);
+  assert.match(receipt, /overlap = 0\.631/);
+});
+
+test("an unrecognised response shape shows the refusal, never a number", () => {
+  const refused = {
+    ...measuredPairwise,
+    available: false,
+    status: "unsupported_response_shape",
+    metric: null,
+    reason:
+      "The provider answered, but its response carried no numeric field this product is willing to interpret.",
+    call_id: "compare-call-2",
+  };
+  const row = pairwiseRow(refused);
+  assert.equal(row.tone, "neutral");
+  assert.match(row.label, /No comparison value/);
+  assert.match(row.detail, /no numeric field/);
+  assert.doesNotMatch(row.detail, /\d\.\d{3}/);
+
+  const receipt = formatDecisionReceipt({ ...fixtureChallenge, pairwise: refused });
+  assert.match(receipt, /Status: unsupported_response_shape/);
+  assert.doesNotMatch(receipt, /overlap =/);
+});
+
+test("a fixture run says the comparison is not modelled instead of implying a result", () => {
+  const row = pairwiseRow({
+    ...measuredPairwise,
+    data_status: "fixture",
+    available: false,
+    status: "not_modelled_in_fixture",
+    metric: null,
+    reason: "The labelled fixture run does not model this comparison response.",
+    call_id: "compare-call-3",
+  });
+  assert.match(row.label, /No comparison value/);
+  assert.match(row.detail, /does not model/);
+  assert.equal(row.callId, "compare-call-3");
+});
+
+test("a failed comparison is toned as a failure and keeps its call id", () => {
+  const row = pairwiseRow({
+    ...measuredPairwise,
+    available: false,
+    status: "failed",
+    metric: null,
+    reason: "The comparison call did not complete.",
+    call_id: null,
+  });
+  assert.equal(row.tone, "fail");
+  assert.equal(row.callId, null);
+  assert.match(row.detail, /did not complete/);
+});
+
+test("no comparison payload means no section at all", () => {
+  assert.equal(pairwiseRow(null), null);
+  assert.equal(pairwiseRow(undefined), null);
+  assert.equal(buildChallengeView({ ...fixtureChallenge, pairwise: undefined }).pairwise, null);
+});
+
+test("an unknown metric direction is not described as closeness", () => {
+  const row = pairwiseRow({
+    ...measuredPairwise,
+    metric: { key: "overlap", value: 0.4, direction: "unknown", source: "provider_reported" },
+  });
+  assert.match(row.detail, /does not interpret the direction/);
+  assert.doesNotMatch(row.detail, /overlap more/);
 });

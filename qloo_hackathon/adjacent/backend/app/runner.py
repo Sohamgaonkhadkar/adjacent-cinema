@@ -55,6 +55,7 @@ from .domain.cohorts import (
     build_candidate_cohorts,
 )
 from .domain.ledger import ProvenanceLedger
+from .domain.pairwise import build_pairwise_comparison
 from .domain.reasons import RejectionCode
 from .domain.scoring import CohortRanker
 from .qloo import DEFAULT_FIXTURE, MockQlooClient
@@ -435,10 +436,14 @@ async def _rank(client: Any, run: AdjacentState, budget: Budget) -> None:
         ]
     contexts_needed = len({c.domain for c in run.cohorts})
     fallback_capacity = max(0, budget.remaining_calls - contexts_needed)
+    # Keep one spare call so a rejected optional field can still be retried;
+    # only spend beyond that on the bounded attribution call.
+    bounded_capacity = 1 if budget.remaining_calls - contexts_needed >= 2 else 0
     ranker = CohortRanker(
         client,
         programme_ids=run.resolved_ids,
         max_explainability_fallbacks=fallback_capacity,
+        bounded_attribution_budget=bounded_capacity,
     )
     run.ranking = await ranker.build_and_rank_cohorts(run.cohorts)
     budget.record_calls(run.ranking.qloo_calls_made)
@@ -451,6 +456,19 @@ async def _rank(client: Any, run: AdjacentState, budget: Budget) -> None:
                 message=f"{cohort_id} was not returned by its scoring context, so it was not scored",
             )
         )
+
+    # One bounded pairwise comparison for the top two cohorts. It answers the
+    # question a single ranking cannot ("do these two groupings share an
+    # audience?"), costs at most one call, and refuses honestly when the two
+    # cohorts are not the same entity type.
+    run.pairwise = await build_pairwise_comparison(
+        client,
+        run.ranking,
+        data_status=run.data_status,
+        budget_remaining=budget.remaining_calls,
+    )
+    if run.pairwise.get("call_id"):
+        budget.record_calls(1)
 
 
 async def run_fixture_async(

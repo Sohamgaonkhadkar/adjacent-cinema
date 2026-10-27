@@ -35,7 +35,7 @@ import itertools
 import json
 import statistics
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from .. import evidence
@@ -118,6 +118,9 @@ class RankingResult:
     scoring_call_ids: list[str] = field(default_factory=list)
     qloo_calls_made: int = 0
     unscored_member_ids: list[str] = field(default_factory=list)
+    #: Outcome of the optional bounded explainability call. Always present once
+    #: ranking has run, so a reader can tell "not needed" from "could not".
+    bounded_attribution: dict[str, Any] = field(default_factory=dict)
 
     @property
     def scored_entity_count(self) -> int:
@@ -216,6 +219,7 @@ class CohortRanker:
         take: int = 50,
         tool: str = "build_and_rank_cohorts",
         max_explainability_fallbacks: int | None = None,
+        bounded_attribution_budget: int = 0,
     ) -> None:
         if not programme_ids:
             raise ValueError("CohortRanker requires at least one programme entity id as a signal")
@@ -224,6 +228,9 @@ class CohortRanker:
         self.take = take
         self.tool = tool
         self.max_explainability_fallbacks = max_explainability_fallbacks
+        #: Extra Qloo calls this ranker may spend on one bounded explainability
+        #: call for the winning cohort. 0 disables the path entirely.
+        self.bounded_attribution_budget = max(0, bounded_attribution_budget)
 
     # -- the single logical operation --------------------------------------
     async def build_and_rank_cohorts(self, cohorts: Sequence[CandidateCohort]) -> RankingResult:
@@ -337,7 +344,136 @@ class CohortRanker:
             result.operation_call_id = operation.call_id
 
         self._order(result)
+        result.bounded_attribution = await self._attach_bounded_attribution(result)
         return result
+
+    # -- bounded explainability for the winner ------------------------------
+    async def _attach_bounded_attribution(self, result: RankingResult) -> dict[str, Any]:
+        """Ask for per-seed attribution for the winning cohort only.
+
+        A scoring context with more than 12 candidate entities cannot carry
+        ``feature.explainability`` (the documented limit), which used to leave
+        every real run unable to answer "which of my films drove this?". One
+        extra bounded call — same signal ids, same entity type, at most 12
+        entities, the winner's — answers it without re-scoring the run.
+
+        The call is additive: the members keep the affinity and popularity they
+        were ranked on, and only the attribution rides along.
+        """
+        record: dict[str, Any] = {
+            "status": "not_needed",
+            "reason": "",
+            "domain": None,
+            "cohort_id": None,
+            "call_id": None,
+            "entity_ids": [],
+            "members_updated": 0,
+            "qloo_calls_made": 0,
+        }
+        if not result.ranked:
+            record["reason"] = "no ranked cohort exists to attribute"
+            return record
+
+        winner = result.ranked[0]
+        context = next(
+            (c for c in result.contexts if c.domain == winner.domain),
+            None,
+        )
+        if context is None:
+            record["reason"] = "the winning cohort has no scoring context"
+            return record
+        if context.explainability_status != "not_requested_limit":
+            # Inline attribution was already requested (or the provider refused
+            # it); a second call would not add anything.
+            record["status"] = "not_needed"
+            record["reason"] = (
+                f"the scoring context already reported '{context.explainability_status}'"
+            )
+            return record
+        if self.bounded_attribution_budget <= 0:
+            record["status"] = "unavailable_budget"
+            record["domain"] = winner.domain
+            record["cohort_id"] = winner.cohort_id
+            record["reason"] = (
+                "the call budget was reserved for scoring, so no attribution call was made"
+            )
+            return record
+
+        members = [m for m in winner.members if m.affinity is not None]
+        members.sort(key=lambda m: (-(m.affinity or 0.0), m.entity_id))
+        chosen = members[:12]
+        if not chosen:
+            record["reason"] = "the winning cohort has no scored members"
+            return record
+
+        record.update(
+            {
+                "status": "requested",
+                "domain": winner.domain,
+                "cohort_id": winner.cohort_id,
+                "entity_ids": [m.entity_id for m in chosen],
+            }
+        )
+        try:
+            response = await self.client.insights(
+                filter_type=winner.domain,
+                signal_interests_entities=self.programme_ids,
+                filter_results_entities=[m.entity_id for m in chosen],
+                take=len(chosen),
+                feature_explainability=True,
+                tool=f"bounded_explainability:{winner.domain}",
+            )
+        # Attribution is optional evidence: any failure is reported, never raised.
+        except Exception as exc:
+            record["status"] = "failed"
+            record["reason"] = (
+                "the optional attribution call did not complete; cohort scores are unaffected"
+            )
+            record["error_type"] = type(exc).__name__
+            return record
+
+        result.qloo_calls_made += 1
+        record["qloo_calls_made"] = 1
+        record["call_id"] = getattr(response, "call_id", None)
+        if record["call_id"]:
+            result.scoring_call_ids.append(record["call_id"])
+
+        returned = {e.entity_id: e for e in getattr(response, "results", []) if e.entity_id}
+        updated = 0
+        replacements: dict[str, MemberEvidence] = {}
+        for member in chosen:
+            scored = returned.get(member.entity_id)
+            raw = scored.raw if scored is not None else None
+            if not isinstance(raw, dict):
+                continue
+            candidate = replace(
+                member,
+                bounded_attribution_raw=raw,
+                qloo_attribution_status="returned_bounded",
+            )
+            if not candidate.qloo_attributions():
+                # The provider answered without a usable contribution for this
+                # member: keep the member exactly as it was, and infer nothing.
+                continue
+            replacements[member.entity_id] = candidate
+            updated += 1
+        if replacements:
+            # MemberEvidence is frozen; replace the entries rather than mutate.
+            winner.members = [replacements.get(m.entity_id, m) for m in winner.members]
+
+        record["members_updated"] = updated
+        if updated:
+            record["status"] = "returned"
+            record["reason"] = (
+                f"attribution came from one bounded call covering {len(chosen)} member(s) of the "
+                "winning cohort; affinity scores still come from the original scoring call"
+            )
+        else:
+            record["status"] = "missing"
+            record["reason"] = (
+                "the attribution call returned no valid per-seed contribution; nothing is inferred"
+            )
+        return record
 
     # -- scoring a cohort inside its context -------------------------------
     def _attach_scores(self, cohort: CandidateCohort, context: ScoringContext) -> None:

@@ -45,6 +45,11 @@ jobs:
         run: |
           test -f docs/API_NOTES.md
           test -f docs/api_probe_results.json
+      - name: Verification-report renderer self-test (offline, no key)
+        # Guards the report generator that produces docs/verification/*. The step
+        # renders a synthetic report and asserts on it; it never calls Qloo, so a
+        # broken renderer cannot hide behind a missing QLOO_API_KEY.
+        run: python research/scripts/live_counterfactual_evaluation.py --self-test
 
   frontend:
     runs-on: ubuntu-latest

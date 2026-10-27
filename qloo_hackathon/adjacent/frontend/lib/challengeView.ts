@@ -17,6 +17,7 @@ import type {
   DecisionChallengeData,
   DecisionReceipt,
   NextCheck,
+  PairwiseComparison,
   StabilityScenario,
 } from "@/types/adjacent";
 
@@ -43,6 +44,8 @@ export interface ChallengeView {
   stabilityRule: string;
   stabilityRows: ChallengeRow[];
   skipped: { id: string; text: string }[];
+  /** The winner-vs-same-type comparison, or an explicit reason there is none. */
+  pairwise: { tone: Tone; label: string; detail: string; callId: string | null } | null;
   checks: NextCheck[];
   receipt: DecisionReceipt | null;
   limits: string[];
@@ -109,6 +112,49 @@ function scenarioRow(
 }
 
 /**
+ * Turn one comparison payload into a row, or `null` when no comparison was
+ * attempted. A refusal keeps its own wording: the reader is told why the number
+ * is missing instead of being shown a reassuring blank.
+ */
+export function pairwiseRow(
+  comparison: PairwiseComparison | null | undefined,
+): { tone: Tone; label: string; detail: string; callId: string | null } | null {
+  if (!comparison) return null;
+
+  const a = comparison.cohorts?.a?.label || "the top cohort";
+  const b = comparison.cohorts?.b?.label || "the comparison cohort";
+  const metric = comparison.metric;
+  const callId = comparison.call_id ?? null;
+
+  if (comparison.available && metric && typeof metric.value === "number") {
+    const direction =
+      metric.direction === "higher_is_closer"
+        ? "higher means the two groups overlap more"
+        : metric.direction === "lower_is_closer"
+          ? "lower means the two groups overlap more"
+          : "this build does not interpret the direction of that field";
+    return {
+      tone: "live",
+      label: `${a} vs ${b}`,
+      detail:
+        `Qloo reported ${metric.key} = ${metric.value.toFixed(3)} between ${a} and ${b} ` +
+        `(${direction}). It describes the two groups you supplied; it is not a forecast of ` +
+        `attendance, revenue or campaign performance.`,
+      callId,
+    };
+  }
+
+  return {
+    tone: comparison.status === "failed" ? "fail" : "neutral",
+    label: `No comparison value for ${a} vs ${b}`,
+    detail:
+      comparison.reason ||
+      "The comparison returned no value this build is willing to interpret.",
+    callId,
+  };
+}
+
+/**
  * Build the view. `challenge` may be null (older runs, or a payload that failed
  * to compute) — that is a state the reader has to see, not one to paper over.
  */
@@ -131,6 +177,7 @@ export function buildChallengeView(
       stabilityRule: "",
       stabilityRows: [],
       skipped: [],
+      pairwise: null,
       checks: [],
       receipt: null,
       limits: [],
@@ -285,6 +332,7 @@ export function buildChallengeView(
       id: `${skip.cohort_id}:${skip.entity_id}:${index}`,
       text: `${skip.name ?? skip.entity_id} was not tested: ${skip.reason}.`,
     })),
+    pairwise: pairwiseRow(challenge.pairwise),
     checks: challenge.next_checks ?? [],
     receipt: challenge.receipt,
     limits: challenge.limits ?? [],
@@ -362,6 +410,36 @@ export function formatDecisionReceipt(challenge: DecisionChallengeData | null | 
   lines.push(`  ${receipt.stability.reason}`);
   if (view.stabilityRule) lines.push(`  Rule: ${view.stabilityRule}`);
 
+  // The receipt carries its own compact copy; older receipts do not, so the
+  // challenge-level payload is the fallback rather than an omission.
+  const comparison = challenge?.pairwise ?? receipt.pairwise ?? null;
+  if (comparison) {
+    lines.push("");
+    lines.push("PAIRWISE COMPARISON");
+    lines.push(`  Status: ${comparison.status}`);
+    if (comparison.metric) {
+      const metric = comparison.metric;
+      lines.push(
+        `  ${metric.key} = ${metric.value.toFixed(3)} (${metric.direction}); describes the two groups supplied, not an outcome.`,
+      );
+    }
+    if (comparison.reason) lines.push(`  ${comparison.reason}`);
+    if (comparison.call_id) lines.push(`  Qloo call: ${comparison.call_id}`);
+  }
+
+  if (receipt.attribution) {
+    const origins = Object.entries(receipt.attribution.origins)
+      .map(([origin, count]) => `${origin} ${count}`)
+      .join(", ");
+    lines.push("");
+    lines.push("ATTRIBUTION");
+    lines.push(`  Origins: ${origins || "none"}`);
+    lines.push(`  Bounded follow-up: ${receipt.attribution.bounded_status}`);
+    if (receipt.attribution.bounded_call_id) {
+      lines.push(`  Qloo call: ${receipt.attribution.bounded_call_id}`);
+    }
+  }
+
   if (view.checks.length) {
     lines.push("");
     lines.push("NEXT CHECKS");
@@ -413,6 +491,12 @@ export function challengeExportSections(
       label: "Counterfactual: popularity-only baseline",
       value:
         "Ordering the same candidates by popularity alone selects a different cohort, so this decision is not the mainstream pick.",
+    });
+  }
+  if (view.pairwise) {
+    sections.push({
+      label: "Pairwise comparison (not a forecast)",
+      value: `${view.pairwise.label} — ${view.pairwise.detail}`,
     });
   }
   if (view.checks.length > 0) {

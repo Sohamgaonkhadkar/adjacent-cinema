@@ -69,6 +69,11 @@ class MemberEvidence:
     is_marginal: bool  # Medium band (< High) — near the threshold, worth flagging
     qloo_attribution_status: str = "requested"
     allowed_qloo_seed_ids: tuple[str, ...] | None = None
+    #: Raw entity payload from a *second, bounded* explainability call.
+    #: Only filled when the scoring context was too large to request
+    #: attribution inline; the affinity numbers above always come from the
+    #: original scoring call and are never replaced by this one.
+    bounded_attribution_raw: dict[str, Any] | None = None
 
     @property
     def entity_id(self) -> str:
@@ -97,10 +102,11 @@ class MemberEvidence:
         evidence only when its shape, entity IDs and finite 0–1 scores validate;
         never infer a contribution from affinity alone.
         """
-        raw = self.scored.raw if isinstance(self.scored.raw, dict) else {}
-        query = raw.get("query") if isinstance(raw.get("query"), dict) else {}
-        explanation = query.get("explainability") if isinstance(query.get("explainability"), dict) else {}
-        values = explanation.get("signal.interests.entities")
+        values = self._explainability_values(self.scored.raw)
+        if values is None and self.bounded_attribution_raw is not None:
+            # Attribution from the bounded follow-up call, validated exactly the
+            # same way: same allowed seed ids, same numeric checks.
+            values = self._explainability_values(self.bounded_attribution_raw)
         if not isinstance(values, list):
             return []
 
@@ -142,6 +148,25 @@ class MemberEvidence:
             if counts[entity_id.casefold()] == 1
         ]
 
+    @staticmethod
+    def _explainability_values(raw: Any) -> list[Any] | None:
+        """The provider's per-seed list from one entity payload, or ``None``."""
+        if not isinstance(raw, dict):
+            return None
+        query = raw.get("query") if isinstance(raw.get("query"), dict) else {}
+        explanation = query.get("explainability") if isinstance(query.get("explainability"), dict) else {}
+        values = explanation.get("signal.interests.entities")
+        return values if isinstance(values, list) else None
+
+    @property
+    def attribution_origin(self) -> str | None:
+        """Which call produced the attribution: ``scoring``, ``bounded`` or neither."""
+        if self._explainability_values(self.scored.raw) is not None and self.qloo_attributions():
+            return "scoring"
+        if self.bounded_attribution_raw is not None and self.qloo_attributions():
+            return "bounded"
+        return None
+
     def to_dict(self) -> dict[str, Any]:
         attributions = self.qloo_attributions()
         attribution_status = self.qloo_attribution_status
@@ -160,6 +185,7 @@ class MemberEvidence:
             "call_id": self.call_id,
             "qloo_attributions": attributions,
             "qloo_attribution_status": attribution_status,
+            "qloo_attribution_origin": self.attribution_origin,
         }
 
 

@@ -630,6 +630,39 @@ def _gap(
     }
 
 
+def _pairwise_action(pairwise: dict[str, Any] | None) -> str:
+    """What to do about a marginal runner-up, given whether a comparison exists."""
+    base = "Treat the top two as one option when planning, or add a comparable that separates them. "
+    if not pairwise:
+        return (
+            base + "No pairwise comparison was attempted for this run, so the overlap between the "
+            "two groupings is unknown. /v2/analysis/compare is implemented in the client but only "
+            "runs when a ranking has two cohorts of the same entity type and call budget remains."
+        )
+    status = pairwise.get("status")
+    cohorts = pairwise.get("cohorts") or {}
+    a = (cohorts.get("a") or {}).get("label") or "the top cohort"
+    b = (cohorts.get("b") or {}).get("label") or "the runner-up"
+    metric = pairwise.get("metric") or {}
+    if status == "measured" and metric.get("key"):
+        rank_a = (cohorts.get("a") or {}).get("rank")
+        rank_b = (cohorts.get("b") or {}).get("rank")
+        # Name the exact pair: the compared cohort is the highest-ranked one of
+        # the winner's type, which is not always the runner-up.
+        if isinstance(rank_a, int) and isinstance(rank_b, int):
+            pair = f"{a} (rank {rank_a}) and {b} (rank {rank_b})"
+        else:
+            pair = f"{a} and {b}"
+        return (
+            base
+            + f"Qloo reported {metric['key']} = {metric['value']:.3f} between {pair} "
+            f"(call {pairwise.get('call_id')}). Read the direction from the field name: "
+            "it describes how much the two groups overlap, not which one will sell tickets."
+        )
+    reason = pairwise.get("reason") or "the comparison was not available for this run"
+    return base + f"No pairwise number is shown ({status}): {reason}"
+
+
 def _next_checks(
     state: AdjacentState,
     cohorts: Sequence[CandidateCohort],
@@ -708,13 +741,15 @@ def _next_checks(
     if missing_attribution:
         limited = attribution_status.get("not_requested_limit", 0)
         unsupported = attribution_status.get("unsupported", 0)
+        bounded = (getattr(ranking, "bounded_attribution", None) or {}) if ranking else {}
+        bounded_status = bounded.get("status") or "not_attempted"
         why = (
             "the request asked for per-seed attribution but the provider returned none"
             if attribution_status.get("missing")
             else "the optional feature.explainability field was rejected by the provider"
             if unsupported
-            else f"{_count(limited, 'member')} were scored in a call that asked for more than 12 entities, "
-            "so attribution was not requested"
+            else f"{_count(limited, 'member')} were scored in a call that asked for more than 12 "
+            f"entities, so attribution was not requested inline (bounded follow-up: {bounded_status})"
         )
         checks.append(
             _gap(
@@ -729,7 +764,10 @@ def _next_checks(
                 ),
                 action=(
                     "Re-score the winning domain with feature.explainability=true on at most 12 "
-                    "entities, which is the documented limit for that optional field."
+                    "entities, which is the documented limit for that optional field. Adjacent "
+                    "already attempts exactly this once per run when the call budget allows it; "
+                    "when that attempt is reported as failed or unavailable_budget above, run it "
+                    "manually."
                 ),
                 operation="rank_cohorts (/v2/insights with feature.explainability)",
                 estimated_calls=1,
@@ -781,13 +819,7 @@ def _next_checks(
                     f"{abs((winner_novelty or 0) - (runner_novelty or 0)):.3f}. A small change in "
                     "the evidence could reorder them.",
                     uncertainty_addressed="whether the top two recommendations are distinguishable from this evidence",
-                    action=(
-                        "Treat the top two as one option when planning, or add a comparable that "
-                        "separates them. A pairwise comparison between the two cohorts is not "
-                        "offered: the client can call /v2/analysis/compare, but nothing in this "
-                        "product wires it into ranking, and it has not been exercised against the "
-                        "live provider here."
-                    ),
+                    action=_pairwise_action(getattr(state, "pairwise", None)),
                     operation="expand_candidates / rank_cohorts",
                     estimated_calls=2,
                     call_ids=[winner.score.call_id] if winner.score else [],
@@ -926,8 +958,39 @@ def build_receipt(
             {"id": check["id"], "title": check["title"]}
             for check in (challenge.get("next_checks") or [])
         ],
+        "pairwise": _receipt_pairwise(challenge.get("pairwise")),
+        "attribution": _receipt_attribution(state),
         "limits": list(PUBLIC_LIMITS),
         "call_ids": sorted({cid for cid in call_ids if cid}),
+    }
+
+
+def _receipt_pairwise(pairwise: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Only what the comparison actually established — nothing filled in."""
+    if not pairwise:
+        return None
+    return {
+        "status": pairwise.get("status"),
+        "reason": pairwise.get("reason") or "",
+        "call_id": pairwise.get("call_id"),
+        "metric": pairwise.get("metric"),
+    }
+
+
+def _receipt_attribution(state: AdjacentState) -> dict[str, Any]:
+    """Where per-seed attribution came from, and what it cost."""
+    ranking = getattr(state, "ranking", None)
+    bounded = (getattr(ranking, "bounded_attribution", None) or {}) if ranking else {}
+    origin_counts: dict[str, int] = {}
+    for cohort in getattr(state, "ranked", None) or []:
+        for member in cohort.members:
+            origin = getattr(member, "attribution_origin", None) or "none"
+            origin_counts[origin] = origin_counts.get(origin, 0) + 1
+    return {
+        "origins": origin_counts,
+        "bounded_status": bounded.get("status") or "not_attempted",
+        "bounded_call_id": bounded.get("call_id"),
+        "bounded_members_updated": bounded.get("members_updated", 0),
     }
 
 
@@ -979,6 +1042,7 @@ def build_decision_challenge(state: AdjacentState) -> dict[str, Any]:
         "necessity": necessity,
         "necessity_statement": _necessity_statement(necessity, labels),
         "stability": stability,
+        "pairwise": getattr(state, "pairwise", None),
         "next_checks": checks,
         "counts": {
             "cohorts_ranked": len(ranked),

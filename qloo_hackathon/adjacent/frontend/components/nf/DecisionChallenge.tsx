@@ -110,6 +110,25 @@ export function DecisionChallenge({ challenge, onExportReceipt, onGoToTest }: De
           </ul>
         )}
 
+        {view.pairwise && (
+          <>
+            <h3 className="type-kicker mt-10">Comparison · how close are the two groups</h3>
+            <div className="mt-4 border border-line bg-ink-2 p-4">
+              <p className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-dim">
+                {view.pairwise.label}
+              </p>
+              <p className={cn("mt-2 max-w-2xl text-sm leading-relaxed", TONE_TEXT[view.pairwise.tone])}>
+                {view.pairwise.detail}
+              </p>
+              <p className="caption mt-2">
+                {view.pairwise.callId
+                  ? `Qloo call ${view.pairwise.callId} · /v2/analysis/compare`
+                  : "No call was made for this comparison"}
+              </p>
+            </div>
+          </>
+        )}
+
         {view.skipped.length > 0 && (
           <details className="mt-6 border border-line bg-ink-2 p-4">
             <summary className="cursor-pointer font-mono text-[0.62rem] uppercase tracking-[0.16em] text-dim">
