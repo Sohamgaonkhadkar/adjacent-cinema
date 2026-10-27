@@ -61,22 +61,18 @@ def _run(state: AdjacentState, client: _CompareClient, *, budget: int = MAX_PAIR
     return asyncio.run(build_comparables_audit(client, state, budget_remaining=budget))
 
 
-def test_measured_pair_reports_the_provider_key_and_call() -> None:
+def test_unverified_metric_name_is_not_reported_as_measured() -> None:
     client = _CompareClient(payload={"overlap": 0.42})
     audit = _run(_state(["Perfect Days", "The Zone of Interest"]), client)
 
     assert audit["schema"] == SCHEMA
     assert audit["status"] == "evaluated"
-    assert audit["summary"]["pairs_measured"] == 1
+    assert audit["summary"]["pairs_measured"] == 0
     row = audit["pairs"][0]
-    assert row["status"] == "measured"
-    assert row["metric"] == {
-        "key": "overlap",
-        "value": 0.42,
-        "direction": "higher_is_closer",
-        "source": "provider_reported",
-    }
-    assert "0.420" in row["reason"]
+    assert row["status"] == "no_readable_field"
+    assert row["metric"] is None
+    assert row["observed_keys"] == ["overlap"]
+    assert "not refuted" in row["reason"]
     assert row["call_id"] == "compare-1"
 
     call = client.calls[0]
@@ -134,7 +130,7 @@ def test_budget_is_charged_per_call_and_shortfall_is_explicit() -> None:
 
     assert len(client.calls) == 1
     statuses = [row["status"] for row in audit["pairs"]]
-    assert statuses == ["measured", "unavailable_budget", "unavailable_budget"]
+    assert statuses == ["no_readable_field", "unavailable_budget", "unavailable_budget"]
     assert audit["summary"]["pairs_unavailable_budget"] == 2
 
 
