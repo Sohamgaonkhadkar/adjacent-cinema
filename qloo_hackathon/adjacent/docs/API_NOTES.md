@@ -646,19 +646,16 @@ scoring contexts that produced the cohorts are global, so a location-scoped
 comparison would compare different populations. The limits text says so.
 
 **Response — deliberately unmodelled.** No verified sample of this endpoint's
-response has been recorded in this repository, and the public reference
-documents request parameters rather than the payload fields. The reader
-therefore:
+response has been recorded in this repository, and the public reference documents
+request parameters rather than payload fields. Therefore the application does
+not interpret any response metric, even when a numeric field has a plausible
+name such as `overlap`, `similarity` or `distance`. A name alone does not
+establish the field's contract, direction or meaning.
 
-* accepts a numeric field at the payload root or under `results` / `query`
-  **only** when its exact key is `overlap`, `similarity`, `correlation`,
-  `affinity` (higher is closer) or `distance`, `difference`, `divergence`
-  (lower is closer);
-* ignores booleans, numeric strings, NaN and infinities;
-* reports any other shape as `unsupported_response_shape` with the observed key
-  **names only** (never values);
-* treats an upstream failure as `failed` with `error_kind`/`error_status`, never
-  as evidence that two entities or cohorts are unrelated.
+The reader records the call id and the observed top-level **key names only** and
+returns `unsupported_response_shape` with no metric value. It never echoes
+provider payload values, coerces a candidate metric, or treats an upstream
+failure as evidence that two entities or cohorts are unrelated.
 
 Changing this reader requires either an official description of the response
 fields or a verifiable response sample; neither exists in this repository yet.
