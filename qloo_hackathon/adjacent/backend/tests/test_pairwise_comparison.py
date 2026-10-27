@@ -360,32 +360,23 @@ def test_groups_are_truncated_to_the_documented_size() -> None:
     assert len(client.calls[0]["a_signal_interests_entities"]) == MAX_GROUP_MEMBERS
 
 
-def test_interpret_is_silent_unless_a_metric_was_established() -> None:
-    assert interpret(None) == ""
-    assert interpret({"available": False, "metric": None}) == ""
-    assert interpret({"available": True, "metric": {"key": "overlap", "value": None}}) == ""
-
-    sentence = interpret(
+def test_interpret_is_disabled_until_compare_response_schema_is_verified() -> None:
+    payloads = [
+        None,
+        {"available": False, "metric": None},
         {
             "available": True,
             "metric": {"key": "overlap", "value": 0.63, "direction": "higher_is_closer"},
-            "cohorts": {"a": {"label": "artist · Brian Eno"}, "b": {"label": "artist · Hildur"}},
-        }
-    )
-    assert "0.630" in sentence
-    assert "higher means the two groups overlap more" in sentence
-    assert "probability" not in sentence.lower()
-
-
-def test_unknown_direction_does_not_claim_an_interpretation() -> None:
-    sentence = interpret(
+        },
         {
             "available": True,
-            "metric": {"key": "overlap", "value": 0.4, "direction": "unknown"},
-            "cohorts": {"a": {"label": "A"}, "b": {"label": "B"}},
-        }
-    )
-    assert "does not interpret that field" in sentence
+            "metric": {"key": "distance", "value": 0.12, "direction": "lower_is_closer"},
+        },
+    ]
+    for payload in payloads:
+        assert interpret(payload) == ""
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -456,7 +447,7 @@ def test_fixture_run_reports_where_attribution_came_from() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_challenge_cites_the_measured_comparison_with_both_ranks() -> None:
+def test_challenge_does_not_interpret_a_numeric_looking_compare_field() -> None:
     from app.domain.challenge import _pairwise_action
 
     pairwise = {
@@ -470,14 +461,10 @@ def test_challenge_cites_the_measured_comparison_with_both_ranks() -> None:
     }
     sentence = _pairwise_action(pairwise)
 
-    assert "overlap = 0.631" in sentence
-    assert "artist · Brian Eno (rank 1)" in sentence
-    # The compared cohort is the highest-ranked one of the same type, which is
-    # not always the runner-up — the sentence says so rather than implying it.
-    assert "rank 3" in sentence
-    assert "compare-call-1" in sentence
+    assert "response schema is verified" in sentence
+    assert "overlap = " not in sentence
+    assert "0.631" not in sentence
     assert "urn:" not in sentence
-    assert "will sell tickets" in sentence
 
 
 def test_challenge_reports_a_refusal_instead_of_a_number() -> None:

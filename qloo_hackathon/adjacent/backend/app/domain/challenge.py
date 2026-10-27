@@ -671,34 +671,28 @@ def _gap(
 
 
 def _pairwise_action(pairwise: dict[str, Any] | None) -> str:
-    """What to do about a marginal runner-up, given whether a comparison exists."""
-    base = "Treat the top two as one option when planning, or add a comparable that separates them. "
+    """Describe comparison availability without interpreting its undocumented schema."""
+    base = "Treat the top groupings as a hypothesis to investigate, not as a proven audience match. "
     if not pairwise:
         return (
-            base + "No pairwise comparison was attempted for this run, so the overlap between the "
-            "two groupings is unknown. /v2/analysis/compare is implemented in the client but only "
-            "runs when a ranking has two cohorts of the same entity type and call budget remains."
+            base
+            + "No pairwise comparison was attempted for this run, so the relationship between "
+            "the groupings is unknown. The comparison is only attempted for same-type cohorts "
+            "when the run has call budget remaining."
         )
+
     status = pairwise.get("status")
-    cohorts = pairwise.get("cohorts") or {}
-    a = (cohorts.get("a") or {}).get("label") or "the top cohort"
-    b = (cohorts.get("b") or {}).get("label") or "the runner-up"
-    metric = pairwise.get("metric") or {}
-    if status == "measured" and metric.get("key"):
-        rank_a = (cohorts.get("a") or {}).get("rank")
-        rank_b = (cohorts.get("b") or {}).get("rank")
-        # Name the exact pair: the compared cohort is the highest-ranked one of
-        # the winner's type, which is not always the runner-up.
-        if isinstance(rank_a, int) and isinstance(rank_b, int):
-            pair = f"{a} (rank {rank_a}) and {b} (rank {rank_b})"
-        else:
-            pair = f"{a} and {b}"
+    if status == "measured":
+        # Defensive boundary: read_metric currently refuses all fields because
+        # the public Compare response contract is not documented. A stale or
+        # manually supplied payload must not bypass that boundary in the prose.
         return (
             base
-            + f"Qloo reported {metric['key']} = {metric['value']:.3f} between {pair} "
-            f"(call {pairwise.get('call_id')}). Read the direction from the field name: "
-            "it describes how much the two groups overlap, not which one will sell tickets."
+            + "A comparison response was recorded, but this build does not interpret numeric "
+            "fields until Qloo's Analysis Compare response schema is verified. No comparison "
+            "metric is used in the decision."
         )
+
     reason = pairwise.get("reason") or "the comparison was not available for this run"
     return base + f"No pairwise number is shown ({status}): {reason}"
 

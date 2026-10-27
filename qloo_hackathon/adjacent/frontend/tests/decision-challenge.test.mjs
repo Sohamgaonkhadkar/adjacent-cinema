@@ -426,13 +426,13 @@ const measuredPairwise = {
   limits: [],
 };
 
-test("a measured comparison is printed with its key, direction and call id", () => {
+test("a numeric-looking compare field is not interpreted while schema is unverified", () => {
   const row = pairwiseRow(measuredPairwise);
-  assert.equal(row.tone, "live");
-  assert.match(row.label, /Brian Eno vs artist · Hildur Gudnadottir/);
-  assert.match(row.detail, /overlap = 0\.631/);
-  assert.match(row.detail, /higher means the two groups overlap more/);
-  assert.match(row.detail, /not a forecast of/);
+  assert.equal(row.tone, "neutral");
+  assert.match(row.label, /No comparison value/);
+  assert.match(row.detail, /response schema is not verified/);
+  assert.doesNotMatch(row.detail, /overlap =/);
+  assert.doesNotMatch(row.detail, /0\.631/);
   assert.equal(row.callId, "compare-call-1");
 
   const view = buildChallengeView({ ...fixtureChallenge, pairwise: measuredPairwise });
@@ -440,7 +440,9 @@ test("a measured comparison is printed with its key, direction and call id", () 
 
   const receipt = formatDecisionReceipt({ ...fixtureChallenge, pairwise: measuredPairwise });
   assert.match(receipt, /PAIRWISE COMPARISON/);
-  assert.match(receipt, /overlap = 0\.631/);
+  assert.doesNotMatch(receipt, /overlap =/);
+  assert.doesNotMatch(receipt, /0\.631/);
+  assert.match(receipt, /response schema is not verified/);
 });
 
 test("an unrecognised response shape shows the refusal, never a number", () => {
@@ -527,13 +529,14 @@ test("no comparison payload means no section at all", () => {
   assert.equal(buildChallengeView({ ...fixtureChallenge, pairwise: undefined }).pairwise, null);
 });
 
-test("an unknown metric direction is not described as closeness", () => {
+test("no candidate metric direction is interpreted before schema verification", () => {
   const row = pairwiseRow({
     ...measuredPairwise,
     metric: { key: "overlap", value: 0.4, direction: "unknown", source: "provider_reported" },
   });
-  assert.match(row.detail, /does not interpret the direction/);
+  assert.match(row.detail, /response schema is not verified/);
   assert.doesNotMatch(row.detail, /overlap more/);
+  assert.doesNotMatch(row.detail, /overlap =/);
 });
 
 // ─── Qloo Impact Lab ────────────────────────────────────────────────────────

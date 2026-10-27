@@ -308,20 +308,10 @@ async def build_pairwise_comparison(
 
 
 def interpret(comparison: dict[str, Any] | None) -> str:
-    """One deterministic sentence, or ``""`` when there is nothing safe to say."""
-    if not comparison or not comparison.get("available"):
-        return ""
-    metric = comparison.get("metric") or {}
-    cohorts = comparison.get("cohorts") or {}
-    a = (cohorts.get("a") or {}).get("label") or "the top cohort"
-    b = (cohorts.get("b") or {}).get("label") or "the runner-up"
-    key = metric.get("key")
-    value = metric.get("value")
-    direction = metric.get("direction")
-    if value is None or not key:
-        return ""
-    if direction == "higher_is_closer":
-        return f"Qloo's {key} between {a} and {b} is {value:.3f}: higher means the two groups overlap more."
-    if direction == "lower_is_closer":
-        return f"Qloo's {key} between {a} and {b} is {value:.3f}: lower means the two groups overlap more."
-    return f"Qloo reported {key} = {value:.3f} between {a} and {b}. This build does not interpret that field."
+    """Do not interpret Compare response fields until Qloo's schema is verified.
+
+    The public endpoint reference documents request parameters but not the
+    response payload. Even a numeric-looking field with a plausible name must
+    not be converted into a claim about overlap or similarity.
+    """
+    return ""

@@ -155,11 +155,12 @@ skipped. See [`docs/NEXT_LIVE_CHECKLIST.md`](docs/NEXT_LIVE_CHECKLIST.md).
 Both surfaces below are additive: they never alter the programme, the cohorts or
 the ranking, and they spend no provider call beyond the ones named.
 
-- **Comparables Audit** (`backend/app/domain/comparables.py`,
-  `frontend/components/nf/ComparablesAudit.tsx`) — a capped set of explicit
-  compare calls between resolved references. Each pair is reported as
-  `measured`, `not_modelled_in_fixture`, `no_readable_field` or `failed`, with
-  its call id. A pair with no value is unevaluated, not refuted, and the audit
+- **Comparables Audit** and **Why this result?** — the former makes a capped set of explicit Qloo
+  compare calls between resolved references. The public Compare reference does
+  not document the response payload schema, so the current reader reports
+  `no_readable_field` instead of interpreting guessed metrics; fixture rows are
+  `not_modelled_in_fixture`, and failures remain `failed`. Each pair carries its
+  call id. A pair with no value is unevaluated, not refuted, and the audit
   short-circuits after an upstream failure instead of retrying blindly. A failed
   compare carries its failure class (`timeout`, `authentication`, `upstream`, …)
   and HTTP status, never the exception text or the response body, and a call that

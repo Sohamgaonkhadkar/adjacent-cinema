@@ -215,29 +215,21 @@ export function pairwiseRow(
 
   const a = comparison.cohorts?.a?.label || "the top cohort";
   const b = comparison.cohorts?.b?.label || "the comparison cohort";
-  const metric = comparison.metric;
   const callId = comparison.call_id ?? null;
+  const hasUnverifiedMetric =
+    comparison.status === "measured" &&
+    comparison.metric !== null &&
+    comparison.metric !== undefined &&
+    typeof comparison.metric.value === "number";
 
-  if (comparison.available && metric && typeof metric.value === "number") {
-    const direction =
-      metric.direction === "higher_is_closer"
-        ? "higher means the two groups overlap more"
-        : metric.direction === "lower_is_closer"
-          ? "lower means the two groups overlap more"
-          : "this build does not interpret the direction of that field";
-    return {
-      tone: "live",
-      label: `${a} vs ${b}`,
-      detail:
-        `Qloo reported ${metric.key} = ${metric.value.toFixed(3)} between ${a} and ${b} ` +
-        `(${direction}). It describes the two groups you supplied; it is not a forecast of ` +
-        `attendance, revenue or campaign performance.`,
-      callId,
-    };
-  }
+  // The backend currently never emits a measured metric because the public
+  // Compare reference does not document response fields. Do not let a legacy
+  // or malformed payload bypass that contract in the browser or receipt.
+  const reason = hasUnverifiedMetric
+    ? "A numeric-looking field was returned, but this build does not interpret it because Qloo's Analysis Compare response schema is not verified."
+    : comparison.reason ||
+      "The comparison returned no value this build is willing to interpret.";
 
-  // A failed call says which failure it was: a wrong key cannot be retried,
-  // a stalled provider can. The classification is a code, not the raw message.
   const failure =
     comparison.status === "failed" && comparison.error_kind
       ? ` Failure class: ${comparison.error_kind}` +
@@ -247,9 +239,7 @@ export function pairwiseRow(
   return {
     tone: comparison.status === "failed" ? "fail" : "neutral",
     label: `No comparison value for ${a} vs ${b}`,
-    detail:
-      (comparison.reason ||
-        "The comparison returned no value this build is willing to interpret.") + failure,
+    detail: reason + failure,
     callId,
   };
 }
@@ -527,9 +517,8 @@ export function formatDecisionReceipt(challenge: DecisionChallengeData | null | 
     lines.push("PAIRWISE COMPARISON");
     lines.push(`  Status: ${comparison.status}`);
     if (comparison.metric) {
-      const metric = comparison.metric;
       lines.push(
-        `  ${metric.key} = ${metric.value.toFixed(3)} (${metric.direction}); describes the two groups supplied, not an outcome.`,
+        "  A numeric-looking field was not interpreted because the Qloo Analysis Compare response schema is not verified.",
       );
     }
     if (comparison.reason) lines.push(`  ${comparison.reason}`);

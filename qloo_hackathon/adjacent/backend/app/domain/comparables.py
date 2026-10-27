@@ -95,22 +95,8 @@ def _row(
 
 
 def _sentence(left: dict[str, Any], right: dict[str, Any], metric: dict[str, Any]) -> str:
-    """One deterministic sentence, only when a value was actually returned."""
-    key = metric.get("key")
-    value = metric.get("value")
-    direction = metric.get("direction")
-    if not key or not isinstance(value, (int, float)):
-        return ""
-    if direction == "higher_is_closer":
-        tail = "higher means the two reference groups overlap more"
-    elif direction == "lower_is_closer":
-        tail = "lower means the two reference groups overlap more"
-    else:
-        tail = "this build does not interpret the direction of that field"
-    return (
-        f"Qloo reported {key} = {value:.3f} between {left['title']} and {right['title']} "
-        f"({tail})."
-    )
+    """Keep metrics out of reader-facing text until the response schema is verified."""
+    return ""
 
 
 async def compare_entity_groups(
