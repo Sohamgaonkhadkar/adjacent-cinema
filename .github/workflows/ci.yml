@@ -50,7 +50,7 @@ jobs:
         # read-only tools, and refuses live mode when the operator has not
         # enabled it. No key is read and no provider call is made.
         run: |
-          python - <<'PY'
+          PYTHONPATH=backend python - <<'PY'
           import asyncio
           from app.mcp_server import analyze_film_positioning, build_server
 
