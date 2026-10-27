@@ -96,9 +96,10 @@ here. No live `compare` value has been observed, and none is claimed.
 ## NOT verified here — do not read this as working against Qloo
 
 * **The compare response schema.** It is not modelled in this repository
-  (`docs/API_NOTES.md` records request parameters only). The reader accepts seven
-  field names and reports everything else as unreadable. What Qloo actually
-  returns for this endpoint has **not** been observed.
+  (`docs/API_NOTES.md` records request parameters only). The reader now refuses
+  to interpret any metric field until there is an official schema or a verifiable
+  response sample. What Qloo actually returns for this endpoint has **not** been
+  observed; live calls may be recorded as `unsupported_response_shape`.
 * **`model="descriptive"`.** `model` is a verified parameter for the endpoint,
   but its accepted values were never probed. The live call has not been made.
 * **Live bounded explainability.** The mock fixture carries no `explainability`
