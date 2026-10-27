@@ -71,6 +71,28 @@ CI: added an offline step
   present, `challenge.pairwise` identical, and `qloo_attribution_origin` present
   on every member.
 
+## Live CI evidence — what it does and does not prove
+
+CI run **40553055265** (branch `arena/5e39c010-adjacent-cinema`) is green, and the
+`Live-Qloo tests (only when QLOO_API_KEY secret is configured)` step ran and
+passed. On that run the live Creator test asserted, against a real Qloo run:
+
+* a ranked run reports a `pairwise` object whose `status` is one of the five
+  documented values, that it carries `limits`, that an unmeasured comparison has
+  `metric: null` and a reason, and that any claimed `call_id` appears in the
+  run's own trace;
+* `evidence.bounded_attribution` is present with a documented status, and a
+  `returned` status comes with a traceable call id and `members_updated >= 1`;
+* every ranked member carries `qloo_attribution_origin` in `{null, "scoring",
+  "bounded"}`.
+
+That is real plumbing evidence: the two new calls are made inside a live run, the
+run still completes, and their outcomes are reported truthfully. It is **not**
+evidence of *which* outcome occurred: the job logs are not retrievable from this
+environment, so whether that run measured a comparison, refused one, or was
+recorded as insufficient (in which case no comparison is claimed) is unknown
+here. No live `compare` value has been observed, and none is claimed.
+
 ## NOT verified here — do not read this as working against Qloo
 
 * **The compare response schema.** It is not modelled in this repository
