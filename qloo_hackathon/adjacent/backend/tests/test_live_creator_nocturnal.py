@@ -146,6 +146,56 @@ def test_nocturnal_drifter_creator_all_intake_fields_and_outputs() -> None:
         assert result["programme_bet"] is None
         assert result["test_card"] is None
 
+    # Section 03b — the comparison and the bounded attribution follow-up must
+    # reach the public payload of a LIVE run, with a documented status. What the
+    # comparison *returned* is deliberately not asserted: Qloo's compare response
+    # schema is unmodelled here, so any refusal is a correct outcome and this test
+    # must not manufacture a value to make itself pass.
+    pairwise = result.get("pairwise")
+    if not cohorts["ranked"]:
+        # Nothing cleared the gate, so no ranking ran and no comparison may be
+        # claimed. Absence here is the correct state, not a missing feature.
+        assert pairwise is None
+    else:
+        assert pairwise is not None, "a ranked live run must report its comparison state"
+        assert pairwise["status"] in {
+            "measured",
+            "not_applicable",
+            "unavailable_budget",
+            "unsupported_response_shape",
+            "failed",
+        }, pairwise["status"]
+        assert isinstance(pairwise["limits"], list) and pairwise["limits"]
+        if pairwise["status"] == "measured":
+            metric = pairwise["metric"]
+            assert metric and metric.get("key") and isinstance(metric.get("value"), float)
+            assert metric["direction"] in {"higher_is_closer", "lower_is_closer", "unknown"}
+            assert pairwise["call_id"]
+        else:
+            assert pairwise["metric"] is None
+            assert pairwise["reason"]
+        if pairwise["call_id"]:
+            assert pairwise["call_id"] in trace_ids
+
+        bounded = result["evidence"].get("bounded_attribution")
+        assert bounded is not None, "a ranked live run must report its attribution state"
+        assert bounded["status"] in {
+            "returned",
+            "missing",
+            "failed",
+            "unavailable_budget",
+            "not_needed",
+        }, bounded["status"]
+        if bounded["status"] == "returned":
+            assert bounded["call_id"] and bounded["members_updated"] >= 1
+            assert bounded["call_id"] in trace_ids
+        else:
+            assert bounded["members_updated"] == 0
+        for cohort in cohorts["ranked"]:
+            for member in cohort["members"]:
+                assert "qloo_attribution_origin" in member
+                assert member["qloo_attribution_origin"] in {None, "scoring", "bounded"}
+
     # Section 04 — synthesis is optional and must state whether it is available.
     with TestClient(app) as client:
         synthesis_status = client.get("/creator/synthesis-status")

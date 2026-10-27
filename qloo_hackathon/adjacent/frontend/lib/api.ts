@@ -537,6 +537,148 @@ export async function getExperiment(
 }
 
 // ---------------------------------------------------------------------------
+// Audience Pulse (pre-registered poll on a saved experiment)
+// ---------------------------------------------------------------------------
+
+export type {
+  PulseEvaluationRecord,
+  PulseOwnerPollResponse,
+  PulsePoll,
+  PulsePollListResponse,
+  SharedPulse,
+} from "@/lib/pulse";
+import type {
+  PulseEvaluationRecord,
+  PulseOwnerPollResponse,
+  PulsePollListResponse,
+  SharedPulse,
+} from "@/lib/pulse";
+
+/** A Pulse request failure that keeps its HTTP status and raw detail. */
+export class PulseRequestError extends Error {
+  readonly status: number;
+  readonly detail: unknown;
+
+  constructor(message: string, status: number, detail: unknown) {
+    super(message);
+    this.name = "PulseRequestError";
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+async function pulseRequest<T>(
+  path: string,
+  init: RequestInit,
+  label: string
+): Promise<T> {
+  const { response, data } = await fetchJsonWithTimeout<T | { detail?: unknown }>(
+    path,
+    { credentials: "same-origin", ...init },
+    `${label} timed out. Reload before retrying — the request may not have been recorded.`
+  );
+  if (!response.ok) {
+    const detail =
+      data && typeof data === "object" && "detail" in data
+        ? (data as { detail?: unknown }).detail
+        : null;
+    const message =
+      typeof detail === "string" ? detail : `${label} failed (${response.status})`;
+    throw new PulseRequestError(message, response.status, detail);
+  }
+  if (data === null) throw new PulseRequestError(`${label} returned an empty response.`, response.status, null);
+  return data as T;
+}
+
+export function listPulses(experimentId: string): Promise<PulsePollListResponse> {
+  return pulseRequest<PulsePollListResponse>(
+    `/experiments/${encodeURIComponent(experimentId)}/pulse`,
+    { method: "GET" },
+    "Audience Pulse list"
+  );
+}
+
+export function createPulse(
+  experimentId: string,
+  body: Record<string, unknown>
+): Promise<PulseOwnerPollResponse> {
+  return pulseRequest<PulseOwnerPollResponse>(
+    `/experiments/${encodeURIComponent(experimentId)}/pulse`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+    "Audience Pulse creation"
+  );
+}
+
+export function getPulse(
+  experimentId: string,
+  pollId: string
+): Promise<PulseOwnerPollResponse> {
+  return pulseRequest<PulseOwnerPollResponse>(
+    `/experiments/${encodeURIComponent(experimentId)}/pulse/${encodeURIComponent(pollId)}`,
+    { method: "GET" },
+    "Audience Pulse detail"
+  );
+}
+
+export function closePulse(
+  experimentId: string,
+  pollId: string
+): Promise<PulseOwnerPollResponse> {
+  return pulseRequest<PulseOwnerPollResponse>(
+    `/experiments/${encodeURIComponent(experimentId)}/pulse/${encodeURIComponent(pollId)}/close`,
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" },
+    "Audience Pulse close"
+  );
+}
+
+export function evaluatePulse(
+  experimentId: string,
+  pollId: string,
+  requestId: string
+): Promise<{
+  duplicate: boolean;
+  evaluation: PulseEvaluationRecord;
+  preview?: PulseEvaluationRecord | null;
+}> {
+  return pulseRequest(
+    `/experiments/${encodeURIComponent(experimentId)}/pulse/${encodeURIComponent(pollId)}/evaluate`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ request_id: requestId }),
+    },
+    "Audience Pulse evaluation"
+  );
+}
+
+export function readSharedPulse(token: string): Promise<SharedPulse> {
+  return pulseRequest<SharedPulse>(
+    `/pulse/share/${encodeURIComponent(token)}`,
+    { method: "GET" },
+    "Audience Pulse link"
+  );
+}
+
+export function submitPulseResponse(
+  token: string,
+  optionId: string
+): Promise<{ recorded: boolean; submitted_at: string }> {
+  return pulseRequest(
+    `/pulse/share/${encodeURIComponent(token)}/responses`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ option_id: optionId }),
+    },
+    "Audience Pulse response"
+  );
+}
+
+// ---------------------------------------------------------------------------
 // YouTube integration (M13.10) — optional, creator-authorized analytics
 // ---------------------------------------------------------------------------
 

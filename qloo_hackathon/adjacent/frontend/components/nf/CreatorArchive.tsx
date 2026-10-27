@@ -34,6 +34,7 @@ import type { TraceRow } from "@/types/adjacent";
 import { stableRequestId } from "@/lib/requestId";
 import { readSavedPositioningSnapshot } from "@/lib/positioningArena";
 import { readSavedTestDesign } from "@/lib/testCardDesign";
+import { AudiencePulse } from "@/components/nf/AudiencePulse";
 import { EvidenceReferences, EvidenceTraceLog } from "@/components/EvidenceTrace";
 import { cn } from "@/lib/cn";
 
@@ -783,6 +784,12 @@ function ExperimentDetail({
           Record evaluation
         </button>
       </section>
+
+      <AudiencePulse
+        experimentId={experiment.experiment_id}
+        hypothesis={experiment.hypothesis}
+        onChanged={onChanged}
+      />
 
       {message && (
         <p role="status" aria-live="polite" className="font-mono text-[0.62rem] text-amber">

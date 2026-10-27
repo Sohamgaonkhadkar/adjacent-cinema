@@ -97,10 +97,48 @@ Built by `_build_result()`; TypeScript mirror: `AdjacentRunResult` in
                     "data_status" },
     "data_status"
   },
-  "evidence": { "qloo_calls", "trace_rows", "stop_reason", "stop_message" },
+  "evidence": { "qloo_calls", "trace_rows", "stop_reason", "stop_message",
+                "bounded_attribution" },          // winner-only explainability follow-up
+  // Present whenever a comparison was attempted — including its refusals.
+  "pairwise": {
+    "status": "measured | not_applicable | unavailable_budget | unsupported_response_shape | not_modelled_in_fixture | failed",
+    "available", "reason", "metric": { "key", "value", "direction" } | null,
+    "cohorts": { "a", "b" }, "call_id", "observed_keys", "call_attempted",
+    "error_type", "error_kind", "error_status", "limits"
+  },
   "city": "..."
 }
 ```
+
+### Attribution and comparison surfaces (added 2026-10-27)
+
+* `cohorts.ranked[].members[].qloo_attribution_origin` is `"scoring"`,
+  `"bounded"` or `null`. `"bounded"` means the per-seed attribution came from
+  one extra call covering the winning cohort's top 12 members; the affinity and
+  popularity on that member still come from the original scoring call.
+  `qloo_attribution_status` gains the value `"returned_bounded"`.
+* `evidence.bounded_attribution` reports that follow-up call for the run:
+  `status` is `returned | missing | failed | unavailable_budget | not_needed`,
+  with `members_updated` and the `call_id`.
+* `pairwise.metric` is currently always `null` for provider responses,
+  because the public Compare reference documents request parameters but not the
+  response payload fields. This build does **not** infer a metric, meaning or
+  direction from plausible-looking names. The result is
+  `unsupported_response_shape` with `observed_keys` (top-level key names only)
+  and the originating `call_id`. Treat `metric: null` as "no verified value",
+  never as zero. Only change this contract after recording an official response
+  schema or a verifiable provider sample.
+* `call_attempted` is `false` for every refusal (`not_applicable`,
+  `unavailable_budget`) and for a parameter error that never left the process,
+  and `true` once a request was sent — including a failed one. The run's call
+  count is charged on `call_attempted`, so a timeout is visible in the budget
+  rather than disappearing from it.
+* A failed comparison carries `error_kind` (`timeout`, `authentication`,
+  `upstream`, `rate_limited`, `transport`, `invalid_response`, `param_error`, …)
+  and `error_status`, never the exception text: response bodies are not echoed
+  into a run payload.
+* `challenge.pairwise` repeats the comparison object and
+  `challenge.receipt.{pairwise,attribution}` carry the compact forms for export.
 
 ### Invariants the UI relies on
 
@@ -177,6 +215,43 @@ Frontend: `frontend/app/creator/page.tsx` (linked from the cinema home nav as
 "Creator Mode"); client functions in `frontend/lib/api.ts`
 (`createCreatorRun`, `createCreatorDemoRun`, `saveExperiment`, `listExperiments`,
 `getExperiment`, `addObservation`, `addEvaluation`).
+
+## 6b. Audience Pulse routes (pre-registered poll)
+
+Opt-in per deployment: participant links are served only when the backend sets
+`ADJACENT_PULSE_SHARE_ENABLED=1`. Creation returns 503 with that variable named
+otherwise, so a poll cannot exist without a link that can collect.
+
+**Owner routes** (same trust boundary as `/experiments`; blocked wholesale in
+public-demo mode because they sit under the same prefix):
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/api/experiments/{id}/pulse` | Create a poll. Body: `request_id`, `question` (≤240), `options[{label}]` (2–5, unique), `opens_at`/`closes_at` (ISO-8601 **with offset**, 1 h–90 d, closes in the future), `decision_rule{kind:"option_share_at_least", option_id, threshold (0–1], min_responses ≥5}`. 201 `{duplicate, poll, responses, evaluations, share_path}`; 422 with the reason; 404 unknown experiment. |
+| `GET` | `/api/experiments/{id}/pulse` | `{schema, sharing_enabled, polls:[{poll, share_path}]}`. |
+| `GET` | `/api/experiments/{id}/pulse/{poll_id}` | `{poll, responses, evaluations}` — owner view. A poll belonging to another experiment is 404. |
+| `POST` | `/api/experiments/{id}/pulse/{poll_id}/close` | Sets `closed_at`; the definition is untouched. |
+| `POST` | `/api/experiments/{id}/pulse/{poll_id}/evaluate` | Applies the frozen rule to the stored responses and appends an evaluation (`request_id`-idempotent). `outcome` ∈ `SUPPORTED\|CONTRADICTED\|INCONCLUSIVE`. |
+
+**Participant routes** (token only, no owner data):
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/pulse/share/{token}` | `{schema, question, options, opens_at, closes_at, collection, limitations, already_responded}`. No experiment id, hypothesis, rule or counts while collection is open. Sets `adjacent_pulse_session` (`HttpOnly; SameSite=Lax`; `Secure` unless `ADJACENT_PULSE_COOKIE_SECURE=0`). |
+| `POST` | `/api/pulse/share/{token}/responses` | Body `{option_id}`. 201 `{recorded, submitted_at, collection}`; 400 without the session cookie; 409 already answered / not accepting; 422 unknown option; 429 per-poll ceiling or rate limit. |
+
+Stored per poll: question, options, the experiment's hypothesis and snapshot, the
+decision rule, the window, `closed_at`, and `frozen_at` (set by the first stored
+response). A SQLite trigger rejects any later change to the question, options,
+rule, hypothesis, window or experiment link once `frozen_at` is set. Responses
+store a SHA-256 digest of the browser's session cookie — never the raw cookie
+and never a network address. Limits: 3 polls per experiment, 1 accepting
+responses at a time, 5,000 stored responses per poll, 20 response POSTs per
+client key per hour (process-local).
+
+Frontend: `frontend/components/nf/AudiencePulse.tsx` (inside the Creator research
+log detail), `frontend/app/pulse/[token]/page.tsx` (participant ballot),
+view model in `frontend/lib/pulse.ts`, client calls in `frontend/lib/api.ts`.
 
 ## 7. YouTube Analytics integration (M13.10)
 

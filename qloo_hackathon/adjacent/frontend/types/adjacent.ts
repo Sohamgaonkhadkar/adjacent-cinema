@@ -81,7 +81,13 @@ export interface CohortMember {
   call_id?: string | null;
   /** Qloo's normalized per-input contribution, when requested and returned. */
   qloo_attributions?: { entity_id: string; score: number }[];
-  qloo_attribution_status?: "returned" | "missing" | "unsupported" | "not_requested_limit" | "not_requested_budget" | string;
+  qloo_attribution_status?: "returned" | "returned_bounded" | "missing" | "unsupported" | "not_requested_limit" | "not_requested_budget" | string;
+  /**
+   * Where the attribution came from: "scoring" when the scoring call carried
+   * it, "bounded" when one follow-up call covered the winning cohort, null
+   * when there is none. The affinity number above always comes from scoring.
+   */
+  qloo_attribution_origin?: "scoring" | "bounded" | null;
 }
 
 export interface CohortScore {
@@ -225,6 +231,71 @@ export interface TestCardData {
   data_status: string;
 }
 
+// ─── Comparables audit (Creator Mode) ──────────────────────────────────────
+// One bounded `/v2/analysis/compare` call per reference pair, at most three.
+// The response schema is not modelled by this build, so a pair either carries a
+// provider-reported metric or an explicit reason there is none. A pair without a
+// readable value is *unevaluated*, never "unrelated".
+
+export interface ComparablesFilmRef {
+  title: string;
+  year?: number | null;
+  entity_id: string | null;
+  resolved_name?: string | null;
+  entity_type?: string | null;
+  resolution_call_id?: string | null;
+}
+
+export interface ComparablesMetric {
+  key: string;
+  value: number;
+  direction: "higher_is_closer" | "lower_is_closer" | "unknown" | string;
+  source: "provider_reported" | string;
+}
+
+export interface ComparablesPair {
+  a: ComparablesFilmRef;
+  b: ComparablesFilmRef;
+  status:
+    | "measured"
+    | "no_readable_field"
+    | "not_modelled_in_fixture"
+    | "failed"
+    | "unavailable_budget"
+    | "not_attempted_after_failure"
+    | string;
+  reason: string;
+  metric: ComparablesMetric | null;
+  call_id: string | null;
+  observed_keys: string[];
+}
+
+export interface ComparablesAudit {
+  schema: string;
+  data_status: string;
+  available: boolean;
+  status: "evaluated" | "unevaluated" | "insufficient_input" | string;
+  reason: string;
+  summary: {
+    resolved_references: number;
+    unresolved_references: number;
+    pairs_considered: number;
+    pairs_attempted: number;
+    pairs_measured: number;
+    pairs_without_readable_value?: number;
+    pairs_failed?: number;
+    pairs_unavailable_budget?: number;
+    pairs_not_modelled_in_fixture?: number;
+    status_counts?: Record<string, number>;
+  };
+  pairs: ComparablesPair[];
+  unresolved_references: { title: string; year?: number | null }[];
+  not_evaluated: { a: string; b: string; status: string; reason: string }[];
+  not_evaluated_count: number;
+  max_pairs: number;
+  limits: string[];
+}
+
 // ─── Decision challenge ─────────────────────────────────────────────────────
 // Recomputed by the backend from the run's own cached evidence. No Qloo call is
 // made to produce it, and no field here is a forecast: stability is a stated
@@ -254,20 +325,60 @@ export interface ChallengeOrderComparison {
   entered: string[];
 }
 
+export interface TopOverlap {
+  k: number;
+  shared: number;
+  of: number;
+  fraction: number | null;
+  shared_ids?: string[];
+}
+
+export interface RankCorrelation {
+  method: "kendall_tau_b" | string;
+  value: number | null;
+  n: number;
+  concordant?: number;
+  discordant?: number;
+  ties_left?: number;
+  ties_right?: number;
+  meaning?: string;
+}
+
+export interface ImpactCondition {
+  label: string;
+  definition: string;
+  qloo_calls_made: number;
+  winner: string | null;
+  top_overlap: TopOverlap;
+  rank_correlation: RankCorrelation;
+}
+
 export interface NecessityData {
   method: string;
   qloo_calls_made: number;
   pool_size?: number;
+  /** The three conditions the Impact Lab compares over one fixed pool. */
+  conditions?: {
+    full_analysis: ImpactCondition;
+    affinity_withheld: ImpactCondition;
+    popularity_only: ImpactCondition;
+  };
   affinity_withheld: ChallengeOrderComparison & {
     order: ChallengeOrderEntry[];
     ordering_keys: string[];
     removed_keys?: string[];
     top_pair_tied_without_affinity?: boolean;
     runner_up?: string | null;
+    top_overlap?: TopOverlap;
+    rank_correlation?: RankCorrelation;
+    agreement_statement?: string;
   };
   popularity_only: ChallengeOrderComparison & {
     order: ChallengeOrderEntry[];
     ordering_keys: string[];
+    top_overlap?: TopOverlap;
+    rank_correlation?: RankCorrelation;
+    agreement_statement?: string;
   };
   affinity_decided_pairs: { left: string; right: string; decided_by: string; affinity_derived: boolean }[];
   adjacent_pairs_examined: number;
@@ -329,6 +440,75 @@ export interface NextCheck {
   evidence_call_ids: string[];
 }
 
+/**
+ * One bounded `/v2/analysis/compare` call between the winner and the best
+ * same-type cohort. `metric` is set only when the provider's payload named a
+ * field this build recognises; `not_modelled_in_fixture` marks a labelled demo
+ * run, which makes the call but shows no value.
+ */
+export interface PairwiseGroup {
+  cohort_id: string;
+  domain: string;
+  rank: number | null;
+  label: string;
+  member_count: number;
+  entity_ids: string[];
+  member_names: string[];
+  truncated: boolean;
+}
+
+export interface PairwiseMetric {
+  key: string;
+  value: number;
+  direction: "higher_is_closer" | "lower_is_closer" | "unknown" | string;
+  source: "provider_reported" | string;
+}
+
+export interface PairwiseComparison {
+  schema: string;
+  data_status: string;
+  available: boolean;
+  status:
+    | "measured"
+    | "not_applicable"
+    | "unavailable_budget"
+    | "unsupported_response_shape"
+    | "not_modelled_in_fixture"
+    | "failed"
+    | string;
+  reason: string;
+  error_type?: string;
+  /** Provider failure classification (`timeout`, `authentication`, …); never the raw message. */
+  error_kind?: string | null;
+  error_status?: number | null;
+  /** False for refusals and for parameter errors that never reached the provider. */
+  call_attempted?: boolean;
+  metric: PairwiseMetric | null;
+  cohorts: { a: PairwiseGroup; b: PairwiseGroup } | null;
+  call_id: string | null;
+  observed_keys: string[];
+  limits: string[];
+}
+
+export interface BoundedAttribution {
+  status:
+    | "returned"
+    | "missing"
+    | "failed"
+    | "unavailable_budget"
+    | "not_needed"
+    | "not_attempted"
+    | string;
+  reason: string;
+  error_type?: string;
+  domain: string | null;
+  cohort_id: string | null;
+  call_id: string | null;
+  entity_ids: string[];
+  members_updated: number;
+  qloo_calls_made: number;
+}
+
 export interface DecisionReceipt {
   schema: string;
   run_id: string;
@@ -358,6 +538,34 @@ export interface DecisionReceipt {
     popularity_would_differ: boolean;
   };
   stability: { verdict: string; reason: string; evaluated: number; flips: number };
+  conditions?: {
+    affinity_withheld: {
+      winner: string | null;
+      winner_changed: boolean | null;
+      ranks_moved: number;
+      top_overlap: TopOverlap | null;
+      rank_correlation: RankCorrelation | null;
+    };
+    popularity_only: {
+      winner: string | null;
+      winner_changed: boolean | null;
+      ranks_moved: number;
+      top_overlap: TopOverlap | null;
+      rank_correlation: RankCorrelation | null;
+    };
+  };
+  pairwise?: {
+    status: string;
+    reason: string;
+    call_id: string | null;
+    metric: PairwiseMetric | null;
+  } | null;
+  attribution?: {
+    origins: Record<string, number>;
+    bounded_status: string;
+    bounded_call_id: string | null;
+    bounded_members_updated: number;
+  };
   next_checks: { id: string; title: string }[];
   limits: string[];
   call_ids: string[];
@@ -372,6 +580,8 @@ export interface DecisionChallengeData {
   necessity: NecessityData | null;
   necessity_statement?: string;
   stability: StabilityData | null;
+  /** Present when a comparison was attempted for this run — including refusals. */
+  pairwise?: PairwiseComparison | null;
   next_checks: NextCheck[];
   counts?: {
     cohorts_ranked: number;
@@ -391,6 +601,8 @@ export interface EvidenceData {
   trace_rows: number;
   stop_reason: string;
   stop_message: string | null;
+  /** The winner-only explainability follow-up, or null when ranking never ran. */
+  bounded_attribution?: BoundedAttribution | null;
 }
 
 /** A redacted provenance row returned with a run; it may represent a call or logical operation. */
@@ -477,6 +689,10 @@ export interface AdjacentRunResult {
   investigation?: InvestigationData | null;
   /// Necessity, stability and next checks, recomputed from this run's own evidence.
   challenge?: DecisionChallengeData | null;
+  /// Creator-only audit of the reference films against each other.
+  comparables_audit?: ComparablesAudit | null;
+  /** The winner-vs-same-type-cohort comparison, when one was attempted. */
+  pairwise?: PairwiseComparison | null;
   film?: {
     title: string;
     logline: string;

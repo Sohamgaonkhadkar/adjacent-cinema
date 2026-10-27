@@ -263,11 +263,26 @@ function buildCandidates(
 function attributionStatuses(members: CohortMember[]): AttributionAuditStatus[] {
   const normalized = members.map((member): AttributionAuditStatus => {
     const status = member.qloo_attribution_status;
-    if (status === "returned" || status === "unsupported") return status;
+    // "returned_bounded" is real provider attribution from the winner-only
+    // follow-up call. It is not "missing", and its affinity score still comes
+    // from the scoring call rather than from this one.
+    if (status === "returned" || status === "returned_bounded") return "returned";
+    if (status === "unsupported") return status;
     if (typeof status === "string" && status.startsWith("not_requested")) return "not_requested";
     return "missing";
   });
   return [...new Set<AttributionAuditStatus>(normalized)];
+}
+
+/**
+ * How many members were attributed by the bounded follow-up rather than inline.
+ * Reported as a count so the reader can see which call produced the attribution.
+ */
+function boundedAttributionCount(members: CohortMember[]): number {
+  return members.filter(
+    (member) =>
+      member.qloo_attribution_origin === "bounded" && member.qloo_attribution_status === "returned_bounded",
+  ).length;
 }
 
 function attributionStatus(members: CohortMember[]): AttributionAuditStatus {
@@ -304,7 +319,7 @@ function challengeFor(
     attribution_status: status,
     attribution_statuses: attributionStatuses(members),
     attribution_detail: status === "returned"
-      ? `Per-member statuses: ${attributionStatuses(members).join(", ") || "missing"}. ${dataStatus === "fixture" ? "Fixture attribution values are illustrative, not a live provider response." : "Measured attribution values are provider output, not causal effects."}`
+      ? `Per-member statuses: ${attributionStatuses(members).join(", ") || "missing"}.${boundedAttributionCount(members) > 0 ? ` ${boundedAttributionCount(members)} of ${members.length} member(s) were attributed by one bounded follow-up call for the winning cohort; their affinity scores still come from the scoring call.` : ""} ${dataStatus === "fixture" ? "Fixture attribution values are illustrative, not a live provider response." : "Measured attribution values are provider output, not causal effects."}`
       : `No validated per-seed attribution was available (${status}); no contribution value was inferred.`,
     supporting_call_ids: unique(callIds),
     unresolved_references: unique([

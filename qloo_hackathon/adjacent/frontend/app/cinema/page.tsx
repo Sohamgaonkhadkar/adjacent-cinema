@@ -46,6 +46,7 @@ import { CulturalFingerprint } from "@/components/nf/CulturalFingerprint";
 import { TestCard } from "@/components/nf/TestCard";
 import { ClaimChip, DataChip, RunChip } from "@/components/nf/Chips";
 import { ChallengeSummary, DecisionChallenge } from "@/components/nf/DecisionChallenge";
+import { WhyThisResult } from "@/components/nf/WhyThisResult";
 import { buildChallengeView, challengeExportSections, formatDecisionReceipt } from "@/lib/challengeView";
 import { EvidenceTraceLog } from "@/components/EvidenceTrace";
 import GeographyMap from "@/components/GeographyMap";
@@ -738,6 +739,22 @@ export default function CinemaPage() {
                   emptyBody="The run completed without a usable cultural field. An empty field is reported as empty rather than illustrated."
                 />
               </div>
+
+              {(result?.cohorts.ranked.length ?? 0) > 0 && (
+                <div className="mt-8 border border-line p-5 md:p-6">
+                  <p className="type-kicker">Winning cohort · provider attribution</p>
+                  <p className="mt-2 max-w-2xl text-xs leading-relaxed text-mute">
+                    {result?.cohorts.ranked[0]?.domain.replace("urn:entity:", "")} ·{" "}
+                    {result?.cohorts.ranked[0]?.members.length ?? 0} members. Attribution is
+                    provider-reported contribution, not an audience or revenue estimate.
+                  </p>
+                  <WhyThisResult
+                    members={result?.cohorts.ranked[0]?.members}
+                    programme={result?.programme}
+                    bounded={result?.evidence?.bounded_attribution}
+                  />
+                </div>
+              )}
 
               <div className="mt-10 grid gap-8 border border-line p-6 md:grid-cols-2">
                 <div>

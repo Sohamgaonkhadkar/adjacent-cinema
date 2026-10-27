@@ -29,6 +29,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from .pulse_repository import PULSE_SCHEMA_SQL, PulseStoreMixin
+from .store_errors import DuplicateRequest
+
 VALID_MEASUREMENT_STATUS = {"OBSERVED", "PARTIAL", "MISSING", "UNAVAILABLE", "FAILED"}
 VALID_OBSERVATION_KINDS = {"ANALYTICS", "SCREENING", "FEEDBACK", "NOTE"}
 VALID_OUTCOMES = {"SUPPORTED", "CONTRADICTED", "INCONCLUSIVE"}
@@ -97,16 +100,12 @@ def _synchronized(method):
     return wrapper
 
 
-class DuplicateRequest(Exception):
-    """Raised with the already-stored row when a request_id is replayed."""
+class ExperimentRepository(PulseStoreMixin):
+    """Append-only experiment store. Safe across process restarts.
 
-    def __init__(self, existing: dict[str, Any]) -> None:
-        self.existing = existing
-        super().__init__("duplicate request_id")
-
-
-class ExperimentRepository:
-    """Append-only experiment store. Safe across process restarts."""
+    Audience Pulse tables and methods arrive through ``PulseStoreMixin``: a poll
+    belongs to a saved experiment, so it shares this file, connection and lock.
+    """
 
     def __init__(self, db_path: str | Path) -> None:
         self.db_path = Path(db_path)
@@ -119,8 +118,9 @@ class ExperimentRepository:
         self._conn.row_factory = sqlite3.Row
         self._lock = threading.RLock()
         with self._lock:
-            self._conn.executescript(_SCHEMA)
+            self._conn.executescript(_SCHEMA + PULSE_SCHEMA_SQL)
             self._conn.commit()
+            self.migrate_pulse_schema()
 
     def close(self) -> None:
         self._conn.close()

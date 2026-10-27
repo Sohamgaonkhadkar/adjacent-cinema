@@ -45,6 +45,15 @@ def public_live_requested() -> bool:
     return _enabled("ADJACENT_PUBLIC_LIVE")
 
 
+def pulse_sharing_enabled() -> bool:
+    """Whether Audience Pulse participant links are served at all.
+
+    Off by default: an anonymous write endpoint should be a decision the
+    operator makes, not something a deployment inherits by upgrading.
+    """
+    return _enabled("ADJACENT_PULSE_SHARE_ENABLED")
+
+
 def qloo_key_configured() -> bool:
     """Presence check only; key material is never returned by this module."""
     return bool((os.getenv("QLOO_API_KEY") or "").strip())
@@ -329,6 +338,11 @@ def _request_client_key(request: Request) -> str:
     )
 
 
+def request_rate_key(request: Request) -> str:
+    """Per-client key for route-level limits. Nothing derived here is stored."""
+    return _request_client_key(request)
+
+
 def _scope_client_key(scope: Scope) -> str:
     peer = scope.get("client")
     peer_host = str(peer[0]) if peer else None
@@ -382,6 +396,20 @@ def _is_run_read(path: str) -> bool:
     except ValueError:
         return False
     return len(parts) == 2 or parts[2] in {"stream", "trace"}
+
+
+def _pulse_share_request(method: str, path: str) -> bool:
+    """The two Audience Pulse participant routes, only when sharing is enabled."""
+    if not pulse_sharing_enabled():
+        return False
+    parts = path.strip("/").split("/")
+    if len(parts) < 3 or parts[0] != "pulse" or parts[1] != "share" or not parts[2]:
+        return False
+    if len(parts) == 3:
+        return method in {"GET", "HEAD"}
+    if len(parts) == 4 and parts[3] == "responses":
+        return method == "POST"
+    return False
 
 
 def _guest_filmsponsor_request(method: str, path: str) -> bool:
@@ -451,6 +479,10 @@ class PublicDemoGuard:
             body_limit = 1024
         elif method == "POST" and path == "/creator/run/demo":
             body_limit = 16_384
+        elif _pulse_share_request(method, path):
+            # Token-scoped, expiring, cookie-deduped and rate-limited inside the
+            # route itself. Body is one short option id.
+            body_limit = 1024
         elif _guest_filmsponsor_request(method, path):
             # Strictly opt-in. Route dependencies enforce the server-issued
             # session, ownership, CSRF token, and allowed Origin for every call.

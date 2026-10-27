@@ -628,6 +628,38 @@ Every parameter the codebase may send. `UNVERIFIED` means we cannot point at cur
 | `take` | int | /search, /v2/analysis/compare, /v2/audiences, /v2/insights, /v2/tags, /v2/trending | VERIFIED | — | docs.qloo.com/reference/parameter-overview |
 | `types` | csv | /search | VERIFIED | — | docs.qloo.com/reference/get-search |
 
+## 4b. How Adjacent calls `/v2/analysis/compare` (and what it refuses to assume)
+
+Used by `backend/app/domain/pairwise.py` for one bounded call per completed run.
+
+**Request** — only parameters marked VERIFIED for this endpoint above:
+
+| Parameter | What Adjacent sends |
+|---|---|
+| `a.signal.interests.entities` / `b.signal.interests.entities` | Up to 10 scored entity ids per cohort, ordered by affinity then id (deterministic) |
+| `filter.type` | The cohorts' shared entity type (`urn:entity:artist`, `urn:entity:movie`, …). A comparison is skipped (`not_applicable`) when the winner has no same-type cohort, rather than mixing types |
+| `model` | `descriptive` — describes the two groups as supplied; the product makes no outcome claim |
+| `take` | `10` (the group size), matching the two signal lists |
+
+`filter.location.query` is documented for this endpoint but is **not** sent: the
+scoring contexts that produced the cohorts are global, so a location-scoped
+comparison would compare different populations. The limits text says so.
+
+**Response — deliberately unmodelled.** No verified sample of this endpoint's
+response has been recorded in this repository, and the public reference documents
+request parameters rather than payload fields. Therefore the application does
+not interpret any response metric, even when a numeric field has a plausible
+name such as `overlap`, `similarity` or `distance`. A name alone does not
+establish the field's contract, direction or meaning.
+
+The reader records the call id and the observed top-level **key names only** and
+returns `unsupported_response_shape` with no metric value. It never echoes
+provider payload values, coerces a candidate metric, or treats an upstream
+failure as evidence that two entities or cohorts are unrelated.
+
+Changing this reader requires either an official description of the response
+fields or a verifiable response sample; neither exists in this repository yet.
+
 ## 5. Open questions (must be resolved before the dependent code is built)
 
 **Q1. `filter.parents.types`** — Parent type scoping. On /v2/audiences this takes AUDIENCE CATEGORY urns.

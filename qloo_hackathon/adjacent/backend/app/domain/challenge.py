@@ -51,6 +51,7 @@ from typing import TYPE_CHECKING, Any
 
 from .. import evidence
 from ..qloo.models import BAND_MEDIUM
+from .agreement import TOP_K, describe_agreement, kendall_tau_b, top_k_overlap
 from .cohorts import CandidateCohort, MemberEvidence
 from .scoring import CohortRanker, RankingResult, cohort_score_from
 
@@ -279,6 +280,9 @@ def _compare_orders(
     only_before = [cid for cid in production if cid not in position_after]
     only_after = [cid for cid in counterfactual if cid not in position_before]
 
+    overlap = top_k_overlap(production, counterfactual, k=TOP_K)
+    tau = kendall_tau_b(production, counterfactual)
+
     return {
         "production_winner": production_winner,
         "counterfactual_winner": counter_winner,
@@ -288,6 +292,10 @@ def _compare_orders(
         "changed_below_first": any(move["rank_before"] > 1 for move in moves),
         "dropped_out": only_before,
         "entered": only_after,
+        # How much of the ordering survived — not a probability of correctness.
+        "top_overlap": overlap,
+        "rank_correlation": tau,
+        "agreement_statement": describe_agreement(overlap, tau),
     }
 
 
@@ -383,6 +391,38 @@ def _necessity(
         },
         "affinity_decided_pairs": affinity_pairs,
         "adjacent_pairs_examined": len(decisive),
+        "conditions": {
+            "full_analysis": {
+                "label": "Full analysis",
+                "definition": "Every ordering input the product normally uses, including affinity.",
+                "qloo_calls_made": 0,
+                "winner": production[0] if production else None,
+                "top_overlap": top_k_overlap(production, production, k=TOP_K),
+                "rank_correlation": kendall_tau_b(production, production),
+            },
+            "affinity_withheld": {
+                "label": "Affinity withheld",
+                "definition": (
+                    "The same admitted pool, ordered by novelty, breadth and id. Every key derived "
+                    "from an affinity number is removed."
+                ),
+                "qloo_calls_made": 0,
+                "winner": withheld_cmp["counterfactual_winner"],
+                "top_overlap": withheld_cmp["top_overlap"],
+                "rank_correlation": withheld_cmp["rank_correlation"],
+            },
+            "popularity_only": {
+                "label": "Popularity-only baseline",
+                "definition": (
+                    "The same admitted pool, ordered by median popularity desc, then breadth, "
+                    "then id — a biggest-overlap-wins recommendation."
+                ),
+                "qloo_calls_made": 0,
+                "winner": popularity_cmp["counterfactual_winner"],
+                "top_overlap": popularity_cmp["top_overlap"],
+                "rank_correlation": popularity_cmp["rank_correlation"],
+            },
+        },
         "gate": {
             "admitted_with_affinity_gate": sorted(admitted_with_affinity),
             "structurally_admitted": sorted(structurally_admitted),
@@ -630,6 +670,33 @@ def _gap(
     }
 
 
+def _pairwise_action(pairwise: dict[str, Any] | None) -> str:
+    """Describe comparison availability without interpreting its undocumented schema."""
+    base = "Treat the top groupings as a hypothesis to investigate, not as a proven audience match. "
+    if not pairwise:
+        return (
+            base
+            + "No pairwise comparison was attempted for this run, so the relationship between "
+            "the groupings is unknown. The comparison is only attempted for same-type cohorts "
+            "when the run has call budget remaining."
+        )
+
+    status = pairwise.get("status")
+    if status == "measured":
+        # Defensive boundary: read_metric currently refuses all fields because
+        # the public Compare response contract is not documented. A stale or
+        # manually supplied payload must not bypass that boundary in the prose.
+        return (
+            base
+            + "A comparison response was recorded, but this build does not interpret numeric "
+            "fields until Qloo's Analysis Compare response schema is verified. No comparison "
+            "metric is used in the decision."
+        )
+
+    reason = pairwise.get("reason") or "the comparison was not available for this run"
+    return base + f"No pairwise number is shown ({status}): {reason}"
+
+
 def _next_checks(
     state: AdjacentState,
     cohorts: Sequence[CandidateCohort],
@@ -708,13 +775,15 @@ def _next_checks(
     if missing_attribution:
         limited = attribution_status.get("not_requested_limit", 0)
         unsupported = attribution_status.get("unsupported", 0)
+        bounded = (getattr(ranking, "bounded_attribution", None) or {}) if ranking else {}
+        bounded_status = bounded.get("status") or "not_attempted"
         why = (
             "the request asked for per-seed attribution but the provider returned none"
             if attribution_status.get("missing")
             else "the optional feature.explainability field was rejected by the provider"
             if unsupported
-            else f"{_count(limited, 'member')} were scored in a call that asked for more than 12 entities, "
-            "so attribution was not requested"
+            else f"{_count(limited, 'member')} were scored in a call that asked for more than 12 "
+            f"entities, so attribution was not requested inline (bounded follow-up: {bounded_status})"
         )
         checks.append(
             _gap(
@@ -729,7 +798,10 @@ def _next_checks(
                 ),
                 action=(
                     "Re-score the winning domain with feature.explainability=true on at most 12 "
-                    "entities, which is the documented limit for that optional field."
+                    "entities, which is the documented limit for that optional field. Adjacent "
+                    "already attempts exactly this once per run when the call budget allows it; "
+                    "when that attempt is reported as failed or unavailable_budget above, run it "
+                    "manually."
                 ),
                 operation="rank_cohorts (/v2/insights with feature.explainability)",
                 estimated_calls=1,
@@ -781,13 +853,7 @@ def _next_checks(
                     f"{abs((winner_novelty or 0) - (runner_novelty or 0)):.3f}. A small change in "
                     "the evidence could reorder them.",
                     uncertainty_addressed="whether the top two recommendations are distinguishable from this evidence",
-                    action=(
-                        "Treat the top two as one option when planning, or add a comparable that "
-                        "separates them. A pairwise comparison between the two cohorts is not "
-                        "offered: the client can call /v2/analysis/compare, but nothing in this "
-                        "product wires it into ranking, and it has not been exercised against the "
-                        "live provider here."
-                    ),
+                    action=_pairwise_action(getattr(state, "pairwise", None)),
                     operation="expand_candidates / rank_cohorts",
                     estimated_calls=2,
                     call_ids=[winner.score.call_id] if winner.score else [],
@@ -922,12 +988,60 @@ def build_receipt(
             "evaluated": stability.get("evaluated", 0),
             "flips": len(stability.get("flips") or []),
         },
+        "conditions": {
+            "affinity_withheld": _receipt_condition(
+                necessity.get("affinity_withheld") or {}
+            ),
+            "popularity_only": _receipt_condition(necessity.get("popularity_only") or {}),
+        },
         "next_checks": [
             {"id": check["id"], "title": check["title"]}
             for check in (challenge.get("next_checks") or [])
         ],
+        "pairwise": _receipt_pairwise(challenge.get("pairwise")),
+        "attribution": _receipt_attribution(state),
         "limits": list(PUBLIC_LIMITS),
         "call_ids": sorted({cid for cid in call_ids if cid}),
+    }
+
+
+def _receipt_condition(comparison: dict[str, Any]) -> dict[str, Any]:
+    """The counterfactual summary a receipt can carry without its pool."""
+    return {
+        "winner": comparison.get("counterfactual_winner"),
+        "winner_changed": comparison.get("winner_changed"),
+        "ranks_moved": comparison.get("ranks_moved", 0),
+        "top_overlap": comparison.get("top_overlap"),
+        "rank_correlation": comparison.get("rank_correlation"),
+    }
+
+
+def _receipt_pairwise(pairwise: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Only what the comparison actually established — nothing filled in."""
+    if not pairwise:
+        return None
+    return {
+        "status": pairwise.get("status"),
+        "reason": pairwise.get("reason") or "",
+        "call_id": pairwise.get("call_id"),
+        "metric": pairwise.get("metric"),
+    }
+
+
+def _receipt_attribution(state: AdjacentState) -> dict[str, Any]:
+    """Where per-seed attribution came from, and what it cost."""
+    ranking = getattr(state, "ranking", None)
+    bounded = (getattr(ranking, "bounded_attribution", None) or {}) if ranking else {}
+    origin_counts: dict[str, int] = {}
+    for cohort in getattr(state, "ranked", None) or []:
+        for member in cohort.members:
+            origin = getattr(member, "attribution_origin", None) or "none"
+            origin_counts[origin] = origin_counts.get(origin, 0) + 1
+    return {
+        "origins": origin_counts,
+        "bounded_status": bounded.get("status") or "not_attempted",
+        "bounded_call_id": bounded.get("call_id"),
+        "bounded_members_updated": bounded.get("members_updated", 0),
     }
 
 
@@ -979,6 +1093,7 @@ def build_decision_challenge(state: AdjacentState) -> dict[str, Any]:
         "necessity": necessity,
         "necessity_statement": _necessity_statement(necessity, labels),
         "stability": stability,
+        "pairwise": getattr(state, "pairwise", None),
         "next_checks": checks,
         "counts": {
             "cohorts_ranked": len(ranked),

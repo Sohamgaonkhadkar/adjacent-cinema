@@ -83,6 +83,63 @@ export function DecisionChallenge({ challenge, onExportReceipt, onGoToTest }: De
           ))}
         </ul>
 
+        <h3 className="type-kicker mt-10">Qloo Impact Lab · three conditions, one candidate pool</h3>
+        {view.impact.available ? (
+          <>
+            <div className="mt-4 overflow-x-auto border border-line">
+              <table className="w-full min-w-[36rem] text-left text-sm">
+                <caption className="caption px-4 py-2 text-left">
+                  The pool is held fixed; only the ordering inputs change. Agreement describes how
+                  much the ordering moved, never whether the recommendation is right.
+                </caption>
+                <thead>
+                  <tr className="border-b border-line font-mono text-[0.58rem] uppercase tracking-[0.12em] text-dim">
+                    <th className="px-4 py-2">Condition</th>
+                    <th className="px-4 py-2">Winner</th>
+                    <th className="px-4 py-2">Changed?</th>
+                    <th className="px-4 py-2">Top 5 kept</th>
+                    <th className="px-4 py-2">tau-b</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {view.impact.rows.map((row) => (
+                    <tr key={row.id} className="border-b border-line last:border-b-0">
+                      <th scope="row" className="px-4 py-3 align-top font-normal">
+                        <span className="block text-paper-2">{row.label}</span>
+                        <span className="mt-1 block text-[0.68rem] leading-relaxed text-dim">
+                          {row.definition}
+                        </span>
+                      </th>
+                      <td className={cn("px-4 py-3 align-top", TONE_TEXT[row.tone])}>{row.winner}</td>
+                      <td className="px-4 py-3 align-top font-mono text-[0.62rem] uppercase text-mute">
+                        {row.id === "full_analysis" ? "—" : row.changed ? "changed" : "same"}
+                      </td>
+                      <td className="px-4 py-3 align-top font-mono text-[0.62rem] text-mute">
+                        {row.topOverlap}
+                      </td>
+                      <td className="px-4 py-3 align-top font-mono text-[0.62rem] text-mute">
+                        {row.rankCorrelation}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {view.impact.statements.length > 0 && (
+              <ul className="mt-3 space-y-1">
+                {view.impact.statements.map((statement) => (
+                  <li key={statement} className="text-xs leading-relaxed text-mute">
+                    — {statement}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {view.impact.method && <p className="caption mt-2">{view.impact.method}</p>}
+          </>
+        ) : (
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute">{view.impact.reason}</p>
+        )}
+
         <h3 className="type-kicker mt-10">Stability · what happens if one item is wrong</h3>
         <div
           className={cn(
@@ -108,6 +165,25 @@ export function DecisionChallenge({ challenge, onExportReceipt, onGoToTest }: De
               <Row key={row.id} row={row} />
             ))}
           </ul>
+        )}
+
+        {view.pairwise && (
+          <>
+            <h3 className="type-kicker mt-10">Comparison · how close are the two groups</h3>
+            <div className="mt-4 border border-line bg-ink-2 p-4">
+              <p className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-dim">
+                {view.pairwise.label}
+              </p>
+              <p className={cn("mt-2 max-w-2xl text-sm leading-relaxed", TONE_TEXT[view.pairwise.tone])}>
+                {view.pairwise.detail}
+              </p>
+              <p className="caption mt-2">
+                {view.pairwise.callId
+                  ? `Qloo call ${view.pairwise.callId} · /v2/analysis/compare`
+                  : "No call was made for this comparison"}
+              </p>
+            </div>
+          </>
         )}
 
         {view.skipped.length > 0 && (

@@ -16,7 +16,10 @@
 import type {
   DecisionChallengeData,
   DecisionReceipt,
+  ImpactCondition,
+  NecessityData,
   NextCheck,
+  PairwiseComparison,
   StabilityScenario,
 } from "@/types/adjacent";
 
@@ -43,6 +46,10 @@ export interface ChallengeView {
   stabilityRule: string;
   stabilityRows: ChallengeRow[];
   skipped: { id: string; text: string }[];
+  /** The winner-vs-same-type comparison, or an explicit reason there is none. */
+  pairwise: { tone: Tone; label: string; detail: string; callId: string | null } | null;
+  /** Qloo Impact Lab: three conditions over one fixed pool. */
+  impact: ImpactView;
   checks: NextCheck[];
   receipt: DecisionReceipt | null;
   limits: string[];
@@ -108,6 +115,135 @@ function scenarioRow(
   };
 }
 
+export interface ImpactRow {
+  id: string;
+  label: string;
+  definition: string;
+  winner: string;
+  changed: boolean | null;
+  topOverlap: string;
+  rankCorrelation: string;
+  tone: Tone;
+}
+
+export interface ImpactView {
+  available: boolean;
+  rows: ImpactRow[];
+  statements: string[];
+  method: string;
+  reason: string;
+}
+
+/** "4/5", or an em dash when the payload has no overlap for that condition. */
+function overlapText(condition: ImpactCondition | undefined): string {
+  const overlap = condition?.top_overlap;
+  if (!overlap || !overlap.of) return "—";
+  return `${overlap.shared}/${overlap.of}`;
+}
+
+/** tau-b to two decimals, or "not computable" — never a stand-in zero. */
+function correlationText(condition: ImpactCondition | undefined): string {
+  const value = condition?.rank_correlation?.value;
+  return typeof value === "number" ? value.toFixed(2) : "not computable";
+}
+
+/**
+ * The Qloo Impact Lab: the full analysis beside the two counterfactuals, each
+ * measured against the production ranking over the same candidate pool. When a
+ * payload predates these fields the section says so instead of guessing.
+ */
+export function buildImpactView(
+  challenge: DecisionChallengeData | null | undefined,
+): ImpactView {
+  const necessity: NecessityData | null = challenge?.necessity ?? null;
+  const conditions = necessity?.conditions;
+  const statements = [
+    necessity?.affinity_withheld?.agreement_statement,
+    necessity?.popularity_only?.agreement_statement,
+  ].filter((value): value is string => Boolean(value));
+
+  if (!necessity || !conditions) {
+    return {
+      available: false,
+      rows: [],
+      statements,
+      method: necessity?.method ?? "",
+      reason:
+        "This run's challenge payload carries no condition comparison. Nothing is reconstructed from other numbers.",
+    };
+  }
+
+  const keys = ["full_analysis", "affinity_withheld", "popularity_only"] as const;
+  const rows: ImpactRow[] = keys.map((key) => {
+    const condition = conditions[key];
+    const comparison = key === "full_analysis" ? null : necessity[key];
+    const changed = key === "full_analysis" ? false : Boolean(comparison?.winner_changed);
+    const winner =
+      key === "full_analysis"
+        ? (challenge?.recommendation?.label || UNLABELLED)
+        : labelFor(comparison?.order, condition.winner);
+    return {
+      id: key,
+      label: condition.label,
+      definition: condition.definition,
+      winner,
+      changed,
+      topOverlap: overlapText(condition),
+      rankCorrelation: correlationText(condition),
+      tone: key === "full_analysis" ? "live" : changed ? "warn" : "neutral",
+    };
+  });
+
+  return {
+    available: true,
+    rows,
+    statements,
+    method: necessity.method,
+    reason: "",
+  };
+}
+
+/**
+ * Turn one comparison payload into a row, or `null` when no comparison was
+ * attempted. A refusal keeps its own wording: the reader is told why the number
+ * is missing instead of being shown a reassuring blank.
+ */
+export function pairwiseRow(
+  comparison: PairwiseComparison | null | undefined,
+): { tone: Tone; label: string; detail: string; callId: string | null } | null {
+  if (!comparison) return null;
+
+  const a = comparison.cohorts?.a?.label || "the top cohort";
+  const b = comparison.cohorts?.b?.label || "the comparison cohort";
+  const callId = comparison.call_id ?? null;
+  const hasUnverifiedMetric =
+    comparison.status === "measured" &&
+    comparison.metric !== null &&
+    comparison.metric !== undefined &&
+    typeof comparison.metric.value === "number";
+
+  // The backend currently never emits a measured metric because the public
+  // Compare reference does not document response fields. Do not let a legacy
+  // or malformed payload bypass that contract in the browser or receipt.
+  const reason = hasUnverifiedMetric
+    ? "A numeric-looking field was returned, but this build does not interpret it because Qloo's Analysis Compare response schema is not verified."
+    : comparison.reason ||
+      "The comparison returned no value this build is willing to interpret.";
+
+  const failure =
+    comparison.status === "failed" && comparison.error_kind
+      ? ` Failure class: ${comparison.error_kind}` +
+        (comparison.error_status ? ` (HTTP ${comparison.error_status}).` : ".")
+      : "";
+
+  return {
+    tone: comparison.status === "failed" ? "fail" : "neutral",
+    label: `No comparison value for ${a} vs ${b}`,
+    detail: reason + failure,
+    callId,
+  };
+}
+
 /**
  * Build the view. `challenge` may be null (older runs, or a payload that failed
  * to compute) — that is a state the reader has to see, not one to paper over.
@@ -131,6 +267,8 @@ export function buildChallengeView(
       stabilityRule: "",
       stabilityRows: [],
       skipped: [],
+      pairwise: null,
+      impact: { available: false, rows: [], statements: [], method: "", reason: "No challenge was computed for this run." },
       checks: [],
       receipt: null,
       limits: [],
@@ -285,6 +423,8 @@ export function buildChallengeView(
       id: `${skip.cohort_id}:${skip.entity_id}:${index}`,
       text: `${skip.name ?? skip.entity_id} was not tested: ${skip.reason}.`,
     })),
+    pairwise: pairwiseRow(challenge.pairwise),
+    impact: buildImpactView(challenge),
     checks: challenge.next_checks ?? [],
     receipt: challenge.receipt,
     limits: challenge.limits ?? [],
@@ -355,12 +495,48 @@ export function formatDecisionReceipt(challenge: DecisionChallengeData | null | 
   lines.push(
     `  Affinity decided ${receipt.basis.affinity_decided_pairs} of ${receipt.basis.adjacent_pairs_examined} adjacent pairs`,
   );
+  const impactLines = impactExportLines(view.impact);
+  if (impactLines.length) {
+    lines.push("");
+    lines.push("CONDITION COMPARISON (agreement between two orderings this app computed)");
+    for (const line of impactLines) lines.push(`  ${line}`);
+    if (view.impact.method) lines.push(`  Method: ${view.impact.method}`);
+  }
 
   lines.push("");
   lines.push("STABILITY");
   lines.push(`  Verdict: ${receipt.stability.verdict.toUpperCase()} (${receipt.stability.evaluated} removals evaluated)`);
   lines.push(`  ${receipt.stability.reason}`);
   if (view.stabilityRule) lines.push(`  Rule: ${view.stabilityRule}`);
+
+  // The receipt carries its own compact copy; older receipts do not, so the
+  // challenge-level payload is the fallback rather than an omission.
+  const comparison = challenge?.pairwise ?? receipt.pairwise ?? null;
+  if (comparison) {
+    lines.push("");
+    lines.push("PAIRWISE COMPARISON");
+    lines.push(`  Status: ${comparison.status}`);
+    if (comparison.metric) {
+      lines.push(
+        "  A numeric-looking field was not interpreted because the Qloo Analysis Compare response schema is not verified.",
+      );
+    }
+    if (comparison.reason) lines.push(`  ${comparison.reason}`);
+    if (comparison.call_id) lines.push(`  Qloo call: ${comparison.call_id}`);
+  }
+
+  if (receipt.attribution) {
+    const origins = Object.entries(receipt.attribution.origins)
+      .map(([origin, count]) => `${origin} ${count}`)
+      .join(", ");
+    lines.push("");
+    lines.push("ATTRIBUTION");
+    lines.push(`  Origins: ${origins || "none"}`);
+    lines.push(`  Bounded follow-up: ${receipt.attribution.bounded_status}`);
+    if (receipt.attribution.bounded_call_id) {
+      lines.push(`  Qloo call: ${receipt.attribution.bounded_call_id}`);
+    }
+  }
 
   if (view.checks.length) {
     lines.push("");
@@ -386,6 +562,20 @@ export function formatDecisionReceipt(challenge: DecisionChallengeData | null | 
 
 
 /**
+ * The three conditions as plain lines, for the receipt and the exported card.
+ * Only conditions the payload actually compared are written; an absent one is
+ * never replaced with a zero, a 1.00 or a reassuring dash.
+ */
+export function impactExportLines(impact: ImpactView): string[] {
+  if (!impact.available || impact.rows.length === 0) return [];
+  return impact.rows.map((row) => {
+    const changed =
+      row.id === "full_analysis" ? "reference ordering" : row.changed ? "winner CHANGES" : "winner unchanged";
+    return `${row.label.toUpperCase()} — ${row.winner} · top five kept ${row.topOverlap} · tau-b ${row.rankCorrelation} · ${changed}`;
+  });
+}
+
+/**
  * Sections appended to the exported Test Card so the experiment always carries
  * the fragility finding it was designed against. Empty when nothing was
  * computed — an export never implies a challenge exists when it does not.
@@ -408,11 +598,24 @@ export function challengeExportSections(
         : `The recommendation holds without the affinity numbers (${movedPositions(view.receipt.necessity.ranks_moved_without_affinity)}). Affinity decided ${view.receipt.basis.affinity_decided_pairs} of ${view.receipt.basis.adjacent_pairs_examined} adjacent pairs.`,
     },
   ];
+  const impactLines = impactExportLines(view.impact);
+  if (impactLines.length) {
+    sections.push({
+      label: "Condition comparison (agreement, not a probability)",
+      value: impactLines.join(" · "),
+    });
+  }
   if (view.receipt.necessity.popularity_would_differ) {
     sections.push({
       label: "Counterfactual: popularity-only baseline",
       value:
         "Ordering the same candidates by popularity alone selects a different cohort, so this decision is not the mainstream pick.",
+    });
+  }
+  if (view.pairwise) {
+    sections.push({
+      label: "Pairwise comparison (not a forecast)",
+      value: `${view.pairwise.label} — ${view.pairwise.detail}`,
     });
   }
   if (view.checks.length > 0) {

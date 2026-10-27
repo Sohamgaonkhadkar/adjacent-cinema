@@ -717,6 +717,8 @@ def _build_result(
             "call_id": member.call_id,
             "qloo_attributions": attributions,
             "qloo_attribution_status": attribution_status,
+            # "scoring" (inline), "bounded" (one follow-up call) or null.
+            "qloo_attribution_origin": getattr(member, "attribution_origin", None),
         }
 
     result: dict[str, Any] = {
@@ -800,6 +802,9 @@ def _build_result(
             "trace_rows": len(state.trace_rows),
             "stop_reason": state.stop_reason,
             "stop_message": state.stop_message,
+            "bounded_attribution": (
+                state.ranking.bounded_attribution if state.ranking is not None else None
+            ),
         },
         "city": city,
     }
@@ -820,6 +825,16 @@ def _build_result(
     # from this run's own cached evidence. A failure here must never invalidate a
     # completed analysis, so it degrades to an explicit unavailable state.
     result["challenge"] = _build_challenge(state)
+
+    # Pairwise comparison of the top two cohorts. Absent when ranking never ran
+    # (a failed run), otherwise present — including its honest refusals.
+    if getattr(state, "pairwise", None) is not None:
+        result["pairwise"] = state.pairwise
+
+    # Creator-only comparables audit. Absent for Cinema runs (never attempted)
+    # and for creator runs where the audit could not be built at all.
+    if getattr(state, "comparables", None) is not None:
+        result["comparables_audit"] = state.comparables
 
     return result
 

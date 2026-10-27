@@ -11,7 +11,7 @@ import test from "node:test";
  * carry its data status and its limits.
  */
 
-const { buildChallengeView, formatDecisionReceipt, challengeExportSections, toneForStatus } =
+const { buildChallengeView, buildImpactView, formatDecisionReceipt, challengeExportSections, toneForStatus, pairwiseRow } =
   await import("../lib/challengeView.ts");
 
 const fixtureChallenge = {
@@ -386,4 +386,303 @@ test("data status maps to the same chip tones the rest of the product uses", () 
   assert.equal(toneForStatus("insufficient"), "warn");
   assert.equal(toneForStatus("failed"), "fail");
   assert.equal(toneForStatus(undefined), "neutral");
+});
+
+// ─── Pairwise comparison (`/v2/analysis/compare`) ───────────────────────────
+// The response schema is not modelled by the backend, so the UI may only ever
+// print a value the payload actually carried. These tests pin that boundary.
+
+const measuredPairwise = {
+  schema: "adjacent.pairwise-comparison/1",
+  data_status: "measured",
+  available: true,
+  status: "measured",
+  reason: "",
+  metric: { key: "overlap", value: 0.6314, direction: "higher_is_closer", source: "provider_reported" },
+  cohorts: {
+    a: {
+      cohort_id: "urn:entity:artist:tag_cluster:1",
+      domain: "urn:entity:artist",
+      rank: 1,
+      label: "artist · Brian Eno",
+      member_count: 4,
+      entity_ids: ["urn:entity:artist:eno"],
+      member_names: ["Brian Eno"],
+      truncated: false,
+    },
+    b: {
+      cohort_id: "urn:entity:artist:subtype:composer:1",
+      domain: "urn:entity:artist",
+      rank: 3,
+      label: "artist · Hildur Gudnadottir",
+      member_count: 3,
+      entity_ids: ["urn:entity:artist:gud"],
+      member_names: ["Hildur Gudnadottir"],
+      truncated: false,
+    },
+  },
+  call_id: "compare-call-1",
+  observed_keys: [],
+  limits: [],
+};
+
+test("a numeric-looking compare field is not interpreted while schema is unverified", () => {
+  const row = pairwiseRow(measuredPairwise);
+  assert.equal(row.tone, "neutral");
+  assert.match(row.label, /No comparison value/);
+  assert.match(row.detail, /response schema is not verified/);
+  assert.doesNotMatch(row.detail, /overlap =/);
+  assert.doesNotMatch(row.detail, /0\.631/);
+  assert.equal(row.callId, "compare-call-1");
+
+  const view = buildChallengeView({ ...fixtureChallenge, pairwise: measuredPairwise });
+  assert.deepEqual(view.pairwise, row);
+
+  const receipt = formatDecisionReceipt({ ...fixtureChallenge, pairwise: measuredPairwise });
+  assert.match(receipt, /PAIRWISE COMPARISON/);
+  assert.doesNotMatch(receipt, /overlap =/);
+  assert.doesNotMatch(receipt, /0\.631/);
+  assert.match(receipt, /response schema is not verified/);
+});
+
+test("an unrecognised response shape shows the refusal, never a number", () => {
+  const refused = {
+    ...measuredPairwise,
+    available: false,
+    status: "unsupported_response_shape",
+    metric: null,
+    reason:
+      "The provider answered, but its response carried no numeric field this product is willing to interpret.",
+    call_id: "compare-call-2",
+  };
+  const row = pairwiseRow(refused);
+  assert.equal(row.tone, "neutral");
+  assert.match(row.label, /No comparison value/);
+  assert.match(row.detail, /no numeric field/);
+  assert.doesNotMatch(row.detail, /\d\.\d{3}/);
+
+  const receipt = formatDecisionReceipt({ ...fixtureChallenge, pairwise: refused });
+  assert.match(receipt, /Status: unsupported_response_shape/);
+  assert.doesNotMatch(receipt, /overlap =/);
+});
+
+test("a fixture run says the comparison is not modelled instead of implying a result", () => {
+  const row = pairwiseRow({
+    ...measuredPairwise,
+    data_status: "fixture",
+    available: false,
+    status: "not_modelled_in_fixture",
+    metric: null,
+    reason: "The labelled fixture run does not model this comparison response.",
+    call_id: "compare-call-3",
+  });
+  assert.match(row.label, /No comparison value/);
+  assert.match(row.detail, /does not model/);
+  assert.equal(row.callId, "compare-call-3");
+});
+
+test("a failed comparison is toned as a failure and keeps its call id", () => {
+  const row = pairwiseRow({
+    ...measuredPairwise,
+    available: false,
+    status: "failed",
+    metric: null,
+    reason: "The comparison call did not complete.",
+    call_id: null,
+  });
+  assert.equal(row.tone, "fail");
+  assert.equal(row.callId, null);
+  assert.match(row.detail, /did not complete/);
+});
+
+test("a failed comparison names its failure class without quoting the provider", () => {
+  const row = pairwiseRow({
+    ...measuredPairwise,
+    available: false,
+    status: "failed",
+    metric: null,
+    reason: "The comparison call did not complete.",
+    call_id: "compare-call-4",
+    error_type: "QlooTimeoutError",
+    error_kind: "timeout",
+    error_status: 504,
+    call_attempted: true,
+  });
+  assert.match(row.detail, /Failure class: timeout \(HTTP 504\)\./);
+  assert.doesNotMatch(row.detail, /QlooTimeoutError/);
+  assert.equal(row.callId, "compare-call-4");
+
+  const noKind = pairwiseRow({
+    ...measuredPairwise,
+    available: false,
+    status: "failed",
+    metric: null,
+    reason: "The comparison call did not complete.",
+    call_id: null,
+  });
+  assert.doesNotMatch(noKind.detail, /Failure class/);
+});
+
+test("no comparison payload means no section at all", () => {
+  assert.equal(pairwiseRow(null), null);
+  assert.equal(pairwiseRow(undefined), null);
+  assert.equal(buildChallengeView({ ...fixtureChallenge, pairwise: undefined }).pairwise, null);
+});
+
+test("no candidate metric direction is interpreted before schema verification", () => {
+  const row = pairwiseRow({
+    ...measuredPairwise,
+    metric: { key: "overlap", value: 0.4, direction: "unknown", source: "provider_reported" },
+  });
+  assert.match(row.detail, /response schema is not verified/);
+  assert.doesNotMatch(row.detail, /overlap more/);
+  assert.doesNotMatch(row.detail, /overlap =/);
+});
+
+// ─── Qloo Impact Lab ────────────────────────────────────────────────────────
+// Three conditions over one fixed pool. The view must read the computed
+// comparison, print an unavailable state when a payload predates it, and never
+// dress an order change as a claim about audiences.
+
+const impactConditions = {
+  full_analysis: {
+    label: "Full analysis",
+    definition: "Every ordering input the product normally uses, including affinity.",
+    qloo_calls_made: 0,
+    winner: "urn:entity:artist:tag_cluster:1",
+    top_overlap: { k: 5, shared: 5, of: 5, fraction: 1 },
+    rank_correlation: { method: "kendall_tau_b", value: 1, n: 6 },
+  },
+  affinity_withheld: {
+    label: "Affinity withheld",
+    definition: "The same admitted pool, ordered by novelty, breadth and id.",
+    qloo_calls_made: 0,
+    winner: "urn:entity:artist:tag_cluster:1",
+    top_overlap: { k: 5, shared: 4, of: 5, fraction: 0.8 },
+    rank_correlation: { method: "kendall_tau_b", value: 0.8, n: 6 },
+  },
+  popularity_only: {
+    label: "Popularity-only baseline",
+    definition: "The same admitted pool, ordered by median popularity.",
+    qloo_calls_made: 0,
+    winner: "urn:entity:movie:subtype:documentary:2",
+    top_overlap: { k: 5, shared: 2, of: 5, fraction: 0.4 },
+    rank_correlation: { method: "kendall_tau_b", value: -0.2, n: 6 },
+  },
+};
+
+const challengeWithImpact = {
+  ...fixtureChallenge,
+  recommendation: { cohort_id: "urn:entity:artist:tag_cluster:1", label: "artist · Brian Eno" },
+  necessity: {
+    ...fixtureChallenge.necessity,
+    conditions: impactConditions,
+    affinity_withheld: {
+      ...fixtureChallenge.necessity.affinity_withheld,
+      agreement_statement: "4 of the top 5 groupings are the same, and the full ordering moves together (tau-b 0.80, 6 groupings compared).",
+    },
+    popularity_only: {
+      ...fixtureChallenge.necessity.popularity_only,
+      agreement_statement: "2 of the top 5 groupings are the same, and the full ordering moves in the opposite direction (tau-b -0.20, 6 groupings compared).",
+    },
+  },
+};
+
+test("the impact view reports all three conditions on one scale", () => {
+  const view = buildImpactView(challengeWithImpact);
+  assert.equal(view.available, true);
+  assert.deepEqual(view.rows.map((row) => row.label), [
+    "Full analysis",
+    "Affinity withheld",
+    "Popularity-only baseline",
+  ]);
+  assert.deepEqual(view.rows.map((row) => row.topOverlap), ["5/5", "4/5", "2/5"]);
+  assert.deepEqual(view.rows.map((row) => row.rankCorrelation), ["1.00", "0.80", "-0.20"]);
+  assert.deepEqual(view.rows.map((row) => row.changed), [false, false, true]);
+  assert.equal(view.rows[0].winner, "artist · Brian Eno");
+  assert.equal(view.rows[2].winner, "movie · Baraka");
+  assert.equal(view.statements.length, 2);
+  assert.match(view.statements[0], /tau-b 0\.80/);
+});
+
+test("an impact payload that predates the conditions says so", () => {
+  const legacy = { ...fixtureChallenge };
+  delete legacy.necessity.conditions;
+  const view = buildImpactView(legacy);
+  assert.equal(view.available, false);
+  assert.match(view.reason, /no condition comparison/);
+  assert.deepEqual(view.rows, []);
+});
+
+test("a correlation that cannot be computed is never rendered as zero", () => {
+  const view = buildImpactView({
+    ...challengeWithImpact,
+    necessity: {
+      ...challengeWithImpact.necessity,
+      conditions: {
+        ...impactConditions,
+        affinity_withheld: {
+          ...impactConditions.affinity_withheld,
+          rank_correlation: { method: "kendall_tau_b", value: null, n: 1 },
+        },
+      },
+    },
+  });
+  assert.equal(view.rows[1].rankCorrelation, "not computable");
+});
+
+test("the impact table never claims audience or revenue effects", () => {
+  const view = buildImpactView(challengeWithImpact);
+  const text = JSON.stringify(view).toLowerCase();
+  assert.doesNotMatch(text, /attendance|revenue|causal|predicted/);
+});
+
+// ─── The condition comparison must survive export ───────────────────────────
+// A downloaded receipt that omits the counterfactual would be the one artifact
+// a reader quotes out of context. The comparison is written into both the
+// receipt text and the exported Test Card, with the same numbers as the UI.
+
+test("the receipt text carries the condition comparison", () => {
+  const receipt = formatDecisionReceipt(challengeWithImpact);
+  assert.match(receipt, /CONDITION COMPARISON/);
+  assert.match(receipt, /AFFINITY WITHHELD — artist · Brian Eno · top five kept 4\/5 · tau-b 0\.80 · winner unchanged/);
+  assert.match(receipt, /POPULARITY-ONLY BASELINE — movie · Baraka · top five kept 2\/5 · tau-b -0\.20 · winner CHANGES/);
+  assert.match(receipt, /FULL ANALYSIS — artist · Brian Eno · top five kept 5\/5 · tau-b 1\.00 · reference ordering/);
+});
+
+test("the exported Test Card carries the condition comparison", () => {
+  const sections = challengeExportSections(challengeWithImpact);
+  const section = sections.find((entry) => entry.label.startsWith("Condition comparison"));
+  assert.ok(section, "the exported card must not drop the counterfactuals");
+  assert.match(section.value, /top five kept 4\/5/);
+  assert.match(section.value, /tau-b -0\.20/);
+  assert.match(section.label, /not a probability/);
+});
+
+test("a payload without conditions exports no comparison and invents no zero", () => {
+  const legacy = { ...fixtureChallenge, necessity: { ...fixtureChallenge.necessity } };
+  delete legacy.necessity.conditions;
+  const receipt = formatDecisionReceipt(legacy);
+  assert.doesNotMatch(receipt, /CONDITION COMPARISON/);
+  assert.doesNotMatch(receipt, /tau-b 0\.00/);
+  const sections = challengeExportSections(legacy);
+  assert.equal(sections.filter((entry) => entry.label.startsWith("Condition comparison")).length, 0);
+});
+
+test("an uncomputable correlation is exported as words, never as a number", () => {
+  const receipt = formatDecisionReceipt({
+    ...challengeWithImpact,
+    necessity: {
+      ...challengeWithImpact.necessity,
+      conditions: {
+        ...impactConditions,
+        affinity_withheld: {
+          ...impactConditions.affinity_withheld,
+          rank_correlation: { method: "kendall_tau_b", value: null, n: 1 },
+        },
+      },
+    },
+  });
+  assert.match(receipt, /top five kept 4\/5 · tau-b not computable/);
+  assert.doesNotMatch(receipt, /tau-b 0\.00/);
 });

@@ -14,6 +14,9 @@
     "test:render": "node --experimental-default-type=module --experimental-strip-types --test tests/render-smoke.mjs",
     "test:contract": "node --experimental-default-type=module --experimental-strip-types --test tests/api-contract.test.mjs",
     "test:challenge": "node --experimental-default-type=module --experimental-strip-types --test tests/decision-challenge.test.mjs",
+    "test:comparables": "node --experimental-default-type=module --experimental-strip-types --test tests/comparables-audit.test.mjs",
+    "test:explainability": "node --experimental-default-type=module --experimental-strip-types --test tests/bounded-explainability.test.mjs",
+    "test:pulse": "node --experimental-default-type=module --experimental-strip-types --test tests/audience-pulse.test.mjs",
     "test:proxy": "node --experimental-default-type=module --experimental-strip-types --test tests/proxy-client-ip.test.mjs"
   },
   "dependencies": {

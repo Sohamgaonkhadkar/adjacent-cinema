@@ -57,7 +57,75 @@ PROGRAMMES: tuple[dict[str, Any], ...] = (
             {"title": "Drive My Car", "year": 2021, "imdb_id": "tt14039582"},
         ],
     },
+    # The remaining scenarios are listed here, before any run, so the set cannot
+    # be curated after seeing which programmes flatter the product. The first
+    # three keep their original positions so the published report stays
+    # reproducible with `--limit 3`.
+    {
+        "id": "documentary-essay",
+        "description": "Essayistic and observational documentary",
+        "items": [
+            {"title": "Sans Soleil", "year": 1983, "imdb_id": "tt0084628"},
+            {"title": "Grizzly Man", "year": 2005, "imdb_id": "tt0427312"},
+            {"title": "Fire of Love", "year": 2022, "imdb_id": "tt11474358"},
+            {"title": "The Act of Killing", "year": 2012, "imdb_id": "tt2375605"},
+        ],
+    },
+    {
+        "id": "horror-folk",
+        "description": "Folk horror and slow-burn dread",
+        "items": [
+            {"title": "The Wicker Man", "year": 1973, "imdb_id": "tt0070917"},
+            {"title": "Midsommar", "year": 2019, "imdb_id": "tt8772262"},
+            {"title": "The VVitch", "year": 2015, "imdb_id": "tt4263482"},
+            {"title": "Kill List", "year": 2011, "imdb_id": "tt1788391"},
+        ],
+    },
+    {
+        "id": "animation-family",
+        "description": "Animated features that travel beyond children's cinema",
+        "items": [
+            {"title": "Spirited Away", "year": 2001, "imdb_id": "tt0245429"},
+            {"title": "The Tale of the Princess Kaguya", "year": 2013, "imdb_id": "tt2576852"},
+            {"title": "Fantastic Mr. Fox", "year": 2009, "imdb_id": "tt0432283"},
+            {"title": "Persepolis", "year": 2007, "imdb_id": "tt0808417"},
+        ],
+    },
+    {
+        "id": "romance-classic",
+        "description": "Classic and modern romance for a repertory season",
+        "items": [
+            {"title": "In the Mood for Love", "year": 2000, "imdb_id": "tt0118694"},
+            {"title": "Brief Encounter", "year": 1945, "imdb_id": "tt0037558"},
+            {"title": "Carol", "year": 2015, "imdb_id": "tt2402927"},
+            {"title": "Past Lives", "year": 2023, "imdb_id": "tt13238346"},
+        ],
+    },
+    {
+        "id": "music-cult",
+        "description": "Music, performance and cult midnight cinema",
+        "items": [
+            {"title": "Stop Making Sense", "year": 1984, "imdb_id": "tt0088178"},
+            {"title": "Paris Is Burning", "year": 1990, "imdb_id": "tt0109117"},
+            {"title": "24 Hour Party People", "year": 2002, "imdb_id": "tt0274309"},
+            {"title": "Velvet Goldmine", "year": 1998, "imdb_id": "tt0120879"},
+        ],
+    },
+    {
+        "id": "regional-language",
+        "description": "Regional-language cinema with a strong local audience",
+        "items": [
+            {"title": "Court", "year": 2014, "imdb_id": "tt3709344"},
+            {"title": "The Disciple", "year": 2020, "imdb_id": "tt11471974"},
+            {"title": "Village Rockstars", "year": 2018, "imdb_id": "tt7294534"},
+            {"title": "Ee.Ma.Yau", "year": 2018, "imdb_id": "tt7798050"},
+        ],
+    },
 )
+
+#: Pause between resolver calls, small enough to keep the evening's run quick and
+#: large enough not to trip the provider's rate limit. Recorded in the report.
+RESOLVER_DELAY_S = 1.1
 
 LIMITATIONS = [
     "The counterfactual holds the retrieved and admitted candidate pool fixed; it tests ranking sensitivity, not what a fresh Qloo query would retrieve.",
@@ -92,7 +160,7 @@ def summarize_run(scenario: dict[str, Any]) -> dict[str, Any]:
         state = run_live(
             scenario["items"],
             render=False,
-            resolver_delay_s=1.1,
+            resolver_delay_s=RESOLVER_DELAY_S,
         )
     except Exception as exc:  # never serialize exception payloads or request details
         return {
@@ -205,19 +273,120 @@ def summarize_run(scenario: dict[str, Any]) -> dict[str, Any]:
         "stability_evidence_items_tested": (challenge.get("stability") or {}).get("evaluated", 0),
         "counterfactual_extra_qloo_calls": necessity.get("qloo_calls_made", 0),
         "production_order": production_order,
+        # Order agreement with the production ranking. Both conditions are
+        # reported for every evaluable run, including programmes where nothing
+        # changed — an unchanged winner is a result, not a missing row.
+        "affinity_withheld_top5_overlap": withheld.get("top_overlap"),
+        "affinity_withheld_rank_correlation": withheld.get("rank_correlation"),
+        "popularity_only_top5_overlap": popularity.get("top_overlap"),
+        "popularity_only_rank_correlation": popularity.get("rank_correlation"),
+        "agreement_statements": {
+            "affinity_withheld": withheld.get("agreement_statement") or "",
+            "popularity_only": popularity.get("agreement_statement") or "",
+        },
+        # The two provider-side explainability surfaces this revision added.
+        "bounded_attribution_status": (
+            (getattr(state.ranking, "bounded_attribution", None) or {}).get("status")
+            if state.ranking is not None
+            else None
+        ),
+        "pairwise_status": (getattr(state, "pairwise", None) or {}).get("status"),
     }
 
 
-def build_report(runs: list[dict[str, Any]]) -> dict[str, Any]:
+def _mean(values: list[Any]) -> float | None:
+    numbers = [value for value in values if isinstance(value, (int, float)) and not isinstance(value, bool)]
+    return round(sum(numbers) / len(numbers), 3) if numbers else None
+
+
+def _status_counts(runs: list[dict[str, Any]], key: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for run in runs:
+        value = run.get(key)
+        if value is None:
+            continue
+        counts[str(value)] = counts.get(str(value), 0) + 1
+    return counts
+
+
+def build_report(
+    runs: list[dict[str, Any]],
+    *,
+    selected_programme_ids: list[str] | None = None,
+    limit: int | None = None,
+) -> dict[str, Any]:
     evaluable = [run for run in runs if run.get("status") == "evaluable"]
     return {
-        "schema": "adjacent.live-counterfactual-evaluation/1",
+        "schema": "adjacent.live-counterfactual-evaluation/2",
         "generated_at_utc": datetime.now(UTC).isoformat(),
         "evaluation_kind": "live_qloo",
         "method": (
             "Run the existing live pipeline for each listed programme, then apply the existing "
             "Decision Challenge to the same cached run. No second ranker or additional counterfactual Qloo calls."
         ),
+        # What was run, so the report can be reproduced exactly.
+        "run_configuration": {
+            "programmes_selected": selected_programme_ids
+            if selected_programme_ids is not None
+            else [run.get("programme_id") for run in runs],
+            "limit": limit,
+            "preselected_programme_count": len(PROGRAMMES),
+            "selection_rule": (
+                "The first N entries of the prespecified PROGRAMMES list, in file order. The list "
+                "was fixed before any run; programmes are never added or dropped after seeing results."
+            ),
+            "resolver_delay_s": RESOLVER_DELAY_S,
+            "provider": "Qloo, through the production runner and client",
+            "counterfactual_extra_qloo_calls": 0,
+            "explainability": (
+                "Inline when the scoring context can carry it; otherwise one bounded follow-up "
+                "call for the winning cohort, reported per run."
+            ),
+            "comparison": "One bounded /v2/analysis/compare call for the top same-type cohort pair.",
+        },
+        "condition_specification": {
+            "pool": (
+                "The cohorts admitted by the production evidence gate in that run. Identical in "
+                "all three conditions: nothing is re-queried, re-scored or re-gated."
+            ),
+            "full_analysis": (
+                "The production ordering: evidence strength, novelty, qualifying members, mean "
+                "affinity within context, then cohort id."
+            ),
+            "affinity_withheld": {
+                "removed_keys": [
+                    "evidence_strength",
+                    "qualifying_members",
+                    "mean_affinity_within_context",
+                ],
+                "retained_keys": ["novelty_proxy", "scored_members", "cohort_id"],
+                "leak_check": (
+                    "novelty_proxy is 1 - median popularity, and popularity is a provider field "
+                    "returned with the same call; it is not an affinity score. No other retained "
+                    "key is derived from affinity."
+                ),
+            },
+            "popularity_only": {
+                "formula": "sort by (-median_popularity, -scored_members, cohort_id)",
+                "input_source": (
+                    "The popularity field returned by Qloo for the same candidates. When a cohort "
+                    "has no popularity value it sorts last; the count of such cohorts is visible in "
+                    "winner_median_popularity being null."
+                ),
+                "no_external_baseline": (
+                    "This is not an attendance, revenue or industry baseline. Adjacent holds no "
+                    "external popularity ground truth."
+                ),
+            },
+            "determinism": (
+                "No clock, randomness or hash order. Every ordering ends with cohort_id, so two "
+                "runs over the same state produce identical orderings."
+            ),
+            "agreement_metrics": (
+                "Top-5 overlap counts shared groupings in the first five positions. Kendall's "
+                "tau-b is computed over every grouping present in both orderings of the same pool."
+            ),
+        },
         "summary": {
             "programmes_attempted": len(runs),
             "programmes_evaluable": len(evaluable),
@@ -237,10 +406,68 @@ def build_report(runs: list[dict[str, Any]]) -> dict[str, Any]:
             "programmes_with_affinity_decided_pairs": sum(
                 (run.get("affinity_decided_pairs") or 0) > 0 for run in evaluable
             ),
+            # Unchanged outcomes are reported, not dropped.
+            "affinity_withheld_winner_unchanged": sum(
+                run.get("affinity_withheld_winner_changed") is False for run in evaluable
+            ),
+            "popularity_only_winner_unchanged": sum(
+                run.get("popularity_only_winner_changed") is False for run in evaluable
+            ),
+            "mean_top5_overlap": {
+                "affinity_withheld": _mean(
+                    [
+                        (run.get("affinity_withheld_top5_overlap") or {}).get("fraction")
+                        for run in evaluable
+                    ]
+                ),
+                "popularity_only": _mean(
+                    [
+                        (run.get("popularity_only_top5_overlap") or {}).get("fraction")
+                        for run in evaluable
+                    ]
+                ),
+            },
+            "mean_rank_correlation": {
+                "affinity_withheld": _mean(
+                    [
+                        (run.get("affinity_withheld_rank_correlation") or {}).get("value")
+                        for run in evaluable
+                    ]
+                ),
+                "popularity_only": _mean(
+                    [
+                        (run.get("popularity_only_rank_correlation") or {}).get("value")
+                        for run in evaluable
+                    ]
+                ),
+            },
+            "run_status_counts": _status_counts(runs, "status"),
+            "bounded_attribution_status_counts": _status_counts(evaluable, "bounded_attribution_status"),
+            "pairwise_status_counts": _status_counts(evaluable, "pairwise_status"),
         },
         "limitations": LIMITATIONS,
         "runs": runs,
     }
+
+
+def _fmt(value: Any) -> str:
+    """Render a number for the report, or say it was not computable."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return f"{value:.3f}"
+    return "not computable"
+
+
+def _overlap_cell(overlap: Any, status: Any) -> str:
+    if status != "evaluable" or not isinstance(overlap, dict) or overlap.get("of") in (None, 0):
+        return "—"
+    return f"{overlap.get('shared')}/{overlap.get('of')}"
+
+
+def _tau_cell(tau: Any, status: Any) -> str:
+    if status != "evaluable" or not isinstance(tau, dict):
+        return "—"
+    value = tau.get("value")
+    return f"{value:.2f}" if isinstance(value, (int, float)) else "not computable"
 
 
 def markdown_report(report: dict[str, Any]) -> str:
@@ -255,14 +482,17 @@ def markdown_report(report: dict[str, Any]) -> str:
         f"- Failed / not evaluable: **{summary['programmes_failed_or_not_evaluable']}**",
         f"- Affinity-withheld runs that changed the winner: **{summary['affinity_withheld_changed_winner']} / {summary['programmes_evaluable']}**",
         f"- Popularity-only runs that changed the winner: **{summary['popularity_only_changed_winner']} / {summary['programmes_evaluable']}**",
+        f"- Affinity-withheld runs that left the winner unchanged: **{summary.get('affinity_withheld_winner_unchanged', 0)} / {summary['programmes_evaluable']}**",
+        f"- Mean top-5 overlap (affinity withheld / popularity only): **{_fmt(summary.get('mean_top5_overlap', {}).get('affinity_withheld'))} / {_fmt(summary.get('mean_top5_overlap', {}).get('popularity_only'))}**",
+        f"- Mean Kendall tau-b (affinity withheld / popularity only): **{_fmt(summary.get('mean_rank_correlation', {}).get('affinity_withheld'))} / {_fmt(summary.get('mean_rank_correlation', {}).get('popularity_only'))}**",
         f"- Programmes with at least one cohort suppressed by the affinity gate: **{summary.get('programmes_with_affinity_gate_suppression', 0)} / {summary['programmes_evaluable']}**",
         f"- Cohorts suppressed by the affinity gate across all programmes: **{summary.get('cohorts_suppressed_by_affinity_gate', 0)}**",
         f"- Programmes where affinity decided at least one adjacent ranking pair: **{summary.get('programmes_with_affinity_decided_pairs', 0)} / {summary['programmes_evaluable']}**",
         "",
         "## Per-programme results",
         "",
-        "| Programme | Status | Resolved | App trace rows | Production winner | Winner without affinity | Changed? | Popularity-only winner | Changed? | Affinity-decided pairs | Stability |",
-        "|---|---|---:|---:|---|---|---|---|---|---:|---|",
+        "| Programme | Status | Resolved | App trace rows | Production winner | Winner without affinity | Changed? | Popularity-only winner | Changed? | Affinity-decided pairs | Stability | Top-5 kept (withheld) | tau-b (withheld) |",
+        "|---|---|---:|---:|---|---|---|---|---|---:|---|---:|---:|",
     ]
     for run in report["runs"]:
         def cell(value: Any) -> str:
@@ -287,6 +517,8 @@ def markdown_report(report: dict[str, Any]) -> str:
                         if run.get("status") == "evaluable" else "—"
                     ),
                     run.get("stability_verdict"),
+                    _overlap_cell(run.get("affinity_withheld_top5_overlap"), run.get("status")),
+                    _tau_cell(run.get("affinity_withheld_rank_correlation"), run.get("status")),
                 )
             )
             + " |"
@@ -384,13 +616,30 @@ def self_test() -> None:
     """Exercise report rendering and booleans without provider calls."""
     sample = {
         "generated_at_utc": "2026-01-01T00:00:00+00:00",
-        "schema": "adjacent.live-counterfactual-evaluation/1",
+        "schema": "adjacent.live-counterfactual-evaluation/2",
+        "run_configuration": {
+            "programmes_selected": ["self-test"],
+            "limit": 1,
+            "preselected_programme_count": len(PROGRAMMES),
+            "resolver_delay_s": RESOLVER_DELAY_S,
+        },
+        "condition_specification": {
+            "pool": "Same admitted pool in every condition.",
+            "popularity_only": {"formula": "sort by (-median_popularity, -scored_members, cohort_id)"},
+        },
         "summary": {
             "programmes_attempted": 1,
             "programmes_evaluable": 1,
             "programmes_failed_or_not_evaluable": 0,
             "affinity_withheld_changed_winner": 0,
             "popularity_only_changed_winner": 1,
+            "affinity_withheld_winner_unchanged": 1,
+            "popularity_only_winner_unchanged": 0,
+            "mean_top5_overlap": {"affinity_withheld": 1.0, "popularity_only": 0.4},
+            "mean_rank_correlation": {"affinity_withheld": 1.0, "popularity_only": -0.2},
+            "run_status_counts": {"evaluable": 1},
+            "bounded_attribution_status_counts": {"returned": 1},
+            "pairwise_status_counts": {"unsupported_response_shape": 1},
             "programmes_with_affinity_gate_suppression": 1,
             "cohorts_suppressed_by_affinity_gate": 1,
             "programmes_with_affinity_decided_pairs": 1,
@@ -426,6 +675,12 @@ def self_test() -> None:
                     {"domain": "urn:entity:artist", "requested": 5, "returned": 3, "explainability_status": "returned"}
                 ],
                 "stability_verdict": "fragile",
+                "affinity_withheld_top5_overlap": {"k": 5, "shared": 5, "of": 5, "fraction": 1.0},
+                "affinity_withheld_rank_correlation": {"method": "kendall_tau_b", "value": 1.0, "n": 5},
+                "popularity_only_top5_overlap": {"k": 5, "shared": 2, "of": 5, "fraction": 0.4},
+                "popularity_only_rank_correlation": {"method": "kendall_tau_b", "value": -0.2, "n": 5},
+                "bounded_attribution_status": "returned",
+                "pairwise_status": "unsupported_response_shape",
             }
         ],
     }
@@ -437,6 +692,11 @@ def self_test() -> None:
     assert "Cohorts suppressed by the affinity gate across all programmes: **1**" in rendered
     assert "book · Example" in rendered
     assert "Scoring-context coverage" in rendered
+    # The two new measurements must render, and an unchanged winner must be
+    # visible as a number rather than quietly omitted.
+    assert "Affinity-withheld runs that left the winner unchanged: **1 / 1**" in rendered
+    assert "Mean top-5 overlap" in rendered and "1.000" in rendered and "0.400" in rendered
+    assert "Mean Kendall tau-b" in rendered
     print("Counterfactual report renderer self-test passed.")
 
 
@@ -451,9 +711,12 @@ def main() -> int:
     parser.add_argument(
         "--limit",
         type=int,
-        choices=(1, 2, 3),
+        choices=tuple(range(1, len(PROGRAMMES) + 1)),
         default=3,
-        help="Number of default live programmes to run.",
+        help=(
+            f"Number of the {len(PROGRAMMES)} prespecified live programmes to run (default 3). "
+            "Use the full set for the broader evaluation."
+        ),
     )
     parser.add_argument(
         "--self-test",
@@ -469,8 +732,13 @@ def main() -> int:
     if not (os.environ.get("QLOO_API_KEY") or "").strip():
         parser.error("QLOO_API_KEY is required; this report must never be produced from fixtures.")
 
-    runs = [summarize_run(scenario) for scenario in PROGRAMMES[: args.limit]]
-    report = build_report(runs)
+    selected = PROGRAMMES[: args.limit]
+    runs = [summarize_run(scenario) for scenario in selected]
+    report = build_report(
+        runs,
+        selected_programme_ids=[scenario["id"] for scenario in selected],
+        limit=args.limit,
+    )
     markdown = markdown_report(report)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     (args.output_dir / "live_counterfactual_evaluation.json").write_text(
