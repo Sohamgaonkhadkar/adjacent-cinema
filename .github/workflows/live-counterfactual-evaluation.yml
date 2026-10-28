@@ -7,6 +7,12 @@ on:
       - ".github/workflows/live-counterfactual-evaluation.yml"
       - "qloo_hackathon/adjacent/research/scripts/live_counterfactual_evaluation.py"
   workflow_dispatch:
+    inputs:
+      limit:
+        description: "How many of the 9 prespecified programmes to run (3 = published /1 sample, 9 = full sample)"
+        type: choice
+        options: ["3", "9"]
+        default: "3"
 
 permissions:
   contents: read
@@ -39,7 +45,13 @@ jobs:
       - name: Test report renderer without provider calls
         run: python research/scripts/live_counterfactual_evaluation.py --self-test
       - name: Run live counterfactual evaluation
-        run: python research/scripts/live_counterfactual_evaluation.py --output-dir docs/verification --limit 3
+        env:
+          # Manual dispatches choose 3 (the published sample) or 9 (the full
+          # prespecified list); push runs keep the three-programme default.
+          PROGRAMME_LIMIT: ${{ inputs.limit || '3' }}
+        run: |
+          echo "Running $PROGRAMME_LIMIT prespecified programme(s)."
+          python research/scripts/live_counterfactual_evaluation.py --output-dir docs/verification --limit "$PROGRAMME_LIMIT"
       - name: Upload JSON and Markdown report
         if: always()
         uses: actions/upload-artifact@v4
