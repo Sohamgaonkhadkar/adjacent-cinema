@@ -121,11 +121,25 @@ so.
 
 1. **Rotate `QLOO_API_KEY`** in the Render secret store *and* in
    `.github/workflows/ci.yml`'s secret. Not done, not claimed.
-2. **Generate the `/2` report** with an authorised key, running every
-   prespecified programme (`PROGRAMMES` has 9 entries; `--limit` defaults to 3):
+2. **Generate the `/2` report.** `PROGRAMMES` has 9 entries and `--limit`
+   defaults to 3. Either run it with an authorised key locally:
    `python research/scripts/live_counterfactual_evaluation.py --output-dir docs/verification --limit 9`
-   This overwrites `live_counterfactual_evaluation.{md,json}` in place, so copy
+   or dispatch the dedicated workflow with `limit=9`:
+   `gh workflow run live-counterfactual-evaluation.yml -f limit=9`.
+   Both overwrite `live_counterfactual_evaluation.{md,json}` in place, so copy
    the `/1` files first if the published three-programme record must be kept.
+
+   **Status here:** the workflow was given a `limit` input (3 or 9) in this
+   branch, and a push-triggered run at the default `limit=3` completed
+   successfully ([run 40658109689](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40658109689)),
+   which shows the evaluator still runs end to end against the live provider on
+   the merged code. The nine-programme run was **not** produced here, for two
+   hard blockers: `workflow_dispatch` returns HTTP 403 for this sandbox's token
+   ("Resource not accessible by integration"), and both the artifact
+   (`productionresultssa14.blob.core.windows.net`) and the run logs
+   (`results-receiver.actions.githubusercontent.com`) are outside the sandbox's
+   egress allowlist, so a generated report could not be read or committed from
+   here. The owner must dispatch it and download the artifact.
 3. **Browser checks** from `docs/NEXT_LIVE_CHECKLIST.md`: FilmSponsor guest
    Origin/cookie/CSRF flow, session isolation and expiry.
 4. **Deployment flags**: confirm `ADJACENT_PULSE_SHARE_ENABLED` and the

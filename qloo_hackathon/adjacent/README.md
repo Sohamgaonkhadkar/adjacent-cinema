@@ -105,7 +105,12 @@ and emits schema `/2` with a prespecified list of nine programmes, which lets an
 operator reproduce a larger sample. The published `/1` files were **not**
 regenerated: their numbers remain the ones that were actually measured, and a
 `/2` report only exists once someone re-runs the script with an authorised live
-key.
+key — either directly
+(`python research/scripts/live_counterfactual_evaluation.py --output-dir docs/verification --limit 9`)
+or through the dedicated workflow, which now accepts a dispatch input
+(`gh workflow run live-counterfactual-evaluation.yml -f limit=9`) and uploads the
+Markdown and JSON as artifacts. As of 28 October 2026 the nine-programme report
+has **not** been generated.
 
 ## Fixture and live Qloo modes
 
