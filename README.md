@@ -48,6 +48,14 @@ Adjacent is a **bounded agentic decision-support tool** for independent filmmake
 
 ### Production verification snapshot — 27 October 2026
 
+CI on the merged commit: `main` at **`db9a59c`** passed all three jobs —
+`backend` (including the Live-Qloo step, which ran with the repository secret),
+`frontend` and `container-build` — in run
+[40567638201](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40567638201).
+That validates the commit's checks, not the hosted deployment. The offline
+re-run of the same commit in a sandbox is recorded in the
+[post-merge verification record](qloo_hackathon/adjacent/docs/verification_2026-10-28_post_merge.md).
+
 - The production routes `/`, `/creator`, `/cinema` and `/creator/sponsor` returned HTTP 200 in a route smoke check. This confirms server-rendered route availability, **not** every click path or browser-security property.
 - `/api/health` returned HTTP 200 with `mode: "public_demo"`, `fixture_demo_available: true`, `live_creator_available: true` and `filmsponsor_guest_enabled: true`.
 - Sampled production Creator and Cinema runs completed with `status: "completed"`, `stop_reason: "complete"` and `data_status: "measured"`. Their inspected Qloo trace entries returned HTTP 200.
@@ -434,6 +442,12 @@ The browser sees the same-origin `/api` prefix. The Next.js rewrite removes that
 | `GET` | `/api/experiments/{id}` | Experiment snapshot, observations and evaluations |
 | `POST` | `/api/experiments/{id}/observations` | Append an observation |
 | `POST` | `/api/experiments/{id}/evaluations` | Append a supported/contradicted/inconclusive evaluation |
+| `GET` / `POST` | `/api/experiments/{id}/pulse` | Read or create the experiment's Audience Pulse (question, options, window and decision rule are fixed at creation; a second open poll is refused) |
+| `GET` | `/api/experiments/{id}/pulse/{poll_id}` | Poll definition, response counts and the append-only evaluation history |
+| `POST` | `/api/experiments/{id}/pulse/{poll_id}/close` | Close collection early |
+| `POST` | `/api/experiments/{id}/pulse/{poll_id}/evaluate` | Apply the pre-registered rule and append a supported/contradicted/inconclusive result |
+| `GET` | `/api/pulse/share/{token}` | Participant view of an open poll (counts hidden while it is open) |
+| `POST` | `/api/pulse/share/{token}/responses` | Record one participant response; the only anonymous write route, and only when sharing is enabled |
 | `GET` / `POST` | `/api/creator/synthesis-status`, `/api/creator/synthesize` | Check or request optional bounded synthesis |
 | Various | `/api/filmsponsor/*` | Guest session, campaign lifecycle, Qloo discovery, drafts, review, approval, outreach and export |
 | Various | `/api/youtube/*` | Optional connection state, OAuth flow, video list, metrics and disconnect |
@@ -604,7 +618,7 @@ Production route smoke, sampled live Creator/Cinema analysis, CI, Vercel and Ren
 
 ## Documentation map
 
-**Historical QA note:** the root-level `QA_AUDIT_REPORT.md` and `PR6_QA_REPORT.md` are point-in-time reports from earlier code snapshots. They preserve useful reproduction history, but their ports, commits and verdicts are not a current deployment sign-off. Use the current branch's CI results and the [public-deployment acceptance checklist](#public-deployment-acceptance-checklist) for the present state.
+**Historical QA note:** the root-level `QA_AUDIT_REPORT.md` and `PR6_QA_REPORT.md` are point-in-time reports from earlier code snapshots. They preserve useful reproduction history, but their ports, commits and verdicts are not a current deployment sign-off. Use the CI results for the merged commit and the [live-Qloo and deployment checklist](qloo_hackathon/adjacent/docs/NEXT_LIVE_CHECKLIST.md) for the present state.
 
 | Document | Why it exists |
 |---|---|
@@ -616,7 +630,8 @@ Production route smoke, sampled live Creator/Cinema analysis, CI, Vercel and Ren
 | [MCP server](qloo_hackathon/adjacent/docs/MCP_SERVER.md) | Three read-only MCP tools, fixture-by-default, over the existing pipeline — with their limits |
 | [Fresh hackathon competitor scorecard](qloo_hackathon/adjacent/docs/M13_16_FRESH_HACKATHON_COMPETITOR_SCORECARD.md) | Ten current public repositories scored equally against the official four criteria; not an official ranking |
 | [Live-Qloo and deployment checklist](qloo_hackathon/adjacent/docs/NEXT_LIVE_CHECKLIST.md) | Current measured-live status, safe validation procedure, and remaining hosted acceptance checks |
-| [Current verification status](qloo_hackathon/adjacent/docs/M13_18_CURRENT_VERIFICATION_STATUS.md) | Observed frontend/backend results and environment/live-test limits |
+| [Post-merge verification record](qloo_hackathon/adjacent/docs/verification_2026-10-28_post_merge.md) | What was executed against `main` at `db9a59c`, exact counts, and what remains unverified |
+| [Current verification status](qloo_hackathon/adjacent/docs/M13_18_CURRENT_VERIFICATION_STATUS.md) | Observed frontend/backend results and environment/live-test limits (method; numbers superseded — see the post-merge record) |
 | [Eligibility audit](qloo_hackathon/adjacent/docs/M13_11_HACKATHON_ELIGIBILITY_AUDIT.md) | Exact official wording and unresolved “Qloo 4after” organizer clarification; no eligibility conclusion |
 | [Live-Qloo checklist](qloo_hackathon/adjacent/docs/NEXT_LIVE_CHECKLIST.md) | Current operator checklist; historical reports are not current acceptance |
 | [Deployment runbook](qloo_hackathon/adjacent/docs/DEPLOYMENT.md) | Render and Docker/Caddy deployment details |

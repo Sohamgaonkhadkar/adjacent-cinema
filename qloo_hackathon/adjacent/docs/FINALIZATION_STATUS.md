@@ -1,5 +1,12 @@
 # Finalization status — 19 October 2026
 
+> **Historical document.** Everything below describes a 19 October 2026
+> working branch (`arena/277f0f76-adjacent-cinema`) and PR #3, which did not
+> reach `main` in that form. It is retained for reproduction history only. The
+> code that shipped is `main` at `db9a59c`; current numbers, limits and owner
+> actions are in [the post-merge verification record](verification_2026-10-28_post_merge.md).
+> Do not read the branch names, commit SHAs or test counts below as current.
+
 ## Executive summary
 
 Creator Mode is documented and remains the primary demo path; Cinema Mode is preserved. This sprint adds a narrow, opt-in public-demo boundary, tighter request/input limits, entity-mismatch regressions, more complete resolution-call provenance, a same-origin frontend API proxy, and refreshed operator/judge documentation. The anonymous demo is fixture-first; public live Creator requests require two owner-controlled opt-ins.
