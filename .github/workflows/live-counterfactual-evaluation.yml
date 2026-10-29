@@ -46,9 +46,9 @@ jobs:
         run: python research/scripts/live_counterfactual_evaluation.py --self-test
       - name: Run live counterfactual evaluation
         env:
-          # Manual dispatches choose 3 (the published sample) or 9 (the full
-          # prespecified list); push runs keep the three-programme default.
-          PROGRAMME_LIMIT: ${{ inputs.limit || '3' }}
+          # Manual dispatches choose 3 or 9. This temporary arena branch uses 9
+          # on its push-triggered one-off evaluation run.
+          PROGRAMME_LIMIT: ${{ inputs.limit || '9' }}
         run: |
           echo "Running $PROGRAMME_LIMIT prespecified programme(s)."
           python research/scripts/live_counterfactual_evaluation.py --output-dir docs/verification --limit "$PROGRAMME_LIMIT"
