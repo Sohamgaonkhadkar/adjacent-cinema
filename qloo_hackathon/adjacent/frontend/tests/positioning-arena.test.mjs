@@ -237,3 +237,14 @@ test("Creator wires the frozen strategy into the existing experiment and Test Ca
   assert.match(creator, /FROZEN CULTURAL POSITIONING/);
   assert.match(creator, /SAVED TEST DESIGN/);
 });
+
+
+test("Cultural Multiverse fills the shared row instead of leaving a black void under the contact sheet", () => {
+  const source = readFileSync(new URL("../components/nf/PositioningArena.tsx", import.meta.url), "utf8");
+  assert.match(source, /className="grid lg:grid-cols-12"/, "the grid columns should stretch to the shared row height");
+  assert.match(source, /className="min-h-0 flex flex-col lg:col-span-6"/, "the middle column must distribute its available height");
+  assert.match(source, /data-testid="multiverse-visual-field"/, "a visual field should occupy the unused middle-column area");
+  assert.match(source, /className="relative mt-auto min-h-\\[280px\\] flex-1 overflow-hidden border-t border-line bg-ink-3"/);
+  assert.match(source, /PhotoFrame[\\s\\S]*?photo=\\{stageSecond\\[active\\.id\\]\\}[\\s\\S]*?fill/);
+  assert.match(source, /Atmospheric imagery only/, "the new photography must not be presented as source evidence");
+});
