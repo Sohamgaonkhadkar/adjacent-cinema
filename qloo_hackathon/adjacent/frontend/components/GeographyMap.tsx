@@ -10,14 +10,25 @@ function hasAffinity(cell: HeatmapCell): cell is HeatmapCell & { affinity: numbe
 }
 
 /**
- * Affinity heat map for the cells the backend actually returned.
+ * Affinity map for the cells the backend actually returned.
  *
  * The basemap comes from a public tile host, which is the one thing on this page
  * the application cannot verify offline. If those tiles fail, the component says
  * so and falls back to the returned cells as text: the evidence survives the
  * map, and a blank canvas is never passed off as "no signal here".
+ *
+ * `density` separates plotting evidence from making a claim. A density surface
+ * reads as "taste concentrates here", which the backend's ten-cell budget is
+ * there to justify; below that budget the same cells are drawn as points and the
+ * surrounding panel says why the shading is withheld.
  */
-export default function GeographyMap({ geography }: { geography: GeographyData }) {
+export default function GeographyMap({
+  geography,
+  density = true,
+}: {
+  geography: GeographyData;
+  density?: boolean;
+}) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<InstanceType<typeof MapLibreMap> | null>(null);
   const [tilesUnavailable, setTilesUnavailable] = useState(false);
@@ -65,67 +76,71 @@ export default function GeographyMap({ geography }: { geography: GeographyData }
         data: { type: "FeatureCollection", features },
       });
 
-      map.addLayer({
-        id: "affinity-heat",
-        type: "heatmap",
-        source: "affinity",
-        maxzoom: 15,
-        paint: {
-          "heatmap-weight": [
-            "interpolate",
-            ["linear"],
-            ["get", "affinity"],
-            0,
-            0,
-            1,
-            1,
-          ],
-          "heatmap-intensity": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            0,
-            1,
-            15,
-            3,
-          ],
-          "heatmap-color": [
-            "interpolate",
-            ["linear"],
-            ["heatmap-density"],
-            0,
-            "rgba(194,154,110,0)",
-            0.2,
-            "rgba(194,154,110,0.35)",
-            0.4,
-            "rgba(194,154,110,0.55)",
-            0.6,
-            "rgba(194,154,110,0.72)",
-            0.8,
-            "rgba(194,154,110,0.86)",
-            1,
-            "rgba(224,196,154,1)",
-          ],
-          "heatmap-radius": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            0,
-            2,
-            15,
-            20,
-          ],
-          "heatmap-opacity": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            7,
-            0.8,
-            15,
-            0.6,
-          ],
-        },
-      });
+      // Density shading is a concentration claim, not a rendering default:
+      // the returned cells are drawn as points when the run has not earned it.
+      if (density) {
+        map.addLayer({
+          id: "affinity-heat",
+          type: "heatmap",
+          source: "affinity",
+          maxzoom: 15,
+          paint: {
+            "heatmap-weight": [
+              "interpolate",
+              ["linear"],
+              ["get", "affinity"],
+              0,
+              0,
+              1,
+              1,
+            ],
+            "heatmap-intensity": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              0,
+              1,
+              15,
+              3,
+            ],
+            "heatmap-color": [
+              "interpolate",
+              ["linear"],
+              ["heatmap-density"],
+              0,
+              "rgba(194,154,110,0)",
+              0.2,
+              "rgba(194,154,110,0.35)",
+              0.4,
+              "rgba(194,154,110,0.55)",
+              0.6,
+              "rgba(194,154,110,0.72)",
+              0.8,
+              "rgba(194,154,110,0.86)",
+              1,
+              "rgba(224,196,154,1)",
+            ],
+            "heatmap-radius": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              0,
+              2,
+              15,
+              20,
+            ],
+            "heatmap-opacity": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              7,
+              0.8,
+              15,
+              0.6,
+            ],
+          },
+        });
+      }
 
       map.addLayer({
         id: "affinity-points",
@@ -170,7 +185,7 @@ export default function GeographyMap({ geography }: { geography: GeographyData }
 
   return (
     <div>
-      <div className="relative h-[300px] w-full overflow-hidden border border-line bg-ink-3 md:h-[380px]">
+      <div className="relative h-[260px] w-full overflow-hidden border border-line bg-ink-3 sm:h-[300px] md:h-[380px]">
         <div ref={mapContainer} className="h-full w-full" aria-label={`Affinity heat map for ${geography.city_display}`} />
         {tilesUnavailable && (
           <div className="pointer-events-none absolute inset-x-0 top-0 border-b border-line bg-ink/95 px-4 py-2">
@@ -187,16 +202,23 @@ export default function GeographyMap({ geography }: { geography: GeographyData }
           {cells.length} with an affinity score
         </p>
         <div className="flex items-center gap-3">
-          {[
-            ["Low", "bg-amber/30"],
-            ["Medium", "bg-amber/60"],
-            ["High", "bg-amber"],
-          ].map(([label, tone]) => (
-            <span key={label} className="flex items-center gap-1.5">
-              <span className={`inline-block h-2 w-2 rounded-full ${tone}`} />
-              <span className="caption">{label}</span>
+          {density ? (
+            [
+              ["Low", "bg-amber/30"],
+              ["Medium", "bg-amber/60"],
+              ["High", "bg-amber"],
+            ].map(([label, tone]) => (
+              <span key={label} className="flex items-center gap-1.5">
+                <span className={`inline-block h-2 w-2 rounded-full ${tone}`} />
+                <span className="caption">{label}</span>
+              </span>
+            ))
+          ) : (
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block h-2 w-2 rounded-full bg-amber" />
+              <span className="caption">Returned cell · points only</span>
             </span>
-          ))}
+          )}
         </div>
       </div>
 

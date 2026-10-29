@@ -334,7 +334,7 @@ export function PositioningArena({
               <div className="relative min-h-[300px] md:min-h-[380px]">
                 <PhotoFrame
                   photo={stagePhoto[active.id]}
-                  className="absolute inset-0 h-full w-full"
+                  fill
                   credit={false}
                   priority
                   imgClassName={cn("h-full w-full object-cover", active.id === "frontier" && "object-[20%_center]")}

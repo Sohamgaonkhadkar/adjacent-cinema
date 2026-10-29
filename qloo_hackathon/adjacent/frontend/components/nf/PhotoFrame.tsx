@@ -11,12 +11,24 @@ type Props = {
   credit?: boolean;
   gate?: boolean;
   priority?: boolean;
+  /** Cover the parent box instead of taking part in its flow. */
+  fill?: boolean;
 };
 
 /**
  * Ported from the source ZIP (src/components/PhotoFrame.tsx).
  * A failed photograph keeps the layout and says so instead of showing a
  * broken image or a substitute picture.
+ *
+ * `fill` is the only supported way to layer a photograph behind copy. It is
+ * applied as an inline style *and* as classes because the position utilities are
+ * not order-independent: the compiled stylesheet emits `.absolute` before
+ * `.relative`, so a hard-coded `relative` on this element silently beat a
+ * caller's `absolute inset-0`. The figure then stayed in flow with an
+ * indefinite height, `.img-frame`'s `height: 100%` resolved against `auto`, and
+ * the frame collapsed to its `min-height` — a ~10rem strip of photograph at the
+ * top of a full-height dark column. Every stage photo that asked to "absolutely
+ * fill" its container was rendering that strip.
  */
 export function PhotoFrame({
   photo,
@@ -25,11 +37,15 @@ export function PhotoFrame({
   credit = true,
   gate = false,
   priority = false,
+  fill = false,
 }: Props) {
   const [failed, setFailed] = useState(false);
 
   return (
-    <figure className={cn("relative", className)}>
+    <figure
+      className={cn(fill && "absolute inset-0 h-full w-full", className)}
+      style={fill ? { position: "absolute", inset: 0 } : undefined}
+    >
       <div className={cn("img-frame h-full w-full min-h-[10rem]", gate && "film-gate")}>
         {failed ? (
           <div className="flex h-full min-h-[12rem] w-full items-end bg-ink-3 p-4">

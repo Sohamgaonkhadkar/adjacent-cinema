@@ -94,6 +94,8 @@ jobs:
         run: npm run test:recovery
       - name: Test responsive layout
         run: npm run test:layout
+      - name: Test geography view model (cells vs. claims)
+        run: npm run test:geography
       - name: Test Creator failure-stage visibility
         run: npm run test:creator-ui
       - name: Test Cultural Multiverse selection and policy

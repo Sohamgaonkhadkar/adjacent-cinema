@@ -122,6 +122,7 @@ test("production build renders every primary web surface", async () => {
       service: "adjacent-proxy-smoke",
     });
 
+    let renderedPhotoFigures = 0;
     for (const route of routes) {
       const response = await fetch(baseUrl + route, {
         headers: { accept: "text/html" },
@@ -155,7 +156,41 @@ test("production build renders every primary web surface", async () => {
       for (const utility of [".bg-ink", ".text-amber", ".font-display"]) {
         assert.ok(css.includes(utility), route + " stylesheet is missing the utility " + utility);
       }
+
+      // Position utilities are not order-independent: the compiled stylesheet
+      // emits `.absolute` before `.relative`, so a photograph carrying both is
+      // `position: relative` in a browser. That shipped bug left every "fill the
+      // stage" photo in flow with an indefinite height, so `.img-frame`'s
+      // `height: 100%` resolved against `auto` and the frame collapsed to its
+      // min-height: a ~10rem strip of photograph above an empty dark column.
+      assert.ok(
+        css.indexOf(".absolute{") < css.indexOf(".relative{"),
+        route + " stylesheet no longer emits .absolute before .relative — re-check PhotoFrame's fill strategy",
+      );
+      const photoFigures = [...html.matchAll(/<figure\b([^>]*)>\s*<div[^>]*class="[^"]*img-frame/g)];
+      renderedPhotoFigures += photoFigures.length;
+      for (const [, attributes] of photoFigures) {
+        const classAttribute = attributes.match(/class="([^"]*)"/)?.[1] ?? "";
+        const classes = classAttribute.split(/\s+/);
+        assert.ok(
+          !(classes.includes("relative") && classes.includes("absolute")),
+          route + " rendered a photograph that is both relative and absolute: " + classAttribute,
+        );
+      }
+      if (route === "/") {
+        // The home page renders the Anchor stage photograph, which fills its
+        // grid cell. It must carry an explicit absolute position, not the
+        // inherited `relative` that made the frame collapse.
+        assert.ok(
+          photoFigures.some(([, attributes]) => /style="[^"]*position:\s*absolute/.test(attributes)),
+          "/ never rendered a fill photograph with an explicit absolute position",
+        );
+      }
     }
+
+    // Client-only branches (the sponsor dossier, completed runs) render no
+    // photographs on the server; the routes that do must still be covered.
+    assert.ok(renderedPhotoFigures > 0, "no route rendered a PhotoFrame photograph");
   } finally {
     child.kill("SIGTERM");
     await Promise.race([
