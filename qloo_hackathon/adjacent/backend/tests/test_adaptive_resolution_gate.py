@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import pytest
-
 from app.evidence import (
-    evaluate_programme_resolution,
     MIN_RESOLVED_TITLES,
+    evaluate_programme_resolution,
 )
 
 
