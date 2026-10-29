@@ -143,6 +143,14 @@ test("production build renders every primary web surface", async () => {
       );
       assert.match(html, /<html[\s>]/i, route + " did not render an HTML document");
 
+      // Nested anchors are invalid HTML: the browser's parser hoists the inner
+      // one out, which desynchronises hydration for the whole page.
+      let anchorDepth = 0;
+      for (const tag of html.match(/<a\b[^>]*>|<\/a>/g) ?? []) {
+        anchorDepth += tag === "</a>" ? -1 : 1;
+        assert.ok(anchorDepth <= 1, route + " renders an <a> inside an <a>");
+      }
+
       // The stylesheet is part of the deliverable: a purge that removes a class
       // the markup still uses ships an unstyled page and nothing else catches it.
       const stylesheet = html.match(/href="(\/_next\/static\/[^"]+\.css)"/);
@@ -191,6 +199,15 @@ test("production build renders every primary web surface", async () => {
     // Client-only branches (the sponsor dossier, completed runs) render no
     // photographs on the server; the routes that do must still be covered.
     assert.ok(renderedPhotoFigures > 0, "no route rendered a PhotoFrame photograph");
+
+    // maplibre-gl 6 fetches its worker from a sibling .mjs that a Next build does
+    // not emit; without these two files the worker 404s and no GeoJSON layer —
+    // the affinity cells — ever renders, so the geography map is blank.
+    for (const asset of ["/maplibre/maplibre-gl-worker.mjs", "/maplibre/maplibre-gl-shared.mjs"]) {
+      const response = await fetch(baseUrl + asset, { signal: AbortSignal.timeout(10_000) });
+      assert.equal(response.status, 200, asset + " is not served from public/ (run scripts/copy-maplibre-worker.mjs)");
+      assert.ok((await response.text()).length > 1_000, asset + " is served but empty");
+    }
   } finally {
     child.kill("SIGTERM");
     await Promise.race([

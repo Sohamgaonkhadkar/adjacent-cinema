@@ -58,6 +58,42 @@ export type GeographyView =
     }
   | { mode: "absent"; cells: []; returned: 0; headline: string; body: string };
 
+/** What the panel prints when the run returned no geography artefact at all. */
+export const GEOGRAPHY_NOT_RETURNED = "Not returned";
+
+export type GeographyAbsenceView = Extract<GeographyView, { mode: "unmapped" | "absent" }>;
+
+export interface GeographyFact {
+  label: string;
+  value: string;
+}
+
+/**
+ * The facts strip under the absence panel.
+ *
+ * The affinity count is only printed as `0` when a heatmap artefact actually
+ * came back and every returned cell was inspected — that is the `unmapped`
+ * state. When no artefact was returned (`absent`) the count is unknown, and
+ * printing `0` would assert something the run never measured.
+ */
+export function geographyFacts(view: GeographyAbsenceView, city: string): GeographyFact[] {
+  const cityContext = city.trim() || "Recorded per run";
+  if (view.mode === "absent") {
+    return [
+      { label: "City context", value: cityContext },
+      { label: "Cells with coordinates", value: GEOGRAPHY_NOT_RETURNED },
+      { label: "With affinity", value: GEOGRAPHY_NOT_RETURNED },
+      { label: "Map / pins", value: "Not drawn" },
+    ];
+  }
+  return [
+    { label: "City context", value: cityContext },
+    { label: "Cells with coordinates", value: String(view.returned) },
+    { label: "With affinity", value: "0" },
+    { label: "Map / pins", value: "Not drawn" },
+  ];
+}
+
 export function buildGeographyView(
   geography: GeographyData | null | undefined,
   city: string,

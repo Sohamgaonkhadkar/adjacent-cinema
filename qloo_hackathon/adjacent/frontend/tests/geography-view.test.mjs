@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import {
   GEOGRAPHY_CLAIM_THRESHOLD,
+  GEOGRAPHY_NOT_RETURNED,
   buildGeographyView,
+  geographyFacts,
   scoredCells,
 } from "../lib/geographyView.ts";
 
@@ -155,4 +158,80 @@ test("geography copy keeps the product's bounded-claim language", () => {
       assert.ok(!copy.includes(forbidden), `geography copy must not claim "${forbidden}"`);
     }
   }
+});
+
+
+// ── Facts strip: an unknown count is never printed as zero ───────────────────
+
+function factsFor(view, city = "Portland, Oregon") {
+  assert.notEqual(view.mode, "map");
+  return Object.fromEntries(geographyFacts(view, city).map((fact) => [fact.label, fact.value]));
+}
+
+test("no artefact returned reports an unknown affinity count, never zero", () => {
+  const view = buildGeographyView(null, "Leeds");
+  const facts = factsFor(view, "Leeds");
+
+  assert.equal(facts["With affinity"], GEOGRAPHY_NOT_RETURNED);
+  assert.equal(facts["With affinity"], "Not returned");
+  assert.notEqual(facts["With affinity"], "0", "a run with no artefact never measured zero");
+  assert.equal(facts["Cells with coordinates"], GEOGRAPHY_NOT_RETURNED);
+  assert.equal(facts["Map / pins"], "Not drawn");
+  assert.equal(facts["City context"], "Leeds");
+});
+
+test("cells returned without affinity do support a printed zero", () => {
+  const cells = [{ ...cell(0), affinity: null }, { ...cell(1), affinity: null }];
+  const view = buildGeographyView(
+    geography({ highest_affinity_cells: cells, total_cells: 2, sufficient: false }),
+    "Portland, Oregon",
+  );
+  const facts = factsFor(view);
+
+  assert.equal(view.mode, "unmapped");
+  assert.equal(facts["With affinity"], "0");
+  assert.equal(facts["Cells with coordinates"], "2", "the two inspected cells are counted");
+  assert.equal(facts["Map / pins"], "Not drawn");
+});
+
+test("an artefact that returned no cells at all still reports a measured zero", () => {
+  const view = buildGeographyView(
+    geography({ highest_affinity_cells: [], total_cells: 0, sufficient: false }),
+    "Brighton",
+  );
+  const facts = factsFor(view, "Brighton");
+
+  assert.equal(view.mode, "unmapped");
+  assert.equal(facts["Cells with coordinates"], "0");
+  assert.equal(facts["With affinity"], "0");
+});
+
+test("the facts strip never mixes a measured count with an unknown one", () => {
+  const absent = factsFor(buildGeographyView(null, "Leeds"), "Leeds");
+  assert.equal(absent["Cells with coordinates"], absent["With affinity"]);
+
+  const unmapped = factsFor(
+    buildGeographyView(geography({ highest_affinity_cells: [], total_cells: 3 }), "Leeds"),
+    "Leeds",
+  );
+  assert.equal(Number.isFinite(Number(unmapped["Cells with coordinates"])), true);
+  assert.equal(Number.isFinite(Number(unmapped["With affinity"])), true);
+});
+
+test("an empty city falls back to a label instead of printing nothing", () => {
+  const facts = factsFor(buildGeographyView(null, ""), "");
+  assert.equal(facts["City context"], "Recorded per run");
+});
+
+// ── Component wiring ───────────────────────────────────────────────────────
+// Node cannot render these TSX components (no JSX transform in the test
+// runner), so the panel's wiring is asserted against the source and the
+// rendered behaviour is checked in the browser pass recorded in
+// docs/verification_2026-10-29_ui_fixes.md.
+
+test("the absence panel takes its counts from the view model", () => {
+  const source = readFileSync(new URL("../components/GeographyAbsence.tsx", import.meta.url), "utf8");
+  assert.match(source, /geographyFacts\(view, city\)/);
+  assert.doesNotMatch(source, /With affinity"\s*,\s*value:\s*"0"/);
+  assert.doesNotMatch(source, /Cells returned"\s*,\s*value:\s*String\(view\.returned\)/);
 });

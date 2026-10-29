@@ -1,9 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Map as MapLibreMap } from "maplibre-gl";
+import { Map as MapLibreMap, setWorkerUrl } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { GeographyData, HeatmapCell } from "@/types/adjacent";
+import { buildMapLayerPlan } from "@/lib/geographyMap";
+
+// maplibre-gl 6 fetches its worker from a sibling `.mjs` resolved against the
+// bundle URL, which a Next/Turbopack build does not emit — the worker 404s, the
+// style and basemap still paint, and every GeoJSON layer (the affinity cells)
+// stays empty. `scripts/copy-maplibre-worker.mjs` puts the two files in
+// `public/maplibre/` before dev/build; point the library at them.
+setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
 
 function hasAffinity(cell: HeatmapCell): cell is HeatmapCell & { affinity: number } {
   return cell.affinity !== null && cell.affinity !== undefined;
@@ -39,21 +47,19 @@ export default function GeographyMap({
   useEffect(() => {
     if (!mapContainer.current || mapRef.current || cells.length === 0) return;
 
-    const lats = cells.map((c) => c.latitude);
-    const lngs = cells.map((c) => c.longitude);
-    const centreLat = (Math.min(...lats) + Math.max(...lats)) / 2;
-    const centreLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
-
-    const latSpread = Math.max(...lats) - Math.min(...lats);
-    const lngSpread = Math.max(...lngs) - Math.min(...lngs);
-    const maxSpread = Math.max(latSpread, lngSpread);
-    const zoom = maxSpread > 0.5 ? 9 : maxSpread > 0.1 ? 11 : 13;
+    // Framing and layer visibility come from one tested plan: the view is fitted
+    // to the returned cells, and the point layer carries the floor that makes it
+    // visible at whatever zoom that produces.
+    const plan = buildMapLayerPlan(cells, density);
+    if (!plan) return;
 
     const map = new MapLibreMap({
       container: mapContainer.current,
       style: "https://demotiles.maplibre.org/style.json",
-      center: [centreLng, centreLat],
-      zoom: zoom,
+      // Fit the returned cells rather than guessing a zoom from the spread: a
+      // city-wide run opened at a zoom where its own points were off-screen.
+      bounds: plan.bounds,
+      fitBoundsOptions: plan.fit,
       attributionControl: { compact: true },
     });
 
@@ -78,7 +84,7 @@ export default function GeographyMap({
 
       // Density shading is a concentration claim, not a rendering default:
       // the returned cells are drawn as points when the run has not earned it.
-      if (density) {
+      if (plan.heat.enabled) {
         map.addLayer({
           id: "affinity-heat",
           type: "heatmap",
@@ -146,7 +152,11 @@ export default function GeographyMap({
         id: "affinity-points",
         type: "circle",
         source: "affinity",
-        minzoom: 11,
+        // Density mode keeps the circles as a zoom-in detail layer over the
+        // heat surface; point-only mode has nothing else to draw, so the floor
+        // drops to the map minimum. Leaving this at 11 made a sparse run that
+        // opened at zoom 9 render an empty map.
+        minzoom: plan.points.minzoom,
         paint: {
           "circle-radius": [
             "interpolate",
@@ -171,7 +181,7 @@ export default function GeographyMap({
       map.remove();
       mapRef.current = null;
     };
-  }, [geography, cells.length]);
+  }, [geography, cells.length, density]);
 
   if (cells.length === 0) {
     return (

@@ -1,6 +1,4 @@
-import type { GeographyView } from "@/lib/geographyView";
-
-type AbsenceView = Extract<GeographyView, { mode: "unmapped" | "absent" }>;
+import { geographyFacts, type GeographyAbsenceView } from "@/lib/geographyView";
 
 /**
  * The geography panel when there is nothing to draw.
@@ -20,17 +18,14 @@ export function GeographyAbsence({
   callId,
   note,
 }: {
-  view: AbsenceView;
+  view: GeographyAbsenceView;
   city: string;
   callId: string | null;
   note: string;
 }) {
-  const facts = [
-    { label: "City context", value: city || "Recorded per run" },
-    { label: "Cells returned", value: String(view.returned) },
-    { label: "With affinity", value: "0" },
-    { label: "Map / pins", value: "Not drawn" },
-  ];
+  // Counts come from the view model: a run with no artefact reports "Not
+  // returned" rather than a zero nobody measured.
+  const facts = geographyFacts(view, city);
 
   return (
     <div

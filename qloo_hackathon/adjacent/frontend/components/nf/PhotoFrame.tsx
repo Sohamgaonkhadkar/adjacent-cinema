@@ -9,6 +9,12 @@ type Props = {
   className?: string;
   imgClassName?: string;
   credit?: boolean;
+  /**
+   * Render the credit's source as a link. Off when the frame already sits inside
+   * a link: `<a>` cannot contain `<a>`, and the browser's parser hoists the inner
+   * anchor, which desynchronises hydration on the whole page.
+   */
+  creditLink?: boolean;
   gate?: boolean;
   priority?: boolean;
   /** Cover the parent box instead of taking part in its flow. */
@@ -35,6 +41,7 @@ export function PhotoFrame({
   className,
   imgClassName,
   credit = true,
+  creditLink = true,
   gate = false,
   priority = false,
   fill = false,
@@ -68,9 +75,13 @@ export function PhotoFrame({
       {credit && (
         <figcaption className="caption mt-2 flex flex-wrap items-baseline justify-between gap-2">
           <span>Photo · {photo.credit}</span>
-          <a href={photo.source} target="_blank" rel="noreferrer" className="hover:text-amber">
-            Pexels
-          </a>
+          {creditLink ? (
+            <a href={photo.source} target="_blank" rel="noreferrer" className="hover:text-amber">
+              Pexels
+            </a>
+          ) : (
+            <span className="text-dim">Pexels</span>
+          )}
         </figcaption>
       )}
     </figure>

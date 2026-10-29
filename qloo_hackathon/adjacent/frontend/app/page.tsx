@@ -298,7 +298,7 @@ function Portals() {
         <h2 className="font-display mt-4 text-4xl md:text-5xl">Two desks. One standard of evidence.</h2>
         <div className="mt-12 grid gap-6 lg:grid-cols-2">
           <Link href="/creator" className="group text-left">
-            <PhotoFrame photo={photos.screenplay} className="aspect-[16/10]" />
+            <PhotoFrame photo={photos.screenplay} className="aspect-[16/10]" creditLink={false} />
             <p className="type-kicker mt-5">01 · Creator Studio</p>
             <h3 className="font-display mt-2 text-3xl group-hover:text-amber">
               A filmmaker’s investigation
@@ -309,7 +309,7 @@ function Portals() {
             </p>
           </Link>
           <Link href="/cinema" className="group text-left">
-            <PhotoFrame photo={photos.cinemaCurtain} className="aspect-[16/10]" />
+            <PhotoFrame photo={photos.cinemaCurtain} className="aspect-[16/10]" creditLink={false} />
             <p className="type-kicker mt-5">02 · Cinema Mode</p>
             <h3 className="font-display mt-2 text-3xl group-hover:text-amber">
               A programmer’s atlas
