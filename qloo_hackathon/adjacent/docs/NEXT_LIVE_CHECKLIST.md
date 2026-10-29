@@ -9,7 +9,7 @@
 - Production routes `/`, `/creator`, `/cinema`, and `/creator/sponsor` returned HTTP 200 on 27 October 2026.
 - Proxied `/api/health` returned HTTP 200 with `mode="public_demo"`, fixtures available, live Creator available and FilmSponsor guest mode enabled.
 - The preserved [three-programme report, schema `/1`](verification/live_counterfactual_evaluation.md) records the original sample. The newer [nine-programme report, schema `/2`](verification/live_counterfactual_evaluation_v2.md) and [JSON results](verification/live_counterfactual_evaluation_v2.json) were generated 29 October using the live provider: 9 attempted, 8 evaluable and 1 non-evaluable due to no admitted candidate cohorts. This evaluation does not verify hosted browser flows.
-- PR #22 has since merged; `main` is now `9b3a013`. The post-merge CI run passed: [run 40870350858](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40870350858). The original `db9a59c` verification remains recorded in the [post-merge report](verification_2026-10-28_post_merge.md).
+- PR #24 merged on 29 October; `main` is now [`09d4f01`](https://github.com/Sohamgaonkhadkar/adjacent-cinema/commit/09d4f014ade5b5ba9e6b453968edd7c5e1c09d45). Post-merge CI passed all three jobs (backend, frontend and container-build): [run 40875932823](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40875932823). The same release marks the Vercel production deployment READY and includes the evidence-withheld geography panel and the multiverse image-layout fix. The original `db9a59c` verification remains recorded in the [historical post-merge report](verification_2026-10-28_post_merge.md).
 
 ## Covered by automated tests (not the same as browser acceptance)
 

@@ -46,7 +46,15 @@ Adjacent is a **bounded agentic decision-support tool** for independent filmmake
 3. Open [FilmSponsor](https://adjacent-cinema.vercel.app/creator/sponsor) to start a guest workspace, create a campaign and request live brand discovery. Review each brand and source yourself; the app does not establish sponsorship likelihood, eligibility or ROI.
 4. Use the [labelled fixture demo](https://adjacent-cinema.vercel.app/creator?demo=fixture) only to show the offline experience. Fixture output is illustrative and must never be presented as live Qloo evidence.
 
-### Production verification snapshot — 27 October 2026
+### Latest release and verification — 29 October 2026
+
+The current `main` commit is [`09d4f01`](https://github.com/Sohamgaonkhadkar/adjacent-cinema/commit/09d4f014ade5b5ba9e6b453968edd7c5e1c09d45), merged through [PR #24](https://github.com/Sohamgaonkhadkar/adjacent-cinema/pull/24). The post-merge CI run [40875932823](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40875932823) passed the backend, frontend and container-build jobs. Vercel marked the production deployment for this commit **READY**.
+
+PR #24 updates the Cinema geography empty state so missing coordinates produce an explicit “geographic layer withheld” panel instead of a nearly empty box; it does not invent a map or pins. It also fixes the Cultural Multiverse grid alignment and makes the active stage image fill its intended frame. Regression assertions were added for these layout/evidence states.
+
+The project owner confirmed three browser walkthroughs as passed on 29 October: (1) FilmSponsor guest creation, live brand discovery and Origin/cookie/CSRF behaviour; (2) second-session isolation plus revocation/expiry; and (3) the Audience Pulse participant flow, repeat-response guard and owner-side close/evaluation. These are **owner-confirmed reports**, not browser sessions independently captured by this README update. See the [current verification checklist](qloo_hackathon/adjacent/docs/NEXT_LIVE_CHECKLIST.md). Trusted-proxy alignment, anonymous-traffic guardrails and any organizer clarification on eligibility remain separate open items.
+
+### Historical production verification snapshot — 27 October 2026
 
 CI on the merged commit: `main` at **`db9a59c`** passed all three jobs —
 `backend` (including the Live-Qloo step, which ran with the repository secret),
@@ -59,7 +67,7 @@ re-run of the same commit in a sandbox is recorded in the
 - The production routes `/`, `/creator`, `/cinema` and `/creator/sponsor` returned HTTP 200 in a route smoke check. This confirms server-rendered route availability, **not** every click path or browser-security property.
 - `/api/health` returned HTTP 200 with `mode: "public_demo"`, `fixture_demo_available: true`, `live_creator_available: true` and `filmsponsor_guest_enabled: true`.
 - Sampled production Creator and Cinema runs completed with `status: "completed"`, `stop_reason: "complete"` and `data_status: "measured"`. Their inspected Qloo trace entries returned HTTP 200.
-- Render logs show successful FilmSponsor guest-session, campaign-list/create and brand-discovery requests on 26 October. Earlier logs also recorded guest-origin mismatches, so verify the exact stable frontend origin and cookie/CSRF flow in a normal browser before relying on that path for judging.
+- Render logs recorded successful FilmSponsor guest-session, campaign-list/create and brand-discovery requests on 26 October; earlier logs also contained guest-origin mismatches. The project owner later confirmed the exact Origin/cookie/CSRF and session-isolation browser checks passed on 29 October, as recorded in the checklist below. These checks do not constitute a complete security audit.
 - `/api/creator/synthesis-status` reports synthesis unavailable because optional synthesis is disabled in public-demo mode. `/api/experiments` returning HTTP 403 is intentional public-demo policy, not a broken page.
 
 The original [three-programme live evaluation, schema `/1`](qloo_hackathon/adjacent/docs/verification/live_counterfactual_evaluation.md) remains unchanged: affinity-withheld ranking changed the winner in **0/3** runs, while popularity-only selected a different winner in **3/3**. The newer [nine-programme live evaluation, schema `/2`](qloo_hackathon/adjacent/docs/verification/live_counterfactual_evaluation_v2.md) attempted **9** prespecified programmes: **8** were evaluable and one regional-language programme produced no candidate cohorts. Across the eight evaluable runs, affinity-withheld changed the winner in **0/8**; popularity-only changed it in **8/8**. Neither evaluation proves audience overlap, recommendation quality, or downstream impact. The counterfactuals reuse the same admitted candidate pool and make no extra Qloo calls.
@@ -535,8 +543,10 @@ npx tsc --noEmit
 The CI workflow runs backend lint and fixture-backed tests, the conditional live-Qloo test step when the repository secret is configured, a dry-run probe/package check, frontend regression checks and production rendering, plus backend/frontend container builds. A skipped conditional live step is not a pass. A green workflow does not prove a hosted service is configured, a browser has been manually reviewed or a production deployment is healthy.
 
 - [Latest GitHub Actions runs](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions)
-- [Latest merged product, Nightfall integration and live evaluation — PR #17](https://github.com/Sohamgaonkhadkar/adjacent-cinema/pull/17)
-- [Post-merge CI run for PR #17](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40384693948)
+- [Latest visual/evidence-state fixes — PR #24](https://github.com/Sohamgaonkhadkar/adjacent-cinema/pull/24)
+- [Post-merge CI for current main commit `09d4f01`](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40875932823)
+- [Historical Nightfall integration — PR #17](https://github.com/Sohamgaonkhadkar/adjacent-cinema/pull/17)
+- [Historical post-merge CI run for PR #17](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40384693948)
 - [Live counterfactual evaluation report — schema `/1`, three programmes](qloo_hackathon/adjacent/docs/verification/live_counterfactual_evaluation.md)
 - [Latest live counterfactual evaluation — schema `/2`, nine programmes](qloo_hackathon/adjacent/docs/verification/live_counterfactual_evaluation_v2.md) and [JSON results](qloo_hackathon/adjacent/docs/verification/live_counterfactual_evaluation_v2.json)
 
@@ -596,9 +606,14 @@ Do not run `docker compose down -v` as a routine restart; it removes named data 
 
 ### Remaining deployment hardening checks
 
-Production route smoke, sampled live Creator/Cinema analysis, CI, Vercel and Render deployment have been verified. These security/operations checks are still open before scaling beyond a bounded hackathon demo:
+Production route smoke, sampled live Creator/Cinema analysis, current-main CI and the Vercel production deployment are recorded above. The three browser walkthroughs below were confirmed by the project owner on 29 October 2026; they are owner-reported passes, not independent browser telemetry captured by this README update:
 
-- [ ] Run the FilmSponsor guest workflow in a normal browser and verify exact Origin, Secure/HttpOnly/SameSite cookies, CSRF, second-session isolation, revocation and expiry.
+- [x] **PASS · owner-confirmed 29 Oct 2026.** FilmSponsor guest-session and campaign creation, live brand discovery, exact Origin and cookie/CSRF behaviour.
+- [x] **PASS · owner-confirmed 29 Oct 2026.** Second-session isolation from the first session's campaign, plus revocation/expiry behaviour.
+- [x] **PASS · owner-confirmed 29 Oct 2026.** Audience Pulse share link, vote submission, `already_responded` on reload, and owner-side close/evaluation.
+
+The following operational checks remain open before scaling beyond a bounded hackathon demo:
+
 - [ ] Privately confirm the frontend/backend trusted-proxy shared-secret configuration is aligned; do not expose or commit secret values.
 - [ ] Add external edge/API-gateway quotas and monitoring before increasing anonymous live Qloo usage. Current request limits are partly process-local.
 - [ ] Review durable SQLite storage, backup/restore and scheduled cleanup of expired guest sessions on the actual host.
@@ -615,7 +630,7 @@ Production route smoke, sampled live Creator/Cinema analysis, CI, Vercel and Ren
 6. **SQLite is single-host.** Use one backend process and a persistent local filesystem; multi-worker/multi-replica operation needs a separate state/locking design.
 7. **Guest cleanup is not a guaranteed scheduled deletion.** Authentication expiry is enforced, but idle databases can retain expired rows until cleanup is invoked.
 8. **No commercial outcomes are guaranteed or forecast.** A Test Card is a proposed experiment. Results must come from observed measurements, and unknowns must stay unknown.
-9. **Hosted verification has a defined scope.** The Vercel/Render URLs listed above were reachable and sampled live Creator/Cinema workflows completed during the 27 October 2026 smoke check. This is not a complete browser-driven security audit, a long-term uptime guarantee, or a claim that every FilmSponsor path has been re-tested. The separate OCI/Docker topology is a deployment option, not the live host.
+9. **Hosted verification has a defined scope.** The Vercel/Render routes and sampled live Creator/Cinema workflows were checked on 27 October 2026; the current frontend release on `09d4f01` is marked READY by Vercel and its CI passed on 29 October. The project owner also confirmed the three specific browser walkthroughs listed above on 29 October. These observations are not a complete browser-driven security audit, a long-term uptime guarantee, or proof that every FilmSponsor path was reviewed. The separate OCI/Docker topology is a deployment option, not the live host.
 
 ## Documentation map
 
