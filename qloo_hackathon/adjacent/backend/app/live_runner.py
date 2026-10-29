@@ -175,22 +175,16 @@ class LivePipeline:
                     })
 
             state.theme_tag_ids = list(dict.fromkeys(state.theme_tag_ids))
-            film_verdict = evidence.evaluate_programme_resolution(len(state.resolved_items))
-            if state.theme_tag_ids:
-                state.resolution_verdict = evidence.EvidenceVerdict(
-                    True,
-                    "seed_signals_resolved",
-                    "",
-                    {
-                        "verified_reference_works": len(state.resolved_items),
-                        "required_reference_works": evidence.MIN_RESOLVED_TITLES,
-                        "resolved_theme_tags": len(state.theme_tag_ids),
-                    },
-                )
-            else:
-                state.resolution_verdict = film_verdict
+            state.resolution_verdict = evidence.evaluate_programme_resolution(
+                len(state.resolved_items),
+                len(state.theme_tag_ids),
+            )
 
-            if state.resolution_verdict.insufficient:
+            # Exploratory coverage is a warning, not an invisible relaxation:
+            # it allows evidence gathering to continue while preserving the
+            # downstream taste and candidate-cohort gates that must justify claims.
+            is_exploratory = state.resolution_verdict.stats.get("coverage") == "exploratory"
+            if state.resolution_verdict.insufficient or is_exploratory:
                 state.findings.append(Finding(
                     code=state.resolution_verdict.reason_code,
                     message=state.resolution_verdict.message,
