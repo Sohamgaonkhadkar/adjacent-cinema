@@ -162,12 +162,12 @@ test("cell selection falls back to scored cells and rejects non-finite affinitie
   assert.deepEqual(selected, [valid]);
 });
 
-test("a scored ranked list is preferred over the broader cell list", () => {
+test("the full returned cell list is not truncated to the ranked subset", () => {
   const preferred = cell(51.5, -0.1, 0.8);
-  const fallback = cell(51.6, -0.2, 0.6);
+  const additional = cell(51.6, -0.2, 0.6);
   const selected = selectScoredMapCells({
     highest_affinity_cells: [preferred],
-    cells: [preferred, fallback],
+    cells: [preferred, additional],
   });
-  assert.deepEqual(selected, [preferred]);
+  assert.deepEqual(selected, [preferred, additional]);
 });
