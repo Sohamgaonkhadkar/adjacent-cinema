@@ -23,8 +23,40 @@ export interface MapCell {
   longitude: number;
 }
 
-/** Zoom at which the detail circles join the density surface. */
+export interface AffinityMapCell extends MapCell {
+  affinity: number | null | undefined;
+}
+
+export type GeographyMapSource<T extends AffinityMapCell> = {
+  cells?: T[] | null;
+  highest_affinity_cells?: T[] | null;
+};
+
+/** Draw the best scored cells; fall back to the full cell list if that list is empty/unscored. */
+export function selectScoredMapCells<T extends AffinityMapCell>(
+  geography: GeographyMapSource<T>,
+): Array<T & { affinity: number }> {
+  const ranked = (geography.highest_affinity_cells ?? []).filter(
+    (cell): cell is T & { affinity: number } =>
+      typeof cell.affinity === "number" && Number.isFinite(cell.affinity),
+  );
+  if (ranked.length > 0) return ranked;
+  return (geography.cells ?? []).filter(
+    (cell): cell is T & { affinity: number } =>
+      typeof cell.affinity === "number" && Number.isFinite(cell.affinity),
+  );
+}
+
+/** Zoom at which the crisp detail circles join the density surface. */
 export const POINT_DETAIL_MIN_ZOOM = 11;
+
+/** Zoom where we stop showing the smoothed density surface and leave crisp cell markers. */
+export const HEAT_SURFACE_MAX_ZOOM = 13;
+
+/** Whether the density surface remains visible at this zoom. */
+export function heatSurfaceVisibleAtZoom(plan: MapLayerPlan, zoom: number): boolean {
+  return plan.heat.enabled && zoom < plan.heat.maxzoom;
+}
 
 /** Framing for a single cell (or coincident cells): one point, not a world view. */
 export const POINT_SPREAD_ZOOM = 13;
@@ -46,7 +78,7 @@ export interface MapLayerPlan {
   density: boolean;
   /** Layer configuration, so "is the point layer visible here" is testable. */
   points: { minzoom: number };
-  heat: { enabled: boolean };
+  heat: { enabled: boolean; maxzoom: number };
 }
 
 /**
@@ -97,6 +129,6 @@ export function buildMapLayerPlan(cells: MapCell[], density: boolean): MapLayerP
     spread,
     density,
     points: { minzoom: pointLayerMinZoom(density) },
-    heat: { enabled: density },
+    heat: { enabled: density, maxzoom: density ? HEAT_SURFACE_MAX_ZOOM : 0 },
   };
 }
