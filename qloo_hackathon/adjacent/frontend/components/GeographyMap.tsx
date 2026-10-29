@@ -1,23 +1,42 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Map as MapLibreMap } from "maplibre-gl";
+import { Map as MapLibreMap, setWorkerUrl } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { GeographyData, HeatmapCell } from "@/types/adjacent";
+import { buildMapLayerPlan } from "@/lib/geographyMap";
+
+// maplibre-gl 6 fetches its worker from a sibling `.mjs` resolved against the
+// bundle URL, which a Next/Turbopack build does not emit — the worker 404s, the
+// style and basemap still paint, and every GeoJSON layer (the affinity cells)
+// stays empty. `scripts/copy-maplibre-worker.mjs` puts the two files in
+// `public/maplibre/` before dev/build; point the library at them.
+setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
 
 function hasAffinity(cell: HeatmapCell): cell is HeatmapCell & { affinity: number } {
   return cell.affinity !== null && cell.affinity !== undefined;
 }
 
 /**
- * Affinity heat map for the cells the backend actually returned.
+ * Affinity map for the cells the backend actually returned.
  *
  * The basemap comes from a public tile host, which is the one thing on this page
  * the application cannot verify offline. If those tiles fail, the component says
  * so and falls back to the returned cells as text: the evidence survives the
  * map, and a blank canvas is never passed off as "no signal here".
+ *
+ * `density` separates plotting evidence from making a claim. A density surface
+ * reads as "taste concentrates here", which the backend's ten-cell budget is
+ * there to justify; below that budget the same cells are drawn as points and the
+ * surrounding panel says why the shading is withheld.
  */
-export default function GeographyMap({ geography }: { geography: GeographyData }) {
+export default function GeographyMap({
+  geography,
+  density = true,
+}: {
+  geography: GeographyData;
+  density?: boolean;
+}) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<InstanceType<typeof MapLibreMap> | null>(null);
   const [tilesUnavailable, setTilesUnavailable] = useState(false);
@@ -28,21 +47,19 @@ export default function GeographyMap({ geography }: { geography: GeographyData }
   useEffect(() => {
     if (!mapContainer.current || mapRef.current || cells.length === 0) return;
 
-    const lats = cells.map((c) => c.latitude);
-    const lngs = cells.map((c) => c.longitude);
-    const centreLat = (Math.min(...lats) + Math.max(...lats)) / 2;
-    const centreLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
-
-    const latSpread = Math.max(...lats) - Math.min(...lats);
-    const lngSpread = Math.max(...lngs) - Math.min(...lngs);
-    const maxSpread = Math.max(latSpread, lngSpread);
-    const zoom = maxSpread > 0.5 ? 9 : maxSpread > 0.1 ? 11 : 13;
+    // Framing and layer visibility come from one tested plan: the view is fitted
+    // to the returned cells, and the point layer carries the floor that makes it
+    // visible at whatever zoom that produces.
+    const plan = buildMapLayerPlan(cells, density);
+    if (!plan) return;
 
     const map = new MapLibreMap({
       container: mapContainer.current,
       style: "https://demotiles.maplibre.org/style.json",
-      center: [centreLng, centreLat],
-      zoom: zoom,
+      // Fit the returned cells rather than guessing a zoom from the spread: a
+      // city-wide run opened at a zoom where its own points were off-screen.
+      bounds: plan.bounds,
+      fitBoundsOptions: plan.fit,
       attributionControl: { compact: true },
     });
 
@@ -65,73 +82,81 @@ export default function GeographyMap({ geography }: { geography: GeographyData }
         data: { type: "FeatureCollection", features },
       });
 
-      map.addLayer({
-        id: "affinity-heat",
-        type: "heatmap",
-        source: "affinity",
-        maxzoom: 15,
-        paint: {
-          "heatmap-weight": [
-            "interpolate",
-            ["linear"],
-            ["get", "affinity"],
-            0,
-            0,
-            1,
-            1,
-          ],
-          "heatmap-intensity": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            0,
-            1,
-            15,
-            3,
-          ],
-          "heatmap-color": [
-            "interpolate",
-            ["linear"],
-            ["heatmap-density"],
-            0,
-            "rgba(194,154,110,0)",
-            0.2,
-            "rgba(194,154,110,0.35)",
-            0.4,
-            "rgba(194,154,110,0.55)",
-            0.6,
-            "rgba(194,154,110,0.72)",
-            0.8,
-            "rgba(194,154,110,0.86)",
-            1,
-            "rgba(224,196,154,1)",
-          ],
-          "heatmap-radius": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            0,
-            2,
-            15,
-            20,
-          ],
-          "heatmap-opacity": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            7,
-            0.8,
-            15,
-            0.6,
-          ],
-        },
-      });
+      // Density shading is a concentration claim, not a rendering default:
+      // the returned cells are drawn as points when the run has not earned it.
+      if (plan.heat.enabled) {
+        map.addLayer({
+          id: "affinity-heat",
+          type: "heatmap",
+          source: "affinity",
+          maxzoom: 15,
+          paint: {
+            "heatmap-weight": [
+              "interpolate",
+              ["linear"],
+              ["get", "affinity"],
+              0,
+              0,
+              1,
+              1,
+            ],
+            "heatmap-intensity": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              0,
+              1,
+              15,
+              3,
+            ],
+            "heatmap-color": [
+              "interpolate",
+              ["linear"],
+              ["heatmap-density"],
+              0,
+              "rgba(194,154,110,0)",
+              0.2,
+              "rgba(194,154,110,0.35)",
+              0.4,
+              "rgba(194,154,110,0.55)",
+              0.6,
+              "rgba(194,154,110,0.72)",
+              0.8,
+              "rgba(194,154,110,0.86)",
+              1,
+              "rgba(224,196,154,1)",
+            ],
+            "heatmap-radius": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              0,
+              2,
+              15,
+              20,
+            ],
+            "heatmap-opacity": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              7,
+              0.8,
+              15,
+              0.6,
+            ],
+          },
+        });
+      }
 
       map.addLayer({
         id: "affinity-points",
         type: "circle",
         source: "affinity",
-        minzoom: 11,
+        // Density mode keeps the circles as a zoom-in detail layer over the
+        // heat surface; point-only mode has nothing else to draw, so the floor
+        // drops to the map minimum. Leaving this at 11 made a sparse run that
+        // opened at zoom 9 render an empty map.
+        minzoom: plan.points.minzoom,
         paint: {
           "circle-radius": [
             "interpolate",
@@ -156,7 +181,7 @@ export default function GeographyMap({ geography }: { geography: GeographyData }
       map.remove();
       mapRef.current = null;
     };
-  }, [geography, cells.length]);
+  }, [geography, cells.length, density]);
 
   if (cells.length === 0) {
     return (
@@ -170,7 +195,7 @@ export default function GeographyMap({ geography }: { geography: GeographyData }
 
   return (
     <div>
-      <div className="relative h-[300px] w-full overflow-hidden border border-line bg-ink-3 md:h-[380px]">
+      <div className="relative h-[260px] w-full overflow-hidden border border-line bg-ink-3 sm:h-[300px] md:h-[380px]">
         <div ref={mapContainer} className="h-full w-full" aria-label={`Affinity heat map for ${geography.city_display}`} />
         {tilesUnavailable && (
           <div className="pointer-events-none absolute inset-x-0 top-0 border-b border-line bg-ink/95 px-4 py-2">
@@ -187,16 +212,23 @@ export default function GeographyMap({ geography }: { geography: GeographyData }
           {cells.length} with an affinity score
         </p>
         <div className="flex items-center gap-3">
-          {[
-            ["Low", "bg-amber/30"],
-            ["Medium", "bg-amber/60"],
-            ["High", "bg-amber"],
-          ].map(([label, tone]) => (
-            <span key={label} className="flex items-center gap-1.5">
-              <span className={`inline-block h-2 w-2 rounded-full ${tone}`} />
-              <span className="caption">{label}</span>
+          {density ? (
+            [
+              ["Low", "bg-amber/30"],
+              ["Medium", "bg-amber/60"],
+              ["High", "bg-amber"],
+            ].map(([label, tone]) => (
+              <span key={label} className="flex items-center gap-1.5">
+                <span className={`inline-block h-2 w-2 rounded-full ${tone}`} />
+                <span className="caption">{label}</span>
+              </span>
+            ))
+          ) : (
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block h-2 w-2 rounded-full bg-amber" />
+              <span className="caption">Returned cell · points only</span>
             </span>
-          ))}
+          )}
         </div>
       </div>
 

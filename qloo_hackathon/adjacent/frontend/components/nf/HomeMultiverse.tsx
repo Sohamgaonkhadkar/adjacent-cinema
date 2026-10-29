@@ -222,7 +222,9 @@ export function HomeMultiverse() {
                 your saved plan.
               </p>
             </div>
-            <PhotoFrame photo={photoFor[id]} className="min-h-[280px]" />
+            <div className="relative min-h-[280px]">
+              <PhotoFrame photo={photoFor[id]} fill />
+            </div>
           </div>
         )}
       </div>
@@ -265,8 +267,8 @@ function AnchorStage({ strategy }: { strategy: PreviewStrategy }) {
         <p className="mt-6 max-w-md text-sm leading-relaxed text-paper-2">{strategy.body}</p>
         <p className="caption mt-8">{strategy.visual}</p>
       </div>
-      <div className="md:col-span-7">
-        <PhotoFrame photo={photos.cinemaEmpty} className="h-full min-h-[320px]" credit={false} />
+      <div className="relative min-h-[320px] md:col-span-7">
+        <PhotoFrame photo={photos.cinemaEmpty} fill credit={false} />
       </div>
     </div>
   );
@@ -276,13 +278,13 @@ function BridgeStage({ strategy }: { strategy: PreviewStrategy }) {
   return (
     <div className="grid md:grid-cols-2">
       <div className="relative min-h-[280px]">
-        <PhotoFrame photo={photos.editingTable} className="h-full" credit={false} />
+        <PhotoFrame photo={photos.editingTable} fill credit={false} />
         <span className="caption absolute bottom-3 left-3 z-10 bg-ink/70 px-2 py-1">
           {strategy.worlds.a}
         </span>
       </div>
       <div className="relative min-h-[280px]">
-        <PhotoFrame photo={secondPhoto.bridge} className="h-full" credit={false} />
+        <PhotoFrame photo={secondPhoto.bridge} fill credit={false} />
         <span className="caption absolute bottom-3 left-3 z-10 bg-ink/70 px-2 py-1">
           {strategy.worlds.b}
         </span>
@@ -302,8 +304,8 @@ function FrontierStage({ strategy }: { strategy: PreviewStrategy }) {
     <div className="relative min-h-[420px] md:min-h-[520px]">
       <PhotoFrame
         photo={photos.projectorLens}
-        className="absolute inset-0"
-        imgClassName="object-[20%_center]"
+        fill
+        imgClassName="h-full w-full object-cover object-[20%_center]"
         credit={false}
       />
       <div className="absolute inset-0 bg-gradient-to-r from-ink via-ink/70 to-transparent" />

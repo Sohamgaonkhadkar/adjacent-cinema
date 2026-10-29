@@ -133,13 +133,24 @@ test("reduced-motion visitors get the same layout without the animation", () => 
 
 test("positioning arena images fill their stage and columns do not stretch into blank space", () => {
   assert.match(positioning, /className="grid items-start lg:grid-cols-12"/);
-  assert.match(positioning, /className="absolute inset-0 h-full w-full"/);
+  // The stage photograph is layered behind the thesis copy. It must ask for
+  // `fill` (an explicit absolute position on the figure) rather than relying on
+  // a `h-full` percentage chain inside a container whose height is only a
+  // min-height — that chain resolves to `auto` and the frame falls back to its
+  // 10rem floor. The rendered-build assertions live in tests/render-smoke.mjs.
+  assert.match(positioning, /<PhotoFrame\s+photo=\{stagePhoto\[active\.id\]\}\s+fill\b/);
+  assert.doesNotMatch(positioning, /className="absolute inset-0 h-full w-full"/);
   assert.match(positioning, /priority\s+imgClassName=\{cn\("h-full w-full object-cover"/);
 });
 
-test("withheld geography has an explicit visual fallback without inferred coordinates", () => {
-  assert.match(cinema, /Geographic layer · withheld/i);
-  assert.match(cinema, /No usable coordinates returned/);
-  assert.match(cinema, /Map withheld · insufficient geographic evidence/);
-  assert.match(cinema, /No pins or geographic clusters are inferred/);
+test("geography rendering is decided by the returned cells, not by the claim gate alone", () => {
+  // The withheld panel used to hide every returned cell behind one caption and
+  // told the reader "no usable coordinates returned" even when cells came back.
+  // The decision now lives in lib/geographyView.ts and is covered by
+  // tests/geography-view.test.mjs; this only pins the wiring.
+  assert.doesNotMatch(cinema, /Geographic layer · withheld/i);
+  assert.doesNotMatch(cinema, /No usable coordinates returned/);
+  assert.match(cinema, /buildGeographyView\(geography, city\)/);
+  assert.match(cinema, /<GeographyMap geography=\{geography\} density=\{geographyView\.density\} \/>/);
+  assert.match(cinema, /<GeographyAbsence/);
 });

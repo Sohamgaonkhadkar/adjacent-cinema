@@ -50,6 +50,8 @@ import { WhyThisResult } from "@/components/nf/WhyThisResult";
 import { buildChallengeView, challengeExportSections, formatDecisionReceipt } from "@/lib/challengeView";
 import { EvidenceTraceLog } from "@/components/EvidenceTrace";
 import GeographyMap from "@/components/GeographyMap";
+import { GeographyAbsence } from "@/components/GeographyAbsence";
+import { GEOGRAPHY_CLAIM_THRESHOLD, buildGeographyView } from "@/lib/geographyView";
 import { cn } from "@/lib/cn";
 
 type ChapterId = "cinema" | "programme" | "cultural-field" | "opportunity" | "challenge" | "test";
@@ -335,10 +337,12 @@ export default function CinemaPage() {
         }));
 
   const geography = result?.geography ?? null;
-  const geographyCells = (geography?.highest_affinity_cells ?? geography?.cells ?? []).filter(
-    (cell): cell is typeof cell & { affinity: number } => typeof cell.affinity === "number",
-  );
-  const hasGeography = Boolean(geography?.sufficient && geographyCells.length > 0);
+  // `sufficient` is the backend's bar for *claims*, not for rendering: a run that
+  // returned six scored cells still has six real cells to plot. Collapsing both
+  // questions into one flag is what produced a blank "map withheld" panel.
+  const geographyView = buildGeographyView(geography, city);
+  const geographyCells = geographyView.mode === "map" ? geographyView.cells : [];
+  const hasGeography = geographyView.mode === "map";
 
   const fingerprintNodes = useMemo(
     () => (completed ? buildFingerprintNodes(result, venue || "This programme", traceRows) : []),
@@ -759,66 +763,30 @@ export default function CinemaPage() {
               <div className="mt-10 grid gap-8 border border-line p-6 md:grid-cols-2">
                 <div>
                   <p className="type-kicker">Geography</p>
-                  <h3 className="font-display mt-3 text-3xl">
-                    {hasGeography
-                      ? "Coordinates returned by this run."
-                      : "City context without a fake heat map."}
-                  </h3>
-                  <p className="mt-4 text-sm leading-relaxed text-mute">
-                    {hasGeography
-                      ? `${city || geography?.city_display || "The city"} is drawn from ${geographyCells.length} returned affinity cell(s). Affinity is a cultural-similarity signal, not attendance.`
-                      : `${city || "The city"} is recorded as venue context. This run did not return usable coordinates${
-                          geography?.note ? ` — ${geography.note}` : ""
-                        }, so no choropleth, pins or attendance surface is rendered.`}
-                  </p>
+                  <h3 className="font-display mt-3 text-3xl">{geographyView.headline}</h3>
+                  <p className="mt-4 text-sm leading-relaxed text-mute">{geographyView.body}</p>
+                  {geographyView.mode === "map" && geographyView.coverage === "partial" && (
+                    <p className="caption mt-4 text-warn">
+                      Coverage {geographyView.cells.length} of {GEOGRAPHY_CLAIM_THRESHOLD} cells · density
+                      surface withheld
+                    </p>
+                  )}
                   {geography?.call_id && (
                     <p className="mt-3 font-mono text-[0.62rem] text-dim">CALL {geography.call_id}</p>
                   )}
                 </div>
-                {hasGeography && geography ? (
+                {geographyView.mode !== "map" ? (
+                  <GeographyAbsence
+                    view={geographyView}
+                    city={city || geography?.city_display || ""}
+                    callId={geography?.call_id ?? null}
+                    note={geography?.note ?? ""}
+                  />
+                ) : geography ? (
                   <div className="min-h-[280px] overflow-hidden border border-line">
-                    <GeographyMap geography={geography} />
+                    <GeographyMap geography={geography} density={geographyView.density} />
                   </div>
-                ) : (
-                  <div className="relative flex min-h-[280px] items-center justify-center overflow-hidden border border-dashed border-line-strong bg-ink-3 p-6">
-                    <svg
-                      aria-hidden="true"
-                      viewBox="0 0 640 280"
-                      preserveAspectRatio="none"
-                      className="pointer-events-none absolute inset-0 h-full w-full text-line"
-                    >
-                      <defs>
-                        <pattern id="geography-empty-grid" width="32" height="32" patternUnits="userSpaceOnUse">
-                          <path d="M32 0H0V32" fill="none" stroke="currentColor" strokeOpacity="0.24" strokeWidth="1" />
-                        </pattern>
-                      </defs>
-                      <rect width="640" height="280" fill="url(#geography-empty-grid)" />
-                      <path
-                        d="M0 70H640 M0 140H640 M0 210H640 M160 0V280 M320 0V280 M480 0V280"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeDasharray="3 8"
-                        strokeOpacity="0.18"
-                      />
-                    </svg>
-                    <div className="relative z-10 flex max-w-sm flex-col items-center text-center">
-                      <div className="flex h-14 w-14 items-center justify-center border border-amber/40 bg-ink/80 text-amber">
-                        <svg aria-hidden="true" viewBox="0 0 48 48" className="h-7 w-7" fill="none">
-                          <path d="M24 42S37 29.8 37 19a13 13 0 1 0-26 0c0 10.8 13 23 13 23Z" stroke="currentColor" strokeWidth="1.5" />
-                          <circle cx="24" cy="19" r="4" stroke="currentColor" strokeWidth="1.5" />
-                          <path d="M7 7 41 41" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                        </svg>
-                      </div>
-                      <p className="mt-4 font-mono text-[0.6rem] uppercase tracking-[0.16em] text-amber">
-                        Geographic layer · withheld
-                      </p>
-                      <p className="mt-2 text-sm text-paper-2">No usable coordinates returned</p>
-                      <p className="caption mt-2 max-w-xs">
-                        Map withheld · insufficient geographic evidence. No pins or geographic clusters are inferred.
-                      </p>
-                    </div>
-                  </div>
-                )}
+                ) : null}
               </div>
 
               {hasGeography && geographyCells.length > 0 && (
