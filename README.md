@@ -603,7 +603,7 @@ Production route smoke, sampled live Creator/Cinema analysis, CI, Vercel and Ren
 - [ ] Add external edge/API-gateway quotas and monitoring before increasing anonymous live Qloo usage. Current request limits are partly process-local.
 - [ ] Review durable SQLite storage, backup/restore and scheduled cleanup of expired guest sessions on the actual host.
 - [ ] Ask the hackathon organizers in writing what the literal “Qloo 4after” eligibility wording means if project-history eligibility depends on it.
-- [ ] If per-seed explanation is part of the judge story, test an intentionally bounded scoring context of at most 12 unique candidate IDs. The current 11/11 contexts did not request it because each had 50 candidates.
+- [ ] If per-seed explanation is part of the judge story, test an intentionally bounded scoring context of at most 12 unique candidate IDs. The historical `/1` report had 11/11 contexts that did not request it; the expanded `/2` report has 28/28 for the same 50-candidate versus 12-ID bound.
 
 ## Security and known limitations
 
