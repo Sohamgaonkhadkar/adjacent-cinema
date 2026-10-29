@@ -802,6 +802,23 @@ def _build_result(
             "trace_rows": len(state.trace_rows),
             "stop_reason": state.stop_reason,
             "stop_message": state.stop_message,
+            # Surface the seed-coverage mode in the ordinary result payload:
+            # the full orchestration trace exists, but most creators should not
+            # need to inspect internal trace details to notice exploratory limits.
+            "seed_coverage": (
+                {
+                    "status": state.resolution_verdict.stats.get(
+                        "coverage",
+                        "standard" if state.resolution_verdict.sufficient else "insufficient",
+                    ),
+                    "reason_code": state.resolution_verdict.reason_code,
+                    "message": state.resolution_verdict.message,
+                    "resolved_reference_works": len(state.resolved_items),
+                    "resolved_theme_tags": len(state.theme_tag_ids),
+                }
+                if state.resolution_verdict is not None
+                else None
+            ),
             "bounded_attribution": (
                 state.ranking.bounded_attribution if state.ranking is not None else None
             ),
