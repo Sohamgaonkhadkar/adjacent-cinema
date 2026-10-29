@@ -147,3 +147,12 @@ test("cultural fingerprint includes the reading key beneath the graph", () => {
   assert.match(graphSource, /Position is layout, not a hidden score/);
   assert.match(graphSource, /parent cohorts/);
 });
+
+
+test("Creator makes exploratory seed limitations visible without requiring a trace inspection", () => {
+  assert.match(source, /seed_coverage\?\.status === "exploratory"/);
+  assert.match(source, /Exploratory evidence coverage/);
+  assert.match(source, /seed_coverage\.message/);
+  assert.match(source, /Verified reference works:/);
+  assert.match(source, /Exact-matched Qloo themes:/);
+});
