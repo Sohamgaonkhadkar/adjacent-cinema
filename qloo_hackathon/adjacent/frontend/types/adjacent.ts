@@ -596,11 +596,21 @@ export interface DecisionChallengeData {
 
 // ─── Evidence ───────────────────────────────────────────────────────────────
 
+export interface SeedCoverageEvidence {
+  status: "standard" | "exploratory" | "insufficient" | string;
+  reason_code: string;
+  message: string;
+  resolved_reference_works: number;
+  resolved_theme_tags: number;
+}
+
 export interface EvidenceData {
   qloo_calls: number;
   trace_rows: number;
   stop_reason: string;
   stop_message: string | null;
+  /** Explicit evidence coverage; exploratory runs must remain visibly labelled. */
+  seed_coverage?: SeedCoverageEvidence | null;
   /** The winner-only explainability follow-up, or null when ranking never ran. */
   bounded_attribution?: BoundedAttribution | null;
 }
