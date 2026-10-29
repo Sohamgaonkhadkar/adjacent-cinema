@@ -166,7 +166,7 @@ export function PositioningArena({
         </p>
       </header>
 
-      <div className="grid lg:grid-cols-12">
+      <div className="grid items-start lg:grid-cols-12">
         {/* ── tabs + what-if ─────────────────────────────────────────── */}
         <div className="border-b border-line lg:col-span-3 lg:border-b-0 lg:border-r">
           <ul>
@@ -334,9 +334,10 @@ export function PositioningArena({
               <div className="relative min-h-[300px] md:min-h-[380px]">
                 <PhotoFrame
                   photo={stagePhoto[active.id]}
-                  className="absolute inset-0"
+                  className="absolute inset-0 h-full w-full"
                   credit={false}
-                  imgClassName={cn(active.id === "frontier" && "object-[20%_center]")}
+                  priority
+                  imgClassName={cn("h-full w-full object-cover", active.id === "frontier" && "object-[20%_center]")}
                 />
                 <div
                   className={cn(
