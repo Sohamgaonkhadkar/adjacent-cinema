@@ -138,7 +138,7 @@ test("positioning arena images fill their stage and columns do not stretch into 
 });
 
 test("withheld geography has an explicit visual fallback without inferred coordinates", () => {
-  assert.match(cinema, /GEOGRAPHIC LAYER · WITHHELD/);
+  assert.match(cinema, /Geographic layer · withheld/i);
   assert.match(cinema, /No usable coordinates returned/);
   assert.match(cinema, /Map withheld · insufficient geographic evidence/);
   assert.match(cinema, /No pins or geographic clusters are inferred/);
