@@ -15,7 +15,7 @@ hosting account and is not a hosted deployment by itself.
 
 ## Current hosted status
 
-This is the current split deployment: [Vercel frontend](https://adjacent-cinema.vercel.app) and [Render API](https://adjacent-cinema.onrender.com). On 27 October 2026, the four frontend routes returned HTTP 200, the proxied `/api/health` endpoint returned the expected public-demo flags, and sampled live Creator/Cinema runs completed with measured Qloo traces. The current live counterfactual report is in [Markdown](docs/verification/live_counterfactual_evaluation.md) and [JSON](docs/verification/live_counterfactual_evaluation.json). Post-merge CI passed backend, frontend and container-build jobs on commit `4346a5c`.
+This is the current split deployment: [Vercel frontend](https://adjacent-cinema.vercel.app) and [Render API](https://adjacent-cinema.onrender.com). On 27 October 2026, the four frontend routes returned HTTP 200, the proxied `/api/health` endpoint returned the expected public-demo flags, and sampled live Creator/Cinema runs completed with measured Qloo traces. The current live counterfactual report is in [Markdown](docs/verification/live_counterfactual_evaluation.md) and [JSON](docs/verification/live_counterfactual_evaluation.json). CI on the merged `main` (`db9a59c`) passed backend (including the Live-Qloo step), frontend and container-build jobs — [run 40567638201](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40567638201); the offline re-run of that commit is in [the post-merge record](docs/verification_2026-10-28_post_merge.md).
 
 Recent Render logs show successful FilmSponsor guest-session, campaign and discovery requests, but earlier origin-mismatch rejections remain a reason to perform the exact browser Origin/cookie check before relying on that workflow in a judge demo. This is a point-in-time verification, not a security audit or uptime guarantee.
 
@@ -105,7 +105,12 @@ and emits schema `/2` with a prespecified list of nine programmes, which lets an
 operator reproduce a larger sample. The published `/1` files were **not**
 regenerated: their numbers remain the ones that were actually measured, and a
 `/2` report only exists once someone re-runs the script with an authorised live
-key.
+key — either directly
+(`python research/scripts/live_counterfactual_evaluation.py --output-dir docs/verification --limit 9`)
+or through the dedicated workflow, which now accepts a dispatch input
+(`gh workflow run live-counterfactual-evaluation.yml -f limit=9`) and uploads the
+Markdown and JSON as artifacts. As of 28 October 2026 the nine-programme report
+has **not** been generated.
 
 ## Fixture and live Qloo modes
 
@@ -235,19 +240,46 @@ make ci
 ```
 
 Equivalent direct commands are `python -m pytest -rs` and
-`python -m ruff check .`. Additional frontend suites in `frontend/` cover the
-comparables audit (`npm run test:comparables`) and the bounded-explainability
-panel (`npm run test:explainability`); both are wired into CI. The CI backend job uses Python 3.12 and runs lint,
-fixture-backed tests and a dry-run probe. Its live-Qloo step is conditional on
-the CI secret and can be skipped.
+`python -m ruff check .`. Targeted backend suites, all offline:
+
+```bash
+python -m pytest backend/tests/test_audience_pulse.py -q       # Audience Pulse (51)
+python -m pytest backend/tests/test_pairwise_comparison.py -q  # /v2/analysis/compare reader (24)
+python -m pytest backend/tests/test_impact_lab.py -q           # tau-b, overlap, receipt (11)
+python -m pytest backend/tests/test_comparables_audit.py -q    # Comparables Audit (12)
+python -m pytest backend/tests/test_bounded_attribution.py -q  # Why this result? (7)
+python -m pytest backend/tests/test_mcp_server.py -q           # MCP adapter (39, skipped without the mcp extra)
+```
+
+The CI backend job uses Python 3.12 and runs lint, fixture-backed tests and a
+dry-run probe. Its live-Qloo step is conditional on the CI secret and can be
+skipped.
 
 Frontend, from `frontend/`:
 
 ```bash
 npm ci
 npx tsc --noEmit
-npm run build
+npm run build            # required before test:render
 ```
+
+Every `npm run test:*` suite is wired into CI; `node --experimental-strip-types
+--test tests/<file>.test.mjs` runs one directly if you are iterating.
+
+| Suite | Covers | Tests |
+|---|---|---|
+| `test:recovery` | run recovery after reload | 3 |
+| `test:layout` | responsive layout assertions | 4 |
+| `test:creator-ui` | failure-stage visibility | 8 |
+| `test:positioning` | Cultural Multiverse selection policy | 10 |
+| `test:entity-display` | entity rendering and fingerprint a11y | 3 |
+| `test:contract` | frontend/backend request contract, idempotency | 11 |
+| `test:challenge` | Decision Challenge view model, Impact Lab, receipt export | 31 |
+| `test:comparables` | Comparables Audit view model | 8 |
+| `test:explainability` | "Why this result?" panel | 8 |
+| `test:pulse` | Audience Pulse view model and form validation | 35 |
+| `test:proxy` | trusted client-IP proxy headers | 3 |
+| `test:render` | production-rendered routes (needs `npm run build`) | 1 |
 
 The CI frontend job runs `npm ci` and `npm run build` on Node 22; Next's
 production build includes TypeScript validation.
@@ -391,6 +423,8 @@ record).
 - [Deployment topology proposal](docs/adr/006-deployment-topology.md)
 - [Decision Challenge design](docs/adr/007-decision-challenge.md) — necessity,
   stability and next checks recomputed from the run's own cached evidence
+- [Post-merge verification record (28 Oct 2026)](docs/verification_2026-10-28_post_merge.md) —
+  what was run against `main` at `db9a59c`, and what remains unverified
 - [Live-Qloo checklist](docs/NEXT_LIVE_CHECKLIST.md)
 - [Historical live-Qloo report](docs/LIVE_QLOO_VALIDATION.md) — historical only;
   not current connectivity proof

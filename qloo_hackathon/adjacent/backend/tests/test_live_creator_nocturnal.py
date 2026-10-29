@@ -158,22 +158,20 @@ def test_nocturnal_drifter_creator_all_intake_fields_and_outputs() -> None:
         assert pairwise is None
     else:
         assert pairwise is not None, "a ranked live run must report its comparison state"
+        # `measured` is not in this set on purpose: `read_metric` returns None for
+        # every provider payload until the compare response schema is verified, so
+        # a measured comparison is currently unreachable. If that changes, this
+        # assertion fails and the test must be extended with a value check — the
+        # only way a numeric comparison can enter a public payload.
         assert pairwise["status"] in {
-            "measured",
             "not_applicable",
             "unavailable_budget",
             "unsupported_response_shape",
             "failed",
         }, pairwise["status"]
         assert isinstance(pairwise["limits"], list) and pairwise["limits"]
-        if pairwise["status"] == "measured":
-            metric = pairwise["metric"]
-            assert metric and metric.get("key") and isinstance(metric.get("value"), float)
-            assert metric["direction"] in {"higher_is_closer", "lower_is_closer", "unknown"}
-            assert pairwise["call_id"]
-        else:
-            assert pairwise["metric"] is None
-            assert pairwise["reason"]
+        assert pairwise["metric"] is None
+        assert pairwise["reason"]
         if pairwise["call_id"]:
             assert pairwise["call_id"] in trace_ids
 

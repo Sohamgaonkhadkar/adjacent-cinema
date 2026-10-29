@@ -555,8 +555,10 @@ def build_server() -> Any:
         name="compare_film_groups",
         description=(
             "Compare two groups of resolved Qloo entity ids with the same reader the website "
-            "uses. Returns a provider-reported metric when one is readable, or an explicit "
-            "unevaluated/unavailable state — never an inferred similarity."
+            "uses. Until Qloo publishes a response schema for this endpoint the call is made "
+            "and traced but no metric is interpreted: expect an explicit unevaluated state "
+            "(status no_readable_field / unsupported_response_shape, metric null) rather than a "
+            "number — never an inferred similarity."
         ),
     )
     async def compare_film_groups_tool(

@@ -1,5 +1,16 @@
 # M13.18 — Current Verification Status
 
+> **Superseded for the numbers, still authoritative for the method
+> (28 October 2026).** The tables below were measured on 24 October 2026 against
+> commit `259ecf0` (745/746 backend tests, 16 frontend suite tests). The merged
+> `main` at `db9a59c` carries several later features and larger suites. Use
+> [the post-merge record](verification_2026-10-28_post_merge.md) for current
+> counts: **927 backend tests passed** (`not live`, on the compatibility
+> interpreter), `ruff` clean, `tsc` clean, production build green, **124 frontend
+> suite tests + 1 render test**. The caveats in this document — a green workflow
+> is not a hosted deployment check, skips are not passes, Python 3.11 scratch
+> runs are not native 3.12 runs — still apply unchanged.
+
 **Historical checkpoint:** 24 October 2026, feature branch `arena/76d901e7-adjacent-cinema`, commit `259ecf0`, GitHub Actions CI run `40106948750`. This document preserves that earlier review. The more recent hosted and live-Qloo verification is summarized below; these checks establish route availability and sampled runs, not a complete browser/security acceptance or hackathon eligibility verdict.
 
 ## Changes included in this working tree
