@@ -32,16 +32,16 @@ export type GeographyMapSource<T extends AffinityMapCell> = {
   highest_affinity_cells?: T[] | null;
 };
 
-/** Draw the best scored cells; fall back to the full cell list if that list is empty/unscored. */
+/** Keep the full returned cell set; fall back to ranked cells only if that set is empty/unscored. */
 export function selectScoredMapCells<T extends AffinityMapCell>(
   geography: GeographyMapSource<T>,
 ): Array<T & { affinity: number }> {
-  const ranked = (geography.highest_affinity_cells ?? []).filter(
+  const all = (geography.cells ?? []).filter(
     (cell): cell is T & { affinity: number } =>
       typeof cell.affinity === "number" && Number.isFinite(cell.affinity),
   );
-  if (ranked.length > 0) return ranked;
-  return (geography.cells ?? []).filter(
+  if (all.length > 0) return all;
+  return (geography.highest_affinity_cells ?? []).filter(
     (cell): cell is T & { affinity: number } =>
       typeof cell.affinity === "number" && Number.isFinite(cell.affinity),
   );
