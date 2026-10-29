@@ -9,12 +9,32 @@
 - Production routes `/`, `/creator`, `/cinema`, and `/creator/sponsor` returned HTTP 200 on 27 October 2026.
 - Proxied `/api/health` returned HTTP 200 with `mode="public_demo"`, fixtures available, live Creator available and FilmSponsor guest mode enabled.
 - Sampled Creator and Cinema runs completed with measured Qloo evidence; the current [three-programme counterfactual report](verification/live_counterfactual_evaluation.md) records both the results and the limits.
-- Post-merge CI for `4346a5c` passed backend, frontend and container-build jobs: [run #40394494087](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40394494087).
+- CI for the merged `main` (`db9a59c`) passed backend (including the Live-Qloo step), frontend and container-build jobs: [run 40567638201](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40567638201). The offline re-run of that commit is in the [post-merge record](verification_2026-10-28_post_merge.md).
+
+## Covered by automated tests (not the same as browser acceptance)
+
+These properties are asserted by the offline suite, so a failure here is a real
+regression rather than an untested assumption:
+
+- guest sessions: cross-session isolation, ownership filtering on every campaign
+  and child path, expired/revoked/missing sessions failing closed, CSRF and exact
+  Origin enforcement on writes, bearer cookie flags, storage caps, expiry cleanup
+  (`backend/tests/test_filmsponsor_guest_sessions.py`);
+- Audience Pulse: definition freeze at the database level, one response per
+  session, closed/expired/scheduled refusal, response ceiling, rate limiting,
+  append-only evaluations, cross-experiment id rejection, reopen persistence
+  (`backend/tests/test_audience_pulse.py`);
+- compare refusal: no provider payload yields a metric until the response schema
+  is verified (`backend/tests/test_pairwise_comparison.py`).
+
+What the suite cannot show is how a real browser and the deployed proxy behave —
+that is the list below.
 
 ## Still required before claiming full browser/security acceptance
 
 - [ ] Use a normal browser to create a disposable FilmSponsor guest session, create a campaign, run live brand discovery, and verify exact Origin and cookie/CSRF behaviour.
-- [ ] Verify a second browser/session cannot access the first session's campaign; test revocation and expiry.
+- [ ] Confirm in a browser that a second session cannot reach the first session's campaign and that revocation/expiry behave as the tests assert.
+- [ ] Walk one Audience Pulse participant flow end to end on a deployment with `ADJACENT_PULSE_SHARE_ENABLED=1`: open the link, submit, confirm `already_responded` on reload, then close and evaluate from the owner view. No browser walkthrough of this participant route has been performed yet.
 - [ ] Privately confirm Vercel/Render trusted-proxy shared-secret alignment. Do not reveal, print, or commit secret values.
 - [ ] Do not enable higher anonymous live traffic until edge quotas, monitoring and acceptable usage limits are reviewed.
 - [ ] Written organizer clarification of the literal “Qloo 4after” eligibility wording, if project-history eligibility depends on it.
