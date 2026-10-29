@@ -235,3 +235,14 @@ test("the absence panel takes its counts from the view model", () => {
   assert.doesNotMatch(source, /With affinity"\s*,\s*value:\s*"0"/);
   assert.doesNotMatch(source, /Cells returned"\s*,\s*value:\s*String\(view\.returned\)/);
 });
+
+test("empty ranked cells fall back to the scored full-cell response", () => {
+  const cells = [cell(0), cell(1), { ...cell(2), affinity: Number.NaN }];
+  const view = buildGeographyView(
+    geography({ highest_affinity_cells: [], cells, total_cells: cells.length }),
+    "Portland",
+  );
+  assert.equal(view.mode, "map");
+  if (view.mode !== "map") return;
+  assert.deepEqual(view.cells.map((item) => item.geohash), [cells[0].geohash, cells[1].geohash]);
+});

@@ -614,6 +614,12 @@ class TestCreatorThemeInputs:
                         SimpleNamespace(tag_id="qloo-thriller", name="Thriller"),
                         SimpleNamespace(tag_id="qloo-thriller-films", name="Thriller Films"),
                     ]
+                elif filter_query == "Romance":
+                    results = [SimpleNamespace(tag_id="qloo-romance", name="Romance")]
+                elif filter_query == "Social Injustice":
+                    results = [SimpleNamespace(
+                        tag_id="qloo-social-injustice", name="Social Injustice"
+                    )]
                 else:
                     # A close-looking result is not accepted as an exact tag match.
                     results = [SimpleNamespace(tag_id="qloo-night-worker", name="Night Worker")]
@@ -643,23 +649,41 @@ class TestCreatorThemeInputs:
         state = AdjacentState(
             run_id="theme-signal-test",
             data_status="measured",
-            theme_queries=["Thriller", "Night workers"],
+            theme_queries=["Thriller", "Night workers", "Romance", "Social Injustice"],
             programme=[],
             budget=Budget(),
         )
         pipeline = LivePipeline(client, EmptyResolver(), [])
         asyncio.run(pipeline.resolve_programme(state, state.budget))
 
-        assert state.theme_tag_ids == ["qloo-thriller"]
-        assert [row["status"] for row in state.theme_resolution] == ["matched", "unresolved"]
+        assert state.theme_tag_ids == [
+            "qloo-thriller",
+            "qloo-romance",
+            "qloo-social-injustice",
+        ]
+        assert [row["status"] for row in state.theme_resolution] == [
+            "matched",
+            "unresolved",
+            "matched",
+            "matched",
+        ]
         assert state.resolution_verdict is not None and state.resolution_verdict.sufficient
+        assert state.resolution_verdict.reason_code == "tag_driven_resolution"
 
         asyncio.run(_taste_profile(client, state, state.budget))
         assert client.insight_calls[0]["signal_interests_entities"] is None
-        assert client.insight_calls[0]["signal_interests_tags"] == ["qloo-thriller"]
+        assert client.insight_calls[0]["signal_interests_tags"] == [
+            "qloo-thriller",
+            "qloo-romance",
+            "qloo-social-injustice",
+        ]
 
         asyncio.run(_expand_candidates(
             client, state, state.budget, domains=("urn:entity:movie",)
         ))
         assert client.insight_calls[1]["signal_interests_entities"] is None
-        assert client.insight_calls[1]["signal_interests_tags"] == ["qloo-thriller"]
+        assert client.insight_calls[1]["signal_interests_tags"] == [
+            "qloo-thriller",
+            "qloo-romance",
+            "qloo-social-injustice",
+        ]

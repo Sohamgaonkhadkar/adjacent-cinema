@@ -30,18 +30,24 @@ Ranked by **expected damage**, not by likelihood. Each has a mitigation and a **
 | **R19** | **`feature.explainability` payload bloat** | 🟢 Low | Measure it in hour 3. If the response grows past ~5×, disable it on the `take=50` calls and keep it on `take=12` ones | Disable explainability on bulk calls; keep it on scoring calls | — |
 | **R20** | **We can't get the API key in time** | 🟠 High | **Phases 0–4 need no key at all** (Part 15). The mock client, the fixtures, the state machine, the UI and the evaluation harness are all key-independent | Demo on fixtures with the mock client, clearly labelled, and say the key arrived late. Everything else is real | ✅ Yes |
 
-## 13.1 The explicit insufficiency conditions
+## 13.1 Current evidence gates (implementation update, 29 October 2026)
 
-**Adjacent must refuse to make a recommendation — in these exact words — when:**
+This section supersedes the original fixed three-title rule. A run's seed coverage decides whether evidence gathering can start; it does **not** by itself authorise a strong recommendation. The taste-profile and candidate-cohort gates remain mandatory.
 
-| Condition | The message it shows |
+| Condition | Current behaviour |
 |---|---|
-| Fewer than 3 programme titles resolved | *"Only N of your titles could be identified in Qloo. With fewer than three, the taste profile is too thin to be meaningful. Please check the unresolved titles or add more to your programme."* |
+| 3 or more verified reference works | Standard seed coverage. |
+| 2 verified reference works | Exploratory run, with the limited seed coverage disclosed in the Creator result. The taste-profile and candidate-cohort gates still decide whether a positioning hypothesis is supported. |
+| 1 verified reference work | Exploratory only when at least 2 distinct theme inputs resolve to exact, unique Qloo tag names. |
+| No verified reference works | Tag-driven exploration only when at least 3 distinct theme inputs resolve to exact, unique Qloo tag names. |
+| Fewer signals than those exploratory paths require | Stop with an explanation of which verified signals are missing. No unresolved title or theme is substituted. |
 | Zero tags above the Medium band (0.5) | *"Qloo found no tags with meaningful affinity for this programme. Nothing has been substituted. This programme may be too heterogeneous, or too obscure, for the taste graph to characterise."* |
-| Fewer than 2 cohorts survive the evidence gate | *"Adjacent tested N candidate cohorts and none cleared the evidence threshold (2 or more members above Medium affinity). I do not have enough Qloo evidence to name an adjacent audience for this programme."* |
-| Fewer than 10 heatmap cells returned for the city | *"Qloo returned only N geographic cells for this city — too few to support a geographic claim. No map is shown rather than showing a misleading one."* |
-| A programme bet scores below Medium (< 0.5) against **either** signal | *"No candidate held both your current audience and the target cohort above Medium. Rather than recommend a film that serves one and loses the other, Adjacent is reporting no recommendation."* |
-| The call budget is exhausted before the ranking step | *"This run used its full API budget before completing the ranking. Outputs shown are partial. Re-run to complete."* |
+| No candidate cohort clears its member-level evidence gate | Refuse to name an adjacent audience. A candidate needs at least 2 members above Medium; the stronger band additionally requires at least 1 member above High. One surviving cohort is sufficient; the system does not require two separate surviving cohorts. |
+| Fewer than 10 scored heatmap cells return for a city | Withhold a density/concentration claim. Any valid scored cells the provider did return may still be shown as points; they are not interpreted as attendance, footfall, or evidence of low cultural activity. |
+| A programme bet scores below Medium against either signal | Refuse the two-sided bet unless both the current-audience fit and target-cohort fit clear Medium. |
+| The per-run resource budget is exhausted | Stop as budget-exhausted, distinct from insufficient evidence or provider error. Current ceilings are 14 agent steps, 24 Qloo calls, and 90 seconds per run. |
+
+The live seed-coverage rules are implemented in `backend/app/evidence.py` and applied to verified film and exact-matched theme signals in `backend/app/live_runner.py`. Geographic display policy is split between the backend's 10-cell concentration gate and the frontend's points-versus-density view. These are product policies, not universal Qloo requirements.
 | The city could not be matched | *"Qloo could not match '<input>' to a locality. Please provide a city and country. Adjacent will not guess — a wrong city would produce a confidently wrong map."* |
 
 **This table is not a safety net. It is the product's most defensible feature.** A tool that can say *"I don't know"* is a tool whose *"I know"* means something.

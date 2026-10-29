@@ -5,9 +5,10 @@ recommendation", and that behaviour has to exist from the first commit rather
 than being bolted on at the end. This module is the small, testable core of it.
 
 SCOPE NOTE: this is deliberately NOT the cohort-ranking engine. It contains no
-clustering, no novelty scoring and no API calls. It answers one question —
-"does this evidence clear a threshold we can defend?" — using the thresholds
-Qloo publishes (0.8 / 0.6 / 0.5), so nothing here is invented.
+clustering, no novelty scoring and no API calls. It answers whether evidence
+clears documented product-policy gates. Qloo affinity bands are handled by
+the Qloo model helpers; reference coverage is an explicit adaptive product rule,
+not a Qloo-mandated minimum.
 """
 
 from __future__ import annotations
@@ -27,17 +28,39 @@ MIN_COHORT_MEMBERS = 2
 MIN_COHORT_MEMBERS_HIGH = 1
 #: Below this many heatmap cells, no geographic claim may be made.
 MIN_HEATMAP_CELLS = 10
-#: Below this many resolved programme titles, the taste vector is too thin.
+#: Target for standard seed coverage; smaller evidence sets may run exploratorily.
 MIN_RESOLVED_TITLES = 3
+#: Two verified reference works are enough to start, with limited seed coverage disclosed.
+MIN_EXPLORATORY_RESOLVED_TITLES = 2
+#: If only one film resolves, require multiple exact theme matches as a second signal family.
+MIN_TAGS_WITH_ONE_TITLE = 2
+#: A tag-only exploration requires several independently exact-matched themes.
+MIN_TAGS_WITHOUT_TITLES = 3
 
 # --- The exact sentences the product uses when it refuses -------------------
 # These strings are part of the product, not placeholders: a run that cannot
 # support a claim must say so in words a programmer can act on.
 
 MSG_NOT_ENOUGH_RESOLVED = (
-    "Only {resolved} of your titles could be identified in Qloo. With fewer than "
-    f"{MIN_RESOLVED_TITLES}, the taste profile is too thin to be meaningful. Please check the "
-    "unresolved titles or add more to your programme."
+    "Only {resolved} of your reference works were verified. An exploratory analysis requires "
+    "at least two verified works, one verified work plus two exact-matched Qloo theme tags, "
+    "or three exact-matched Qloo theme tags. Check the unresolved inputs and retry; nothing "
+    "is inferred to fill gaps."
+)
+MSG_EXPLORATORY_TWO_TITLES = (
+    "Exploratory mode: only {resolved} reference works were verified. Adjacent will continue "
+    "with limited seed coverage; returned taste evidence and candidate-cohort gates still "
+    "have to support any positioning hypothesis."
+)
+MSG_EXPLORATORY_MIXED_SIGNALS = (
+    "Exploratory mode: one reference work and {matched_tags} exact-matched Qloo theme tags "
+    "were verified. Seed coverage is limited; returned taste evidence and candidate-cohort "
+    "gates still have to support any positioning hypothesis."
+)
+MSG_EXPLORATORY_TAG_DRIVEN = (
+    "Exploratory mode: no reference work was verified, but {matched_tags} exact-matched "
+    "Qloo theme tags were verified. This is tag-driven exploration; returned taste evidence "
+    "and candidate-cohort gates still have to support any positioning hypothesis."
 )
 MSG_NO_TAGS = (
     "Qloo found no tags with meaningful affinity for this programme. Nothing has been "
@@ -84,16 +107,58 @@ class EvidenceVerdict:
         }
 
 
-def evaluate_programme_resolution(resolved_count: int) -> EvidenceVerdict:
+def evaluate_programme_resolution(
+    resolved_count: int, resolved_theme_tags: int = 0
+) -> EvidenceVerdict:
+    """Choose standard or exploratory mode from verified signal coverage.
+
+    The seed gate decides whether evidence gathering may start, not whether a
+    strong recommendation is justified. Taste-profile and candidate-cohort gates
+    remain mandatory downstream. Theme tags count only after unique exact-name
+    verification in the live resolver.
+    """
+    if resolved_count < 0 or resolved_theme_tags < 0:
+        raise ValueError("resolved signal counts cannot be negative")
+
+    stats: dict[str, object] = {
+        "resolved": resolved_count,
+        "resolved_theme_tags": resolved_theme_tags,
+        "matched_theme_tags": resolved_theme_tags,
+        "min_required": MIN_RESOLVED_TITLES,
+        "required_reference_works": MIN_RESOLVED_TITLES,
+    }
     if resolved_count >= MIN_RESOLVED_TITLES:
+        return EvidenceVerdict(True, "resolved_ok", "", {**stats, "coverage": "standard"})
+
+    if resolved_count >= MIN_EXPLORATORY_RESOLVED_TITLES:
         return EvidenceVerdict(
-            True, "resolved_ok", "", {"resolved": resolved_count, "min_required": MIN_RESOLVED_TITLES}
+            True,
+            "exploratory_resolved_ok",
+            MSG_EXPLORATORY_TWO_TITLES.format(resolved=resolved_count),
+            {**stats, "coverage": "exploratory", "limitation": "limited_reference_works"},
         )
+
+    if resolved_count == 1 and resolved_theme_tags >= MIN_TAGS_WITH_ONE_TITLE:
+        return EvidenceVerdict(
+            True,
+            "mixed_signal_resolution",
+            MSG_EXPLORATORY_MIXED_SIGNALS.format(matched_tags=resolved_theme_tags),
+            {**stats, "coverage": "exploratory", "limitation": "one_reference_work"},
+        )
+
+    if resolved_count == 0 and resolved_theme_tags >= MIN_TAGS_WITHOUT_TITLES:
+        return EvidenceVerdict(
+            True,
+            "tag_driven_resolution",
+            MSG_EXPLORATORY_TAG_DRIVEN.format(matched_tags=resolved_theme_tags),
+            {**stats, "coverage": "exploratory", "limitation": "no_verified_reference_works"},
+        )
+
     return EvidenceVerdict(
         False,
         "insufficient_resolved_titles",
         MSG_NOT_ENOUGH_RESOLVED.format(resolved=resolved_count),
-        {"resolved": resolved_count, "min_required": MIN_RESOLVED_TITLES},
+        {**stats, "coverage": "insufficient"},
     )
 
 

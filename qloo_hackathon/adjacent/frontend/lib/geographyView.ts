@@ -34,8 +34,9 @@ function hasAffinity(cell: HeatmapCell): cell is ScoredCell {
 /** The cells this run returned that carry both a coordinate and a score. */
 export function scoredCells(geography: GeographyData | null | undefined): ScoredCell[] {
   if (!geography) return [];
-  const cells = geography.highest_affinity_cells ?? geography.cells ?? [];
-  return cells.filter(hasAffinity);
+  const ranked = (geography.highest_affinity_cells ?? []).filter(hasAffinity);
+  if (ranked.length > 0) return ranked;
+  return (geography.cells ?? []).filter(hasAffinity);
 }
 
 export type GeographyView =

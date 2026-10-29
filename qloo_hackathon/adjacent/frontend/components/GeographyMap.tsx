@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Map as MapLibreMap, setWorkerUrl } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { GeographyData, HeatmapCell } from "@/types/adjacent";
-import { buildMapLayerPlan } from "@/lib/geographyMap";
+import { buildMapLayerPlan, selectScoredMapCells } from "@/lib/geographyMap";
 
 // maplibre-gl 6 fetches its worker from a sibling `.mjs` resolved against the
 // bundle URL, which a Next/Turbopack build does not emit — the worker 404s, the
@@ -12,10 +12,6 @@ import { buildMapLayerPlan } from "@/lib/geographyMap";
 // stays empty. `scripts/copy-maplibre-worker.mjs` puts the two files in
 // `public/maplibre/` before dev/build; point the library at them.
 setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
-
-function hasAffinity(cell: HeatmapCell): cell is HeatmapCell & { affinity: number } {
-  return cell.affinity !== null && cell.affinity !== undefined;
-}
 
 /**
  * Affinity map for the cells the backend actually returned.
@@ -40,8 +36,7 @@ export default function GeographyMap({
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<InstanceType<typeof MapLibreMap> | null>(null);
   const [tilesUnavailable, setTilesUnavailable] = useState(false);
-  const allCells = geography.cells ?? geography.highest_affinity_cells ?? [];
-  const cells = allCells.filter(hasAffinity);
+  const cells = selectScoredMapCells(geography);
   const ranked = [...cells].sort((left, right) => (right.affinity ?? 0) - (left.affinity ?? 0));
 
   useEffect(() => {
@@ -89,7 +84,9 @@ export default function GeographyMap({
           id: "affinity-heat",
           type: "heatmap",
           source: "affinity",
-          maxzoom: 15,
+          // At close zoom levels the Gaussian density surface looks soft. Stop it
+          // here so the crisp vector cell markers become the detail representation.
+          maxzoom: plan.heat.maxzoom,
           paint: {
             "heatmap-weight": [
               "interpolate",
@@ -132,8 +129,10 @@ export default function GeographyMap({
               ["zoom"],
               0,
               2,
-              15,
-              20,
+              8,
+              12,
+              12,
+              14,
             ],
             "heatmap-opacity": [
               "interpolate",
@@ -141,8 +140,12 @@ export default function GeographyMap({
               ["zoom"],
               7,
               0.8,
-              15,
-              0.6,
+              11,
+              0.42,
+              12,
+              0.14,
+              13,
+              0,
             ],
           },
         });
