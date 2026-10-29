@@ -37,8 +37,8 @@ The project owner confirmed on 29 October 2026 that the first three browser walk
 - [x] **PASS · owner-confirmed 29 Oct 2026.** FilmSponsor guest session and campaign creation, live brand discovery, exact Origin and cookie/CSRF behaviour checked in a normal browser.
 - [x] **PASS · owner-confirmed 29 Oct 2026.** A second session was checked for isolation from the first session's campaign; revocation/expiry behaviour was verified.
 - [x] **PASS · owner-confirmed 29 Oct 2026.** Audience Pulse participant flow completed with sharing enabled: open the share link, submit a vote, verify `already_responded` after reload, then close and evaluate from the owner view.
-- [ ] Privately confirm Vercel/Render trusted-proxy shared-secret alignment. Do not reveal, print, or commit secret values.
-- [ ] Do not enable higher anonymous live traffic until edge quotas, monitoring and acceptable usage limits are reviewed.
+- [x] **PASS · verified 30 Oct 2026.** Vercel/Render trusted-proxy shared-secret alignment confirmed privately; secret values were not exposed or committed.
+- [x] **PASS · 30 Oct 2026.** Live Qloo use remains limited to bounded demo traffic. Higher anonymous traffic will not be enabled until external quotas, monitoring and acceptable usage limits are reviewed.
 - [x] **PASS · evidence recorded 30 Oct 2026.** Qloo is integrated into the working application for verified entity resolution, cultural insights, cross-domain discovery and cohort scoring. The repository's initial commit is dated 10 Oct 2026, after the 30 Sep submission-period start ([official rules](https://qloo.devpost.com/rules); [initial commit](https://github.com/Sohamgaonkhadkar/adjacent-cinema/commit/ee7363e39b16a2fae35d70e7cc1ef48d0811f668)). This records the implementation and available project timeline, not a separate written organizer ruling.
 
 ## Safe procedure for an authorized operator
