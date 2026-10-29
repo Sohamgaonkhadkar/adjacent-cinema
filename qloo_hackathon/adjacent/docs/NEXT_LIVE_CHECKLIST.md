@@ -1,6 +1,6 @@
 # Current live-Qloo validation gate
 
-**Latest recorded hosted-application smoke check: 27 October 2026.** At that time, the Vercel/Render deployment was checked read-only; sampled Creator/Cinema runs completed with `data_status="measured"` and inspected Qloo trace entries returned HTTP 200. Separately, on 29 October, the live-Qloo counterfactual evaluation was expanded to nine prespecified programmes; the versioned `/2` report is linked below. The report is not a browser acceptance test and does not replace the outstanding FilmSponsor security or Audience Pulse participant walkthroughs.
+**Latest recorded hosted-application smoke check: 27 October 2026.** At that time, the Vercel/Render deployment was checked read-only; sampled Creator/Cinema runs completed with `data_status="measured"` and inspected Qloo trace entries returned HTTP 200. Separately, on 29 October, the live-Qloo counterfactual evaluation was expanded to nine prespecified programmes; the versioned `/2` report is linked below. The report is not a browser acceptance test. The project owner later confirmed three browser walkthroughs as passed; their owner-reported status is marked below, without claiming this editor independently observed those sessions. Trusted-proxy alignment, anonymous-traffic guardrails and the optional organizer eligibility clarification remain separate open gates.
 
 `LIVE_QLOO_VALIDATION.md` records observations from 6 October 2026 only. It is historical evidence, not proof of current connectivity or current resolver behavior. It records `tt0089853` / Taipei Story being associated with The Purple Rose of Cairo and `tt7594358` / Perfect Days not resolving. Offline regressions now reject title/year conflicts, keep a title-search `MISMATCH` even if an external-ID lookup independently verifies a candidate, and preserve unresolved results; they do not establish what Qloo returns today.
 
@@ -30,11 +30,13 @@ regression rather than an untested assumption:
 What the suite cannot show is how a real browser and the deployed proxy behave —
 that is the list below.
 
-## Still required before claiming full browser/security acceptance
+## Browser walkthrough status and remaining operational gates
 
-- [ ] Use a normal browser to create a disposable FilmSponsor guest session, create a campaign, run live brand discovery, and verify exact Origin and cookie/CSRF behaviour.
-- [ ] Confirm in a browser that a second session cannot reach the first session's campaign and that revocation/expiry behave as the tests assert.
-- [ ] Walk one Audience Pulse participant flow end to end on a deployment with `ADJACENT_PULSE_SHARE_ENABLED=1`: open the link, submit, confirm `already_responded` on reload, then close and evaluate from the owner view. No browser walkthrough of this participant route has been performed yet.
+The project owner confirmed on 29 October 2026 that the first three browser walkthroughs below were verified. The checkboxes record owner-reported PASS status; no new browser session or telemetry was independently captured by this documentation change.
+
+- [x] **PASS · owner-confirmed 29 Oct 2026.** FilmSponsor guest session and campaign creation, live brand discovery, exact Origin and cookie/CSRF behaviour checked in a normal browser.
+- [x] **PASS · owner-confirmed 29 Oct 2026.** A second session was checked for isolation from the first session's campaign; revocation/expiry behaviour was verified.
+- [x] **PASS · owner-confirmed 29 Oct 2026.** Audience Pulse participant flow completed with sharing enabled: open the share link, submit a vote, verify `already_responded` after reload, then close and evaluate from the owner view.
 - [ ] Privately confirm Vercel/Render trusted-proxy shared-secret alignment. Do not reveal, print, or commit secret values.
 - [ ] Do not enable higher anonymous live traffic until edge quotas, monitoring and acceptable usage limits are reviewed.
 - [ ] Written organizer clarification of the literal “Qloo 4after” eligibility wording, if project-history eligibility depends on it.
