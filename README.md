@@ -62,9 +62,9 @@ re-run of the same commit in a sandbox is recorded in the
 - Render logs show successful FilmSponsor guest-session, campaign-list/create and brand-discovery requests on 26 October. Earlier logs also recorded guest-origin mismatches, so verify the exact stable frontend origin and cookie/CSRF flow in a normal browser before relying on that path for judging.
 - `/api/creator/synthesis-status` reports synthesis unavailable because optional synthesis is disabled in public-demo mode. `/api/experiments` returning HTTP 403 is intentional public-demo policy, not a broken page.
 
-The [live counterfactual evaluation](qloo_hackathon/adjacent/docs/verification/live_counterfactual_evaluation.md) is intentionally presented without spin: removing affinity-derived ordering keys changed the winner in **0/3** measured programmes, while the popularity-only baseline chose a different winner in **3/3**. The separate affinity-gate audit suppressed **0** structurally sized cohorts, and affinity did not first separate any adjacent ranking pair in these samples. The run still used measured Qloo affinity scores and its output differed from the popularity-only baseline, but these tests **do not prove that affinity alone determined the winner**.
+The original [three-programme live evaluation, schema `/1`](qloo_hackathon/adjacent/docs/verification/live_counterfactual_evaluation.md) remains unchanged: affinity-withheld ranking changed the winner in **0/3** runs, while popularity-only selected a different winner in **3/3**. The newer [nine-programme live evaluation, schema `/2`](qloo_hackathon/adjacent/docs/verification/live_counterfactual_evaluation_v2.md) attempted **9** prespecified programmes: **8** were evaluable and one regional-language programme produced no candidate cohorts. Across the eight evaluable runs, affinity-withheld changed the winner in **0/8**; popularity-only changed it in **8/8**. Neither evaluation proves audience overlap, recommendation quality, or downstream impact. The counterfactuals reuse the same admitted candidate pool and make no extra Qloo calls.
 
-The evaluation also shows a transparency gap: optional per-seed explainability was not requested in **11/11** scoring contexts because each contained 50 candidate IDs, above the configured 12-candidate bound. Therefore these specific runs do not identify which reference film contributed to a winner. One input (`Taipei Story`) remained unresolved and was not replaced with fixtures. Do not claim attendance lift, audience size, causality or ROI.
+The `/2` evaluation records **28/28** scoring contexts where per-seed explainability was `not_requested_limit`: each context contained 50 candidate IDs, above the configured 12-candidate bound. Several references remained unresolved and were not replaced with fixtures. Qloo's `/v2/analysis/compare` call is traced but its numeric response is deliberately not interpreted because the response schema is unverified. These reports do not measure attendance, audience size, conversion, causality or ROI.
 
 ---
 
@@ -537,7 +537,8 @@ The CI workflow runs backend lint and fixture-backed tests, the conditional live
 - [Latest GitHub Actions runs](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions)
 - [Latest merged product, Nightfall integration and live evaluation — PR #17](https://github.com/Sohamgaonkhadkar/adjacent-cinema/pull/17)
 - [Post-merge CI run for PR #17](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40384693948)
-- [Live counterfactual evaluation report](qloo_hackathon/adjacent/docs/verification/live_counterfactual_evaluation.md)
+- [Live counterfactual evaluation report — schema `/1`, three programmes](qloo_hackathon/adjacent/docs/verification/live_counterfactual_evaluation.md)
+- [Latest live counterfactual evaluation — schema `/2`, nine programmes](qloo_hackathon/adjacent/docs/verification/live_counterfactual_evaluation_v2.md) and [JSON results](qloo_hackathon/adjacent/docs/verification/live_counterfactual_evaluation_v2.json)
 
 ## Deployment guide
 

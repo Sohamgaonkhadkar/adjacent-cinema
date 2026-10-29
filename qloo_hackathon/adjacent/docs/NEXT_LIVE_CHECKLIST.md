@@ -1,6 +1,6 @@
 # Current live-Qloo validation gate
 
-**Latest live-Qloo application check: 27 October 2026.** The current Vercel/Render deployment was checked read-only; sampled Creator/Cinema runs completed with `data_status="measured"` and inspected Qloo trace entries returned HTTP 200. The latest three-programme counterfactual report is linked below. This supersedes the historical blocked status from 16 October, but does not replace the optional FilmSponsor browser-security checks.
+**Latest recorded hosted-application smoke check: 27 October 2026.** At that time, the Vercel/Render deployment was checked read-only; sampled Creator/Cinema runs completed with `data_status="measured"` and inspected Qloo trace entries returned HTTP 200. Separately, on 29 October, the live-Qloo counterfactual evaluation was expanded to nine prespecified programmes; the versioned `/2` report is linked below. The report is not a browser acceptance test and does not replace the outstanding FilmSponsor security or Audience Pulse participant walkthroughs.
 
 `LIVE_QLOO_VALIDATION.md` records observations from 6 October 2026 only. It is historical evidence, not proof of current connectivity or current resolver behavior. It records `tt0089853` / Taipei Story being associated with The Purple Rose of Cairo and `tt7594358` / Perfect Days not resolving. Offline regressions now reject title/year conflicts, keep a title-search `MISMATCH` even if an external-ID lookup independently verifies a candidate, and preserve unresolved results; they do not establish what Qloo returns today.
 
@@ -8,8 +8,8 @@
 
 - Production routes `/`, `/creator`, `/cinema`, and `/creator/sponsor` returned HTTP 200 on 27 October 2026.
 - Proxied `/api/health` returned HTTP 200 with `mode="public_demo"`, fixtures available, live Creator available and FilmSponsor guest mode enabled.
-- Sampled Creator and Cinema runs completed with measured Qloo evidence; the current [three-programme counterfactual report](verification/live_counterfactual_evaluation.md) records both the results and the limits.
-- CI for the merged `main` (`db9a59c`) passed backend (including the Live-Qloo step), frontend and container-build jobs: [run 40567638201](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40567638201). The offline re-run of that commit is in the [post-merge record](verification_2026-10-28_post_merge.md).
+- The preserved [three-programme report, schema `/1`](verification/live_counterfactual_evaluation.md) records the original sample. The newer [nine-programme report, schema `/2`](verification/live_counterfactual_evaluation_v2.md) and [JSON results](verification/live_counterfactual_evaluation_v2.json) were generated 29 October using the live provider: 9 attempted, 8 evaluable and 1 non-evaluable due to no admitted candidate cohorts. This evaluation does not verify hosted browser flows.
+- PR #22 has since merged; `main` is now `9b3a013`. The post-merge CI run passed: [run 40870350858](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40870350858). The original `db9a59c` verification remains recorded in the [post-merge report](verification_2026-10-28_post_merge.md).
 
 ## Covered by automated tests (not the same as browser acceptance)
 
