@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import pytest
+from app.agent.state import AdjacentState, ProgrammeItem
+from app.api.routes import _build_result
 from app.evidence import (
     MIN_RESOLVED_TITLES,
     evaluate_programme_resolution,
@@ -67,6 +69,38 @@ def test_no_usable_signals_still_stops_and_explains_the_gate() -> None:
     assert "three exact-matched Qloo theme tags" in verdict.message
     assert verdict.stats["coverage"] == "insufficient"
     assert verdict.stats["matched_theme_tags"] == 0
+
+
+def test_exploratory_coverage_is_exposed_in_the_creator_result_payload() -> None:
+    state = AdjacentState(
+        data_status="measured",
+        programme=[
+            ProgrammeItem(
+                title="Fandry",
+                year=2013,
+                imdb_id=None,
+                declared_entity_id=None,
+                resolved_entity_id="verified-fandry",
+            ),
+            ProgrammeItem(
+                title="Court",
+                year=2014,
+                imdb_id=None,
+                declared_entity_id=None,
+                resolved_entity_id="verified-court",
+            ),
+        ],
+    )
+    state.resolution_verdict = evaluate_programme_resolution(2, 0)
+
+    result = _build_result(state, city="Pune, India")
+    coverage = result["evidence"]["seed_coverage"]
+
+    assert coverage["status"] == "exploratory"
+    assert coverage["reason_code"] == "exploratory_resolved_ok"
+    assert coverage["resolved_reference_works"] == 2
+    assert coverage["resolved_theme_tags"] == 0
+    assert "Exploratory mode" in coverage["message"]
 
 
 @pytest.mark.parametrize(
