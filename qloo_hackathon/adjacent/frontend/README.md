@@ -20,4 +20,4 @@ The browser calls relative `/api` routes. `next.config.ts` rewrites these server
 npm run build
 ```
 
-The frontend build is included in CI. For the full local setup, backend commands, live-vs-fixture rules, public-demo guardrails, and current verification status, see the [repository README](../../../README.md) and [`../docs/FINALIZATION_STATUS.md`](../docs/FINALIZATION_STATUS.md).
+The frontend build is included in CI. For full setup, backend commands, live-versus-fixture behavior, public-demo guardrails and current verification status, see the [project README](../../../README.md), the [developer guide](../README.md) and the [live-Qloo checklist](../docs/NEXT_LIVE_CHECKLIST.md).

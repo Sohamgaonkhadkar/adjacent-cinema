@@ -15,7 +15,7 @@ hosting account and is not a hosted deployment by itself.
 
 ## Current hosted status
 
-This is the split deployment: [Vercel frontend](https://adjacent-cinema.vercel.app) and [Render API](https://adjacent-cinema.onrender.com). The latest full hosted route and live Creator/Cinema smoke check remains the one recorded on 27 October 2026; it is a dated observation, not a continuing uptime guarantee. On 29 October, PR #24 was merged and `main` advanced to [`09d4f01`](https://github.com/Sohamgaonkhadkar/adjacent-cinema/commit/09d4f014ade5b5ba9e6b453968edd7c5e1c09d45). The Vercel production deployment for that commit is READY, and post-merge CI run [40875932823](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40875932823) passed the backend, frontend and container-build jobs. PR #24 changes frontend presentation/tests and documentation; it does not change backend runtime code. The expanded live-Qloo evaluation is the separately dated `/2` report linked below; it is distinct from browser acceptance.
+The current split deployment uses [Vercel for the frontend](https://adjacent-cinema.vercel.app) and [Render for the API](https://adjacent-cinema.onrender.com). The most recent functional release is [PR #29](https://github.com/Sohamgaonkhadkar/adjacent-cinema/pull/29), commit [`7e93e15`](https://github.com/Sohamgaonkhadkar/adjacent-cinema/commit/7e93e153ec39d4e85e9c4c34c6d9f98f3ca29880); its CI run [40906289638](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40906289638) passed backend, frontend and container-build jobs. The follow-up documentation release [PR #30](https://github.com/Sohamgaonkhadkar/adjacent-cinema/pull/30) passed the same jobs in [run 40907360747](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40907360747). The 29 October production route smoke check returned HTTP 200 for `/`, `/creator`, `/cinema` and `/creator/sponsor`; this is a dated observation, not a continuing uptime guarantee. The expanded live-Qloo evaluation is linked below and is distinct from browser acceptance.
 
 The project owner confirmed three browser walkthroughs as passed on 29 October: FilmSponsor guest/campaign and live discovery with Origin/cookie/CSRF checks; second-session isolation plus revocation/expiry; and Audience Pulse link/vote/repeat-response/close/evaluate. These are owner-confirmed results recorded in the checklist, not browser telemetry independently captured by this README update. Earlier Render logs include origin-mismatch rejections, so the successful flow does not remove the separate open item to confirm trusted-proxy configuration alignment. This is not a full security audit or uptime guarantee.
 
@@ -418,11 +418,7 @@ record).
 - [Deployment topology proposal](docs/adr/006-deployment-topology.md)
 - [Decision Challenge design](docs/adr/007-decision-challenge.md) — necessity,
   stability and next checks recomputed from the run's own cached evidence
-- [Post-merge verification record (28 Oct 2026)](docs/verification_2026-10-28_post_merge.md) —
-  what was run against `main` at `db9a59c`, and what remains unverified
-- [Live-Qloo checklist](docs/NEXT_LIVE_CHECKLIST.md)
-- [Historical live-Qloo report](docs/LIVE_QLOO_VALIDATION.md) — historical only;
-  not current connectivity proof
+- [Current live-Qloo checklist](docs/NEXT_LIVE_CHECKLIST.md)
 - [MIT license](../../LICENSE)
 
 There is no separate contribution guide. Use GitHub issues/pull requests, and

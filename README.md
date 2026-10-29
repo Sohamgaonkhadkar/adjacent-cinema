@@ -48,33 +48,11 @@ Adjacent is a **bounded agentic decision-support tool** for independent filmmake
 
 ### Latest release and verification — 29 October 2026
 
-The latest functional release is [PR #29](https://github.com/Sohamgaonkhadkar/adjacent-cinema/pull/29), merged as [`7e93e15`](https://github.com/Sohamgaonkhadkar/adjacent-cinema/commit/7e93e153ec39d4e85e9c4c34c6d9f98f3ca29880). Main CI run [40906289638](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40906289638) passed the backend, frontend and container-build jobs. Vercel marked the production deployment for that functional release **READY** at [the production deployment record](https://vercel.com/sohamgaonkhadkar/adjacent-cinema/F3ADaeTvmTn8SQtKBu8UTMhuo2ox).
+The latest functional release is [PR #29](https://github.com/Sohamgaonkhadkar/adjacent-cinema/pull/29), merged as [`7e93e15`](https://github.com/Sohamgaonkhadkar/adjacent-cinema/commit/7e93e153ec39d4e85e9c4c34c6d9f98f3ca29880). Main CI run [40906289638](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40906289638) passed the backend, frontend and container-build jobs. The documentation follow-up [PR #30](https://github.com/Sohamgaonkhadkar/adjacent-cinema/pull/30) also passed all three jobs in [run 40907360747](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40907360747). Vercel marked the functional release **READY** at [the production deployment record](https://vercel.com/sohamgaonkhadkar/adjacent-cinema/F3ADaeTvmTn8SQtKBu8UTMhuo2ox).
 
 PR #29 replaces the fixed three-film start gate with progressive evidence coverage, preserves mandatory taste/cohort gates, exposes exploratory limitations in Creator Studio, and hands the smoothed geography density layer off to crisp cell markers at close zoom. It also preserves the full returned cell set when ranked cells are sparse and adds regression coverage. Earlier merged fixes remain in place: PR #27 repairs the empty Cultural Multiverse panel and PR #28 makes the five-theme input limit visible; PR #24 added the evidence-aware geography empty state.
 
 On 29 October the production routes `/`, `/creator`, `/cinema` and `/creator/sponsor` returned HTTP 200, and `/api/health` returned a healthy response for the live functional release. This is a route smoke check, not proof that every interactive path has been manually browser-tested on the deployed commit. The project owner separately confirmed three browser walkthroughs: FilmSponsor guest creation/live brand discovery and Origin/cookie/CSRF; second-session isolation plus revocation/expiry; and Audience Pulse participation/repeat-response refusal/owner close-evaluation. These are **owner-confirmed reports**, not independently captured browser telemetry from this check. See the [current verification checklist](qloo_hackathon/adjacent/docs/NEXT_LIVE_CHECKLIST.md). Trusted-proxy alignment, anonymous-traffic guardrails, durable-storage/cleanup review and any organizer clarification on eligibility remain separate operational gates.
-
-### Historical production verification snapshot — 27 October 2026
-
-CI on the merged commit: `main` at **`db9a59c`** passed all three jobs —
-`backend` (including the Live-Qloo step, which ran with the repository secret),
-`frontend` and `container-build` — in run
-[40567638201](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40567638201).
-That validates the commit's checks, not the hosted deployment. The offline
-re-run of the same commit in a sandbox is recorded in the
-[post-merge verification record](qloo_hackathon/adjacent/docs/verification_2026-10-28_post_merge.md).
-
-- The production routes `/`, `/creator`, `/cinema` and `/creator/sponsor` returned HTTP 200 in a route smoke check. This confirms server-rendered route availability, **not** every click path or browser-security property.
-- `/api/health` returned HTTP 200 with `mode: "public_demo"`, `fixture_demo_available: true`, `live_creator_available: true` and `filmsponsor_guest_enabled: true`.
-- Sampled production Creator and Cinema runs completed with `status: "completed"`, `stop_reason: "complete"` and `data_status: "measured"`. Their inspected Qloo trace entries returned HTTP 200.
-- Render logs recorded successful FilmSponsor guest-session, campaign-list/create and brand-discovery requests on 26 October; earlier logs also contained guest-origin mismatches. The project owner later confirmed the exact Origin/cookie/CSRF and session-isolation browser checks passed on 29 October, as recorded in the checklist below. These checks do not constitute a complete security audit.
-- `/api/creator/synthesis-status` reports synthesis unavailable because optional synthesis is disabled in public-demo mode. `/api/experiments` returning HTTP 403 is intentional public-demo policy, not a broken page.
-
-The original [three-programme live evaluation, schema `/1`](qloo_hackathon/adjacent/docs/verification/live_counterfactual_evaluation.md) remains unchanged: affinity-withheld ranking changed the winner in **0/3** runs, while popularity-only selected a different winner in **3/3**. The newer [nine-programme live evaluation, schema `/2`](qloo_hackathon/adjacent/docs/verification/live_counterfactual_evaluation_v2.md) attempted **9** prespecified programmes: **8** were evaluable and one regional-language programme produced no candidate cohorts. Across the eight evaluable runs, affinity-withheld changed the winner in **0/8**; popularity-only changed it in **8/8**. Neither evaluation proves audience overlap, recommendation quality, or downstream impact. The counterfactuals reuse the same admitted candidate pool and make no extra Qloo calls.
-
-The `/2` evaluation records **28/28** scoring contexts where per-seed explainability was `not_requested_limit`: each context contained 50 candidate IDs, above the configured 12-candidate bound. Several references remained unresolved and were not replaced with fixtures. Qloo's `/v2/analysis/compare` call is traced but its numeric response is deliberately not interpreted because the response schema is unverified. These reports do not measure attendance, audience size, conversion, causality or ROI.
-
----
 
 ## Contents
 
@@ -543,10 +521,9 @@ npx tsc --noEmit
 The CI workflow runs backend lint and fixture-backed tests, the conditional live-Qloo test step when the repository secret is configured, a dry-run probe/package check, frontend regression checks and production rendering, plus backend/frontend container builds. A skipped conditional live step is not a pass. A green workflow does not prove a hosted service is configured, a browser has been manually reviewed or a production deployment is healthy.
 
 - [Latest GitHub Actions runs](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions)
-- [Latest visual/evidence-state fixes — PR #24](https://github.com/Sohamgaonkhadkar/adjacent-cinema/pull/24)
-- [Post-merge CI for current main commit `09d4f01`](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40875932823)
-- [Historical Nightfall integration — PR #17](https://github.com/Sohamgaonkhadkar/adjacent-cinema/pull/17)
-- [Historical post-merge CI run for PR #17](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40384693948)
+- [Functional release — PR #29](https://github.com/Sohamgaonkhadkar/adjacent-cinema/pull/29)
+- [Documentation release — PR #30](https://github.com/Sohamgaonkhadkar/adjacent-cinema/pull/30)
+- [CI for the documentation release baseline](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40907360747)
 - [Live counterfactual evaluation report — schema `/1`, three programmes](qloo_hackathon/adjacent/docs/verification/live_counterfactual_evaluation.md)
 - [Latest live counterfactual evaluation — schema `/2`, nine programmes](qloo_hackathon/adjacent/docs/verification/live_counterfactual_evaluation_v2.md) and [JSON results](qloo_hackathon/adjacent/docs/verification/live_counterfactual_evaluation_v2.json)
 
@@ -630,11 +607,9 @@ The following operational checks remain open before scaling beyond a bounded hac
 6. **SQLite is single-host.** Use one backend process and a persistent local filesystem; multi-worker/multi-replica operation needs a separate state/locking design.
 7. **Guest cleanup is not a guaranteed scheduled deletion.** Authentication expiry is enforced, but idle databases can retain expired rows until cleanup is invoked.
 8. **No commercial outcomes are guaranteed or forecast.** A Test Card is a proposed experiment. Results must come from observed measurements, and unknowns must stay unknown.
-9. **Hosted verification has a defined scope.** The Vercel/Render routes and sampled live Creator/Cinema workflows were checked on 27 October 2026; the current frontend release on `09d4f01` is marked READY by Vercel and its CI passed on 29 October. The project owner also confirmed the three specific browser walkthroughs listed above on 29 October. These observations are not a complete browser-driven security audit, a long-term uptime guarantee, or proof that every FilmSponsor path was reviewed. The separate OCI/Docker topology is a deployment option, not the live host.
+9. **Hosted verification has a defined scope.** The functional release on `7e93e15` was marked READY by Vercel, and the subsequent documentation baseline on `a88ef77` passed CI on 29 October. The project owner also confirmed the three specific browser walkthroughs listed above on 29 October. These observations are not a complete browser-driven security audit, a long-term uptime guarantee, or proof that every FilmSponsor path was reviewed. The separate OCI/Docker topology is a deployment option, not the live host.
 
 ## Documentation map
-
-**Historical QA note:** the root-level `QA_AUDIT_REPORT.md` and `PR6_QA_REPORT.md` are point-in-time reports from earlier code snapshots. They preserve useful reproduction history, but their ports, commits and verdicts are not a current deployment sign-off. Use the CI results for the merged commit and the [live-Qloo and deployment checklist](qloo_hackathon/adjacent/docs/NEXT_LIVE_CHECKLIST.md) for the present state.
 
 | Document | Why it exists |
 |---|---|
@@ -646,14 +621,10 @@ The following operational checks remain open before scaling beyond a bounded hac
 | [MCP server](qloo_hackathon/adjacent/docs/MCP_SERVER.md) | Three read-only MCP tools, fixture-by-default, over the existing pipeline — with their limits |
 | [Fresh hackathon competitor scorecard](qloo_hackathon/adjacent/docs/M13_16_FRESH_HACKATHON_COMPETITOR_SCORECARD.md) | Ten current public repositories scored equally against the official four criteria; not an official ranking |
 | [Live-Qloo and deployment checklist](qloo_hackathon/adjacent/docs/NEXT_LIVE_CHECKLIST.md) | Current measured-live status, safe validation procedure, and remaining hosted acceptance checks |
-| [Post-merge verification record](qloo_hackathon/adjacent/docs/verification_2026-10-28_post_merge.md) | What was executed against `main` at `db9a59c`, exact counts, and what remains unverified |
-| [Current verification status](qloo_hackathon/adjacent/docs/M13_18_CURRENT_VERIFICATION_STATUS.md) | Observed frontend/backend results and environment/live-test limits (method; numbers superseded — see the post-merge record) |
 | [Eligibility audit](qloo_hackathon/adjacent/docs/M13_11_HACKATHON_ELIGIBILITY_AUDIT.md) | Exact official wording and unresolved “Qloo 4after” organizer clarification; no eligibility conclusion |
-| [Live-Qloo checklist](qloo_hackathon/adjacent/docs/NEXT_LIVE_CHECKLIST.md) | Current operator checklist; historical reports are not current acceptance |
 | [Deployment runbook](qloo_hackathon/adjacent/docs/DEPLOYMENT.md) | Render and Docker/Caddy deployment details |
 | [Deployment topology ADR](qloo_hackathon/adjacent/docs/adr/006-deployment-topology.md) | Trade-offs behind the proposed topology |
 | [Architecture freeze](qloo_hackathon/adjacent/docs/ARCHITECTURE_FREEZE.md) | Architectural decisions and frozen boundaries |
-| Historical browser QA | [QA_AUDIT_REPORT.md](QA_AUDIT_REPORT.md), [PR6_QA_REPORT.md](PR6_QA_REPORT.md) — older snapshots; not current sign-off |
 | [Security/integration reference](qloo_hackathon/adjacent/.env.example) | Names and safe defaults for supported settings |
 
 ## License and contribution notes
