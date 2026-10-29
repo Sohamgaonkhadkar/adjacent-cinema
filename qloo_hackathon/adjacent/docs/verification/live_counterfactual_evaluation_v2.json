@@ -1,0 +1,1412 @@
+{
+  "schema": "adjacent.live-counterfactual-evaluation/2",
+  "generated_at_utc": "2026-10-29T12:08:37.623994+00:00",
+  "evaluation_kind": "live_qloo",
+  "method": "Run the existing live pipeline for each listed programme, then apply the existing Decision Challenge to the same cached run. No second ranker or additional counterfactual Qloo calls.",
+  "run_configuration": {
+    "programmes_selected": [
+      "international-stories",
+      "psychological-tension",
+      "auteur-cross-cultural",
+      "documentary-essay",
+      "horror-folk",
+      "animation-family",
+      "romance-classic",
+      "music-cult",
+      "regional-language"
+    ],
+    "limit": 9,
+    "preselected_programme_count": 9,
+    "selection_rule": "The first N entries of the prespecified PROGRAMMES list, in file order. The list was fixed before any run; programmes are never added or dropped after seeing results.",
+    "resolver_delay_s": 1.1,
+    "provider": "Qloo, through the production runner and client",
+    "counterfactual_extra_qloo_calls": 0,
+    "explainability": "Inline when the scoring context can carry it; otherwise one bounded follow-up call for the winning cohort, reported per run.",
+    "comparison": "One bounded /v2/analysis/compare call for the top same-type cohort pair."
+  },
+  "condition_specification": {
+    "pool": "The cohorts admitted by the production evidence gate in that run. Identical in all three conditions: nothing is re-queried, re-scored or re-gated.",
+    "full_analysis": "The production ordering: evidence strength, novelty, qualifying members, mean affinity within context, then cohort id.",
+    "affinity_withheld": {
+      "removed_keys": [
+        "evidence_strength",
+        "qualifying_members",
+        "mean_affinity_within_context"
+      ],
+      "retained_keys": [
+        "novelty_proxy",
+        "scored_members",
+        "cohort_id"
+      ],
+      "leak_check": "novelty_proxy is 1 - median popularity, and popularity is a provider field returned with the same call; it is not an affinity score. No other retained key is derived from affinity."
+    },
+    "popularity_only": {
+      "formula": "sort by (-median_popularity, -scored_members, cohort_id)",
+      "input_source": "The popularity field returned by Qloo for the same candidates. When a cohort has no popularity value it sorts last; the count of such cohorts is visible in winner_median_popularity being null.",
+      "no_external_baseline": "This is not an attendance, revenue or industry baseline. Adjacent holds no external popularity ground truth."
+    },
+    "determinism": "No clock, randomness or hash order. Every ordering ends with cohort_id, so two runs over the same state produce identical orderings.",
+    "agreement_metrics": "Top-5 overlap counts shared groupings in the first five positions. Kendall's tau-b is computed over every grouping present in both orderings of the same pool."
+  },
+  "summary": {
+    "programmes_attempted": 9,
+    "programmes_evaluable": 8,
+    "programmes_failed_or_not_evaluable": 1,
+    "affinity_withheld_changed_winner": 0,
+    "popularity_only_changed_winner": 8,
+    "programmes_with_affinity_gate_suppression": 0,
+    "cohorts_suppressed_by_affinity_gate": 0,
+    "programmes_with_affinity_decided_pairs": 0,
+    "affinity_withheld_winner_unchanged": 8,
+    "popularity_only_winner_unchanged": 0,
+    "mean_top5_overlap": {
+      "affinity_withheld": 1.0,
+      "popularity_only": 0.95
+    },
+    "mean_rank_correlation": {
+      "affinity_withheld": 1.0,
+      "popularity_only": -1.0
+    },
+    "run_status_counts": {
+      "evaluable": 8,
+      "not_evaluable": 1
+    },
+    "bounded_attribution_status_counts": {
+      "returned": 8
+    },
+    "pairwise_status_counts": {
+      "unsupported_response_shape": 3,
+      "not_applicable": 5
+    }
+  },
+  "limitations": [
+    "The counterfactual holds the retrieved and admitted candidate pool fixed; it tests ranking sensitivity, not what a fresh Qloo query would retrieve.",
+    "A changed winner is not proof that Qloo is correct or that the recommendation will succeed.",
+    "An unchanged winner is still reported and is not presented as evidence of Qloo necessity.",
+    "Popularity-only uses the same candidates and returned popularity fields; it is not an external ground-truth or business baseline.",
+    "No attendance, audience size, conversion, revenue, causal effect, or ROI is measured.",
+    "All runs, including failures and insufficient-evidence results, remain in the report. Fixture data is never substituted into a live report."
+  ],
+  "runs": [
+    {
+      "programme_id": "international-stories",
+      "description": "International stories and contemporary auteur cinema",
+      "programme": [
+        {
+          "title": "Perfect Days",
+          "year": 2023,
+          "imdb_id": "tt27503384"
+        },
+        {
+          "title": "Roma",
+          "year": 2018,
+          "imdb_id": "tt6155172"
+        },
+        {
+          "title": "Shoplifters",
+          "year": 2018,
+          "imdb_id": "tt8075192"
+        },
+        {
+          "title": "The Zone of Interest",
+          "year": 2023,
+          "imdb_id": "tt7160372"
+        }
+      ],
+      "data_status": "measured",
+      "stop_reason": "complete",
+      "resolved_films": 4,
+      "unresolved_films": [],
+      "app_trace_ids": [
+        "local-c001",
+        "local-c002",
+        "local-c003",
+        "local-c004",
+        "local-c005",
+        "local-c006",
+        "local-c007",
+        "local-c008",
+        "local-c009",
+        "local-c010",
+        "local-c011",
+        "local-c012",
+        "local-c013",
+        "local-c014",
+        "local-c015",
+        "local-c016",
+        "local-c017",
+        "local-c018",
+        "local-c019",
+        "local-c020",
+        "local-c021",
+        "local-c022"
+      ],
+      "application_trace_count": 22,
+      "ranked_cohort_count": 6,
+      "rejected_cohort_count": 0,
+      "status": "evaluable",
+      "error_type": null,
+      "production_winner_id": "urn:entity:book:subtype:urn:entity:book:1",
+      "production_winner": "book · Dear America: Notes of an Undocumented Citizen",
+      "affinity_withheld_winner_id": "urn:entity:book:subtype:urn:entity:book:1",
+      "affinity_withheld_winner": "book · Dear America: Notes of an Undocumented Citizen",
+      "affinity_withheld_winner_changed": false,
+      "affinity_withheld_rank_positions_moved": 0,
+      "popularity_only_winner_id": "urn:entity:movie:tag_cluster:1",
+      "popularity_only_winner": "movie · The Great Beauty",
+      "popularity_only_winner_changed": true,
+      "affinity_decided_pairs": 0,
+      "adjacent_pairs_examined": 5,
+      "affinity_gate_suppressed_count": 0,
+      "affinity_gate_suppressed_labels": [],
+      "structurally_admitted_count": 6,
+      "admitted_without_structural_support_count": 0,
+      "winner_context_domain": "urn:entity:book",
+      "winner_mean_affinity": 0.850929,
+      "winner_qualifying_members": 12,
+      "winner_scored_members": 12,
+      "winner_median_popularity": 0.719881,
+      "winner_explainability_status": "not_requested_limit",
+      "scoring_contexts": [
+        {
+          "domain": "urn:entity:artist",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:book",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:brand",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:movie",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:podcast",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        }
+      ],
+      "stability_verdict": "stable",
+      "stability_evidence_items_tested": 250,
+      "counterfactual_extra_qloo_calls": 0,
+      "production_order": [
+        "urn:entity:book:subtype:urn:entity:book:1",
+        "urn:entity:book:tag_cluster:1",
+        "urn:entity:podcast:tag_cluster:1",
+        "urn:entity:artist:tag_cluster:1",
+        "urn:entity:brand:tag_cluster:1",
+        "urn:entity:movie:tag_cluster:1"
+      ],
+      "affinity_withheld_top5_overlap": {
+        "k": 5,
+        "shared": 5,
+        "of": 5,
+        "fraction": 1.0,
+        "shared_ids": [
+          "urn:entity:book:subtype:urn:entity:book:1",
+          "urn:entity:book:tag_cluster:1",
+          "urn:entity:podcast:tag_cluster:1",
+          "urn:entity:artist:tag_cluster:1",
+          "urn:entity:brand:tag_cluster:1"
+        ]
+      },
+      "affinity_withheld_rank_correlation": {
+        "method": "kendall_tau_b",
+        "value": 1.0,
+        "n": 6,
+        "pairs": 15,
+        "concordant": 15,
+        "discordant": 0,
+        "duplicates_removed": 0,
+        "meaning": "Agreement between two orderings this application computed over the same candidate pool. It describes how much the ordering moved; it says nothing about whether the recommendation is right."
+      },
+      "popularity_only_top5_overlap": {
+        "k": 5,
+        "shared": 4,
+        "of": 5,
+        "fraction": 0.8,
+        "shared_ids": [
+          "urn:entity:book:tag_cluster:1",
+          "urn:entity:podcast:tag_cluster:1",
+          "urn:entity:artist:tag_cluster:1",
+          "urn:entity:brand:tag_cluster:1"
+        ]
+      },
+      "popularity_only_rank_correlation": {
+        "method": "kendall_tau_b",
+        "value": -1.0,
+        "n": 6,
+        "pairs": 15,
+        "concordant": 0,
+        "discordant": 15,
+        "duplicates_removed": 0,
+        "meaning": "Agreement between two orderings this application computed over the same candidate pool. It describes how much the ordering moved; it says nothing about whether the recommendation is right."
+      },
+      "agreement_statements": {
+        "affinity_withheld": "The same 5 groupings sit at the top and the full ordering is unchanged (tau-b 1.00).",
+        "popularity_only": "4 of the top 5 groupings are the same, and the full ordering moves in the opposite direction (tau-b -1.00, 6 groupings compared)."
+      },
+      "bounded_attribution_status": "returned",
+      "pairwise_status": "unsupported_response_shape"
+    },
+    {
+      "programme_id": "psychological-tension",
+      "description": "Psychological tension and genre-adjacent cinema",
+      "programme": [
+        {
+          "title": "The Lighthouse",
+          "year": 2019,
+          "imdb_id": "tt7984734"
+        },
+        {
+          "title": "Uncut Gems",
+          "year": 2019,
+          "imdb_id": "tt5727208"
+        },
+        {
+          "title": "Get Out",
+          "year": 2017,
+          "imdb_id": "tt5052448"
+        },
+        {
+          "title": "The Babadook",
+          "year": 2014,
+          "imdb_id": "tt2321549"
+        }
+      ],
+      "data_status": "measured",
+      "stop_reason": "complete",
+      "resolved_films": 4,
+      "unresolved_films": [],
+      "app_trace_ids": [
+        "local-c001",
+        "local-c002",
+        "local-c003",
+        "local-c004",
+        "local-c005",
+        "local-c006",
+        "local-c007",
+        "local-c008",
+        "local-c009",
+        "local-c010",
+        "local-c011",
+        "local-c012",
+        "local-c013",
+        "local-c014",
+        "local-c015",
+        "local-c016",
+        "local-c017"
+      ],
+      "application_trace_count": 17,
+      "ranked_cohort_count": 3,
+      "rejected_cohort_count": 1,
+      "status": "evaluable",
+      "error_type": null,
+      "production_winner_id": "urn:entity:artist:tag_cluster:1",
+      "production_winner": "artist · Kirin J Callinan",
+      "affinity_withheld_winner_id": "urn:entity:artist:tag_cluster:1",
+      "affinity_withheld_winner": "artist · Kirin J Callinan",
+      "affinity_withheld_winner_changed": false,
+      "affinity_withheld_rank_positions_moved": 0,
+      "popularity_only_winner_id": "urn:entity:movie:tag_cluster:1",
+      "popularity_only_winner": "movie · Lover",
+      "popularity_only_winner_changed": true,
+      "affinity_decided_pairs": 0,
+      "adjacent_pairs_examined": 2,
+      "affinity_gate_suppressed_count": 0,
+      "affinity_gate_suppressed_labels": [],
+      "structurally_admitted_count": 3,
+      "admitted_without_structural_support_count": 0,
+      "winner_context_domain": "urn:entity:artist",
+      "winner_mean_affinity": 0.86601,
+      "winner_qualifying_members": 49,
+      "winner_scored_members": 49,
+      "winner_median_popularity": 0.770285,
+      "winner_explainability_status": "not_requested_limit",
+      "scoring_contexts": [
+        {
+          "domain": "urn:entity:artist",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:brand",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:movie",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        }
+      ],
+      "stability_verdict": "stable",
+      "stability_evidence_items_tested": 149,
+      "counterfactual_extra_qloo_calls": 0,
+      "production_order": [
+        "urn:entity:artist:tag_cluster:1",
+        "urn:entity:brand:tag_cluster:1",
+        "urn:entity:movie:tag_cluster:1"
+      ],
+      "affinity_withheld_top5_overlap": {
+        "k": 5,
+        "shared": 3,
+        "of": 3,
+        "fraction": 1.0,
+        "shared_ids": [
+          "urn:entity:artist:tag_cluster:1",
+          "urn:entity:brand:tag_cluster:1",
+          "urn:entity:movie:tag_cluster:1"
+        ]
+      },
+      "affinity_withheld_rank_correlation": {
+        "method": "kendall_tau_b",
+        "value": 1.0,
+        "n": 3,
+        "pairs": 3,
+        "concordant": 3,
+        "discordant": 0,
+        "duplicates_removed": 0,
+        "meaning": "Agreement between two orderings this application computed over the same candidate pool. It describes how much the ordering moved; it says nothing about whether the recommendation is right."
+      },
+      "popularity_only_top5_overlap": {
+        "k": 5,
+        "shared": 3,
+        "of": 3,
+        "fraction": 1.0,
+        "shared_ids": [
+          "urn:entity:artist:tag_cluster:1",
+          "urn:entity:brand:tag_cluster:1",
+          "urn:entity:movie:tag_cluster:1"
+        ]
+      },
+      "popularity_only_rank_correlation": {
+        "method": "kendall_tau_b",
+        "value": -1.0,
+        "n": 3,
+        "pairs": 3,
+        "concordant": 0,
+        "discordant": 3,
+        "duplicates_removed": 0,
+        "meaning": "Agreement between two orderings this application computed over the same candidate pool. It describes how much the ordering moved; it says nothing about whether the recommendation is right."
+      },
+      "agreement_statements": {
+        "affinity_withheld": "The same 3 groupings sit at the top and the full ordering is unchanged (tau-b 1.00).",
+        "popularity_only": "3 of the top 3 groupings are the same, and the full ordering moves in the opposite direction (tau-b -1.00, 3 groupings compared)."
+      },
+      "bounded_attribution_status": "returned",
+      "pairwise_status": "not_applicable"
+    },
+    {
+      "programme_id": "auteur-cross-cultural",
+      "description": "Auteur cinema across cultures and periods",
+      "programme": [
+        {
+          "title": "Paris, Texas",
+          "year": 1984,
+          "imdb_id": "tt0087884"
+        },
+        {
+          "title": "Taipei Story",
+          "year": 1985,
+          "imdb_id": "tt0089853"
+        },
+        {
+          "title": "Portrait of a Lady on Fire",
+          "year": 2019,
+          "imdb_id": "tt8613070"
+        },
+        {
+          "title": "Drive My Car",
+          "year": 2021,
+          "imdb_id": "tt14039582"
+        }
+      ],
+      "data_status": "measured",
+      "stop_reason": "complete",
+      "resolved_films": 3,
+      "unresolved_films": [
+        "Taipei Story"
+      ],
+      "app_trace_ids": [
+        "local-c001",
+        "local-c002",
+        "local-c003",
+        "local-c004",
+        "local-c005",
+        "local-c006",
+        "local-c007",
+        "local-c008",
+        "local-c009",
+        "local-c010",
+        "local-c011",
+        "local-c012",
+        "local-c013",
+        "local-c014",
+        "local-c015",
+        "local-c016",
+        "local-c017"
+      ],
+      "application_trace_count": 17,
+      "ranked_cohort_count": 3,
+      "rejected_cohort_count": 0,
+      "status": "evaluable",
+      "error_type": null,
+      "production_winner_id": "urn:entity:artist:tag_cluster:1",
+      "production_winner": "artist · Alan Sparhawk",
+      "affinity_withheld_winner_id": "urn:entity:artist:tag_cluster:1",
+      "affinity_withheld_winner": "artist · Alan Sparhawk",
+      "affinity_withheld_winner_changed": false,
+      "affinity_withheld_rank_positions_moved": 0,
+      "popularity_only_winner_id": "urn:entity:movie:tag_cluster:1",
+      "popularity_only_winner": "movie · This Is Not a Burial, It's a Resurrection",
+      "popularity_only_winner_changed": true,
+      "affinity_decided_pairs": 0,
+      "adjacent_pairs_examined": 2,
+      "affinity_gate_suppressed_count": 0,
+      "affinity_gate_suppressed_labels": [],
+      "structurally_admitted_count": 3,
+      "admitted_without_structural_support_count": 0,
+      "winner_context_domain": "urn:entity:artist",
+      "winner_mean_affinity": 0.886144,
+      "winner_qualifying_members": 50,
+      "winner_scored_members": 50,
+      "winner_median_popularity": 0.800379,
+      "winner_explainability_status": "not_requested_limit",
+      "scoring_contexts": [
+        {
+          "domain": "urn:entity:artist",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:brand",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:movie",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        }
+      ],
+      "stability_verdict": "stable",
+      "stability_evidence_items_tested": 150,
+      "counterfactual_extra_qloo_calls": 0,
+      "production_order": [
+        "urn:entity:artist:tag_cluster:1",
+        "urn:entity:brand:tag_cluster:1",
+        "urn:entity:movie:tag_cluster:1"
+      ],
+      "affinity_withheld_top5_overlap": {
+        "k": 5,
+        "shared": 3,
+        "of": 3,
+        "fraction": 1.0,
+        "shared_ids": [
+          "urn:entity:artist:tag_cluster:1",
+          "urn:entity:brand:tag_cluster:1",
+          "urn:entity:movie:tag_cluster:1"
+        ]
+      },
+      "affinity_withheld_rank_correlation": {
+        "method": "kendall_tau_b",
+        "value": 1.0,
+        "n": 3,
+        "pairs": 3,
+        "concordant": 3,
+        "discordant": 0,
+        "duplicates_removed": 0,
+        "meaning": "Agreement between two orderings this application computed over the same candidate pool. It describes how much the ordering moved; it says nothing about whether the recommendation is right."
+      },
+      "popularity_only_top5_overlap": {
+        "k": 5,
+        "shared": 3,
+        "of": 3,
+        "fraction": 1.0,
+        "shared_ids": [
+          "urn:entity:artist:tag_cluster:1",
+          "urn:entity:brand:tag_cluster:1",
+          "urn:entity:movie:tag_cluster:1"
+        ]
+      },
+      "popularity_only_rank_correlation": {
+        "method": "kendall_tau_b",
+        "value": -1.0,
+        "n": 3,
+        "pairs": 3,
+        "concordant": 0,
+        "discordant": 3,
+        "duplicates_removed": 0,
+        "meaning": "Agreement between two orderings this application computed over the same candidate pool. It describes how much the ordering moved; it says nothing about whether the recommendation is right."
+      },
+      "agreement_statements": {
+        "affinity_withheld": "The same 3 groupings sit at the top and the full ordering is unchanged (tau-b 1.00).",
+        "popularity_only": "3 of the top 3 groupings are the same, and the full ordering moves in the opposite direction (tau-b -1.00, 3 groupings compared)."
+      },
+      "bounded_attribution_status": "returned",
+      "pairwise_status": "not_applicable"
+    },
+    {
+      "programme_id": "documentary-essay",
+      "description": "Essayistic and observational documentary",
+      "programme": [
+        {
+          "title": "Sans Soleil",
+          "year": 1983,
+          "imdb_id": "tt0084628"
+        },
+        {
+          "title": "Grizzly Man",
+          "year": 2005,
+          "imdb_id": "tt0427312"
+        },
+        {
+          "title": "Fire of Love",
+          "year": 2022,
+          "imdb_id": "tt11474358"
+        },
+        {
+          "title": "The Act of Killing",
+          "year": 2012,
+          "imdb_id": "tt2375605"
+        }
+      ],
+      "data_status": "measured",
+      "stop_reason": "complete",
+      "resolved_films": 3,
+      "unresolved_films": [
+        "Fire of Love"
+      ],
+      "app_trace_ids": [
+        "local-c001",
+        "local-c002",
+        "local-c003",
+        "local-c004",
+        "local-c005",
+        "local-c006",
+        "local-c007",
+        "local-c008",
+        "local-c009",
+        "local-c010",
+        "local-c011",
+        "local-c012",
+        "local-c013",
+        "local-c014",
+        "local-c015",
+        "local-c016"
+      ],
+      "application_trace_count": 16,
+      "ranked_cohort_count": 3,
+      "rejected_cohort_count": 0,
+      "status": "evaluable",
+      "error_type": null,
+      "production_winner_id": "urn:entity:book:subtype:urn:entity:book:1",
+      "production_winner": "book · VALIS",
+      "affinity_withheld_winner_id": "urn:entity:book:subtype:urn:entity:book:1",
+      "affinity_withheld_winner": "book · VALIS",
+      "affinity_withheld_winner_changed": false,
+      "affinity_withheld_rank_positions_moved": 0,
+      "popularity_only_winner_id": "urn:entity:movie:tag_cluster:1",
+      "popularity_only_winner": "movie · The White Diamond",
+      "popularity_only_winner_changed": true,
+      "affinity_decided_pairs": 0,
+      "adjacent_pairs_examined": 2,
+      "affinity_gate_suppressed_count": 0,
+      "affinity_gate_suppressed_labels": [],
+      "structurally_admitted_count": 3,
+      "admitted_without_structural_support_count": 0,
+      "winner_context_domain": "urn:entity:book",
+      "winner_mean_affinity": 0.828588,
+      "winner_qualifying_members": 17,
+      "winner_scored_members": 17,
+      "winner_median_popularity": 0.584538,
+      "winner_explainability_status": "not_requested_limit",
+      "scoring_contexts": [
+        {
+          "domain": "urn:entity:book",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:movie",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        }
+      ],
+      "stability_verdict": "stable",
+      "stability_evidence_items_tested": 100,
+      "counterfactual_extra_qloo_calls": 0,
+      "production_order": [
+        "urn:entity:book:subtype:urn:entity:book:1",
+        "urn:entity:book:tag_cluster:1",
+        "urn:entity:movie:tag_cluster:1"
+      ],
+      "affinity_withheld_top5_overlap": {
+        "k": 5,
+        "shared": 3,
+        "of": 3,
+        "fraction": 1.0,
+        "shared_ids": [
+          "urn:entity:book:subtype:urn:entity:book:1",
+          "urn:entity:book:tag_cluster:1",
+          "urn:entity:movie:tag_cluster:1"
+        ]
+      },
+      "affinity_withheld_rank_correlation": {
+        "method": "kendall_tau_b",
+        "value": 1.0,
+        "n": 3,
+        "pairs": 3,
+        "concordant": 3,
+        "discordant": 0,
+        "duplicates_removed": 0,
+        "meaning": "Agreement between two orderings this application computed over the same candidate pool. It describes how much the ordering moved; it says nothing about whether the recommendation is right."
+      },
+      "popularity_only_top5_overlap": {
+        "k": 5,
+        "shared": 3,
+        "of": 3,
+        "fraction": 1.0,
+        "shared_ids": [
+          "urn:entity:book:subtype:urn:entity:book:1",
+          "urn:entity:book:tag_cluster:1",
+          "urn:entity:movie:tag_cluster:1"
+        ]
+      },
+      "popularity_only_rank_correlation": {
+        "method": "kendall_tau_b",
+        "value": -1.0,
+        "n": 3,
+        "pairs": 3,
+        "concordant": 0,
+        "discordant": 3,
+        "duplicates_removed": 0,
+        "meaning": "Agreement between two orderings this application computed over the same candidate pool. It describes how much the ordering moved; it says nothing about whether the recommendation is right."
+      },
+      "agreement_statements": {
+        "affinity_withheld": "The same 3 groupings sit at the top and the full ordering is unchanged (tau-b 1.00).",
+        "popularity_only": "3 of the top 3 groupings are the same, and the full ordering moves in the opposite direction (tau-b -1.00, 3 groupings compared)."
+      },
+      "bounded_attribution_status": "returned",
+      "pairwise_status": "unsupported_response_shape"
+    },
+    {
+      "programme_id": "horror-folk",
+      "description": "Folk horror and slow-burn dread",
+      "programme": [
+        {
+          "title": "The Wicker Man",
+          "year": 1973,
+          "imdb_id": "tt0070917"
+        },
+        {
+          "title": "Midsommar",
+          "year": 2019,
+          "imdb_id": "tt8772262"
+        },
+        {
+          "title": "The VVitch",
+          "year": 2015,
+          "imdb_id": "tt4263482"
+        },
+        {
+          "title": "Kill List",
+          "year": 2011,
+          "imdb_id": "tt1788391"
+        }
+      ],
+      "data_status": "measured",
+      "stop_reason": "complete",
+      "resolved_films": 3,
+      "unresolved_films": [
+        "The VVitch"
+      ],
+      "app_trace_ids": [
+        "local-c001",
+        "local-c002",
+        "local-c003",
+        "local-c004",
+        "local-c005",
+        "local-c006",
+        "local-c007",
+        "local-c008",
+        "local-c009",
+        "local-c010",
+        "local-c011",
+        "local-c012",
+        "local-c013",
+        "local-c014",
+        "local-c015",
+        "local-c016",
+        "local-c017"
+      ],
+      "application_trace_count": 17,
+      "ranked_cohort_count": 3,
+      "rejected_cohort_count": 0,
+      "status": "evaluable",
+      "error_type": null,
+      "production_winner_id": "urn:entity:artist:tag_cluster:1",
+      "production_winner": "artist · Violet Town",
+      "affinity_withheld_winner_id": "urn:entity:artist:tag_cluster:1",
+      "affinity_withheld_winner": "artist · Violet Town",
+      "affinity_withheld_winner_changed": false,
+      "affinity_withheld_rank_positions_moved": 0,
+      "popularity_only_winner_id": "urn:entity:movie:tag_cluster:1",
+      "popularity_only_winner": "movie · Baskin",
+      "popularity_only_winner_changed": true,
+      "affinity_decided_pairs": 0,
+      "adjacent_pairs_examined": 2,
+      "affinity_gate_suppressed_count": 0,
+      "affinity_gate_suppressed_labels": [],
+      "structurally_admitted_count": 3,
+      "admitted_without_structural_support_count": 0,
+      "winner_context_domain": "urn:entity:artist",
+      "winner_mean_affinity": 0.877328,
+      "winner_qualifying_members": 50,
+      "winner_scored_members": 50,
+      "winner_median_popularity": 0.824296,
+      "winner_explainability_status": "not_requested_limit",
+      "scoring_contexts": [
+        {
+          "domain": "urn:entity:artist",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:brand",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:movie",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        }
+      ],
+      "stability_verdict": "stable",
+      "stability_evidence_items_tested": 150,
+      "counterfactual_extra_qloo_calls": 0,
+      "production_order": [
+        "urn:entity:artist:tag_cluster:1",
+        "urn:entity:brand:tag_cluster:1",
+        "urn:entity:movie:tag_cluster:1"
+      ],
+      "affinity_withheld_top5_overlap": {
+        "k": 5,
+        "shared": 3,
+        "of": 3,
+        "fraction": 1.0,
+        "shared_ids": [
+          "urn:entity:artist:tag_cluster:1",
+          "urn:entity:brand:tag_cluster:1",
+          "urn:entity:movie:tag_cluster:1"
+        ]
+      },
+      "affinity_withheld_rank_correlation": {
+        "method": "kendall_tau_b",
+        "value": 1.0,
+        "n": 3,
+        "pairs": 3,
+        "concordant": 3,
+        "discordant": 0,
+        "duplicates_removed": 0,
+        "meaning": "Agreement between two orderings this application computed over the same candidate pool. It describes how much the ordering moved; it says nothing about whether the recommendation is right."
+      },
+      "popularity_only_top5_overlap": {
+        "k": 5,
+        "shared": 3,
+        "of": 3,
+        "fraction": 1.0,
+        "shared_ids": [
+          "urn:entity:artist:tag_cluster:1",
+          "urn:entity:brand:tag_cluster:1",
+          "urn:entity:movie:tag_cluster:1"
+        ]
+      },
+      "popularity_only_rank_correlation": {
+        "method": "kendall_tau_b",
+        "value": -1.0,
+        "n": 3,
+        "pairs": 3,
+        "concordant": 0,
+        "discordant": 3,
+        "duplicates_removed": 0,
+        "meaning": "Agreement between two orderings this application computed over the same candidate pool. It describes how much the ordering moved; it says nothing about whether the recommendation is right."
+      },
+      "agreement_statements": {
+        "affinity_withheld": "The same 3 groupings sit at the top and the full ordering is unchanged (tau-b 1.00).",
+        "popularity_only": "3 of the top 3 groupings are the same, and the full ordering moves in the opposite direction (tau-b -1.00, 3 groupings compared)."
+      },
+      "bounded_attribution_status": "returned",
+      "pairwise_status": "not_applicable"
+    },
+    {
+      "programme_id": "animation-family",
+      "description": "Animated features that travel beyond children's cinema",
+      "programme": [
+        {
+          "title": "Spirited Away",
+          "year": 2001,
+          "imdb_id": "tt0245429"
+        },
+        {
+          "title": "The Tale of the Princess Kaguya",
+          "year": 2013,
+          "imdb_id": "tt2576852"
+        },
+        {
+          "title": "Fantastic Mr. Fox",
+          "year": 2009,
+          "imdb_id": "tt0432283"
+        },
+        {
+          "title": "Persepolis",
+          "year": 2007,
+          "imdb_id": "tt0808417"
+        }
+      ],
+      "data_status": "measured",
+      "stop_reason": "complete",
+      "resolved_films": 4,
+      "unresolved_films": [],
+      "app_trace_ids": [
+        "local-c001",
+        "local-c002",
+        "local-c003",
+        "local-c004",
+        "local-c005",
+        "local-c006",
+        "local-c007",
+        "local-c008",
+        "local-c009",
+        "local-c010",
+        "local-c011",
+        "local-c012",
+        "local-c013",
+        "local-c014",
+        "local-c015",
+        "local-c016",
+        "local-c017",
+        "local-c018",
+        "local-c019",
+        "local-c020",
+        "local-c021"
+      ],
+      "application_trace_count": 21,
+      "ranked_cohort_count": 6,
+      "rejected_cohort_count": 0,
+      "status": "evaluable",
+      "error_type": null,
+      "production_winner_id": "urn:entity:artist:tag_cluster:1",
+      "production_winner": "artist · Loomer",
+      "affinity_withheld_winner_id": "urn:entity:artist:tag_cluster:1",
+      "affinity_withheld_winner": "artist · Loomer",
+      "affinity_withheld_winner_changed": false,
+      "affinity_withheld_rank_positions_moved": 0,
+      "popularity_only_winner_id": "urn:entity:brand:tag_cluster:1",
+      "popularity_only_winner": "brand · Harry's",
+      "popularity_only_winner_changed": true,
+      "affinity_decided_pairs": 0,
+      "adjacent_pairs_examined": 5,
+      "affinity_gate_suppressed_count": 0,
+      "affinity_gate_suppressed_labels": [],
+      "structurally_admitted_count": 6,
+      "admitted_without_structural_support_count": 0,
+      "winner_context_domain": "urn:entity:artist",
+      "winner_mean_affinity": 0.842112,
+      "winner_qualifying_members": 50,
+      "winner_scored_members": 50,
+      "winner_median_popularity": 0.453075,
+      "winner_explainability_status": "not_requested_limit",
+      "scoring_contexts": [
+        {
+          "domain": "urn:entity:artist",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:book",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:brand",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:movie",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:tv_show",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        }
+      ],
+      "stability_verdict": "stable",
+      "stability_evidence_items_tested": 250,
+      "counterfactual_extra_qloo_calls": 0,
+      "production_order": [
+        "urn:entity:artist:tag_cluster:1",
+        "urn:entity:book:subtype:urn:entity:book:1",
+        "urn:entity:tv_show:tag_cluster:1",
+        "urn:entity:book:tag_cluster:1",
+        "urn:entity:movie:tag_cluster:1",
+        "urn:entity:brand:tag_cluster:1"
+      ],
+      "affinity_withheld_top5_overlap": {
+        "k": 5,
+        "shared": 5,
+        "of": 5,
+        "fraction": 1.0,
+        "shared_ids": [
+          "urn:entity:artist:tag_cluster:1",
+          "urn:entity:book:subtype:urn:entity:book:1",
+          "urn:entity:tv_show:tag_cluster:1",
+          "urn:entity:book:tag_cluster:1",
+          "urn:entity:movie:tag_cluster:1"
+        ]
+      },
+      "affinity_withheld_rank_correlation": {
+        "method": "kendall_tau_b",
+        "value": 1.0,
+        "n": 6,
+        "pairs": 15,
+        "concordant": 15,
+        "discordant": 0,
+        "duplicates_removed": 0,
+        "meaning": "Agreement between two orderings this application computed over the same candidate pool. It describes how much the ordering moved; it says nothing about whether the recommendation is right."
+      },
+      "popularity_only_top5_overlap": {
+        "k": 5,
+        "shared": 4,
+        "of": 5,
+        "fraction": 0.8,
+        "shared_ids": [
+          "urn:entity:book:subtype:urn:entity:book:1",
+          "urn:entity:tv_show:tag_cluster:1",
+          "urn:entity:book:tag_cluster:1",
+          "urn:entity:movie:tag_cluster:1"
+        ]
+      },
+      "popularity_only_rank_correlation": {
+        "method": "kendall_tau_b",
+        "value": -1.0,
+        "n": 6,
+        "pairs": 15,
+        "concordant": 0,
+        "discordant": 15,
+        "duplicates_removed": 0,
+        "meaning": "Agreement between two orderings this application computed over the same candidate pool. It describes how much the ordering moved; it says nothing about whether the recommendation is right."
+      },
+      "agreement_statements": {
+        "affinity_withheld": "The same 5 groupings sit at the top and the full ordering is unchanged (tau-b 1.00).",
+        "popularity_only": "4 of the top 5 groupings are the same, and the full ordering moves in the opposite direction (tau-b -1.00, 6 groupings compared)."
+      },
+      "bounded_attribution_status": "returned",
+      "pairwise_status": "not_applicable"
+    },
+    {
+      "programme_id": "romance-classic",
+      "description": "Classic and modern romance for a repertory season",
+      "programme": [
+        {
+          "title": "In the Mood for Love",
+          "year": 2000,
+          "imdb_id": "tt0118694"
+        },
+        {
+          "title": "Brief Encounter",
+          "year": 1945,
+          "imdb_id": "tt0037558"
+        },
+        {
+          "title": "Carol",
+          "year": 2015,
+          "imdb_id": "tt2402927"
+        },
+        {
+          "title": "Past Lives",
+          "year": 2023,
+          "imdb_id": "tt13238346"
+        }
+      ],
+      "data_status": "measured",
+      "stop_reason": "complete",
+      "resolved_films": 4,
+      "unresolved_films": [],
+      "app_trace_ids": [
+        "local-c001",
+        "local-c002",
+        "local-c003",
+        "local-c004",
+        "local-c005",
+        "local-c006",
+        "local-c007",
+        "local-c008",
+        "local-c009",
+        "local-c010",
+        "local-c011",
+        "local-c012",
+        "local-c013",
+        "local-c014",
+        "local-c015",
+        "local-c016",
+        "local-c017"
+      ],
+      "application_trace_count": 17,
+      "ranked_cohort_count": 3,
+      "rejected_cohort_count": 0,
+      "status": "evaluable",
+      "error_type": null,
+      "production_winner_id": "urn:entity:artist:tag_cluster:1",
+      "production_winner": "artist · Sian Alice Group",
+      "affinity_withheld_winner_id": "urn:entity:artist:tag_cluster:1",
+      "affinity_withheld_winner": "artist · Sian Alice Group",
+      "affinity_withheld_winner_changed": false,
+      "affinity_withheld_rank_positions_moved": 0,
+      "popularity_only_winner_id": "urn:entity:movie:tag_cluster:1",
+      "popularity_only_winner": "movie · Spring in a Small Town",
+      "popularity_only_winner_changed": true,
+      "affinity_decided_pairs": 0,
+      "adjacent_pairs_examined": 2,
+      "affinity_gate_suppressed_count": 0,
+      "affinity_gate_suppressed_labels": [],
+      "structurally_admitted_count": 3,
+      "admitted_without_structural_support_count": 0,
+      "winner_context_domain": "urn:entity:artist",
+      "winner_mean_affinity": 0.880998,
+      "winner_qualifying_members": 50,
+      "winner_scored_members": 50,
+      "winner_median_popularity": 0.816437,
+      "winner_explainability_status": "not_requested_limit",
+      "scoring_contexts": [
+        {
+          "domain": "urn:entity:artist",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:brand",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:movie",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        }
+      ],
+      "stability_verdict": "fragile",
+      "stability_evidence_items_tested": 150,
+      "counterfactual_extra_qloo_calls": 0,
+      "production_order": [
+        "urn:entity:artist:tag_cluster:1",
+        "urn:entity:brand:tag_cluster:1",
+        "urn:entity:movie:tag_cluster:1"
+      ],
+      "affinity_withheld_top5_overlap": {
+        "k": 5,
+        "shared": 3,
+        "of": 3,
+        "fraction": 1.0,
+        "shared_ids": [
+          "urn:entity:artist:tag_cluster:1",
+          "urn:entity:brand:tag_cluster:1",
+          "urn:entity:movie:tag_cluster:1"
+        ]
+      },
+      "affinity_withheld_rank_correlation": {
+        "method": "kendall_tau_b",
+        "value": 1.0,
+        "n": 3,
+        "pairs": 3,
+        "concordant": 3,
+        "discordant": 0,
+        "duplicates_removed": 0,
+        "meaning": "Agreement between two orderings this application computed over the same candidate pool. It describes how much the ordering moved; it says nothing about whether the recommendation is right."
+      },
+      "popularity_only_top5_overlap": {
+        "k": 5,
+        "shared": 3,
+        "of": 3,
+        "fraction": 1.0,
+        "shared_ids": [
+          "urn:entity:artist:tag_cluster:1",
+          "urn:entity:brand:tag_cluster:1",
+          "urn:entity:movie:tag_cluster:1"
+        ]
+      },
+      "popularity_only_rank_correlation": {
+        "method": "kendall_tau_b",
+        "value": -1.0,
+        "n": 3,
+        "pairs": 3,
+        "concordant": 0,
+        "discordant": 3,
+        "duplicates_removed": 0,
+        "meaning": "Agreement between two orderings this application computed over the same candidate pool. It describes how much the ordering moved; it says nothing about whether the recommendation is right."
+      },
+      "agreement_statements": {
+        "affinity_withheld": "The same 3 groupings sit at the top and the full ordering is unchanged (tau-b 1.00).",
+        "popularity_only": "3 of the top 3 groupings are the same, and the full ordering moves in the opposite direction (tau-b -1.00, 3 groupings compared)."
+      },
+      "bounded_attribution_status": "returned",
+      "pairwise_status": "not_applicable"
+    },
+    {
+      "programme_id": "music-cult",
+      "description": "Music, performance and cult midnight cinema",
+      "programme": [
+        {
+          "title": "Stop Making Sense",
+          "year": 1984,
+          "imdb_id": "tt0088178"
+        },
+        {
+          "title": "Paris Is Burning",
+          "year": 1990,
+          "imdb_id": "tt0109117"
+        },
+        {
+          "title": "24 Hour Party People",
+          "year": 2002,
+          "imdb_id": "tt0274309"
+        },
+        {
+          "title": "Velvet Goldmine",
+          "year": 1998,
+          "imdb_id": "tt0120879"
+        }
+      ],
+      "data_status": "measured",
+      "stop_reason": "complete",
+      "resolved_films": 3,
+      "unresolved_films": [
+        "Paris Is Burning"
+      ],
+      "app_trace_ids": [
+        "local-c001",
+        "local-c002",
+        "local-c003",
+        "local-c004",
+        "local-c005",
+        "local-c006",
+        "local-c007",
+        "local-c008",
+        "local-c009",
+        "local-c010",
+        "local-c011",
+        "local-c012",
+        "local-c013",
+        "local-c014",
+        "local-c015",
+        "local-c016",
+        "local-c017",
+        "local-c018",
+        "local-c019",
+        "local-c020"
+      ],
+      "application_trace_count": 20,
+      "ranked_cohort_count": 5,
+      "rejected_cohort_count": 0,
+      "status": "evaluable",
+      "error_type": null,
+      "production_winner_id": "urn:entity:book:subtype:urn:entity:book:1",
+      "production_winner": "book · Jailbird",
+      "affinity_withheld_winner_id": "urn:entity:book:subtype:urn:entity:book:1",
+      "affinity_withheld_winner": "book · Jailbird",
+      "affinity_withheld_winner_changed": false,
+      "affinity_withheld_rank_positions_moved": 0,
+      "popularity_only_winner_id": "urn:entity:artist:tag_cluster:1",
+      "popularity_only_winner": "artist · The Fire Engines",
+      "popularity_only_winner_changed": true,
+      "affinity_decided_pairs": 0,
+      "adjacent_pairs_examined": 4,
+      "affinity_gate_suppressed_count": 0,
+      "affinity_gate_suppressed_labels": [],
+      "structurally_admitted_count": 5,
+      "admitted_without_structural_support_count": 0,
+      "winner_context_domain": "urn:entity:book",
+      "winner_mean_affinity": 0.84337,
+      "winner_qualifying_members": 19,
+      "winner_scored_members": 19,
+      "winner_median_popularity": 0.599848,
+      "winner_explainability_status": "not_requested_limit",
+      "scoring_contexts": [
+        {
+          "domain": "urn:entity:artist",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:book",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:brand",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        },
+        {
+          "domain": "urn:entity:movie",
+          "requested": 50,
+          "returned": 50,
+          "explainability_status": "not_requested_limit"
+        }
+      ],
+      "stability_verdict": "stable",
+      "stability_evidence_items_tested": 200,
+      "counterfactual_extra_qloo_calls": 0,
+      "production_order": [
+        "urn:entity:book:subtype:urn:entity:book:1",
+        "urn:entity:movie:tag_cluster:1",
+        "urn:entity:book:tag_cluster:1",
+        "urn:entity:brand:tag_cluster:1",
+        "urn:entity:artist:tag_cluster:1"
+      ],
+      "affinity_withheld_top5_overlap": {
+        "k": 5,
+        "shared": 5,
+        "of": 5,
+        "fraction": 1.0,
+        "shared_ids": [
+          "urn:entity:book:subtype:urn:entity:book:1",
+          "urn:entity:movie:tag_cluster:1",
+          "urn:entity:book:tag_cluster:1",
+          "urn:entity:brand:tag_cluster:1",
+          "urn:entity:artist:tag_cluster:1"
+        ]
+      },
+      "affinity_withheld_rank_correlation": {
+        "method": "kendall_tau_b",
+        "value": 1.0,
+        "n": 5,
+        "pairs": 10,
+        "concordant": 10,
+        "discordant": 0,
+        "duplicates_removed": 0,
+        "meaning": "Agreement between two orderings this application computed over the same candidate pool. It describes how much the ordering moved; it says nothing about whether the recommendation is right."
+      },
+      "popularity_only_top5_overlap": {
+        "k": 5,
+        "shared": 5,
+        "of": 5,
+        "fraction": 1.0,
+        "shared_ids": [
+          "urn:entity:book:subtype:urn:entity:book:1",
+          "urn:entity:movie:tag_cluster:1",
+          "urn:entity:book:tag_cluster:1",
+          "urn:entity:brand:tag_cluster:1",
+          "urn:entity:artist:tag_cluster:1"
+        ]
+      },
+      "popularity_only_rank_correlation": {
+        "method": "kendall_tau_b",
+        "value": -1.0,
+        "n": 5,
+        "pairs": 10,
+        "concordant": 0,
+        "discordant": 10,
+        "duplicates_removed": 0,
+        "meaning": "Agreement between two orderings this application computed over the same candidate pool. It describes how much the ordering moved; it says nothing about whether the recommendation is right."
+      },
+      "agreement_statements": {
+        "affinity_withheld": "The same 5 groupings sit at the top and the full ordering is unchanged (tau-b 1.00).",
+        "popularity_only": "5 of the top 5 groupings are the same, and the full ordering moves in the opposite direction (tau-b -1.00, 5 groupings compared)."
+      },
+      "bounded_attribution_status": "returned",
+      "pairwise_status": "unsupported_response_shape"
+    },
+    {
+      "programme_id": "regional-language",
+      "description": "Regional-language cinema with a strong local audience",
+      "programme": [
+        {
+          "title": "Court",
+          "year": 2014,
+          "imdb_id": "tt3709344"
+        },
+        {
+          "title": "The Disciple",
+          "year": 2020,
+          "imdb_id": "tt11471974"
+        },
+        {
+          "title": "Village Rockstars",
+          "year": 2018,
+          "imdb_id": "tt7294534"
+        },
+        {
+          "title": "Ee.Ma.Yau",
+          "year": 2018,
+          "imdb_id": "tt7798050"
+        }
+      ],
+      "data_status": "measured",
+      "stop_reason": "insufficiency",
+      "resolved_films": 0,
+      "unresolved_films": [
+        "Court",
+        "The Disciple",
+        "Village Rockstars",
+        "Ee.Ma.Yau"
+      ],
+      "app_trace_ids": [
+        "local-c001",
+        "local-c002",
+        "local-c003",
+        "local-c004",
+        "local-c005",
+        "local-c006",
+        "local-c007",
+        "local-c008"
+      ],
+      "application_trace_count": 8,
+      "ranked_cohort_count": 0,
+      "rejected_cohort_count": 0,
+      "status": "not_evaluable",
+      "error_type": null,
+      "challenge_unavailable_reason": "This run produced no candidate cohorts, so there is no recommendation to challenge. Nothing has been inferred in place of the missing evidence."
+    }
+  ]
+}
