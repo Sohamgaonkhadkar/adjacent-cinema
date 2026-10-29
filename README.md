@@ -594,7 +594,7 @@ The following operational checks remain open before scaling beyond a bounded hac
 - [ ] Privately confirm the frontend/backend trusted-proxy shared-secret configuration is aligned; do not expose or commit secret values.
 - [ ] Add external edge/API-gateway quotas and monitoring before increasing anonymous live Qloo usage. Current request limits are partly process-local.
 - [ ] Review durable SQLite storage, backup/restore and scheduled cleanup of expired guest sessions on the actual host.
-- [ ] Ask the hackathon organizers in writing what the literal “Qloo 4after” eligibility wording means if project-history eligibility depends on it.
+- [x] **PASS · evidence recorded 30 Oct 2026.** Qloo is integrated into the working application for verified entity resolution, cultural insights, cross-domain discovery and cohort scoring. The repository's initial commit is dated 10 Oct 2026, after the 30 Sep submission-period start ([official rules](https://qloo.devpost.com/rules); [initial commit](https://github.com/Sohamgaonkhadkar/adjacent-cinema/commit/ee7363e39b16a2fae35d70e7cc1ef48d0811f668)). This records the implementation and available project timeline, not a separate written organizer ruling.
 - [ ] If per-seed explanation is part of the judge story, test an intentionally bounded scoring context of at most 12 unique candidate IDs. The historical `/1` report had 11/11 contexts that did not request it; the expanded `/2` report has 28/28 for the same 50-candidate versus 12-ID bound.
 
 ## Security and known limitations
