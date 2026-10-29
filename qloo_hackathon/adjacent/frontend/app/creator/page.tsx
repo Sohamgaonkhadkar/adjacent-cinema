@@ -95,6 +95,9 @@ const DESIGN_FIELDS: [string, TestDesignField][] = [
   ["Observation window", "observation_window"],
 ];
 
+/** Keep the UI counter and submit-time guard aligned. */
+const MAX_CREATOR_THEMES = 5;
+
 const emptyBrief: Brief = {
   title: "",
   logline: "",
@@ -240,6 +243,21 @@ export default function CreatorPage() {
 
   const publicDemo = Boolean(backendHealth?.public_demo);
   const liveDisabled = Boolean(backendHealth?.public_demo && !backendHealth.live_creator_available);
+  const enteredThemeCount = brief.themes
+    .split(",")
+    .map((theme) => theme.trim())
+    .filter(Boolean).length;
+
+  // Validation used to set a banner above the form without bringing it into
+  // view. When a submit is rejected, move the feedback into the viewport so
+  // the user doesn't mistake a local validation return for a dead button.
+  useEffect(() => {
+    if (!formError && !error) return;
+    document.getElementById("creator-feedback")?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  }, [formError, error]);
 
   const refreshExperiments = useCallback(async () => {
     if (publicDemo) return;
@@ -386,8 +404,8 @@ export default function CreatorPage() {
       setFormError("Use at most five reference works.");
       return;
     }
-    if (themes.length > 5) {
-      setFormError("Use at most five themes.");
+    if (themes.length > MAX_CREATOR_THEMES) {
+      setFormError(`Use at most ${MAX_CREATOR_THEMES} themes.`);
       return;
     }
     if (themes.some((theme) => theme.length > 120)) {
@@ -721,7 +739,7 @@ export default function CreatorPage() {
       )}
 
       {(notice || error || formError) && (
-        <div className="border-b border-amber/30 bg-amber/10" role="status" aria-live="polite">
+        <div id="creator-feedback" className="border-b border-amber/30 bg-amber/10" role="status" aria-live="polite">
           <p className="mx-auto max-w-[1440px] px-4 py-3 text-sm text-amber md:px-8">
             {formError ?? error ?? notice}
           </p>
@@ -799,9 +817,34 @@ export default function CreatorPage() {
                   <TextInput
                     maxLength={604}
                     value={brief.themes}
-                    onChange={(event) => setBrief({ ...brief, themes: event.target.value })}
+                    aria-invalid={enteredThemeCount > MAX_CREATOR_THEMES}
+                    aria-describedby="creator-theme-count"
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      const count = value.split(",").map((theme) => theme.trim()).filter(Boolean).length;
+                      setBrief({ ...brief, themes: value });
+                      if (
+                        count <= MAX_CREATOR_THEMES &&
+                        formError === `Use at most ${MAX_CREATOR_THEMES} themes.`
+                      ) {
+                        setFormError(null);
+                      }
+                    }}
                     placeholder="isolation, night workers, coastal towns"
                   />
+                  <p
+                    id="creator-theme-count"
+                    aria-live="polite"
+                    className={cn(
+                      "mt-2 text-xs",
+                      enteredThemeCount > MAX_CREATOR_THEMES ? "text-warn" : "text-dim",
+                    )}
+                  >
+                    {enteredThemeCount} / {MAX_CREATOR_THEMES} themes
+                    {enteredThemeCount > MAX_CREATOR_THEMES
+                      ? " · Remove one or more themes before analysing."
+                      : ""}
+                  </p>
                 </Field>
                 <div>
                   <span className="field-label">Comparable works</span>
