@@ -23,6 +23,8 @@ import test from "node:test";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 const nav = readFileSync(new URL("../components/nf/Nav.tsx", import.meta.url), "utf8");
+const positioning = readFileSync(new URL("../components/nf/PositioningArena.tsx", import.meta.url), "utf8");
+const cinema = readFileSync(new URL("../app/cinema/page.tsx", import.meta.url), "utf8");
 
 function mediaBlocks(source, header) {
   const blocks = [];
@@ -126,4 +128,18 @@ test("reduced-motion visitors get the same layout without the animation", () => 
   }
   assert.match(block, /animation:\s*none !important/);
   assert.match(block, /transition:\s*none !important/);
+});
+
+
+test("positioning arena images fill their stage and columns do not stretch into blank space", () => {
+  assert.match(positioning, /className="grid items-start lg:grid-cols-12"/);
+  assert.match(positioning, /className="absolute inset-0 h-full w-full"/);
+  assert.match(positioning, /priority\s+imgClassName=\{cn\("h-full w-full object-cover"/);
+});
+
+test("withheld geography has an explicit visual fallback without inferred coordinates", () => {
+  assert.match(cinema, /GEOGRAPHIC LAYER · WITHHELD/);
+  assert.match(cinema, /No usable coordinates returned/);
+  assert.match(cinema, /Map withheld · insufficient geographic evidence/);
+  assert.match(cinema, /No pins or geographic clusters are inferred/);
 });
