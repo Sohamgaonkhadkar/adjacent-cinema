@@ -70,6 +70,22 @@ def test_tool_descriptions_state_fixture_default_and_limits() -> None:
     assert "never an inferred similarity" in tools["compare_film_groups"].lower()
 
 
+def test_compare_description_does_not_promise_a_metric() -> None:
+    """The description is what an external agent reads, so it must match the code.
+
+    `read_metric` returns None for every provider payload, so a description that
+    says a metric *is* returned would have a host model build on a value that
+    cannot exist.
+    """
+    server = build_server()
+    tools = {tool.name: (tool.description or "").lower() for tool in asyncio.run(server.list_tools())}
+    description = tools["compare_film_groups"]
+    assert "no metric is interpreted" in description
+    assert "metric null" in description
+    # The old wording implied a value would arrive when readable.
+    assert "returns a provider-reported metric" not in description
+
+
 def test_registry_has_no_write_or_delete_tools() -> None:
     server = build_server()
     for tool in asyncio.run(server.list_tools()):
