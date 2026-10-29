@@ -25,6 +25,7 @@ const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8")
 const nav = readFileSync(new URL("../components/nf/Nav.tsx", import.meta.url), "utf8");
 const positioning = readFileSync(new URL("../components/nf/PositioningArena.tsx", import.meta.url), "utf8");
 const cinema = readFileSync(new URL("../app/cinema/page.tsx", import.meta.url), "utf8");
+const creator = readFileSync(new URL("../app/creator/page.tsx", import.meta.url), "utf8");
 
 function mediaBlocks(source, header) {
   const blocks = [];
@@ -155,4 +156,15 @@ test("geography rendering is decided by the returned cells, not by the claim gat
   assert.match(cinema, /buildGeographyView\(geography, city\)/);
   assert.match(cinema, /<GeographyMap geography=\{geography\} density=\{geographyView\.density\} \/>/);
   assert.match(cinema, /<GeographyAbsence/);
+});
+
+
+test("Creator theme-limit validation is visible before and after submit", () => {
+  assert.match(creator, /const MAX_CREATOR_THEMES = 5/);
+  assert.match(creator, /themes\.length > MAX_CREATOR_THEMES/);
+  assert.match(creator, /aria-invalid=\{enteredThemeCount > MAX_CREATOR_THEMES\}/);
+  assert.match(creator, /id="creator-theme-count"/);
+  assert.match(creator, /\{enteredThemeCount\} \/ \{MAX_CREATOR_THEMES\} themes/);
+  assert.match(creator, /id="creator-feedback"/);
+  assert.match(creator, /getElementById\("creator-feedback"\)[\s\S]*?scrollIntoView/);
 });
