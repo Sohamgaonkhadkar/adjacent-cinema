@@ -3,12 +3,15 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   FIT_PADDING_PX,
+  HEAT_SURFACE_MAX_ZOOM,
   POINT_DETAIL_MIN_ZOOM,
   POINT_SPREAD_ZOOM,
   boundsContain,
   buildMapLayerPlan,
+  heatSurfaceVisibleAtZoom,
   pointLayerMinZoom,
   pointsVisibleAtZoom,
+  selectScoredMapCells,
 } from "../lib/geographyMap.ts";
 
 /**
@@ -138,4 +141,33 @@ test("GeographyMap takes its framing and point floor from the plan", () => {
   // The worker must be served from public/, otherwise maplibre 6 fetches a 404
   // and no GeoJSON layer renders at all.
   assert.match(source, /setWorkerUrl\("\/maplibre\/maplibre-gl-worker\.mjs"\)/);
+});
+
+test("the smoothed density surface hands off to crisp cell markers when zoomed in", () => {
+  const plan = buildMapLayerPlan(WIDE, true);
+  assert.ok(plan);
+  assert.equal(plan.heat.maxzoom, HEAT_SURFACE_MAX_ZOOM);
+  assert.equal(heatSurfaceVisibleAtZoom(plan, 12.99), true);
+  assert.equal(heatSurfaceVisibleAtZoom(plan, HEAT_SURFACE_MAX_ZOOM), false);
+  assert.equal(pointsVisibleAtZoom(plan, HEAT_SURFACE_MAX_ZOOM), true);
+});
+
+test("cell selection falls back to scored cells and rejects non-finite affinities", () => {
+  const valid = cell(51.5, -0.1, 0.8);
+  const invalid = cell(51.6, -0.2, Number.NaN);
+  const selected = selectScoredMapCells({
+    highest_affinity_cells: [],
+    cells: [valid, invalid],
+  });
+  assert.deepEqual(selected, [valid]);
+});
+
+test("a scored ranked list is preferred over the broader cell list", () => {
+  const preferred = cell(51.5, -0.1, 0.8);
+  const fallback = cell(51.6, -0.2, 0.6);
+  const selected = selectScoredMapCells({
+    highest_affinity_cells: [preferred],
+    cells: [preferred, fallback],
+  });
+  assert.deepEqual(selected, [preferred]);
 });
