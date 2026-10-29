@@ -166,7 +166,7 @@ export function PositioningArena({
         </p>
       </header>
 
-      <div className="grid items-start lg:grid-cols-12">
+      <div className="grid lg:grid-cols-12">
         {/* ── tabs + what-if ─────────────────────────────────────────── */}
         <div className="border-b border-line lg:col-span-3 lg:border-b-0 lg:border-r">
           <ul>
@@ -315,7 +315,7 @@ export function PositioningArena({
         </div>
 
         {/* ── stage + brief ─────────────────────────────────────────── */}
-        <div className="lg:col-span-6">
+        <div className="min-h-0 flex flex-col lg:col-span-6">
           {!active ? (
             <div className="flex min-h-[300px] flex-col justify-center gap-4 border-b border-line p-6 md:min-h-[380px] md:p-10">
               <span className="chip chip-warn">No supported strategy selected</span>
@@ -402,6 +402,41 @@ export function PositioningArena({
                       <PhotoFrame photo={photo} className="h-full" credit={false} />
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* Fill the shared grid row intentionally. The evidence inspector can be
+                  much taller than the brief; without this visual field its column was
+                  a large, empty black rectangle beneath the contact sheet. These are
+                  atmospheric photographs, not additional evidence for the selected strategy. */}
+              <div
+                data-testid="multiverse-visual-field"
+                className="relative mt-auto min-h-[280px] flex-1 overflow-hidden border-t border-line bg-ink-3"
+              >
+                <div className="absolute inset-0 grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)] gap-px bg-line">
+                  <div className="relative min-h-0 overflow-hidden bg-ink-3">
+                    <PhotoFrame
+                      photo={stageSecond[active.id]}
+                      fill
+                      credit={false}
+                      imgClassName="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="relative min-h-0 overflow-hidden bg-ink-3">
+                    <PhotoFrame
+                      photo={photos.lanternStreet}
+                      fill
+                      credit={false}
+                      imgClassName="h-full w-full object-cover"
+                    />
+                  </div>
+                </div>
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink via-ink/20 to-transparent" />
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-5 md:p-6">
+                  <p className="type-kicker">Additional visual field · {strategyName(active)}</p>
+                  <p className="caption mt-2 max-w-sm">
+                    Atmospheric imagery only · the positioning decision remains bounded by the cited evidence above.
+                  </p>
                 </div>
               </div>
             </>

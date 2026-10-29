@@ -131,8 +131,10 @@ test("reduced-motion visitors get the same layout without the animation", () => 
 });
 
 
-test("positioning arena images fill their stage and columns do not stretch into blank space", () => {
-  assert.match(positioning, /className="grid items-start lg:grid-cols-12"/);
+test("positioning arena images fill their stage and the middle column fills unused grid space", () => {
+  assert.match(positioning, /className="grid lg:grid-cols-12"/);
+  assert.match(positioning, /className="min-h-0 flex flex-col lg:col-span-6"/);
+  assert.match(positioning, /data-testid="multiverse-visual-field"/);
   // The stage photograph is layered behind the thesis copy. It must ask for
   // `fill` (an explicit absolute position on the figure) rather than relying on
   // a `h-full` percentage chain inside a container whose height is only a
