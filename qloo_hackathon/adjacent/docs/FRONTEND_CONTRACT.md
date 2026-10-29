@@ -296,7 +296,7 @@ This remains **off by default** and activates only when `ADJACENT_PUBLIC_DEMO=1`
 
 Campaign rows carry an internal server-created session owner association. Every campaign read/write and every child path (discovery, draft, review, approval, outreach, export) is owner-filtered; legacy rows with no guest owner are not visible to guests. Request IDs are hashed with the internal owner scope before persistence to prevent global unique-key replay leaks. Limits: 500 active sessions, 8-hour lifetime, 120 API requests/minute/session, 10 campaigns/session, 2,000 guest campaigns total; global caps of 1,000 discoveries and 5,000 each of drafts, reviews, and outreach; per-campaign caps of 10 discoveries, 50 drafts, 100 reviews, and 100 outreach records; discovery report ≤128 KiB; request bodies ≤16 KiB. Never place SQLite WAL on a network filesystem or use separate database copies; deploy on one backend host with durable local storage and add an edge quota. This opt-in does not enable experiment, Creator, Cinema, YouTube, synthesis, or debug writes.
 
-The existing request limiter is process-local; add an edge/API-gateway quota before public exposure or scaling replicas. No hosted deployment is verified; see [`FINALIZATION_STATUS.md`](FINALIZATION_STATUS.md).
+The existing request limiter is process-local; add an edge/API-gateway quota before increasing anonymous traffic or scaling replicas. The latest hosted route smoke check and remaining operational gates are recorded in [`NEXT_LIVE_CHECKLIST.md`](NEXT_LIVE_CHECKLIST.md); a route smoke check is not a comprehensive security acceptance.
 
 ## 9. FilmSponsor campaign routes (Creator Mode)
 

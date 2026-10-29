@@ -33,4 +33,4 @@ Set `ADJACENT_PUBLIC_DEMO=1` before exposing the backend anonymously. This permi
 5. Enable `ADJACENT_PUBLIC_DEMO=1` for an anonymous demo; keep live Creator disabled until the owner approves quotas/privacy and deploys edge limits. Keep YouTube and shared experiment writes disabled without an ownership boundary.
 6. Run the live-Qloo gate using an authorized secret, and separately verify fixture labels, public write denial, request limits, and secret redaction.
 
-**Current deployment result:** none verified. See [`../FINALIZATION_STATUS.md`](../FINALIZATION_STATUS.md) for the current evidence snapshot.
+**Current deployment result:** the Vercel/Render deployment has a recorded production route smoke check; remaining operational gates are in [`../NEXT_LIVE_CHECKLIST.md`](../NEXT_LIVE_CHECKLIST.md). This proposed Compose/Caddy topology is separate from the current hosted arrangement.

@@ -1,7 +1,7 @@
 # Adjacent — Architecture Freeze
 
 > **Historical design snapshot:** 6 October 2026.
-> **Status:** historical baseline; its deployment, rate-limit, and implementation claims are superseded by [`FINALIZATION_STATUS.md`](FINALIZATION_STATUS.md) and the live contract in [`FRONTEND_CONTRACT.md`](FRONTEND_CONTRACT.md), updated 16 October 2026.
+> **Status:** historical baseline. Deployment status and remaining operational gates are tracked in the [current live-Qloo checklist](NEXT_LIVE_CHECKLIST.md); current request and lifecycle behavior is defined by [`FRONTEND_CONTRACT.md`](FRONTEND_CONTRACT.md).
 > **Authority:** use this document for the original architecture rationale, not as evidence of current deployment or runtime behavior. Creator Mode is now the primary demo surface; Cinema Mode remains preserved.
 
 ---
