@@ -26,7 +26,7 @@ def test_two_verified_reference_works_can_continue_exploratorily() -> None:
     assert verdict.reason_code == "exploratory_resolved_ok"
     assert verdict.stats["coverage"] == "exploratory"
     assert verdict.stats["limitation"] == "limited_reference_works"
-    assert "downstream" in verdict.message.lower()
+    assert "candidate-cohort gates" in verdict.message.lower()
 
 
 def test_one_verified_work_requires_two_exact_theme_matches() -> None:
