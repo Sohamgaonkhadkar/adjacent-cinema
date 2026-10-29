@@ -780,8 +780,43 @@ export default function CinemaPage() {
                     <GeographyMap geography={geography} />
                   </div>
                 ) : (
-                  <div className="flex min-h-[200px] items-end border border-dashed border-line-strong p-4">
-                    <p className="caption">Map withheld · insufficient geographic evidence</p>
+                  <div className="relative flex min-h-[280px] items-center justify-center overflow-hidden border border-dashed border-line-strong bg-ink-3 p-6">
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 640 280"
+                      preserveAspectRatio="none"
+                      className="pointer-events-none absolute inset-0 h-full w-full text-line"
+                    >
+                      <defs>
+                        <pattern id="geography-empty-grid" width="32" height="32" patternUnits="userSpaceOnUse">
+                          <path d="M32 0H0V32" fill="none" stroke="currentColor" strokeOpacity="0.24" strokeWidth="1" />
+                        </pattern>
+                      </defs>
+                      <rect width="640" height="280" fill="url(#geography-empty-grid)" />
+                      <path
+                        d="M0 70H640 M0 140H640 M0 210H640 M160 0V280 M320 0V280 M480 0V280"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeDasharray="3 8"
+                        strokeOpacity="0.18"
+                      />
+                    </svg>
+                    <div className="relative z-10 flex max-w-sm flex-col items-center text-center">
+                      <div className="flex h-14 w-14 items-center justify-center border border-amber/40 bg-ink/80 text-amber">
+                        <svg aria-hidden="true" viewBox="0 0 48 48" className="h-7 w-7" fill="none">
+                          <path d="M24 42S37 29.8 37 19a13 13 0 1 0-26 0c0 10.8 13 23 13 23Z" stroke="currentColor" strokeWidth="1.5" />
+                          <circle cx="24" cy="19" r="4" stroke="currentColor" strokeWidth="1.5" />
+                          <path d="M7 7 41 41" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                        </svg>
+                      </div>
+                      <p className="mt-4 font-mono text-[0.6rem] uppercase tracking-[0.16em] text-amber">
+                        Geographic layer · withheld
+                      </p>
+                      <p className="mt-2 text-sm text-paper-2">No usable coordinates returned</p>
+                      <p className="caption mt-2 max-w-xs">
+                        Map withheld · insufficient geographic evidence. No pins or geographic clusters are inferred.
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
