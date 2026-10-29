@@ -15,7 +15,7 @@ hosting account and is not a hosted deployment by itself.
 
 ## Current hosted status
 
-This is the current split deployment: [Vercel frontend](https://adjacent-cinema.vercel.app) and [Render API](https://adjacent-cinema.onrender.com). On 27 October 2026, the four frontend routes returned HTTP 200, the proxied `/api/health` endpoint returned the expected public-demo flags, and sampled live Creator/Cinema runs completed with measured Qloo traces. The current live counterfactual report is in [Markdown](docs/verification/live_counterfactual_evaluation.md) and [JSON](docs/verification/live_counterfactual_evaluation.json). CI on the merged `main` (`db9a59c`) passed backend (including the Live-Qloo step), frontend and container-build jobs — [run 40567638201](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40567638201); the offline re-run of that commit is in [the post-merge record](docs/verification_2026-10-28_post_merge.md).
+This is the split deployment: [Vercel frontend](https://adjacent-cinema.vercel.app) and [Render API](https://adjacent-cinema.onrender.com). The latest documented hosted browser-route and live Creator/Cinema smoke check was on 27 October 2026; it is not a claim that the FilmSponsor or Audience Pulse browser journeys have since been walked through. On 29 October, PR #22 was merged and `main` advanced to `9b3a013`; the Vercel production deployment for that commit is READY. The Render backend's latest recorded live deploy is still `db9a59c` (PR #22 is primarily documentation/tests with one MCP description correction). The expanded live-Qloo evaluation is the separately dated `/2` report linked below; it does not replace the hosted browser/security checklist.
 
 Recent Render logs show successful FilmSponsor guest-session, campaign and discovery requests, but earlier origin-mismatch rejections remain a reason to perform the exact browser Origin/cookie check before relying on that workflow in a judge demo. This is a point-in-time verification, not a security audit or uptime guarantee.
 
@@ -84,33 +84,28 @@ destination is `http://127.0.0.1:8000`. For a hosted frontend, set
 
 ## Live counterfactual evaluation
 
-A reproducible live-Qloo evaluation ran three independent film programmes and applied the existing Decision Challenge to each completed measured run. See the [evaluation report](docs/verification/live_counterfactual_evaluation.md) and machine-readable [JSON results](docs/verification/live_counterfactual_evaluation.json).
+Two live-Qloo reports are preserved separately; the original three-programme result has not been overwritten.
 
-The latest report shows: affinity-withheld ranking changed the winner in **0/3** runs; the popularity-only baseline selected a different winner in **3/3**; the affinity gate suppressed **0** structurally sized cohorts; and affinity was not the first separating key for any adjacent ranking pair. These samples show a difference from the limited popularity-only baseline, not proof that affinity alone determines recommendations or predicts attendance/revenue.
+- Historical baseline, schema `adjacent.live-counterfactual-evaluation/1`: [Markdown](docs/verification/live_counterfactual_evaluation.md) · [JSON](docs/verification/live_counterfactual_evaluation.json)
+- Latest expanded evaluation, schema `adjacent.live-counterfactual-evaluation/2`, generated 29 October 2026: [Markdown](docs/verification/live_counterfactual_evaluation_v2.md) · [JSON](docs/verification/live_counterfactual_evaluation_v2.json)
 
-Per-seed explainability was `not_requested_limit` in **11/11** scoring contexts because each passed 50 candidate IDs, above the 12-candidate bound. This evaluation therefore does not establish which specific reference seed influenced the winning cohort. The third programme retained `Taipei Story` as unresolved rather than substituting fixture data.
+The `/2` report executed the **nine prespecified programmes** using the production live runner and the existing Decision Challenge on each same cached run. Results: **9 attempted, 8 evaluable, 1 not evaluable**. For the eight evaluable programmes, affinity-withheld ranking changed the winner in **0/8** runs, while popularity-only changed the winner in **8/8**. No structurally sized cohort was suppressed by the affinity gate, and affinity did not decide the first separating adjacent pair in these runs.
 
-Re-run with an authorised live `QLOO_API_KEY` using:
+The non-evaluable ninth scenario, regional-language cinema, is retained in the report: no film references resolved to admitted candidate cohorts, so there was no recommendation to challenge. The pipeline did not fill the gap with fixtures or inferred evidence. This is an explicit insufficiency outcome, not a failed programme silently removed from the denominator.
+
+Across the eight evaluable programmes, mean top-five overlap with the production ranking was **1.000** after withholding affinity-derived ordering keys and **0.950** for popularity-only. Mean Kendall tau-b was **1.000** for affinity-withheld and **-1.000** for popularity-only. These are within-pool ranking-agreement measurements, not external ground truth; they do not establish that a recommendation is correct or predict attendance, audience size, conversion, revenue or ROI.
+
+The `/2` report includes **28/28 scoring contexts** with `not_requested_limit` explainability status: each context had 50 requested candidate IDs, above the configured 12-candidate attribution bound. Some inputs remained unresolved (including Taipei Story); unresolved identities were not replaced with fixtures. No per-seed contribution is claimed from these contexts.
+
+The `/v2/analysis/compare` call is bounded and traced, but the public Qloo documentation does not define a verified response schema and this repository has no verified response sample. The reader therefore refuses to interpret numeric fields; report rows may show `unsupported_response_shape`. This is an intentional evidence boundary, not a measured similarity result.
+
+To reproduce the expanded evaluation using an authorized live `QLOO_API_KEY`:
 
 ```bash
-python research/scripts/live_counterfactual_evaluation.py --output-dir docs/verification --limit 3
+python research/scripts/live_counterfactual_evaluation.py --output-dir docs/verification --limit 9
 ```
 
-The evaluator refuses to run without a live key and does not silently use fixtures. Application trace IDs in the report are generated by Adjacent and scoped to a run; they are not Qloo-issued request IDs.
-
-The report files above were produced by the three-programme run and carry schema
-`adjacent.live-counterfactual-evaluation/1`. The script now also records the
-three-condition comparison (full analysis / affinity withheld / popularity-only)
-and emits schema `/2` with a prespecified list of nine programmes, which lets an
-operator reproduce a larger sample. The published `/1` files were **not**
-regenerated: their numbers remain the ones that were actually measured, and a
-`/2` report only exists once someone re-runs the script with an authorised live
-key — either directly
-(`python research/scripts/live_counterfactual_evaluation.py --output-dir docs/verification --limit 9`)
-or through the dedicated workflow, which now accepts a dispatch input
-(`gh workflow run live-counterfactual-evaluation.yml -f limit=9`) and uploads the
-Markdown and JSON as artifacts. As of 28 October 2026 the nine-programme report
-has **not** been generated.
+The evaluator refuses to run without a live key and never silently uses fixture data. Application trace IDs are generated by Adjacent, scoped to individual runs, and are not Qloo-issued request IDs. The report states the limitations and preserves unevaluable runs rather than presenting a more flattering denominator.
 
 ## Fixture and live Qloo modes
 
