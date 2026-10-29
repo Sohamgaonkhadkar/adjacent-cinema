@@ -1082,6 +1082,25 @@ export default function CreatorPage() {
               {run?.stop_message && (
                 <p className="mt-4 text-sm leading-relaxed text-paper-2">{run.stop_message}</p>
               )}
+              {validResult?.evidence?.seed_coverage?.status === "exploratory" && (
+                <div
+                  role="status"
+                  aria-label="Exploratory evidence coverage"
+                  className="mt-4 border border-line-strong p-4"
+                  data-testid="exploratory-coverage-notice"
+                >
+                  <p className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-amber">
+                    Exploratory evidence coverage
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-paper-2">
+                    {validResult.evidence.seed_coverage.message}
+                  </p>
+                  <p className="mt-2 font-mono text-[0.62rem] uppercase tracking-[0.1em] text-mute">
+                    Verified reference works: {validResult.evidence.seed_coverage.resolved_reference_works}
+                    {" · "}Exact-matched Qloo themes: {validResult.evidence.seed_coverage.resolved_theme_tags}
+                  </p>
+                </div>
+              )}
               {(failed || insufficient || run?.status === "cancelled") && (
                 <p className="mt-4 text-sm leading-relaxed text-mute">
                   Failure is a legitimate terminal state. Nothing was substituted, and no fixture
