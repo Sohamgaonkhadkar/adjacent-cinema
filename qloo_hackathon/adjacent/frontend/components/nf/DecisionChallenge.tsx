@@ -86,6 +86,13 @@ export function DecisionChallenge({ challenge, onExportReceipt, onGoToTest }: De
         <h3 className="type-kicker mt-10">Qloo Impact Lab · three conditions, one candidate pool</h3>
         {view.impact.available ? (
           <>
+            <div className="mt-4 border-l-2 border-amber bg-ink-2 p-4">
+              <p className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-dim">
+                What the comparison establishes
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-paper-2">{view.impact.verdict}</p>
+              <p className="caption mt-2">{view.impact.scopeNote}</p>
+            </div>
             <div className="mt-4 overflow-x-auto border border-line">
               <table className="w-full min-w-[36rem] text-left text-sm">
                 <caption className="caption px-4 py-2 text-left">
@@ -125,6 +132,43 @@ export function DecisionChallenge({ challenge, onExportReceipt, onGoToTest }: De
                 </tbody>
               </table>
             </div>
+            {view.impact.rankRows.length > 0 ? (
+              <div className="mt-5 overflow-x-auto border border-line">
+                <table className="w-full min-w-[36rem] text-left text-xs">
+                  <caption className="caption px-4 py-2 text-left">
+                    Candidate-by-candidate positions (first five). Highlighted cells moved from
+                    the production position; all three columns use the same admitted pool.
+                  </caption>
+                  <thead>
+                    <tr className="border-b border-line font-mono text-[0.58rem] uppercase tracking-[0.12em] text-dim">
+                      <th scope="col" className="px-3 py-2">Rank</th>
+                      <th scope="col" className="px-3 py-2">Full analysis</th>
+                      <th scope="col" className="px-3 py-2">Affinity withheld</th>
+                      <th scope="col" className="px-3 py-2">Popularity only</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {view.impact.rankRows.map((row) => (
+                      <tr key={row.position} className="border-b border-line last:border-b-0">
+                        <th scope="row" className="px-3 py-3 align-top font-mono text-mute">{row.position}</th>
+                        <td className="px-3 py-3 align-top text-paper-2">{row.full}</td>
+                        <td className={cn("px-3 py-3 align-top", row.withheldMoved ? "text-warn" : "text-paper-2")}>
+                          {row.withheld}{row.withheldMoved ? " · moved" : ""}
+                        </td>
+                        <td className={cn("px-3 py-3 align-top", row.popularityMoved ? "text-warn" : "text-paper-2")}>
+                          {row.popularity}{row.popularityMoved ? " · moved" : ""}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="caption mt-3">
+                Candidate-level positions are unavailable because the three returned orders are
+                missing or do not describe one identical pool.
+              </p>
+            )}
             {view.impact.statements.length > 0 && (
               <ul className="mt-3 space-y-1">
                 {view.impact.statements.map((statement) => (
