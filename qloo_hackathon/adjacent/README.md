@@ -285,7 +285,7 @@ Every `npm run test:*` suite is wired into CI; `node --experimental-strip-types
 | `test:positioning` | Cultural Multiverse selection policy | 10 |
 | `test:entity-display` | entity rendering and fingerprint a11y | 3 |
 | `test:contract` | frontend/backend request contract, idempotency | 11 |
-| `test:challenge` | Decision Challenge view model, Impact Lab, receipt export | 31 |
+| `test:challenge` | Decision Challenge view model, Impact Lab, receipt export | 33 |
 | `test:comparables` | Comparables Audit view model | 8 |
 | `test:explainability` | "Why this result?" panel | 8 |
 | `test:pulse` | Audience Pulse view model and form validation | 35 |
