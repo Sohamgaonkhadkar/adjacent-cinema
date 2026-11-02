@@ -106,6 +106,8 @@ The `/2` report executed the **nine prespecified programmes** using the producti
 
 The non-evaluable ninth scenario, regional-language cinema, is retained in the report: no film references resolved to admitted candidate cohorts, so there was no recommendation to challenge. The pipeline did not fill the gap with fixtures or inferred evidence. This is an explicit insufficiency outcome, not a failed programme silently removed from the denominator.
 
+**Interpretation:** The comparisons keep Qloo-discovered candidates, including candidates admitted by Qloo's evidence gate. The popularity-only ranking uses Qloo-returned popularity. It is **not an independent no-Qloo baseline**, and a different popularity winner does **not** establish an affinity effect. The Impact Lab now states this limitation visibly and in exports rather than crediting affinity for a difference produced solely by another sorting rule.
+
 Across the eight evaluable programmes, mean top-five overlap with the production ranking was **1.000** after withholding affinity-derived ordering keys and **0.950** for popularity-only. Mean Kendall tau-b was **1.000** for affinity-withheld and **-1.000** for popularity-only. These are within-pool ranking-agreement measurements, not external ground truth; they do not establish that a recommendation is correct or predict attendance, audience size, conversion, revenue or ROI.
 
 The `/2` report includes **28/28 scoring contexts** with `not_requested_limit` explainability status: each context had 50 requested candidate IDs, above the configured 12-candidate attribution bound. Some inputs remained unresolved (including Taipei Story); unresolved identities were not replaced with fixtures. No per-seed contribution is claimed from these contexts.
@@ -179,8 +181,9 @@ the ranking, and they spend no provider call beyond the ones named.
   and HTTP status, never the exception text or the response body, and a call that
   never left the process is not charged to the run's budget.
 - **Qloo Impact Lab** and **Why this result?** — the three-condition
-  counterfactual table (`full_analysis`, `affinity_withheld`, `popularity_only`)
-  and the bounded per-seed attribution panel. Kendall tau-b is reported as
+  counterfactual table (`full_analysis`, `affinity_withheld`, `popularity_only`),
+  evidence-limited inference, an exact-pool top-five position comparison,
+  and the bounded per-seed attribution panel. Exports retain the scope caveat. Kendall tau-b is reported as
   `not computable` when it is undefined rather than as `0.0`; no payload uses the
   words probability, confidence or likelihood.
 
@@ -431,6 +434,7 @@ record).
 - [Deployment topology proposal](docs/adr/006-deployment-topology.md)
 - [Decision Challenge design](docs/adr/007-decision-challenge.md) — necessity,
   stability and next checks recomputed from the run's own cached evidence
+- [2 November Impact Lab competitor audit](docs/IMPACT_LAB_COMPETITOR_AUDIT_20261102.md) — prioritized evidence gaps and reproducible next steps
 - [Current live-Qloo checklist](docs/NEXT_LIVE_CHECKLIST.md)
 - [MIT license](../../LICENSE)
 
