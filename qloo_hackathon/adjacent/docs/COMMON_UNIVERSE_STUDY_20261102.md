@@ -1,6 +1,6 @@
 # M14 — honest same-universe Qloo versus independent metadata study
 
-**Created:** 2 November 2026. **Status:** code and a frozen exploratory catalog committed; **new live results are not included**. Do not describe this as an observed Qloo win.
+**Created:** 2 November 2026. **Status:** protocol and frozen exploratory catalog committed, followed by **one full-coverage live Qloo comparison**. See [dated observed results](LIVE_COMMON_UNIVERSE_RESULT_20261102.md). Do not describe this as proof Qloo makes better recommendations.
 
 ## Why an additional experiment exists
 
