@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Nav } from "@/components/nf/Nav";
 import { Footer } from "@/components/nf/Footer";
+import { BackendHealthProvider } from "@/components/BackendHealthProvider";
 
 export const metadata: Metadata = {
   title: "Adjacent Cinema — Every film belongs to more than one world",
@@ -13,6 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="min-h-screen bg-ink text-paper">
+        <BackendHealthProvider>
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[80] focus:bg-paper focus:px-4 focus:py-2 focus:text-ink"
@@ -22,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Nav />
         <main id="main">{children}</main>
         <Footer />
+        </BackendHealthProvider>
       </body>
     </html>
   );
