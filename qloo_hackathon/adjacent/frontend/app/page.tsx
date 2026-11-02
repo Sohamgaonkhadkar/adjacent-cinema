@@ -71,7 +71,10 @@ function Hero() {
               Cinema Mode
             </Link>
             <Link className="btn-ghost" href="/creator?demo=fixture">
-              Labelled fixture
+              Creator demo · fixture
+            </Link>
+            <Link className="btn-ghost" href="/cinema?demo=fixture">
+              Cinema demo · fixture
             </Link>
           </div>
         </div>
