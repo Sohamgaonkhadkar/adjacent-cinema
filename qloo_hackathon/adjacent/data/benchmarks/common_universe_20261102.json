@@ -1,0 +1,166 @@
+{
+  "study_id": "m14-horror-programme-20261102-v1",
+  "metadata_source": "Pre-existing manually curated film metadata in research/scripts/m12_3_incremental_value.py (53-film universe, written before M14); author-collected, not externally independently verified",
+  "selection_note": "Exploratory fixed horror subset from the pre-existing metadata universe; chosen for this M14 study on 2026-11-02. Not blind to earlier Adjacent work. Candidate identities and metadata are frozen before new Qloo resolution/scoring. No claim of ex-ante outcome preregistration.",
+  "selection_uses_qloo": false,
+  "programme": [
+    {
+      "title": "The Thing",
+      "year": 1982,
+      "genres": [
+        "horror",
+        "mystery",
+        "sci-fi"
+      ],
+      "country": "USA",
+      "director": "John Carpenter"
+    },
+    {
+      "title": "The Shining",
+      "year": 1980,
+      "genres": [
+        "horror",
+        "thriller"
+      ],
+      "country": "UK",
+      "director": "Stanley Kubrick"
+    },
+    {
+      "title": "Suspiria",
+      "year": 1977,
+      "genres": [
+        "horror"
+      ],
+      "country": "Italy",
+      "director": "Dario Argento"
+    }
+  ],
+  "candidates": [
+    {
+      "title": "Hereditary",
+      "year": 2018,
+      "genres": [
+        "horror",
+        "mystery",
+        "thriller"
+      ],
+      "country": "USA",
+      "director": "Ari Aster"
+    },
+    {
+      "title": "The Witch",
+      "year": 2015,
+      "genres": [
+        "horror",
+        "mystery"
+      ],
+      "country": "USA",
+      "director": "Robert Eggers"
+    },
+    {
+      "title": "Midsommar",
+      "year": 2019,
+      "genres": [
+        "drama",
+        "horror",
+        "mystery"
+      ],
+      "country": "USA",
+      "director": "Ari Aster"
+    },
+    {
+      "title": "Get Out",
+      "year": 2017,
+      "genres": [
+        "horror",
+        "mystery",
+        "thriller"
+      ],
+      "country": "USA",
+      "director": "Jordan Peele"
+    },
+    {
+      "title": "It Follows",
+      "year": 2014,
+      "genres": [
+        "horror",
+        "mystery",
+        "thriller"
+      ],
+      "country": "USA",
+      "director": "David Robert Mitchell"
+    },
+    {
+      "title": "The Babadook",
+      "year": 2014,
+      "genres": [
+        "drama",
+        "horror",
+        "thriller"
+      ],
+      "country": "Australia",
+      "director": "Jennifer Kent"
+    },
+    {
+      "title": "Raw",
+      "year": 2016,
+      "genres": [
+        "drama",
+        "horror"
+      ],
+      "country": "France",
+      "director": "Julia Ducournau"
+    },
+    {
+      "title": "Saint Maud",
+      "year": 2019,
+      "genres": [
+        "drama",
+        "horror"
+      ],
+      "country": "UK",
+      "director": "Rose Glass"
+    },
+    {
+      "title": "The Lighthouse",
+      "year": 2019,
+      "genres": [
+        "drama",
+        "fantasy",
+        "horror"
+      ],
+      "country": "USA",
+      "director": "Robert Eggers"
+    },
+    {
+      "title": "28 Days Later",
+      "year": 2002,
+      "genres": [
+        "horror",
+        "sci-fi"
+      ],
+      "country": "UK",
+      "director": "Danny Boyle"
+    },
+    {
+      "title": "The Wicker Man",
+      "year": 1973,
+      "genres": [
+        "horror",
+        "mystery"
+      ],
+      "country": "UK",
+      "director": "Robin Hardy"
+    },
+    {
+      "title": "Videodrome",
+      "year": 1983,
+      "genres": [
+        "horror",
+        "sci-fi"
+      ],
+      "country": "Canada",
+      "director": "David Cronenberg"
+    }
+  ]
+}
