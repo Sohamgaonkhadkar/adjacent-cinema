@@ -236,7 +236,8 @@ test("necessity rows name the mainstream baseline difference", () => {
   const view = buildChallengeView(fixtureChallenge);
   const baseline = view.necessityRows.find((row) => row.id === "popularity-baseline");
   assert.ok(baseline);
-  assert.match(baseline.label, /mainstream baseline would recommend something else/);
+  assert.match(baseline.label, /Qloo popularity-only sort selects another cohort/);
+  assert.doesNotMatch(baseline.detail, /taste signal is what makes/);
   assert.match(baseline.detail, /movie · Baraka/);
 });
 
@@ -605,6 +606,61 @@ test("the impact view reports all three conditions on one scale", () => {
   assert.match(view.statements[0], /tau-b 0\.80/);
 });
 
+test("the Impact Lab states what it cannot prove about Qloo and affinity", () => {
+  const view = buildImpactView(challengeWithImpact);
+  assert.match(view.verdict, /No change attributable to affinity/);
+  assert.match(view.scopeNote, /not a Qloo-versus-no-Qloo test/);
+  assert.match(view.scopeNote, /Qloo popularity/);
+  assert.doesNotMatch(view.verdict, /improves the recommendation/);
+});
+
+test("the Impact Lab shows identical-pool positions without comparing unlike pools", () => {
+  const a = "urn:entity:artist:a";
+  const b = "urn:entity:book:b";
+  const c = "urn:entity:movie:c";
+  const labels = [
+    { cohort_id: a, label: "artist · Alpha" },
+    { cohort_id: b, label: "book · Beta" },
+    { cohort_id: c, label: "movie · Gamma" },
+  ];
+  const challenge = {
+    ...challengeWithImpact,
+    necessity: {
+      ...challengeWithImpact.necessity,
+      production_order: [a, b, c],
+      affinity_withheld: {
+        ...challengeWithImpact.necessity.affinity_withheld,
+        order: labels,
+        ranks_moved: 0,
+      },
+      popularity_only: {
+        ...challengeWithImpact.necessity.popularity_only,
+        order: [labels[2], labels[0], labels[1]],
+      },
+    },
+  };
+  const view = buildImpactView(challenge);
+  assert.equal(view.rankRows.length, 3);
+  assert.deepEqual(view.rankRows.map((row) => row.full), ["artist · Alpha", "book · Beta", "movie · Gamma"]);
+  assert.deepEqual(view.rankRows.map((row) => row.withheldMoved), [false, false, false]);
+  assert.deepEqual(view.rankRows.map((row) => row.popularityMoved), [true, true, true]);
+  assert.equal(view.rankRows[0].popularity, "movie · Gamma");
+  assert.doesNotMatch(JSON.stringify(view.rankRows), /urn:entity/);
+
+  // A changed candidate set is not a valid like-for-like comparison.
+  const invalid = {
+    ...challenge,
+    necessity: {
+      ...challenge.necessity,
+      popularity_only: {
+        ...challenge.necessity.popularity_only,
+        order: [labels[2], labels[2], labels[1]],
+      },
+    },
+  };
+  assert.deepEqual(buildImpactView(invalid).rankRows, []);
+});
+
 test("an impact payload that predates the conditions says so", () => {
   const legacy = { ...fixtureChallenge };
   delete legacy.necessity.conditions;
@@ -645,6 +701,7 @@ test("the impact table never claims audience or revenue effects", () => {
 test("the receipt text carries the condition comparison", () => {
   const receipt = formatDecisionReceipt(challengeWithImpact);
   assert.match(receipt, /CONDITION COMPARISON/);
+  assert.match(receipt, /not a Qloo-versus-no-Qloo test/);
   assert.match(receipt, /AFFINITY WITHHELD — artist · Brian Eno · top five kept 4\/5 · tau-b 0\.80 · winner unchanged/);
   assert.match(receipt, /POPULARITY-ONLY BASELINE — movie · Baraka · top five kept 2\/5 · tau-b -0\.20 · winner CHANGES/);
   assert.match(receipt, /FULL ANALYSIS — artist · Brian Eno · top five kept 5\/5 · tau-b 1\.00 · reference ordering/);
@@ -655,6 +712,7 @@ test("the exported Test Card carries the condition comparison", () => {
   const section = sections.find((entry) => entry.label.startsWith("Condition comparison"));
   assert.ok(section, "the exported card must not drop the counterfactuals");
   assert.match(section.value, /top five kept 4\/5/);
+  assert.match(section.value, /not a Qloo-versus-no-Qloo test/);
   assert.match(section.value, /tau-b -0\.20/);
   assert.match(section.label, /not a probability/);
 });
