@@ -104,6 +104,7 @@ export default function CinemaPage() {
   const stopStream = useRef<(() => void) | null>(null);
   const runGeneration = useRef(0);
   const activeRunId = useRef<string | null>(null);
+  const fixtureUrlIntentConsumed = useRef(false);
 
   const result: AdjacentRunResult | null = useMemo(() => {
     const candidate = (run?.result as AdjacentRunResult | null) ?? null;
@@ -269,6 +270,18 @@ export default function CinemaPage() {
         setAnalysing(false);
       });
   }
+
+  // A judge can explicitly open /cinema?demo=fixture to launch the same
+  // labelled sample available in the UI. Ordinary /cinema visits never
+  // auto-start a request. The ref prevents duplicate requests in Strict Mode.
+  useEffect(() => {
+    if (fixtureUrlIntentConsumed.current) return;
+    if (new URLSearchParams(window.location.search).get("demo") !== "fixture") return;
+    fixtureUrlIntentConsumed.current = true;
+    startFixture();
+    // Intent is consumed exactly once on initial mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Live analysis is a server-side decision (public-demo gate + a configured
   // Qloo key). Ask once so the button reflects it instead of failing on click.
