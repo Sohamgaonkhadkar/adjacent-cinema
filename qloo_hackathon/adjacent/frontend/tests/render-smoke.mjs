@@ -10,7 +10,7 @@ const frontendDir = fileURLToPath(new URL("..", import.meta.url));
 // `/pulse/[token]` is the participant ballot: it renders its loading state on
 // the server and fetches through the same-origin /api proxy in the browser, so
 // the smoke test can render it without a backend.
-const routes = ["/", "/creator", "/cinema", "/creator/sponsor", "/pulse/smoke-test-token"];
+const routes = ["/", "/creator", "/cinema", "/cinema?demo=fixture", "/creator/sponsor", "/pulse/smoke-test-token"];
 
 async function getFreePort() {
   const { createServer } = await import("node:net");
@@ -186,6 +186,8 @@ test("production build renders every primary web surface", async () => {
         );
       }
       if (route === "/") {
+        assert.ok(html.includes('href="/creator?demo=fixture"'), "missing one-click Creator fixture link");
+        assert.ok(html.includes('href="/cinema?demo=fixture"'), "missing one-click Cinema fixture link");
         // The home page renders the Anchor stage photograph, which fills its
         // grid cell. It must carry an explicit absolute position, not the
         // inherited `relative` that made the frame collapse.
