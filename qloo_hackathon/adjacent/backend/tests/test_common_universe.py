@@ -41,6 +41,9 @@ def test_freeze_is_deterministic_and_excludes_provider_signals():
     assert frozen["sha256"] == freeze_manifest(manifest)["sha256"]
     assert [r["key"] for r in metadata_ranking(frozen)] == ["a|2001", "c|2003", "b|2002"]
     assert frozen["candidates"][0]["genres"] == ["drama"]
+    frozen["candidates"][0]["title"] = "Tampered"
+    with pytest.raises(InvalidStudy, match="changed after hash"):
+        compare_common_universe(frozen)
 
 
 @pytest.mark.parametrize("injection", [
@@ -152,3 +155,22 @@ def test_checked_in_manifest_offline_preflight_never_claims_live_evidence(tmp_pa
     assert report["live_result_claim"] is False
     assert report["candidate_count"] == 12
     assert len(report["frozen_sha256"]) == 64
+
+
+def test_live_command_without_key_is_blocked_and_exits_nonzero(tmp_path):
+    script = ADJACENT / "research" / "scripts" / "m14_common_universe_live.py"
+    manifest = ADJACENT / "data" / "benchmarks" / "common_universe_20261102.json"
+    output = tmp_path / "live.json"
+    env = dict(os.environ)
+    env.pop("QLOO_API_KEY", None)
+    proc = subprocess.run(
+        [sys.executable, str(script), "--manifest", str(manifest),
+         "--output", str(output), "--live"],
+        capture_output=True, text=True, timeout=30, check=False, env=env,
+    )
+    assert proc.returncode == 2, proc.stderr
+    report = json.loads(output.read_text(encoding="utf-8"))
+    assert report["status"] == "blocked"
+    assert report["execution"] == "live_qloo"
+    assert report["live_result_claim"] is False
+    assert "QLOO_API_KEY absent" in report["reason"]
