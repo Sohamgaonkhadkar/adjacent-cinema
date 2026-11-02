@@ -1,0 +1,43 @@
+name: Post-submission audience preference research (MovieLens 32M)
+
+# Runs once, only on an isolated research branch. Does not update main,
+# deployment, Devpost materials, submitted application, or Qloo data.
+on:
+  push:
+    branches:
+      - research/independent-audience-benchmark-20261102
+    paths:
+      - .github/workflows/m15-audience-benchmark.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audience-proxy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: qloo_hackathon/adjacent
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download original MovieLens 32M research dataset
+        run: |
+          curl --fail --location --retry 3 --retry-delay 3 --max-time 720 --silent --show-error \
+            "https://files.grouplens.org/datasets/movielens/ml-32m.zip" \
+            --output "$RUNNER_TEMP/ml-32m.zip"
+          python3 -c 'import os,zipfile; p=os.environ["RUNNER_TEMP"]+"/ml-32m.zip"; z=zipfile.ZipFile(p); print("Downloaded archive bytes",os.stat(p).st_size); print("ZIP members",len(z.namelist()))'
+      - name: Evaluate frozen rankings against historical audience co-ratings
+        run: |
+          python3 research/scripts/m15_movielens_audience.py \
+            --zip "$RUNNER_TEMP/ml-32m.zip" \
+            --output audience-proxy-report.json
+      - name: Upload aggregate-only evaluation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exploratory-audience-proxy
+          path: qloo_hackathon/adjacent/audience-proxy-report.json
+          if-no-files-found: warn
+          retention-days: 14
