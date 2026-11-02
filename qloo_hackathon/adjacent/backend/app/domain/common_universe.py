@@ -68,7 +68,7 @@ def _catalog(films: Any, *, role: str) -> list[dict[str, Any]]:
             "key": key,
             "title": row["title"].strip(),
             "year": row["year"],
-            "genres": sorted(set(g.strip().casefold() for g in genres)),
+            "genres": sorted({g.strip().casefold() for g in genres}),
             "country": str(row.get("country") or "").strip().casefold(),
             "director": str(row.get("director") or "").strip().casefold(),
             "imdb_id": str(row.get("imdb_id") or "").strip() or None,
@@ -91,7 +91,7 @@ def freeze_manifest(manifest: Mapping[str, Any]) -> dict[str, Any]:
     candidates = _catalog(manifest.get("candidates"), role="candidates")
     if not 2 <= len(candidates) <= 50:
         raise InvalidStudy("Shared candidate universe must contain 2..50 films")
-    if set(x["key"] for x in programme).intersection(x["key"] for x in candidates):
+    if {x["key"] for x in programme}.intersection(x["key"] for x in candidates):
         raise InvalidStudy("Programme films cannot also be recommendations")
     if manifest.get("selection_uses_qloo") is not False:
         raise InvalidStudy("selection_uses_qloo must explicitly be false")
