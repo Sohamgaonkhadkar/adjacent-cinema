@@ -462,8 +462,8 @@ def _necessity_statement(necessity: dict[str, Any], labels: dict[str, str]) -> s
         runner_label = labels.get(runner_id, runner_id or "the runner-up")
         lines.append(
             f"{winner_label} and {runner_label} are indistinguishable once the affinity numbers are "
-            f"removed — same evidence strength, same novelty, same breadth — so affinity is the only "
-            f"thing that puts one in front of the other. Treat the top two as one option."
+            f"removed — same novelty and breadth — so the remaining id tie-break is arbitrary. "
+            f"Treat the top two as unresolved options, not a meaningful first and second."
         )
     elif not withheld["winner_changed"]:
         if withheld["ranks_moved"] == 0:
