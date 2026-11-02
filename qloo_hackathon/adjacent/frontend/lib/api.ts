@@ -217,14 +217,76 @@ export interface BackendHealth {
   filmsponsor_guest_enabled?: boolean;
 }
 
-export async function getHealth(): Promise<BackendHealth> {
+export class BackendHealthError extends Error {
+  constructor(
+    readonly status: number,
+    message: string
+  ) {
+    super(message);
+    this.name = "BackendHealthError";
+  }
+}
+
+export async function getHealth(timeoutMs = API_TIMEOUT_MS): Promise<BackendHealth> {
   const { response, data } = await fetchJsonWithTimeout<BackendHealth>(
     "/health",
     {},
-    "Backend status check timed out. Check the backend connection and retry."
+    "Backend status check timed out. Check the backend connection and retry.",
+    timeoutMs
   );
-  if (!response.ok || !data) throw new Error("Could not load backend status");
+  if (!response.ok) {
+    throw new BackendHealthError(response.status, `Backend health check failed (${response.status})`);
+  }
+  if (!data) {
+    throw new BackendHealthError(response.status, "The backend returned an empty health response.");
+  }
   return data;
+}
+
+/**
+ * Wake a sleeping backend with bounded, retryable health checks.
+ * This retries only the idempotent GET /health request; callers should start
+ * analysis POSTs only after this function resolves.
+ */
+export async function waitForBackendReady(options: {
+  maxWaitMs?: number;
+  requestTimeoutMs?: number;
+  retryDelayMs?: number;
+  onAttempt?: (attempt: number) => void;
+} = {}): Promise<BackendHealth> {
+  const {
+    maxWaitMs = 150_000,
+    requestTimeoutMs = 20_000,
+    retryDelayMs = 5_000,
+    onAttempt,
+  } = options;
+  const deadline = Date.now() + maxWaitMs;
+  let attempt = 0;
+  let lastError: unknown = null;
+
+  while (Date.now() < deadline) {
+    attempt += 1;
+    onAttempt?.(attempt);
+
+    try {
+      return await getHealth(Math.max(1, Math.min(requestTimeoutMs, deadline - Date.now())));
+    } catch (error) {
+      lastError = error;
+      const retryable =
+        !(error instanceof BackendHealthError) ||
+        [408, 429, 500, 502, 503, 504].includes(error.status);
+      if (!retryable) throw error;
+
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) break;
+      await new Promise((resolve) => setTimeout(resolve, Math.min(retryDelayMs, remaining)));
+    }
+  }
+
+  const detail = lastError instanceof Error ? ` Last error: ${lastError.message}` : "";
+  throw new Error(
+    `The analysis backend did not become available within ${Math.ceil(maxWaitMs / 1000)} seconds.${detail}`
+  );
 }
 
 // ─── Normalizers ────────────────────────────────────────────────────────────
