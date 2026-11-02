@@ -107,38 +107,33 @@ async function checkRoutes() {
   }
 }
 
-async function checkFixture(health) {
-  if (!fixture) return;
-  if (!health || health.fixture_demo_available !== true) {
-    check("fixture demo", false, "backend health absent or fixture not advertised");
-    return;
-  }
+async function checkSingleFixture(label, path) {
   try {
-    const start = await request("/api/run/demo", {
+    const start = await request(path, {
       method: "POST",
       headers: { "Content-Type": "application/json", Origin: base.origin },
       body: "{}",
     }, 20_000);
     const payload = await start.json();
     if (!start.ok || typeof payload.run_id !== "string" || !payload.run_id) {
-      check("fixture demo start", false, `HTTP ${start.status}; no usable run_id`);
+      check(label + " fixture start", false, `HTTP ${start.status}; no usable run_id`);
       return;
     }
-    check("fixture demo start", true, `HTTP ${start.status}`);
+    check(label + " fixture start", true, `HTTP ${start.status}`);
     for (let i = 0; i < 20; i++) {
       await sleep(1_500);
       const read = await request("/api/run/" + encodeURIComponent(payload.run_id), {}, 15_000);
       if (!read.ok) {
-        check("fixture demo completion", false, `GET returned HTTP ${read.status}`);
+        check(label + " fixture completion", false, `GET returned HTTP ${read.status}`);
         return;
       }
       const state = await read.json();
       if (state.status === "completed" || state.status === "insufficient" || state.status === "failed") {
         const dataStatus = state.result?.data_status;
         const valid = state.status === "completed" && dataStatus === "fixture";
-        check("fixture demo completion", valid,
+        check(label + " fixture completion", valid,
           `status=${state.status}; data_status=${dataStatus || "none"}`);
-        report.fixture = {
+        report[label + "_fixture"] = {
           status: state.status,
           data_status: dataStatus || null,
           stop_reason: state.stop_reason || null,
@@ -147,10 +142,21 @@ async function checkFixture(health) {
         return;
       }
     }
-    check("fixture demo completion", false, "no terminal response in 30 seconds");
+    check(label + " fixture completion", false, "no terminal response in 30 seconds");
   } catch (error) {
-    check("fixture demo", false, error instanceof Error ? error.name : "request error");
+    check(label + " fixture", false, error instanceof Error ? error.name : "request error");
   }
+}
+
+async function checkFixture(health) {
+  if (!fixture) return;
+  if (!health || health.fixture_demo_available !== true) {
+    check("fixture readiness", false, "backend health absent or fixture not advertised");
+    return;
+  }
+  // Both requests use explicit mock/fixture routes, never spend Qloo quota.
+  await checkSingleFixture("cinema", "/api/run/demo");
+  await checkSingleFixture("creator", "/api/creator/run/demo");
 }
 
 try {
