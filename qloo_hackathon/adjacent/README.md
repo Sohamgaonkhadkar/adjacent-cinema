@@ -17,7 +17,7 @@ hosting account and is not a hosted deployment by itself.
 
 The current production topology uses [Vercel for the frontend](https://adjacent-cinema.vercel.app) and [Render for the FastAPI API](https://adjacent-cinema.onrender.com). This section records checks made on **2 November 2026**; it is a dated deployment snapshot, not an uptime or security guarantee.
 
-- **Main commit:** [`c353521`](https://github.com/Sohamgaonkhadkar/adjacent-cinema/commit/c35352115617ba8fec66664cf2a48a3d64d6d029) — shared backend-readiness checks across API workflows.
+- **Application commit checked:** [`c353521`](https://github.com/Sohamgaonkhadkar/adjacent-cinema/commit/c35352115617ba8fec66664cf2a48a3d64d6d029) — shared backend-readiness checks across API workflows.
 - **PR #31:** [Render cold-start recovery](https://github.com/Sohamgaonkhadkar/adjacent-cinema/pull/31), merged.
 - **PR #32:** [Shared backend readiness guard](https://github.com/Sohamgaonkhadkar/adjacent-cinema/pull/32), merged.
 - **CI:** [run 41431186032](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/41431186032) passed the backend, frontend and container-build jobs. The frontend job includes the dedicated cold-start retry tests.
