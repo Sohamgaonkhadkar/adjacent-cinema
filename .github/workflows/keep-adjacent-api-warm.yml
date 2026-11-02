@@ -1,0 +1,64 @@
+name: Keep Adjacent API Warm
+
+on:
+  # Render Free instances spin down after 15 minutes without inbound traffic.
+  # A 10-minute health request keeps the demo backend ready between visits.
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: adjacent-api-warm
+  cancel-in-progress: true
+
+jobs:
+  health-check:
+    name: Wake and verify production API
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Request the backend health endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          url="https://adjacent-cinema.onrender.com/health"
+          body="$(mktemp)"
+          trap 'rm -f "$body"' EXIT
+
+          for attempt in {1..8}; do
+            status="$(curl \
+              --silent \
+              --show-error \
+              --output "$body" \
+              --write-out "%{http_code}" \
+              --connect-timeout 10 \
+              --max-time 25 \
+              "$url" || true)"
+
+            if [[ "$status" == "200" ]] && python - "$body" <<'PY'
+          import json
+          import sys
+
+          try:
+              with open(sys.argv[1], encoding="utf-8") as handle:
+                  payload = json.load(handle)
+          except (OSError, json.JSONDecodeError):
+              raise SystemExit(1)
+
+          if payload.get("status") != "ok" or payload.get("service") != "adjacent-backend":
+              raise SystemExit(1)
+          PY
+            then
+              echo "Adjacent API is healthy (HTTP 200)."
+              exit 0
+            fi
+
+            echo "Health attempt $attempt/8 did not succeed (HTTP ${status:-no-response}); retrying."
+            sleep 5
+          done
+
+          echo "Adjacent API did not return a valid healthy response after 8 attempts."
+          exit 1
