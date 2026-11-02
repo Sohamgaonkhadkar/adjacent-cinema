@@ -49,7 +49,7 @@ It was built for the **2026 Qloo Agentic Hackathon** around a simple principle: 
 ### What makes it different
 
 - **Cultural Multiverse:** compare evidence-backed ANCHOR, BRIDGE and FRONTIER positioning directions. Unsupported directions remain unavailable rather than being invented to fill the interface.
-- **Decision Challenge / Impact Lab:** test whether a ranking depends on affinity-derived ordering or popularity alone, using the same retrieved candidates. This measures ranking sensitivity, not recommendation accuracy or audience response.
+- **Decision Challenge / Impact Lab:** compare the full, affinity-withheld and Qloo-popularity-only rankings over the same Qloo-discovered candidate pool. See the run-level inference and candidate-by-candidate rank movement. This measures within-pool sensitivity, **not** a Qloo-versus-no-Qloo effect or recommendation accuracy.
 - **Evidence with provenance:** claims, cohorts and explanations retain references to the Qloo calls that produced them. Facts, interpretations, hypotheses and unknowns are kept distinct.
 - **Human review stays in the loop:** FilmSponsor drafts and source reviews require creator action; discovery is not treated as proof of sponsorship fit.
 - **A learning loop, not an oracle:** proposed decisions can be saved, observed and evaluated. Missing or incomparable measurements remain inconclusive.
@@ -195,6 +195,7 @@ The final reliability work is recorded in:
 | [Deployment runbook](qloo_hackathon/adjacent/docs/DEPLOYMENT.md) | Docker Compose, Caddy and Render Blueprint options |
 | [Live-Qloo checklist](qloo_hackathon/adjacent/docs/NEXT_LIVE_CHECKLIST.md) | Dated validation evidence and remaining operational gates |
 | [Decision Challenge design](qloo_hackathon/adjacent/docs/adr/007-decision-challenge.md) | Counterfactual ranking methodology |
+| [November Impact Lab audit](qloo_hackathon/adjacent/docs/IMPACT_LAB_COMPETITOR_AUDIT_20261102.md) | Competitor lessons, observed negative findings, known evaluation limits and next experiments |
 | [MCP server guide](qloo_hackathon/adjacent/docs/MCP_SERVER.md) | Optional read-only MCP adapter |
 
 ## License

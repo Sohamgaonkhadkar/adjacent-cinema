@@ -126,9 +126,21 @@ export interface ImpactRow {
   tone: Tone;
 }
 
+export interface ImpactRankRow {
+  position: number;
+  full: string;
+  withheld: string;
+  popularity: string;
+  withheldMoved: boolean;
+  popularityMoved: boolean;
+}
+
 export interface ImpactView {
   available: boolean;
   rows: ImpactRow[];
+  rankRows: ImpactRankRow[];
+  verdict: string;
+  scopeNote: string;
   statements: string[];
   method: string;
   reason: string;
@@ -145,6 +157,43 @@ function overlapText(condition: ImpactCondition | undefined): string {
 function correlationText(condition: ImpactCondition | undefined): string {
   const value = condition?.rank_correlation?.value;
   return typeof value === "number" ? value.toFixed(2) : "not computable";
+}
+
+/**
+ * Render only comparable candidate orders: a broken or legacy pool must never
+ * be presented as a like-for-like rank comparison. This is intentionally a
+ * display-only adapter; it does not calculate new scores or choose winners.
+ */
+function comparisonRankRows(necessity: NecessityData): ImpactRankRow[] {
+  const full = necessity.production_order ?? [];
+  const withheld = necessity.affinity_withheld?.order ?? [];
+  const popularity = necessity.popularity_only?.order ?? [];
+  const ids = new Set(full);
+  if (
+    full.length === 0 ||
+    ids.size !== full.length ||
+    withheld.length !== full.length ||
+    popularity.length !== full.length ||
+    new Set(withheld.map((entry) => entry.cohort_id)).size !== ids.size ||
+    new Set(popularity.map((entry) => entry.cohort_id)).size !== ids.size ||
+    withheld.some((entry) => !ids.has(entry.cohort_id)) ||
+    popularity.some((entry) => !ids.has(entry.cohort_id))
+  ) {
+    return [];
+  }
+
+  const labels = new Map<string, string>();
+  for (const entry of [...withheld, ...popularity]) {
+    if (entry.label) labels.set(entry.cohort_id, entry.label);
+  }
+  return full.slice(0, 5).map((_, index) => ({
+    position: index + 1,
+    full: labels.get(full[index]) || UNLABELLED,
+    withheld: labels.get(withheld[index].cohort_id) || UNLABELLED,
+    popularity: labels.get(popularity[index].cohort_id) || UNLABELLED,
+    withheldMoved: withheld[index].cohort_id !== full[index],
+    popularityMoved: popularity[index].cohort_id !== full[index],
+  }));
 }
 
 /**
@@ -166,6 +215,9 @@ export function buildImpactView(
     return {
       available: false,
       rows: [],
+      rankRows: [],
+      verdict: "",
+      scopeNote: "",
       statements,
       method: necessity?.method ?? "",
       reason:
@@ -194,9 +246,22 @@ export function buildImpactView(
     };
   });
 
+  const withheld = necessity.affinity_withheld;
+  const verdict = withheld.top_pair_tied_without_affinity
+    ? "Top positions tie without affinity; the identity tie-break cannot establish a meaningful alternative winner."
+    : withheld.winner_changed
+      ? "Affinity changes the winning candidate in this fixed-pool comparison; whether that change is better remains untested."
+      : withheld.ranks_moved > 0
+        ? "Affinity moves candidate rankings but does not change the winning candidate in this run."
+        : "No change attributable to affinity was detected in this run's admitted-pool ranking.";
+
   return {
     available: true,
     rows,
+    rankRows: comparisonRankRows(necessity),
+    verdict,
+    scopeNote:
+      "This is not a Qloo-versus-no-Qloo test. All candidates were discovered and scored using Qloo; even the popularity-only sort uses Qloo popularity. No new candidates were retrieved.",
     statements,
     method: necessity.method,
     reason: "",
@@ -268,7 +333,7 @@ export function buildChallengeView(
       stabilityRows: [],
       skipped: [],
       pairwise: null,
-      impact: { available: false, rows: [], statements: [], method: "", reason: "No challenge was computed for this run." },
+      impact: { available: false, rows: [], rankRows: [], verdict: "", scopeNote: "", statements: [], method: "", reason: "No challenge was computed for this run." },
       checks: [],
       receipt: null,
       limits: [],
@@ -294,7 +359,7 @@ export function buildChallengeView(
         id: "tie",
         label: "The top two are indistinguishable without affinity",
         detail:
-          "They match on evidence strength, novelty and breadth. Affinity is the only thing separating them, so treat the top two as one option rather than as a ranked first and second.",
+          "They match on the non-affinity ordering inputs (novelty and breadth). The deterministic identity tie-break is not an evidence-based preference, so treat the pair as unresolved until tested.",
         tone: "warn",
       });
     } else if (withheld.winner_changed) {
@@ -315,7 +380,7 @@ export function buildChallengeView(
             : `Affinity moves ${withheld.ranks_moved} position${withheld.ranks_moved === 1 ? "" : "s"}`,
         detail:
           withheld.ranks_moved === 0
-            ? `Affinity separated ${necessity.affinity_decided_pairs.length} of ${necessity.adjacent_pairs_examined} adjacent pairs. Strength and novelty decided the order.`
+            ? `Affinity separated ${necessity.affinity_decided_pairs.length} of ${necessity.adjacent_pairs_examined} adjacent pairs. This comparison shows no ranking contribution from affinity; discovery still used Qloo.`
             : `The winner is unchanged, but ${withheld.ranks_moved} position${withheld.ranks_moved === 1 ? "" : "s"} below it move when the affinity numbers are removed.`,
         tone: "neutral",
       });
@@ -324,12 +389,12 @@ export function buildChallengeView(
     necessityRows.push({
       id: "popularity-baseline",
       label: popularity.winner_changed
-        ? "A mainstream baseline would recommend something else"
-        : "A mainstream baseline would recommend the same cohort",
+        ? "Qloo popularity-only sort selects another cohort"
+        : "Qloo popularity-only sort selects the same cohort",
       detail: popularity.winner_changed
-        ? `Ordering the same candidates by popularity alone picks ${labelFor(popularity.order, popularity.counterfactual_winner)}. The taste signal is what makes this recommendation different from the mainstream pick.`
-        : "Ordering the same candidates by popularity alone produces the same cohort, so taste is not what distinguishes this recommendation.",
-      tone: popularity.winner_changed ? "live" : "neutral",
+        ? `Using Qloo popularity to sort the same Qloo-discovered candidates selects ${labelFor(popularity.order, popularity.counterfactual_winner)}. This does not establish that affinity changed or improved the recommendation.`
+        : "The Qloo popularity sort selects the same cohort. This is not an independent no-Qloo baseline.",
+      tone: "neutral",
     });
 
     const suppressed = necessity.gate.suppressed_by_affinity_gate;
@@ -500,6 +565,8 @@ export function formatDecisionReceipt(challenge: DecisionChallengeData | null | 
     lines.push("");
     lines.push("CONDITION COMPARISON (agreement between two orderings this app computed)");
     for (const line of impactLines) lines.push(`  ${line}`);
+    lines.push(`  Finding: ${view.impact.verdict}`);
+    lines.push(`  Scope: ${view.impact.scopeNote}`);
     if (view.impact.method) lines.push(`  Method: ${view.impact.method}`);
   }
 
@@ -602,14 +669,14 @@ export function challengeExportSections(
   if (impactLines.length) {
     sections.push({
       label: "Condition comparison (agreement, not a probability)",
-      value: impactLines.join(" · "),
+      value: [view.impact.verdict, view.impact.scopeNote, ...impactLines].join(" · "),
     });
   }
   if (view.receipt.necessity.popularity_would_differ) {
     sections.push({
       label: "Counterfactual: popularity-only baseline",
       value:
-        "Ordering the same candidates by popularity alone selects a different cohort, so this decision is not the mainstream pick.",
+        "Sorting the same Qloo-derived candidates by Qloo popularity selects a different cohort. This difference alone does not demonstrate an affinity contribution.",
     });
   }
   if (view.pairwise) {

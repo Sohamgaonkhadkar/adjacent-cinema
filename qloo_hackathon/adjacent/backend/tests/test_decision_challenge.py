@@ -210,10 +210,11 @@ def test_affinity_withheld_reports_no_change_honestly_on_the_fixture(strong_run)
         cohort.cohort_id for cohort in strong_run.ranked
     ]
     assert challenge["necessity"]["affinity_decided_pairs"] == []
-    # ...but the taste signal still separates it from the mainstream pick, which is
-    # a different claim and is reported as such.
+    # A different Qloo-popularity winner is NOT proof that affinity mattered.
     assert challenge["necessity"]["popularity_only"]["winner_changed"] is True
-    assert "the taste signal is what separates" in challenge["necessity_statement"]
+    assert "not evidence that affinity changed the decision" in challenge["necessity_statement"]
+    assert "taste signal is what separates" not in challenge["necessity_statement"]
+    assert any("no-Qloo baseline" in note for note in challenge["limits"])
 
 
 def test_unchanged_winner_with_changed_ranking_is_reported_as_such():
