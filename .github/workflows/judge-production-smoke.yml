@@ -28,6 +28,20 @@ jobs:
           node-version: "22"
       - name: Check real public site and one labelled fixture
         run: node scripts/judge-production-smoke.mjs --fixture
+      - name: Verify new judge links on deployed homepage
+        run: |
+          node --input-type=module - <<'JS'
+          const url = "https://adjacent-cinema.vercel.app/";
+          const response = await fetch(url, { headers: { "cache-control": "no-cache" } });
+          const html = await response.text();
+          if (!response.ok) throw new Error("Home page HTTP " + response.status);
+          for (const path of ["/creator?demo=fixture", "/cinema?demo=fixture"]) {
+            if (!html.includes('href="' + path + '"')) {
+              throw new Error("Deployed home page missing judge shortcut: " + path);
+            }
+            console.log("PASS deployed judge shortcut: " + path);
+          }
+          JS
       - name: Attach machine-readable smoke status (even on failure)
         if: always()
         uses: actions/upload-artifact@v4
