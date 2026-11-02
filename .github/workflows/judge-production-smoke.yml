@@ -8,6 +8,7 @@ on:
       - release/judge-smoke-20261102
     paths:
       - .github/workflows/judge-production-smoke.yml
+      - qloo_hackathon/adjacent/scripts/judge-production-smoke.mjs
   workflow_dispatch:
 
 permissions:
