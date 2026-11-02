@@ -15,11 +15,24 @@ hosting account and is not a hosted deployment by itself.
 
 ## Current hosted status
 
-The current split deployment uses [Vercel for the frontend](https://adjacent-cinema.vercel.app) and [Render for the API](https://adjacent-cinema.onrender.com). The most recent functional release is [PR #29](https://github.com/Sohamgaonkhadkar/adjacent-cinema/pull/29), commit [`7e93e15`](https://github.com/Sohamgaonkhadkar/adjacent-cinema/commit/7e93e153ec39d4e85e9c4c34c6d9f98f3ca29880); its CI run [40906289638](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40906289638) passed backend, frontend and container-build jobs. The follow-up documentation release [PR #30](https://github.com/Sohamgaonkhadkar/adjacent-cinema/pull/30) passed the same jobs in [run 40907360747](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40907360747). The 29 October production route smoke check returned HTTP 200 for `/`, `/creator`, `/cinema` and `/creator/sponsor`; this is a dated observation, not a continuing uptime guarantee. The expanded live-Qloo evaluation is linked below and is distinct from browser acceptance.
+The current production topology uses [Vercel for the frontend](https://adjacent-cinema.vercel.app) and [Render for the FastAPI API](https://adjacent-cinema.onrender.com). This section records checks made on **2 November 2026**; it is a dated deployment snapshot, not an uptime or security guarantee.
 
-The project owner confirmed three browser walkthroughs as passed on 29 October: FilmSponsor guest/campaign and live discovery with Origin/cookie/CSRF checks; second-session isolation plus revocation/expiry; and Audience Pulse link/vote/repeat-response/close/evaluate. These are owner-confirmed results recorded in the checklist, not browser telemetry independently captured by this README update. Earlier Render logs include origin-mismatch rejections, so the successful flow does not remove the separate open item to confirm trusted-proxy configuration alignment. This is not a full security audit or uptime guarantee.
+- **Application commit checked:** [`c353521`](https://github.com/Sohamgaonkhadkar/adjacent-cinema/commit/c35352115617ba8fec66664cf2a48a3d64d6d029) — shared backend-readiness checks across API workflows.
+- **PR #31:** [Render cold-start recovery](https://github.com/Sohamgaonkhadkar/adjacent-cinema/pull/31), merged.
+- **PR #32:** [Shared backend readiness guard](https://github.com/Sohamgaonkhadkar/adjacent-cinema/pull/32), merged.
+- **CI:** [run 41431186032](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/41431186032) passed the backend, frontend and container-build jobs. The frontend job includes the dedicated cold-start retry tests.
+- **Vercel:** the production deployment for `c353521` is READY.
+- **Render:** the deployment for `c353521` is LIVE.
+- **Routes:** the home page, Creator, Cinema and FilmSponsor routes rendered successfully during the latest route check.
+- **Health:** direct Render `/health` and proxied Vercel `/api/health` both returned HTTP 200 after the backend had recovered.
 
-The public demo intentionally disables optional LLM synthesis and shared experiment APIs. `/api/creator/synthesis-status` reports synthesis unavailable; `/api/experiments` returns 403 by design. See the root [hackathon fit and verification notes](../../README.md#fit-to-the-qloo-agentic-hackathon) for the judge walkthrough and evidence limitations.
+The two readiness changes address the free-tier cold-start problem. The root `BackendHealthProvider` starts a bounded readiness check and exposes a connection state/retry action. The shared API adapter uses a 45-second successful-health cache and a single in-flight health probe; when needed, it retries the idempotent health `GET` at five-second intervals for up to 150 seconds before guarded API operations. It invalidates stale readiness after transient failures. **Write operations are not automatically replayed.**
+
+Render's free service can still suspend after inactivity. During this verification, the first health probes returned HTTP 503 while the service was unavailable; subsequent direct and proxied checks returned HTTP 200 after recovery. The retry mechanism improves the user experience but does not guarantee instant startup, continuous availability or zero failed requests. The post-patch sleep-to-wake path has automated coverage; this README does not claim a complete production browser transaction was replayed after the final deployment.
+
+The 29 October live-Qloo evaluation and owner-confirmed browser walkthroughs remain historical evidence documented below. They are not re-labelled as tests performed on 2 November. Earlier Render logs include Origin-mismatch rejections, so trusted-proxy alignment and external anonymous-traffic quotas/monitoring remain separate operational gates. This is not a full security audit.
+
+The public demo intentionally disables optional LLM synthesis and shared experiment-owner APIs. `/api/creator/synthesis-status` reports synthesis unavailable; `/api/experiments` returns 403 by design. The hosted health flags indicate that live Creator and FilmSponsor guest paths are enabled, but do not establish that every upstream request or browser workflow will succeed.
 
 ## Prerequisites and repository layout
 
@@ -57,7 +70,7 @@ cd qloo_hackathon/adjacent
 python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e '.[dev]'
-cp .env.example .env
+test -f .env || cp .env.example .env
 # Optional: edit .env locally, keeping secrets out of Git.
 set -a && . ./.env && set +a
 make run
