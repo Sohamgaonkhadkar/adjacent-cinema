@@ -31,6 +31,7 @@ from app.domain.common_universe import (  # noqa: E402
     freeze_manifest,
 )
 from app.qloo.client import QlooClient  # noqa: E402
+from app.qloo.errors import QlooError  # noqa: E402
 from app.resolution.resolver import EntityResolver  # noqa: E402
 
 
@@ -116,7 +117,14 @@ def main() -> int:
 
     # Preflight MUST happen before any possible Qloo calls.
     frozen = freeze_manifest(json.loads(args.manifest.read_text(encoding="utf-8")))
-    report = asyncio.run(run_live(frozen)) if args.live else compare_common_universe(frozen)
+    try:
+        report = asyncio.run(run_live(frozen)) if args.live else compare_common_universe(frozen)
+    except QlooError as exc:
+        # Fail closed and retain an audit record, without logging provider bodies,
+        # URLs carrying secrets, or retry payloads from the exception.
+        report = compare_common_universe(frozen)
+        report["reason"] = f"Live Qloo request failed: {type(exc).__name__}"
+        report["error_type"] = type(exc).__name__
     report["generated_at_utc"] = datetime.now(timezone.utc).isoformat()
     report["execution"] = "live_qloo" if args.live else "offline_preflight"
     report["live_result_claim"] = args.live and report["status"] == "evaluable"
