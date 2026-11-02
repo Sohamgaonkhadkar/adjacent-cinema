@@ -230,7 +230,7 @@ export class BackendHealthError extends Error {
 export async function getHealth(timeoutMs = API_TIMEOUT_MS): Promise<BackendHealth> {
   const { response, data } = await fetchJsonWithTimeout<BackendHealth>(
     "/health",
-    {},
+    { cache: "no-store" },
     "Backend status check timed out. Check the backend connection and retry.",
     timeoutMs
   );
