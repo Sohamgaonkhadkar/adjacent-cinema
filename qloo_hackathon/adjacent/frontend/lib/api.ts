@@ -218,12 +218,12 @@ export interface BackendHealth {
 }
 
 export class BackendHealthError extends Error {
-  constructor(
-    readonly status: number,
-    message: string
-  ) {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
     super(message);
     this.name = "BackendHealthError";
+    this.status = status;
   }
 }
 
