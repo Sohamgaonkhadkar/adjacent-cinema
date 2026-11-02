@@ -46,6 +46,9 @@ def _catalog(films: Any, *, role: str) -> list[dict[str, Any]]:
     for row in films:
         if not isinstance(row, dict):
             raise InvalidStudy(f"{role} entries must be objects")
+        unexpected = set(row) - {"title", "year", "genres", "country", "director", "imdb_id"}
+        if unexpected:
+            raise InvalidStudy(f"Unexpected metadata fields in {role}: {sorted(unexpected)}")
         key = film_key(row)
         if key in seen:
             raise InvalidStudy(f"Duplicate film in {role}: {key}")
@@ -142,6 +145,10 @@ def compare_common_universe(
     """
     if frozen.get("schema") != SCHEMA or not isinstance(frozen.get("sha256"), str):
         raise InvalidStudy("Pass the result of freeze_manifest")
+    unsigned = {key: value for key, value in frozen.items() if key != "sha256"}
+    canonical = json.dumps(unsigned, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    if hashlib.sha256(canonical.encode("utf-8")).hexdigest() != frozen["sha256"]:
+        raise InvalidStudy("Frozen catalog contents changed after hash commitment")
     candidate_keys = {x["key"] for x in frozen["candidates"]}
     rows = metadata_ranking(frozen)
     output: dict[str, Any] = {
