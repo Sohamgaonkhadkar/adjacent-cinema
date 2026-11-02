@@ -21,20 +21,38 @@ import type {
 // and Next.js proxies /api using ADJACENT_API_ORIGIN.
 const API_BASE = "/api";
 const API_TIMEOUT_MS = 12_000;
+const HEALTH_CACHE_TTL_MS = 45_000;
 // Render's free service may need tens of seconds to wake from sleep. Only run
-// creation gets this longer budget; polling, reads and ordinary writes stay bounded.
+// creation gets this longer budget; all API operations first verify readiness.
 const RUN_START_TIMEOUT_MS = 75_000;
+
+let cachedBackendHealth: BackendHealth | null = null;
+let backendHealthCheckedAt = 0;
+let backendHealthInFlight: Promise<BackendHealth> | null = null;
+
+function invalidateBackendHealthCache(): void {
+  cachedBackendHealth = null;
+  backendHealthCheckedAt = 0;
+}
+
+function isTransientBackendFailure(status: number): boolean {
+  return [408, 429, 500, 502, 503, 504].includes(status);
+}
 
 async function fetchWithTimeout(
   path: string,
   init: RequestInit,
   timeoutMessage: string
 ): Promise<Response> {
+  await waitForBackendReady();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
   try {
-    return await fetch(`${API_BASE}${path}`, { ...init, signal: controller.signal });
+    const response = await fetch(`${API_BASE}${path}`, { ...init, signal: controller.signal });
+    if ([408, 502, 503, 504].includes(response.status)) invalidateBackendHealthCache();
+    return response;
   } catch (err) {
+    invalidateBackendHealthCache();
     if (controller.signal.aborted) throw new Error(timeoutMessage);
     throw err;
   } finally {
@@ -48,16 +66,25 @@ async function fetchJsonWithTimeout<T>(
   timeoutMessage: string,
   timeoutMs = API_TIMEOUT_MS
 ): Promise<{ response: Response; data: T | null }> {
+  // Health probes must bypass this guard to avoid recursion. Every other API
+  // request revalidates readiness when the short cache expires, which handles
+  // a tab left open past Render's idle-sleep window.
+  if (path !== "/health") await waitForBackendReady();
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(`${API_BASE}${path}`, { ...init, signal: controller.signal });
+    if (path !== "/health" && [408, 502, 503, 504].includes(response.status)) {
+      invalidateBackendHealthCache();
+    }
     const data = await response.json().catch((err: unknown) => {
       if (controller.signal.aborted) throw err;
       return null;
     }) as T | null;
     return { response, data };
   } catch (err) {
+    if (path !== "/health") invalidateBackendHealthCache();
     if (controller.signal.aborted) throw new Error(timeoutMessage);
     throw err;
   } finally {
@@ -227,7 +254,7 @@ export class BackendHealthError extends Error {
   }
 }
 
-export async function getHealth(timeoutMs = API_TIMEOUT_MS): Promise<BackendHealth> {
+async function getHealthOnce(timeoutMs: number): Promise<BackendHealth> {
   const { response, data } = await fetchJsonWithTimeout<BackendHealth>(
     "/health",
     { cache: "no-store" },
@@ -244,11 +271,11 @@ export async function getHealth(timeoutMs = API_TIMEOUT_MS): Promise<BackendHeal
 }
 
 /**
- * Wake a sleeping backend with bounded, retryable health checks.
- * This retries only the idempotent GET /health request; callers should start
- * analysis POSTs only after this function resolves.
+ * Wake or revalidate the backend using only the idempotent GET /health route.
+ * A short shared cache avoids a health request before every click, while
+ * expiring well before Render's idle-sleep interval so resumed tabs re-wake.
  */
-export async function waitForBackendReady(options: {
+export function waitForBackendReady(options: {
   maxWaitMs?: number;
   requestTimeoutMs?: number;
   retryDelayMs?: number;
@@ -260,33 +287,62 @@ export async function waitForBackendReady(options: {
     retryDelayMs = 5_000,
     onAttempt,
   } = options;
-  const deadline = Date.now() + maxWaitMs;
-  let attempt = 0;
-  let lastError: unknown = null;
 
-  while (Date.now() < deadline) {
-    attempt += 1;
-    onAttempt?.(attempt);
-
-    try {
-      return await getHealth(Math.max(1, Math.min(requestTimeoutMs, deadline - Date.now())));
-    } catch (error) {
-      lastError = error;
-      const retryable =
-        !(error instanceof BackendHealthError) ||
-        [408, 429, 500, 502, 503, 504].includes(error.status);
-      if (!retryable) throw error;
-
-      const remaining = deadline - Date.now();
-      if (remaining <= 0) break;
-      await new Promise((resolve) => setTimeout(resolve, Math.min(retryDelayMs, remaining)));
-    }
+  if (cachedBackendHealth && Date.now() - backendHealthCheckedAt < HEALTH_CACHE_TTL_MS) {
+    return Promise.resolve(cachedBackendHealth);
   }
+  if (backendHealthInFlight) return backendHealthInFlight;
 
-  const detail = lastError instanceof Error ? ` Last error: ${lastError.message}` : "";
-  throw new Error(
-    `The analysis backend did not become available within ${Math.ceil(maxWaitMs / 1000)} seconds.${detail}`
+  const pending = (async (): Promise<BackendHealth> => {
+    const deadline = Date.now() + maxWaitMs;
+    let attempt = 0;
+    let lastError: unknown = null;
+
+    while (Date.now() < deadline) {
+      attempt += 1;
+      onAttempt?.(attempt);
+
+      try {
+        const health = await getHealthOnce(
+          Math.max(1, Math.min(requestTimeoutMs, deadline - Date.now()))
+        );
+        cachedBackendHealth = health;
+        backendHealthCheckedAt = Date.now();
+        return health;
+      } catch (error) {
+        lastError = error;
+        const retryable =
+          !(error instanceof BackendHealthError) || isTransientBackendFailure(error.status);
+        if (!retryable) throw error;
+
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) break;
+        await new Promise((resolve) => setTimeout(resolve, Math.min(retryDelayMs, remaining)));
+      }
+    }
+
+    invalidateBackendHealthCache();
+    const detail = lastError instanceof Error ? ` Last error: ${lastError.message}` : "";
+    throw new Error(
+      `The analysis backend did not become available within ${Math.ceil(maxWaitMs / 1000)} seconds.${detail}`
+    );
+  })();
+
+  backendHealthInFlight = pending;
+  void pending.then(
+    () => {
+      if (backendHealthInFlight === pending) backendHealthInFlight = null;
+    },
+    () => {
+      if (backendHealthInFlight === pending) backendHealthInFlight = null;
+    }
   );
+  return pending;
+}
+
+/** Retained for existing pages; unlike the old one-shot check, this retries. */
+export function getHealth(timeoutMs = 20_000): Promise<BackendHealth> {
+  return waitForBackendReady({ requestTimeoutMs: timeoutMs });
 }
 
 // ─── Normalizers ────────────────────────────────────────────────────────────
