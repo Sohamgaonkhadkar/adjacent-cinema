@@ -44,12 +44,14 @@ export function BackendHealthProvider({ children }: { children: ReactNode }) {
 
     const pending = waitForBackendReady({
       onAttempt: setWakeAttempts,
-    })
+    });
+    inFlight.current = pending;
+
+    void pending
       .then((health) => {
         setBackendHealth(health);
         setWakeState("ready");
         setWakeError(null);
-        return health;
       })
       .catch((reason: unknown) => {
         const message =
@@ -57,13 +59,11 @@ export function BackendHealthProvider({ children }: { children: ReactNode }) {
         setBackendHealth(null);
         setWakeError(message);
         setWakeState("unavailable");
-        throw reason;
       })
       .finally(() => {
         if (inFlight.current === pending) inFlight.current = null;
       });
 
-    inFlight.current = pending;
     return pending;
   }, []);
 
