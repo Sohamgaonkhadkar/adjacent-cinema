@@ -19,12 +19,10 @@ import { ArrowRight, Plus, Trash2 } from "lucide-react";
 import {
   createCreatorDemoRun,
   createCreatorRun,
-  getHealth,
   getRun,
   listExperiments,
   saveExperiment,
   streamRun,
-  type BackendHealth,
   type CreatorRunRequest,
   type ExperimentRecord,
   type RunResponse,
@@ -32,6 +30,7 @@ import {
 } from "@/lib/api";
 import type { AdjacentRunResult, InvestigationData, TraceRow } from "@/types/adjacent";
 import { watchRunWithRecovery } from "@/lib/runRecovery";
+import { useBackendHealth } from "@/components/BackendHealthProvider";
 import {
   createTestDesign,
   readSavedTestDesign,
@@ -136,7 +135,7 @@ export default function CreatorPage() {
   const [analysing, setAnalysing] = useState(false);
   const [requestMode, setRequestMode] = useState<"live" | "fixture" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [backendHealth, setBackendHealth] = useState<BackendHealth | null>(null);
+  const { backendHealth, ensureReady } = useBackendHealth();
 
   const [experimentDesign, setExperimentDesign] = useState<TestDesign | null>(null);
   const [editingCard, setEditingCard] = useState(false);
@@ -275,11 +274,6 @@ export default function CreatorPage() {
   }, [publicDemo]);
 
   useEffect(() => {
-    void getHealth()
-      .then((health) => {
-        setBackendHealth(health);
-      })
-      .catch(() => setBackendHealth(null));
     return () => {
       runGeneration.current += 1;
       activeRunId.current = null;
@@ -355,7 +349,8 @@ export default function CreatorPage() {
         window.history.replaceState({}, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
       }
 
-      createCreatorDemoRun(payload)
+      ensureReady()
+        .then(() => createCreatorDemoRun(payload))
         .then((response) => watchRun(response.run_id))
         .catch((reason: unknown) => {
           setError(
@@ -364,7 +359,7 @@ export default function CreatorPage() {
           setAnalysing(false);
         });
     },
-    [cancelRunWatch, watchRun],
+    [cancelRunWatch, watchRun, ensureReady],
   );
 
   // URL intent: the home page links to /creator?demo=fixture.
@@ -443,7 +438,8 @@ export default function CreatorPage() {
       city: brief.location.trim(),
     };
 
-    createCreatorRun(payload)
+    ensureReady()
+      .then(() => createCreatorRun(payload))
       .then((response) => watchRun(response.run_id))
       .catch((reason: unknown) => {
         setError(reason instanceof Error ? reason.message : "Failed to start the analysis");
