@@ -97,6 +97,9 @@ PUBLIC_LIMITS: tuple[str, ...] = (
     "Qloo's behavioural graph may already contain the programme titles themselves. "
     "Adjacent does not currently control for that exposure, so a live result may partly "
     "reflect how those titles have already been received.",
+    "Both counterfactuals keep Qloo-discovered and Qloo-scored candidates. The popularity "
+    "field also comes from Qloo. These comparisons test ranking sensitivity within one "
+    "Qloo-derived pool; neither is an independent no-Qloo baseline.",
 )
 
 
@@ -366,7 +369,7 @@ def _necessity(
             "Both counterfactuals run over the same admitted candidate pool, so only the ordering "
             "inputs change. 'Affinity withheld' removes every key derived from an affinity number "
             "and orders by novelty, breadth and id. 'Popularity-only' orders the same pool by "
-            "median popularity — what a biggest-overlap-wins approach would recommend. The effect "
+            "Qloo-reported median popularity. The effect "
             "of the affinity gate on which cohorts are admitted at all is reported separately, "
             "because that is a different question with a different answer."
         ),
@@ -415,7 +418,7 @@ def _necessity(
                 "label": "Popularity-only baseline",
                 "definition": (
                     "The same admitted pool, ordered by median popularity desc, then breadth, "
-                    "then id — a biggest-overlap-wins recommendation."
+                    "then id — still using Qloo-discovered candidates and Qloo popularity."
                 ),
                 "qloo_calls_made": 0,
                 "winner": popularity_cmp["counterfactual_winner"],
@@ -468,8 +471,8 @@ def _necessity_statement(necessity: dict[str, Any], labels: dict[str, str]) -> s
                 f"With Qloo's affinity numbers removed, the recommendation is still "
                 f"{winner_label} and the order below it does not move: affinity separated "
                 f"{len(necessity['affinity_decided_pairs'])} of "
-                f"{necessity['adjacent_pairs_examined']} adjacent pairs, so strength and "
-                f"popularity decided this list."
+                f"{necessity['adjacent_pairs_examined']} adjacent pairs. "
+                f"This ranking comparison does not demonstrate an affinity contribution."
             )
         else:
             lines.append(
@@ -480,13 +483,14 @@ def _necessity_statement(necessity: dict[str, Any], labels: dict[str, str]) -> s
     if popularity["winner_changed"]:
         alt = labels.get(popularity["counterfactual_winner"], popularity["counterfactual_winner"])
         lines.append(
-            f"A biggest-overlap-wins approach would have recommended {alt} instead — so the taste "
-            f"signal is what separates this recommendation from the mainstream pick."
+            f"Sorting the same Qloo-discovered candidates by Qloo popularity alone recommends "
+            f"{alt} instead. This difference from the popularity sort is not evidence that "
+            f"affinity changed the decision; check the affinity-withheld result separately."
         )
     else:
         lines.append(
-            "A biggest-overlap-wins approach would have recommended the same cohort, so this "
-            "recommendation is not distinguished from the mainstream pick by taste alone."
+            "Sorting the same Qloo-discovered candidates by Qloo popularity alone recommends "
+            "the same cohort. Neither sort is a no-Qloo baseline."
         )
 
     suppressed = necessity["gate"]["suppressed_by_affinity_gate"]
