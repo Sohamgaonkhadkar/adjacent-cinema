@@ -46,13 +46,18 @@ Adjacent is a **bounded agentic decision-support tool** for independent filmmake
 3. Open [FilmSponsor](https://adjacent-cinema.vercel.app/creator/sponsor) to start a guest workspace, create a campaign and request live brand discovery. Review each brand and source yourself; the app does not establish sponsorship likelihood, eligibility or ROI.
 4. Use the [labelled fixture demo](https://adjacent-cinema.vercel.app/creator?demo=fixture) only to show the offline experience. Fixture output is illustrative and must never be presented as live Qloo evidence.
 
-### Latest release and verification — 29 October 2026
+### How to interpret an Adjacent recommendation
 
-The latest functional release is [PR #29](https://github.com/Sohamgaonkhadkar/adjacent-cinema/pull/29), merged as [`7e93e15`](https://github.com/Sohamgaonkhadkar/adjacent-cinema/commit/7e93e153ec39d4e85e9c4c34c6d9f98f3ca29880). Main CI run [40906289638](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40906289638) passed the backend, frontend and container-build jobs. The documentation follow-up [PR #30](https://github.com/Sohamgaonkhadkar/adjacent-cinema/pull/30) also passed all three jobs in [run 40907360747](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/40907360747). Vercel marked the functional release **READY** at [the production deployment record](https://vercel.com/sohamgaonkhadkar/adjacent-cinema/F3ADaeTvmTn8SQtKBu8UTMhuo2ox).
+The product's central idea is **cultural evidence → an explainable choice → a test**, not “affinity predicts customers.” A surprising cultural connection is worth investigating only when the film identities, underlying signals, and remaining uncertainty are visible.
 
-PR #29 replaces the fixed three-film start gate with progressive evidence coverage, preserves mandatory taste/cohort gates, exposes exploratory limitations in Creator Studio, and hands the smoothed geography density layer off to crisp cell markers at close zoom. It also preserves the full returned cell set when ranked cells are sparse and adds regression coverage. Earlier merged fixes remain in place: PR #27 repairs the empty Cultural Multiverse panel and PR #28 makes the five-theme input limit visible; PR #24 added the evidence-aware geography empty state.
+| What the user sees | What it establishes | What it does **not** establish |
+|---|---|---|
+| **Verified references** | The films and themes used in the investigation passed the application's identity checks. | That every candidate is a good fit for a particular venue or audience. |
+| **Qloo cultural signals** | An inspectable relationship or ranking within the queried context, with recorded provider calls. | Audience size, personal preference, ticket sales, sponsorship willingness, or ROI. |
+| **Cultural Multiverse / Decision Challenge** | Alternative positioning ideas and how rankings change under explicitly defined conditions. | That a different ranking is more accurate; the within-pool conditions are not an independent no-Qloo baseline. |
+| **Test Card and human review** | A concrete hypothesis, comparison, measurement plan, and decision rule the user can edit. | That the proposed experiment has already run or produced positive results. |
 
-On 29 October the production routes `/`, `/creator`, `/cinema` and `/creator/sponsor` returned HTTP 200, and `/api/health` returned a healthy response for the live functional release. This is a route smoke check, not proof that every interactive path has been manually browser-tested on the deployed commit. The project owner separately confirmed three browser walkthroughs: FilmSponsor guest creation/live brand discovery and Origin/cookie/CSRF; second-session isolation plus revocation/expiry; and Audience Pulse participation/repeat-response refusal/owner close-evaluation. These are **owner-confirmed reports**, not independently captured browser telemetry from this check. See the [current verification checklist](qloo_hackathon/adjacent/docs/NEXT_LIVE_CHECKLIST.md). Trusted-proxy alignment, anonymous-traffic guardrails, durable-storage/cleanup review and any organizer clarification on eligibility remain separate operational gates.
+**A good result is actionable even when the evidence is incomplete:** the creator can inspect a candidate direction, understand why it appeared, see which questions remain open, and decide what observation would make it worth pursuing. The application keeps fixture examples separate from measured Qloo results and does not replace missing evidence with invented certainty.
 
 ## Contents
 
@@ -167,18 +172,20 @@ The pipeline uses Qloo as an evidence source and application logic as the contro
 
 ```mermaid
 flowchart TD
-    A["Creator or cinema intake"] --> B["Validate inputs and resolve film identity"]
-    B --> C["Typed, bounded Qloo requests"]
-    C --> D["Parse results and retain call provenance"]
-    D --> E["Finite orchestration: evaluate evidence and budget"]
-    E --> F["Rank cultural cohorts and preserve exclusions"]
-    F --> G["Programme Bet + Test Card"]
-    G --> H["Creator review and planned experiment"]
-    H --> I["Append observations and evaluate the hypothesis"]
+    A["Film or<br/>cinema brief"] --> B["Check film<br/>identities"]
+    B --> C["Bounded<br/>Qloo calls"]
+    C --> D["Parse data<br/>and trace IDs"]
+    D --> E["Evidence<br/>and budgets"]
+    E --> F["Rank cohorts<br/>or abstain"]
+    F --> G["Bet and<br/>test card"]
+    G --> H["Human<br/>review"]
+    H --> I["Record<br/>observations"]
 
-    J["Explicit offline fixture route"] -.->|"labelled fixture data"| G
-    K["Optional LLM synthesis"] -.->|"reads completed investigation; no tool execution"| G
+    J["Labelled<br/>fixture"] -.-> G
+    K["Optional<br/>LLM brief"] -.-> H
 ```
+
+**Reading the diagram:** Measured runs use typed Qloo operations and retain the associated call IDs. The **labelled fixture** is a separate offline path, never a silent fallback for failed Qloo calls. Optional LLM synthesis reads completed investigation evidence; it does not execute Qloo tools. Human review comes before an experiment is saved, and recorded observations are not treated as predictions.
 
 ### Evidence and stopping are first-class outcomes
 
@@ -243,28 +250,36 @@ The Cultural Fingerprint graph draws its ranked worlds and outer entities from c
 
 ## Architecture
 
+The application boundary and the evidence engine are shown separately so the labels stay legible on GitHub and on narrower screens.
+
+**Application routes and storage**
+
 ```mermaid
-flowchart LR
-    U["Browser"] --> FE["Next.js frontend"]
-    FE -->|"relative /api/*"| PX["Server-side Next.js rewrite"]
-    PX --> API["FastAPI"]
-    API --> GUARD["Request validation + public-demo guard"]
-    GUARD --> RUN["Run / Creator / Cinema"]
-    GUARD --> FS["FilmSponsor lifecycle"]
-    GUARD --> YT["Optional YouTube integration"]
+flowchart TD
+    U["Browser"] --> FE["Next.js UI"]
+    FE -->|"API proxy"| API["FastAPI"]
+    API --> GUARD["Request<br/>guard"]
+    GUARD --> RUN["Creator and<br/>Cinema"]
+    GUARD --> FS["FilmSponsor"]
+    GUARD --> YT["Optional<br/>YouTube"]
+    RUN --> ENGINE["Evidence<br/>engine"]
+    FS --> CAM[("Sponsor<br/>SQLite")]
+    YT --> AUTH[("Local auth<br/>store")]
+```
 
-    RUN --> AG["Bounded orchestrator"]
-    AG --> RES["Identity resolution"]
-    AG --> QC["Typed Qloo client"]
+**Evidence processing and results**
+
+```mermaid
+flowchart TD
+    ENGINE["Run engine"] --> AG["Bounded<br/>agent loop"]
+    AG --> RES["Verify film<br/>identities"]
+    RES --> QC["Typed Qloo<br/>client"]
     QC --> Q["Qloo API"]
-    Q --> PARSE["Typed parsing + call IDs"]
+    Q --> PARSE["Parse and<br/>trace"]
     PARSE --> AG
-    AG --> DOMAIN["Evidence gates, cohorts, scoring and test card"]
-
-    RUN --> MEM[("Process-local run store + SSE")]
-    DOMAIN --> EXP[("SQLite experiments / observations / evaluations")]
-    FS --> CAM[("SQLite campaigns / discoveries / drafts / reviews / outreach")]
-    YT --> AUTH[("Optional local runtime credential store")]
+    AG --> DOMAIN["Evidence<br/>and test"]
+    ENGINE --> MEM[("Run store<br/>and SSE")]
+    DOMAIN --> EXP[("Experiment<br/>SQLite")]
 ```
 
 The browser calls relative `/api` routes. `frontend/next.config.ts` rewrites them server-side to `ADJACENT_API_ORIGIN`; the Qloo credential remains in the backend environment, never in browser-visible `NEXT_PUBLIC_*` variables.
@@ -583,18 +598,13 @@ Do not run `docker compose down -v` as a routine restart; it removes named data 
 
 ### Remaining deployment hardening checks
 
-Production route smoke, sampled live Creator/Cinema analysis, current-main CI and the Vercel production deployment are recorded above. The three browser walkthroughs below were confirmed by the project owner on 29 October 2026; they are owner-reported passes, not independent browser telemetry captured by this README update:
+For dated automated checks and owner-reported browser acceptance, see the [live-Qloo and deployment checklist](qloo_hackathon/adjacent/docs/NEXT_LIVE_CHECKLIST.md). A passing CI run or route health check does not replace checking the complete guest-session, provider, and audience-participation flows in a browser.
 
-- [x] **PASS · owner-confirmed 29 Oct 2026.** FilmSponsor guest-session and campaign creation, live brand discovery, exact Origin and cookie/CSRF behaviour.
-- [x] **PASS · owner-confirmed 29 Oct 2026.** Second-session isolation from the first session's campaign, plus revocation/expiry behaviour.
-- [x] **PASS · owner-confirmed 29 Oct 2026.** Audience Pulse share link, vote submission, `already_responded` on reload, and owner-side close/evaluation.
-
-The following operational checks remain open before scaling beyond a bounded hackathon demo:
+Before scaling beyond a bounded demo, the following operational checks remain:
 
 - [ ] Privately confirm the frontend/backend trusted-proxy shared-secret configuration is aligned; do not expose or commit secret values.
 - [ ] Add external edge/API-gateway quotas and monitoring before increasing anonymous live Qloo usage. Current request limits are partly process-local.
 - [ ] Review durable SQLite storage, backup/restore and scheduled cleanup of expired guest sessions on the actual host.
-- [x] **PASS · evidence recorded 30 Oct 2026.** Qloo is integrated into the working application for verified entity resolution, cultural insights, cross-domain discovery and cohort scoring. The repository's initial commit is dated 10 Oct 2026, after the 30 Sep submission-period start ([official rules](https://qloo.devpost.com/rules); [initial commit](https://github.com/Sohamgaonkhadkar/adjacent-cinema/commit/ee7363e39b16a2fae35d70e7cc1ef48d0811f668)). This records the implementation and available project timeline, not a separate written organizer ruling.
 - [ ] If per-seed explanation is part of the judge story, test an intentionally bounded scoring context of at most 12 unique candidate IDs. The historical `/1` report had 11/11 contexts that did not request it; the expanded `/2` report has 28/28 for the same 50-candidate versus 12-ID bound.
 
 ## Security and known limitations
@@ -607,7 +617,7 @@ The following operational checks remain open before scaling beyond a bounded hac
 6. **SQLite is single-host.** Use one backend process and a persistent local filesystem; multi-worker/multi-replica operation needs a separate state/locking design.
 7. **Guest cleanup is not a guaranteed scheduled deletion.** Authentication expiry is enforced, but idle databases can retain expired rows until cleanup is invoked.
 8. **No commercial outcomes are guaranteed or forecast.** A Test Card is a proposed experiment. Results must come from observed measurements, and unknowns must stay unknown.
-9. **Hosted verification has a defined scope.** The functional release on `7e93e15` was marked READY by Vercel, and the subsequent documentation baseline on `a88ef77` passed CI on 29 October. The project owner also confirmed the three specific browser walkthroughs listed above on 29 October. These observations are not a complete browser-driven security audit, a long-term uptime guarantee, or proof that every FilmSponsor path was reviewed. The separate OCI/Docker topology is a deployment option, not the live host.
+9. **Hosted verification has a defined scope.** CI, health checks and route smoke tests verify their documented paths at a point in time. They do not establish long-term uptime, a full browser-driven security audit, or successful third-party integrations in every environment. The separate OCI/Docker topology is a deployment option, not the live host.
 
 ## Documentation map
 
