@@ -1,0 +1,37 @@
+name: Judge production smoke
+
+# Narrow opt-in audit, with one push trigger to verify the first script release.
+# Subsequent runs should be initiated manually, not on every normal push.
+on:
+  push:
+    branches:
+      - release/judge-smoke-20261102
+    paths:
+      - .github/workflows/judge-production-smoke.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  production-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    defaults:
+      run:
+        working-directory: qloo_hackathon/adjacent
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Check real public site and one labelled fixture
+        run: node scripts/judge-production-smoke.mjs --fixture
+      - name: Attach machine-readable smoke status (even on failure)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: judge-production-smoke
+          path: qloo_hackathon/adjacent/judge-production-smoke-report.json
+          if-no-files-found: warn
+          retention-days: 30
