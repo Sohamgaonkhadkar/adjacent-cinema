@@ -2,9 +2,9 @@ name: Keep Adjacent API Warm
 
 on:
   # Render Free instances spin down after 15 minutes without inbound traffic.
-  # A 10-minute health request keeps the demo backend ready between visits.
+  # A 5-minute health request keeps the demo backend ready between visits.
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 permissions: {}
