@@ -164,7 +164,7 @@ Set `QLOO_API_KEY` in the backend process environment only. Use the authorized A
 - **Backend:** [Render API](https://adjacent-cinema.onrender.com)
 - **Backend health:** [direct `/health`](https://adjacent-cinema.onrender.com/health) · [same-origin `/api/health`](https://adjacent-cinema.vercel.app/api/health)
 
-**Verified 2 November 2026:** the current `main` commit is [`c353521`](https://github.com/Sohamgaonkhadkar/adjacent-cinema/commit/c35352115617ba8fec66664cf2a48a3d64d6d029). The latest main-branch CI run [41431186032](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/41431186032) passed the backend, frontend and container-build jobs. Vercel reports the production deployment as READY and Render reports the backend deployment as LIVE. The main product routes rendered successfully; direct Render `/health` and proxied Vercel `/api/health` both returned HTTP 200 after the backend had recovered.
+**Verified 2 November 2026:** the application release checked during this verification is [`c353521`](https://github.com/Sohamgaonkhadkar/adjacent-cinema/commit/c35352115617ba8fec66664cf2a48a3d64d6d029). The main-branch CI run for that release, [41431186032](https://github.com/Sohamgaonkhadkar/adjacent-cinema/actions/runs/41431186032), passed the backend, frontend and container-build jobs. Vercel reported the production deployment as READY and Render reported the backend deployment as LIVE. The main product routes rendered successfully; direct Render `/health` and proxied Vercel `/api/health` both returned HTTP 200 after the backend had recovered.
 
 The final reliability work is recorded in:
 
