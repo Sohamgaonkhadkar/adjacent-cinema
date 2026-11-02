@@ -2,9 +2,11 @@ name: CI
 
 on:
   push:
-    branches: [main, "arena/**"]
+    branches: [main]
   pull_request:
 
+# Feature branches already run CI via pull_request. Running every push too
+# duplicated key-backed contract calls and caused transient Qloo 429 responses.
 jobs:
   backend:
     runs-on: ubuntu-latest
