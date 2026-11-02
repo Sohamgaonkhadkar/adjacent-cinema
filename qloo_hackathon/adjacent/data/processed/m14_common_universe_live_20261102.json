@@ -1,0 +1,93 @@
+{
+  "candidate_count": 12,
+  "candidate_selection_source": "Pre-existing manually curated film metadata in research/scripts/m12_3_incremental_value.py (53-film universe, written before M14); author-collected, not externally independently verified",
+  "conditions": {
+    "metadata_only": "genre Jaccard 0.5 + country 0.2 + director 0.3; maximum across programme seeds",
+    "qloo": "single scoring context, same locked film candidates; one /v2/insights call"
+  },
+  "data_status": "measured",
+  "execution": "live_qloo",
+  "frozen_sha256": "e092dc220023b6e8f29e295a11cc5547d05f632d4aa8f3128840a4bfcd4879b9",
+  "generated_at_utc": "2026-11-02T14:40:34.428511+00:00",
+  "live_result_claim": true,
+  "metadata_order": [
+    "the witch|2015",
+    "get out|2017",
+    "hereditary|2018",
+    "it follows|2014",
+    "midsommar|2019",
+    "28 days later|2002",
+    "saint maud|2019",
+    "the wicker man|1973",
+    "the babadook|2014",
+    "videodrome|1983",
+    "the lighthouse|2019",
+    "raw|2016"
+  ],
+  "metadata_winner": "The Witch",
+  "outcome_verdict": "not_established",
+  "qloo_call_id": "m14-common-universe-c016",
+  "qloo_coverage": {
+    "missing_keys": [],
+    "of": 12,
+    "scored": 12
+  },
+  "qloo_order": [
+    "videodrome|1983",
+    "the wicker man|1973",
+    "28 days later|2002",
+    "hereditary|2018",
+    "the witch|2015",
+    "it follows|2014",
+    "the babadook|2014",
+    "midsommar|2019",
+    "the lighthouse|2019",
+    "saint maud|2019",
+    "raw|2016",
+    "get out|2017"
+  ],
+  "qloo_resolution": {
+    "28 days later|2002": "VERIFIED",
+    "get out|2017": "VERIFIED",
+    "hereditary|2018": "VERIFIED",
+    "it follows|2014": "VERIFIED",
+    "midsommar|2019": "VERIFIED",
+    "raw|2016": "VERIFIED",
+    "saint maud|2019": "VERIFIED",
+    "suspiria|1977": "VERIFIED",
+    "the babadook|2014": "VERIFIED",
+    "the lighthouse|2019": "VERIFIED",
+    "the shining|1980": "VERIFIED",
+    "the thing|1982": "VERIFIED",
+    "the wicker man|1973": "VERIFIED",
+    "the witch|2015": "VERIFIED",
+    "videodrome|1983": "VERIFIED"
+  },
+  "qloo_winner": "Videodrome",
+  "rank_correlation": {
+    "concordant": 34,
+    "discordant": 32,
+    "duplicates_removed": 0,
+    "meaning": "Agreement between two orderings this application computed over the same candidate pool. It describes how much the ordering moved; it says nothing about whether the recommendation is right.",
+    "method": "kendall_tau_b",
+    "n": 12,
+    "pairs": 66,
+    "value": 0.030303030303030304
+  },
+  "reason": "Full same-universe, single-context ranking comparison",
+  "schema": "adjacent.common-universe/1",
+  "scope": "This compares candidate ordering, not recommendation correctness, audience response, attendance, conversion, revenue, or Qloo incremental outcome value.",
+  "status": "evaluable",
+  "study_id": "m14-horror-programme-20261102-v1",
+  "top_k_overlap": {
+    "fraction": 0.4,
+    "k": 5,
+    "of": 5,
+    "shared": 2,
+    "shared_ids": [
+      "the witch|2015",
+      "hereditary|2018"
+    ]
+  },
+  "winner_changed": true
+}

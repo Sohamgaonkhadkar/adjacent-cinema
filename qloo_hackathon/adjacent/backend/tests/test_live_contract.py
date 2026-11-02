@@ -14,6 +14,7 @@ https://hackathon.api.qloo.com.
 from __future__ import annotations
 
 import os
+from typing import Any
 
 import pytest
 from app.config import Settings
@@ -35,6 +36,26 @@ HACKATHON_HOST = "https://hackathon.api.qloo.com"
 def _settings_live() -> Settings:
     """Build a Settings from env; caller must have the key set."""
     return Settings.from_env()
+
+
+async def _live_get(http: Any, endpoint: str, *, params: dict[str, Any]) -> Any:
+    """Retry only transient 429s; a persistent rate limit remains a test failure.
+
+    The production client applies its own pacing. These direct HTTP contract
+    tests previously failed intermittently when two CI events shared a key.
+    """
+    import asyncio
+
+    for attempt in range(4):
+        response = await http.get(endpoint, params=params)
+        if response.status_code != 429 or attempt == 3:
+            return response
+        try:
+            retry_after = float(response.headers.get("Retry-After", ""))
+        except ValueError:
+            retry_after = 2.0 * (attempt + 1)
+        await asyncio.sleep(min(20.0, max(1.5, retry_after)))
+    raise AssertionError("Unreachable: the final HTTP response is returned")
 
 
 # ---------------------------------------------------------------------------
@@ -126,7 +147,8 @@ def test_filter_results_entities_contract():
             base_url=s.qloo_base_url, headers=headers, timeout=30
         ) as http:
             # Get candidate IDs first
-            r = await http.get(
+            r = await _live_get(
+                http,
                 "/v2/insights",
                 params={
                     "filter.type": "urn:entity:artist",
@@ -150,7 +172,8 @@ def test_filter_results_entities_contract():
             assert len(all_ids) >= 10, f"Expected ≥10 candidates, got {len(all_ids)}"
 
             # Now score them all via filter.results.entities
-            r2 = await http.get(
+            r2 = await _live_get(
+                http,
                 "/v2/insights",
                 params={
                     "filter.type": "urn:entity:artist",
@@ -203,7 +226,8 @@ def test_heatmap_contract():
             base_url=s.qloo_base_url, headers=headers, timeout=30
         ) as http:
             for city, min_cells in MIN_CELLS.items():
-                r = await http.get(
+                r = await _live_get(
+                http,
                     "/v2/insights",
                     params={
                         "filter.type": "urn:heatmap",
@@ -252,7 +276,8 @@ def test_explainability_contract():
             base_url=s.qloo_base_url, headers=headers, timeout=30
         ) as http:
             # Without explainability
-            r1 = await http.get(
+            r1 = await _live_get(
+                http,
                 "/v2/insights",
                 params={
                     "filter.type": "urn:entity:artist",
@@ -263,7 +288,8 @@ def test_explainability_contract():
             assert r1.status_code == 200
 
             # With explainability
-            r2 = await http.get(
+            r2 = await _live_get(
+                http,
                 "/v2/insights",
                 params={
                     "filter.type": "urn:entity:artist",
