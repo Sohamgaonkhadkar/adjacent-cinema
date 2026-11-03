@@ -26,6 +26,7 @@ type BackendHealthContextValue = {
 };
 
 const BackendHealthContext = createContext<BackendHealthContextValue | null>(null);
+const FAILED_WAKE_RETRY_MS = 15_000;
 
 export function BackendHealthProvider({ children }: { children: ReactNode }) {
   const [backendHealth, setBackendHealth] = useState<BackendHealth | null>(null);
@@ -42,7 +43,12 @@ export function BackendHealthProvider({ children }: { children: ReactNode }) {
     setBackendHealth(null);
     setWakeAttempts(0);
 
+    // The browser's GET /api/health request is the wake-up signal. Give a
+    // sleeping Render Free instance a longer window to become available.
     const pending = waitForBackendReady({
+      maxWaitMs: 300_000,
+      requestTimeoutMs: 30_000,
+      retryDelayMs: 5_000,
       onAttempt: setWakeAttempts,
     });
     inFlight.current = pending;
@@ -67,9 +73,37 @@ export function BackendHealthProvider({ children }: { children: ReactNode }) {
     return pending;
   }, []);
 
+  // Start the backend from the user's browser as soon as the frontend loads.
   useEffect(() => {
     void ensureReady().catch(() => undefined);
   }, [ensureReady]);
+
+  // A bounded attempt must not become a permanent failure state. Retry from
+  // this frontend tab until the backend responds or the tab is closed.
+  useEffect(() => {
+    if (wakeState !== "unavailable") return;
+
+    const retry = window.setTimeout(() => {
+      void ensureReady().catch(() => undefined);
+    }, FAILED_WAKE_RETRY_MS);
+
+    return () => window.clearTimeout(retry);
+  }, [wakeState, ensureReady]);
+
+  // If this tab was left open while Render went idle, re-check on return.
+  useEffect(() => {
+    const recheckOnReturn = () => {
+      if (document.visibilityState !== "visible" || wakeState === "waking") return;
+      void ensureReady().catch(() => undefined);
+    };
+
+    window.addEventListener("focus", recheckOnReturn);
+    document.addEventListener("visibilitychange", recheckOnReturn);
+    return () => {
+      window.removeEventListener("focus", recheckOnReturn);
+      document.removeEventListener("visibilitychange", recheckOnReturn);
+    };
+  }, [wakeState, ensureReady]);
 
   const value = useMemo(
     () => ({ backendHealth, wakeState, wakeAttempts, wakeError, ensureReady }),
@@ -89,7 +123,7 @@ export function BackendHealthProvider({ children }: { children: ReactNode }) {
             Connecting to analysis engine
           </p>
           <p className="mt-1 text-xs leading-relaxed text-paper-2">
-            The service may need a moment to start after inactivity. Checking connection · attempt {wakeAttempts}.
+            The backend may be asleep. This page is trying to start it · attempt {wakeAttempts}.
           </p>
         </div>
       )}
@@ -99,9 +133,11 @@ export function BackendHealthProvider({ children }: { children: ReactNode }) {
           role="alert"
         >
           <p className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-amber">
-            Analysis engine unavailable
+            Analysis engine still starting
           </p>
-          <p className="mt-1 text-xs leading-relaxed text-paper-2">{wakeError}</p>
+          <p className="mt-1 text-xs leading-relaxed text-paper-2">
+            {wakeError} The page will automatically retry in 15 seconds. Keep this tab open, or retry now.
+          </p>
           <button
             type="button"
             onClick={() => void ensureReady().catch(() => undefined)}
